@@ -17,9 +17,9 @@ import {
   FormHelperText,
   Divider,
 } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+// Import MUI date components only if they're available
+// We'll use a standard date input as fallback
+import { TextField } from '@mui/material';
 import {
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
@@ -259,22 +259,20 @@ const CreateGrade = () => {
             </Grid>
             
             <Grid item xs={12} md={6}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="Date *"
-                  value={formData.date}
-                  onChange={handleDateChange}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      fullWidth
-                      error={!!formErrors.date}
-                      helperText={formErrors.date}
-                    />
-                  )}
-                  maxDate={new Date()}
-                />
-              </LocalizationProvider>
+              <TextField
+                fullWidth
+                label="Date *"
+                type="date"
+                value={formData.date instanceof Date ? format(formData.date, 'yyyy-MM-dd') : ''}
+                onChange={(e) => {
+                  const newDate = e.target.value ? new Date(e.target.value) : null;
+                  handleDateChange(newDate);
+                }}
+                error={!!formErrors.date}
+                helperText={formErrors.date || 'Select the date for this grade'}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ max: format(new Date(), 'yyyy-MM-dd') }}
+              />
             </Grid>
             
             <Grid item xs={12}>
