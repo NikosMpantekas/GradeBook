@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-globals */
+/* eslint-disable no-restricted-globals, no-undef */
 
 // This service worker can be customized!
 // See https://developers.google.com/web/tools/workbox/modules
@@ -121,7 +121,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientsArr) => {
+    self.clients.matchAll({ type: 'window' }).then((clientsArr) => {
       const hadWindowToFocus = clientsArr.some((windowClient) => {
         if (windowClient.url === event.notification.data.url) {
           return windowClient.focus();
@@ -130,7 +130,7 @@ self.addEventListener('notificationclick', (event) => {
       });
       
       if (!hadWindowToFocus) {
-        clients.openWindow(event.notification.data.url || '/').then((windowClient) => {
+        self.clients.openWindow(event.notification.data.url || '/').then((windowClient) => {
           if (windowClient) {
             windowClient.focus();
           }
