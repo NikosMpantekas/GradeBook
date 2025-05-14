@@ -13,23 +13,41 @@ const protect = asyncHandler(async (req, res, next) => {
       // Get token from header
       token = req.headers.authorization.split(' ')[1];
 
+      if (!process.env.JWT_SECRET) {
+        console.error('JWT_SECRET environment variable is not set');
+        res.status(500);
+        throw new Error('Server configuration error - contact administrator');
+      }
+
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       // Get user from the token without password
       req.user = await User.findById(decoded.id).select('-password');
 
+      if (!req.user) {
+        res.status(401);
+        throw new Error('User not found');
+      }
+
       next();
     } catch (error) {
-      console.error(error);
-      res.status(401);
-      throw new Error('Not authorized');
+      console.error('JWT Error:', error.message);
+      
+      if (error.name === 'JsonWebTokenError') {
+        res.status(401);
+        throw new Error('Invalid token - please log in again');
+      } else if (error.name === 'TokenExpiredError') {
+        res.status(401);
+        throw new Error('Token expired - please log in again');
+      } else {
+        res.status(401);
+        throw new Error('Not authorized: ' + error.message);
+      }
     }
-  }
-
-  if (!token) {
+  } else {
     res.status(401);
-    throw new Error('Not authorized, no token');
+    throw new Error('Not authorized, no token provided');
   }
 });
 

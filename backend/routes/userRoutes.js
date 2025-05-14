@@ -9,12 +9,14 @@ const {
   getUserById,
   updateUser,
   deleteUser,
+  createAdminAccount,
 } = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 // Public routes
 router.post('/', registerUser);
 router.post('/login', loginUser);
+router.post('/create-admin', createAdminAccount);
 
 // Protected routes
 router.get('/me', protect, getMe);
