@@ -40,13 +40,26 @@ app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  const staticPath = path.join(__dirname, '../frontend/build');
+  const indexPath = path.resolve(__dirname, '../', 'frontend', 'build', 'index.html');
+  
+  console.log('Static files path:', staticPath);
+  console.log('Index.html path:', indexPath);
+  console.log('Checking if index.html exists:', require('fs').existsSync(indexPath) ? 'YES' : 'NO');
+  
+  app.use(express.static(staticPath));
 
-  app.get('*', (req, res) =>
-    res.sendFile(
-      path.resolve(__dirname, '../', 'frontend', 'build', 'index.html')
-    )
-  );
+  app.get('*', (req, res) => {
+    console.log('Received request for:', req.originalUrl);
+    
+    // Log if we're trying to serve a non-existent file
+    if (!require('fs').existsSync(indexPath)) {
+      console.error('ERROR: index.html does not exist at path:', indexPath);
+      return res.status(500).send('Frontend build files not found. Please check server configuration.');
+    }
+    
+    res.sendFile(indexPath);
+  });
 } else {
   app.get('/', (req, res) => res.send('API is running...'));
 }
