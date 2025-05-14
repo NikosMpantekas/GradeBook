@@ -37,7 +37,7 @@
   },
   "scripts": {
     "start": "npx react-scripts start",
-    "build": "npx react-scripts build",
+    "build": "node ./node_modules/react-scripts/scripts/build.js",
     "test": "npx react-scripts test",
     "eject": "npx react-scripts eject"
   },
