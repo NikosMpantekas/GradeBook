@@ -35,7 +35,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import {
-  getNotificationsByTeacher,
+  getSentNotifications,
   deleteNotification,
   markNotificationAsRead,
   reset,
@@ -58,12 +58,13 @@ const TeacherNotifications = () => {
   const [notificationToDelete, setNotificationToDelete] = useState(null);
 
   useEffect(() => {
-    dispatch(getNotificationsByTeacher(user._id));
+    // Get notifications sent by this teacher
+    dispatch(getSentNotifications());
 
     return () => {
       dispatch(reset());
     };
-  }, [dispatch, user._id]);
+  }, [dispatch]);
 
   useEffect(() => {
     if (isError) {
@@ -71,14 +72,15 @@ const TeacherNotifications = () => {
     }
 
     if (notifications) {
-      applyFilters();
+      // Apply search filters on the notifications
+      applyFilters(notifications);
     }
   }, [notifications, isError, isSuccess, message, searchTerm]);
 
-  const applyFilters = () => {
-    if (!notifications) return;
+  const applyFilters = (teacherNotifications) => {
+    if (!teacherNotifications) return;
 
-    let filtered = [...notifications];
+    let filtered = [...teacherNotifications];
 
     // Apply search filter
     if (searchTerm) {
