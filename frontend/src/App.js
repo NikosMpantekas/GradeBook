@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ToastContainer } from 'react-toastify';
@@ -89,6 +89,9 @@ function App() {
     }
   }, [user]);
 
+  // Console log initial state - helps with debugging
+  console.log('App rendering with auth state:', { isLoggedIn: !!user });
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -98,8 +101,13 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           
-          {/* Protected Routes */}
+          {/* Default root route - redirects to dashboard if logged in, otherwise to login */}
           <Route path="/" element={
+            user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+          } />
+          
+          {/* Protected Routes with Layout */}
+          <Route path="/dashboard" element={
             <PrivateRoute>
               <Layout />
             </PrivateRoute>

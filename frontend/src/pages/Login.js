@@ -36,15 +36,25 @@ const Login = () => {
   );
 
   useEffect(() => {
+    // Debug the login state
+    console.log('Login component - Auth state:', { isSuccess, isError, user: !!user });
+    
     if (isError) {
       toast.error(message);
     }
 
     if (isSuccess || user) {
-      navigate('/');
+      console.log('Login successful, redirecting to dashboard');
+      // Navigate to dashboard instead of root to prevent blank page issues
+      navigate('/dashboard');
     }
 
-    dispatch(reset());
+    return () => {
+      // Only reset when the component unmounts or when an error/success occurs
+      if (isError || isSuccess) {
+        dispatch(reset());
+      }
+    };
   }, [user, isError, isSuccess, message, navigate, dispatch]);
 
   const onChange = (e) => {
