@@ -17,9 +17,8 @@ import {
   FormHelperText,
   Divider,
 } from '@mui/material';
-// Import MUI date components only if they're available
-// We'll use a standard date input as fallback
-import { TextField } from '@mui/material';
+// Using standard date input fields instead of DatePicker component
+// to avoid dependency issues
 import {
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
