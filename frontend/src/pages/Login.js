@@ -1,0 +1,156 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { toast } from 'react-toastify';
+import {
+  Container,
+  Box,
+  Avatar,
+  Typography,
+  TextField,
+  Button,
+  Grid,
+  Link,
+  Paper,
+  FormControlLabel,
+  Checkbox,
+  CircularProgress,
+} from '@mui/material';
+import { LockOutlined as LockOutlinedIcon } from '@mui/icons-material';
+import { login, reset } from '../features/auth/authSlice';
+
+const Login = () => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    saveCredentials: false,
+  });
+
+  const { email, password, saveCredentials } = formData;
+
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const { user, isLoading, isError, isSuccess, message } = useSelector(
+    (state) => state.auth
+  );
+
+  useEffect(() => {
+    if (isError) {
+      toast.error(message);
+    }
+
+    if (isSuccess || user) {
+      navigate('/');
+    }
+
+    dispatch(reset());
+  }, [user, isError, isSuccess, message, navigate, dispatch]);
+
+  const onChange = (e) => {
+    setFormData((prevState) => ({
+      ...prevState,
+      [e.target.name]: e.target.type === 'checkbox' ? e.target.checked : e.target.value,
+    }));
+  };
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+
+    const userData = {
+      email,
+      password,
+      saveCredentials,
+    };
+
+    dispatch(login(userData));
+  };
+
+  return (
+    <Container component="main" maxWidth="xs">
+      <Paper 
+        elevation={6} 
+        sx={{ 
+          mt: 8, 
+          p: 4, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          borderRadius: 2,
+        }}
+      >
+        <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
+          <LockOutlinedIcon />
+        </Avatar>
+        <Typography component="h1" variant="h5">
+          GradeBook Login
+        </Typography>
+        <Box component="form" onSubmit={onSubmit} noValidate sx={{ mt: 1, width: '100%' }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            autoFocus
+            value={email}
+            onChange={onChange}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type="password"
+            id="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={onChange}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox 
+                value="remember" 
+                color="primary" 
+                name="saveCredentials"
+                checked={saveCredentials}
+                onChange={onChange}
+              />
+            }
+            label="Remember me"
+          />
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2, py: 1.2 }}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              'Sign In'
+            )}
+          </Button>
+          <Grid container>
+            <Grid item>
+              <Link component={RouterLink} to="/register" variant="body2">
+                {"Don't have an account? Sign Up"}
+              </Link>
+            </Grid>
+          </Grid>
+        </Box>
+      </Paper>
+      <Box sx={{ mt: 4, textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          &copy; {new Date().getFullYear()} GradeBook PWA
+        </Typography>
+      </Box>
+    </Container>
+  );
+};
+
+export default Login;
