@@ -38,28 +38,80 @@ app.use('/api/subjects', require('./routes/subjectRoutes'));
 app.use('/api/directions', require('./routes/directionRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    // Log request body but hide sensitive info
+    const sanitizedBody = { ...req.body };
+    if (sanitizedBody.password) sanitizedBody.password = '[HIDDEN]';
+    console.log('Request body:', JSON.stringify(sanitizedBody));
+  }
+  next();
+});
+
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
-  const staticPath = path.join(__dirname, '../frontend/build');
-  const indexPath = path.resolve(__dirname, '../', 'frontend', 'build', 'index.html');
+  // List all files in the directory to debug
+  const fs = require('fs');
   
-  console.log('Static files path:', staticPath);
-  console.log('Index.html path:', indexPath);
-  console.log('Checking if index.html exists:', require('fs').existsSync(indexPath) ? 'YES' : 'NO');
-  
-  app.use(express.static(staticPath));
+  // Try multiple possible build locations
+  const possibleBuildPaths = [
+    path.join(__dirname, '../frontend/build'),
+    path.join(__dirname, '../build'),
+    path.join(__dirname, '../../frontend/build'),
+    path.join(__dirname, '/frontend/build')
+  ];
 
-  app.get('*', (req, res) => {
-    console.log('Received request for:', req.originalUrl);
-    
-    // Log if we're trying to serve a non-existent file
-    if (!require('fs').existsSync(indexPath)) {
-      console.error('ERROR: index.html does not exist at path:', indexPath);
-      return res.status(500).send('Frontend build files not found. Please check server configuration.');
+  let staticPath = null;
+  let indexPath = null;
+
+  console.log('Looking for build directory in these locations:');
+  possibleBuildPaths.forEach((path, i) => {
+    const exists = fs.existsSync(path);
+    console.log(`${i+1}. ${path} - ${exists ? 'EXISTS' : 'NOT FOUND'}`);
+    if (exists && !staticPath) {
+      staticPath = path;
+      indexPath = path + '/index.html';
+      
+      // List files in build directory
+      console.log('\nFiles in build directory:');
+      try {
+        const files = fs.readdirSync(path);
+        files.forEach(file => {
+          console.log(`- ${file} ${fs.statSync(`${path}/${file}`).isDirectory() ? '(directory)' : ''}`);
+        });
+      } catch (err) {
+        console.error('Error reading directory:', err);
+      }
     }
-    
-    res.sendFile(indexPath);
   });
+
+  if (staticPath) {
+    console.log('\nUsing static files from:', staticPath);
+    console.log('Index.html path:', indexPath);
+    console.log('Checking if index.html exists:', fs.existsSync(indexPath) ? 'YES' : 'NO');
+    
+    // Serve static files
+    app.use(express.static(staticPath));
+
+    // For all other routes, serve index.html
+    app.get('*', (req, res) => {
+      console.log(`Serving index.html for: ${req.originalUrl}`);
+      
+      if (!fs.existsSync(indexPath)) {
+        console.error('ERROR: index.html does not exist at path:', indexPath);
+        return res.status(500).send('Frontend build files not found. Please check server configuration.');
+      }
+      
+      res.sendFile(indexPath);
+    });
+  } else {
+    console.error('CRITICAL ERROR: Could not find build directory in any location!');
+    app.get('*', (req, res) => {
+      res.status(500).send('Build directory not found. Please check deployment configuration.');
+    });
+  }
 } else {
   app.get('/', (req, res) => res.send('API is running...'));
 }
