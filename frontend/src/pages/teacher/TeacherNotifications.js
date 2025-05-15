@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -58,9 +58,34 @@ const TeacherNotifications = () => {
   const [notificationToDelete, setNotificationToDelete] = useState(null);
 
   useEffect(() => {
+    console.log('TeacherNotifications component mounted');
+    // Initialize an empty array to prevent initial render issues
+    setFilteredNotifications([]);
+    
     // Get notifications sent by this teacher
-    dispatch(getSentNotifications());
-
+    try {
+      dispatch(getSentNotifications())
+        .unwrap()
+        .then(data => {
+          console.log('getSentNotifications success:', data);
+          // If we get here, we've already been successful, so we can set the data directly
+          if (Array.isArray(data)) {
+            setFilteredNotifications(data);
+          } else {
+            console.warn('Received non-array data:', data);
+            setFilteredNotifications([]);
+          }
+        })
+        .catch(error => {
+          console.error('getSentNotifications failure:', error);
+          toast.error('Failed to load notifications. Please try again.');
+          setFilteredNotifications([]);
+        });
+    } catch (error) {
+      console.error('Error dispatching getSentNotifications:', error);
+      setFilteredNotifications([]);
+    }
+    
     return () => {
       dispatch(reset());
     };
@@ -179,11 +204,136 @@ const TeacherNotifications = () => {
     dispatch(markNotificationAsRead(id));
   };
 
-  if (isLoading) {
+  // Enhanced loading and error state handling to prevent blank screens
+  const renderContent = () => {
+    // Show loading indicator only if we're loading AND we don't have any notifications to show
+    if (isLoading && (!filteredNotifications || filteredNotifications.length === 0)) {
+      return (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+          <CircularProgress />
+          <Typography variant="body1" sx={{ ml: 2 }}>
+            Loading notifications...
+          </Typography>
+        </Box>
+      );
+    }
+    
+    // Always render the table, even if empty - prevents blank screen
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
+      <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
+        <TableContainer>
+          <Table stickyHeader aria-label="notifications table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Recipient</TableCell>
+                <TableCell>Title</TableCell>
+                <TableCell>Message</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="center">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredNotifications && filteredNotifications.length > 0 ? (
+                filteredNotifications
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((notification) => (
+                    <TableRow hover key={notification._id || 'no-id-' + Math.random()}>
+                      <TableCell>
+                        {notification.recipient ? notification.recipient.name : 'All Students'}
+                      </TableCell>
+                      <TableCell>{notification.title || 'No title'}</TableCell>
+                      <TableCell>
+                        {notification.message 
+                          ? (notification.message.length > 50
+                             ? `${notification.message.substring(0, 50)}...`
+                             : notification.message)
+                          : 'No message'}
+                      </TableCell>
+                      <TableCell>
+                        {notification.createdAt 
+                          ? format(new Date(notification.createdAt), 'MMM dd, yyyy')
+                          : 'Unknown date'}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          label={notification.isRead ? 'Read' : 'Unread'}
+                          color={notification.isRead ? 'success' : 'warning'}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          color="primary"
+                          onClick={() => handleViewNotification(notification._id)}
+                          size="small"
+                        >
+                          <VisibilityIcon />
+                        </IconButton>
+                        {!notification.isRead && (
+                          <IconButton
+                            color="success"
+                            onClick={() => handleMarkAsRead(notification._id)}
+                            size="small"
+                          >
+                            <MarkReadIcon />
+                          </IconButton>
+                        )}
+                        <IconButton
+                          color="error"
+                          onClick={() => handleDeleteClick(notification)}
+                          size="small"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <Box py={2}>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        {isError 
+                          ? 'Error loading notifications. Please try again.' 
+                          : 'No notifications found.'}
+                      </Typography>
+                      {isError && (
+                        <Button 
+                          variant="contained" 
+                          sx={{ mt: 2 }} 
+                          onClick={() => dispatch(getSentNotifications())}
+                        >
+                          Retry
+                        </Button>
+                      )}
+                      {!isError && !isLoading && (
+                        <Button 
+                          variant="contained" 
+                          sx={{ mt: 2 }} 
+                          startIcon={<AddIcon />}
+                          onClick={handleAddNotification}
+                        >
+                          Create Your First Notification
+                        </Button>
+                      )}
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={filteredNotifications ? filteredNotifications.length : 0}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      </Paper>
     );
   }
 
@@ -220,94 +370,8 @@ const TeacherNotifications = () => {
         />
       </Paper>
 
-      {/* Notifications Table */}
-      <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
-        <TableContainer>
-          <Table stickyHeader aria-label="notifications table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Recipient</TableCell>
-                <TableCell>Title</TableCell>
-                <TableCell>Message</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredNotifications.length > 0 ? (
-                filteredNotifications
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((notification) => (
-                    <TableRow hover key={notification._id}>
-                      <TableCell>
-                        {notification.recipient ? notification.recipient.name : 'All Students'}
-                      </TableCell>
-                      <TableCell>{notification.title}</TableCell>
-                      <TableCell>
-                        {notification.message.length > 50
-                          ? `${notification.message.substring(0, 50)}...`
-                          : notification.message}
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(notification.date), 'PP')}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={notification.read ? 'Read' : 'Unread'}
-                          color={notification.read ? 'default' : 'primary'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          color="primary"
-                          aria-label="view notification"
-                          onClick={() => handleViewNotification(notification._id)}
-                        >
-                          <VisibilityIcon />
-                        </IconButton>
-                        {!notification.read && (
-                          <IconButton
-                            color="success"
-                            aria-label="mark as read"
-                            onClick={() => handleMarkAsRead(notification._id)}
-                          >
-                            <MarkReadIcon />
-                          </IconButton>
-                        )}
-                        <IconButton
-                          color="error"
-                          aria-label="delete notification"
-                          onClick={() => handleDeleteClick(notification)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                    {notifications && notifications.length > 0
-                      ? 'No notifications match the search criteria.'
-                      : 'No notifications found. Create a notification to get started.'}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={filteredNotifications.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </Paper>
+      {/* Render notifications table with enhanced error handling */}
+      {renderContent()}
 
       {/* Delete Confirmation Dialog */}
       <Dialog

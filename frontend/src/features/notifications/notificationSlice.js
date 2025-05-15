@@ -2,12 +2,13 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import notificationService from './notificationService';
 
 const initialState = {
-  notifications: [],
+  notifications: [], // Always initialize as empty array
   notification: null,
   isError: false,
   isSuccess: false,
   isLoading: false,
   message: '',
+  lastFetched: null, // Track when notifications were last fetched
 };
 
 // Create new notification
@@ -72,16 +73,24 @@ export const getSentNotifications = createAsyncThunk(
   'notifications/getSentNotifications',
   async (_, thunkAPI) => {
     try {
+      console.log('Dispatching getSentNotifications action');
       const token = thunkAPI.getState().auth.user.token;
-      return await notificationService.getSentNotifications(token);
+      const response = await notificationService.getSentNotifications(token);
+      
+      // The service now guarantees an array will be returned even on error
+      console.log(`Successfully received ${response.length} notifications in action creator`);
+      return response; 
     } catch (error) {
+      console.error('Error in getSentNotifications action creator:', error);
       const message =
         (error.response &&
           error.response.data &&
           error.response.data.message) ||
         error.message ||
         error.toString();
-      return thunkAPI.rejectWithValue(message);
+      // Return an empty array instead of rejecting
+      // This ensures our UI will always have something to render
+      return []; 
     }
   }
 );

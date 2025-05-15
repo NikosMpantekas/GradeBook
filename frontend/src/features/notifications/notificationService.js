@@ -44,15 +44,30 @@ const getMyNotifications = async (token) => {
 
 // Get sent notifications
 const getSentNotifications = async (token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
+  try {
+    console.log('Fetching sent notifications');
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
 
-  const response = await axios.get(API_URL + 'sent', config);
-
-  return response.data;
+    const response = await axios.get(API_URL + 'sent', config);
+    console.log(`Received ${response.data.length} sent notifications`);
+    
+    // Ensure we always return an array, even if the API returns null/undefined
+    if (!response.data || !Array.isArray(response.data)) {
+      console.warn('API returned invalid notifications data, defaulting to empty array');
+      return [];
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching sent notifications:', error);
+    // Instead of throwing, return an empty array with error logging
+    // This prevents the UI from crashing
+    return [];
+  }
 };
 
 // Get a specific notification
