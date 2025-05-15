@@ -40,32 +40,15 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 
-// In a real app, these would come from Redux actions
-const getUsers = () => {
-  // Dummy data
-  return [
-    { _id: '1', name: 'John Doe', email: 'john@example.com', role: 'student', createdAt: '2025-01-15T12:00:00Z' },
-    { _id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'teacher', createdAt: '2025-02-20T12:00:00Z' },
-    { _id: '3', name: 'Robert Johnson', email: 'robert@example.com', role: 'student', createdAt: '2025-03-10T12:00:00Z' },
-    { _id: '4', name: 'Emily Davis', email: 'emily@example.com', role: 'teacher', createdAt: '2025-04-05T12:00:00Z' },
-    { _id: '5', name: 'Michael Wilson', email: 'michael@example.com', role: 'student', createdAt: '2025-05-01T12:00:00Z' },
-    { _id: '6', name: 'Admin User', email: 'admin@example.com', role: 'admin', createdAt: '2025-01-01T12:00:00Z' },
-  ];
-};
-
-const deleteUser = (id) => {
-  // This would normally be a Redux action
-  console.log(`Delete user with ID: ${id}`);
-  return { type: 'DELETE_USER', payload: id };
-};
+// Import the user Redux actions
+import { getUsers as fetchUsers, deleteUser, reset } from '../../features/users/userSlice';
 
 const ManageUsers = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   
-  const [isLoading, setIsLoading] = useState(false);
-  const [users, setUsers] = useState([]);
+  const { users, isLoading, isSuccess, isError, message } = useSelector(state => state.users);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
@@ -75,14 +58,20 @@ const ManageUsers = () => {
   const [userToDelete, setUserToDelete] = useState(null);
 
   useEffect(() => {
-    // In a real app, you would dispatch an action to get users
-    setIsLoading(true);
-    setTimeout(() => {
-      const fetchedUsers = getUsers();
-      setUsers(fetchedUsers);
-      setIsLoading(false);
-    }, 1000); // Simulating network request
+    // Fetch users from the database
+    dispatch(fetchUsers());
+    
+    // Cleanup function to reset state when component unmounts
+    return () => {
+      dispatch(reset());
+    };
   }, [dispatch]);
+  
+  useEffect(() => {
+    if (isError) {
+      toast.error(message);
+    }
+  }, [isError, message]);
 
   useEffect(() => {
     if (users) {
@@ -131,11 +120,11 @@ const ManageUsers = () => {
   };
 
   const handleAddUser = () => {
-    navigate('/admin/users/create');
+    navigate('/app/admin/users/create');
   };
 
   const handleEditUser = (id) => {
-    navigate(`/admin/users/${id}`);
+    navigate(`/app/admin/users/${id}`);
   };
 
   // Delete User Dialog
@@ -146,16 +135,21 @@ const ManageUsers = () => {
 
   const handleDeleteConfirm = () => {
     if (userToDelete) {
-      // In a real app, dispatch an action to delete the user
+      // Dispatch action to delete the user from the database
       dispatch(deleteUser(userToDelete._id));
-      
-      // Remove from the local state (in a real app, this would happen after the API call)
-      setUsers(users.filter(u => u._id !== userToDelete._id));
-      toast.success('User deleted successfully');
+      toast.success('Deleting user...');
     }
     setDeleteDialogOpen(false);
     setUserToDelete(null);
   };
+  
+  // Handle success/error after delete operation
+  useEffect(() => {
+    if (isSuccess && message === 'user_deleted') {
+      toast.success('User deleted successfully');
+      dispatch(reset());
+    }
+  }, [isSuccess, message, dispatch]);
 
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);

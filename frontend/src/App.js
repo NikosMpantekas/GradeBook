@@ -135,9 +135,9 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/diagnostics" element={<DiagnosticPage />} />
           
-          {/* Default root route - redirects to dashboard if logged in, otherwise to login */}
+          {/* Default root route - redirects to app dashboard if logged in, otherwise to login */}
           <Route path="/" element={
-            user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+            user ? <Navigate to="/app/dashboard" replace /> : <Navigate to="/login" replace />
           } />
           
           {/* Simple direct Dashboard route - using standalone component designed to work without Layout */}
@@ -153,74 +153,74 @@ function App() {
               <Layout />
             </PrivateRoute>
           }>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/notifications/:id" element={<NotificationDetail />} />
+            <Route path="/app/dashboard" element={<Dashboard />} />
+            <Route path="/app/profile" element={<Profile />} />
+            <Route path="/app/notifications" element={<Notifications />} />
+            <Route path="/app/notifications/:id" element={<NotificationDetail />} />
             
             {/* Student Routes */}
-            <Route path="/grades" element={<StudentGrades />} />
-            <Route path="/grades/:id" element={<GradeDetail />} />
+            <Route path="/app/grades" element={<StudentGrades />} />
+            <Route path="/app/grades/:id" element={<GradeDetail />} />
             
             {/* Teacher Routes */}
-            <Route path="/teacher" element={
+            <Route path="/app/teacher" element={
               <TeacherRoute>
                 <TeacherGrades />
               </TeacherRoute>
             } />
-            <Route path="/teacher/grades/manage" element={
+            <Route path="/app/teacher/grades/manage" element={
               <TeacherRoute>
                 <ManageGrades />
               </TeacherRoute>
             } />
-            <Route path="/teacher/grades/create" element={
+            <Route path="/app/teacher/grades/create" element={
               <TeacherRoute>
                 <CreateGrade />
               </TeacherRoute>
             } />
-            <Route path="/teacher/notifications" element={
+            <Route path="/app/teacher/notifications" element={
               <TeacherRoute>
                 <TeacherNotifications />
               </TeacherRoute>
             } />
-            <Route path="/teacher/notifications/create" element={
+            <Route path="/app/teacher/notifications/create" element={
               <TeacherRoute>
                 <CreateNotification />
               </TeacherRoute>
             } />
             
             {/* Admin Routes */}
-            <Route path="/admin" element={
+            <Route path="/app/admin" element={
               <AdminRoute>
                 <AdminDashboard />
               </AdminRoute>
             } />
-            <Route path="/admin/users" element={
+            <Route path="/app/admin/users" element={
               <AdminRoute>
                 <ManageUsers />
               </AdminRoute>
             } />
-            <Route path="/admin/users/create" element={
+            <Route path="/app/admin/users/create" element={
               <AdminRoute>
                 <CreateUser />
               </AdminRoute>
             } />
-            <Route path="/admin/users/:id" element={
+            <Route path="/app/admin/users/:id" element={
               <AdminRoute>
                 <EditUser />
               </AdminRoute>
             } />
-            <Route path="/admin/schools" element={
+            <Route path="/app/admin/schools" element={
               <AdminRoute>
                 <ManageSchools />
               </AdminRoute>
             } />
-            <Route path="/admin/directions" element={
+            <Route path="/app/admin/directions" element={
               <AdminRoute>
                 <ManageDirections />
               </AdminRoute>
             } />
-            <Route path="/admin/subjects" element={
+            <Route path="/app/admin/subjects" element={
               <AdminRoute>
                 <ManageSubjects />
               </AdminRoute>

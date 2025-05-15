@@ -33,36 +33,33 @@ import {
   MenuBook as SubjectIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-
-// Dummy data for subjects
-const initialSubjects = [
-  { _id: '1', name: 'Mathematics', direction: '2', description: 'Algebra, Geometry, Calculus' },
-  { _id: '2', name: 'Physics', direction: '1', description: 'Mechanics, Thermodynamics, Electromagnetism' },
-  { _id: '3', name: 'History', direction: '3', description: 'World History, Ancient Civilizations' },
-  { _id: '4', name: 'Literature', direction: '3', description: 'Classic Literature, Modern Literature' },
-  { _id: '5', name: 'Computer Science', direction: '5', description: 'Programming, Algorithms, Data Structures' },
-  { _id: '6', name: 'Chemistry', direction: '1', description: 'Organic Chemistry, Inorganic Chemistry' },
-];
-
-// Dummy data for directions (referenced by subjects)
-const directionsData = [
-  { _id: '1', name: 'Science' },
-  { _id: '2', name: 'Mathematics' },
-  { _id: '3', name: 'Humanities' },
-  { _id: '4', name: 'Arts' },
-  { _id: '5', name: 'Technology' },
-  { _id: '6', name: 'Languages' },
-];
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  getSubjects,
+  createSubject,
+  updateSubject,
+  deleteSubject,
+  reset as resetSubjects
+} from '../../features/subjects/subjectSlice';
+import {
+  getDirections,
+  reset as resetDirections
+} from '../../features/directions/directionSlice';
 
 const ManageSubjects = () => {
-  const [subjects, setSubjects] = useState([]);
+  const dispatch = useDispatch();
+  const { subjects, isLoading: subjectsLoading, isError: subjectsError, message: subjectsMessage } = useSelector(
+    (state) => state.subjects
+  );
+  
+  const { directions, isLoading: directionsLoading, isError: directionsError, message: directionsMessage } = useSelector(
+    (state) => state.directions
+  );
+  
   const [filteredSubjects, setFilteredSubjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const isLoading = subjectsLoading || directionsLoading;
   const [directionFilter, setDirectionFilter] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [directions, setDirections] = useState([]);
-  
-  // Dialog states
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -72,37 +69,58 @@ const ManageSubjects = () => {
   // Form validation
   const [formErrors, setFormErrors] = useState({});
   
+  // Load subjects and directions on component mount
   useEffect(() => {
-    // Simulate API calls to fetch subjects and directions
-    setIsLoading(true);
-    setTimeout(() => {
-      setSubjects(initialSubjects);
-      setFilteredSubjects(initialSubjects);
-      setDirections(directionsData);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
+    dispatch(getSubjects());
+    dispatch(getDirections());
+    
+    return () => {
+      dispatch(resetSubjects());
+      dispatch(resetDirections());
+    };
+  }, [dispatch]);
   
+  // Update filtered subjects when subjects, search term, or direction filter changes
+  const applyFilters = () => {
+    if (subjects) {
+      let filtered = [...subjects];
+      
+      // Apply direction filter
+      if (directionFilter) {
+        filtered = filtered.filter(subject => subject.direction === directionFilter);
+      }
+      
+      // Apply search filter
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        filtered = filtered.filter(subject => 
+          subject.name.toLowerCase().includes(search) ||
+          subject.description.toLowerCase().includes(search)
+        );
+      }
+      
+      setFilteredSubjects(filtered);
+    }
+  };
+
   useEffect(() => {
-    let filtered = [...subjects];
-    
-    // Apply direction filter
-    if (directionFilter) {
-      filtered = filtered.filter(subject => subject.direction === directionFilter);
+    if (subjectsError) {
+      toast.error(subjectsMessage);
     }
     
-    // Apply search filter
-    if (searchTerm.trim() !== '') {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(subject =>
-        subject.name.toLowerCase().includes(searchLower) ||
-        subject.description.toLowerCase().includes(searchLower) ||
-        getDirectionName(subject.direction).toLowerCase().includes(searchLower)
-      );
+    if (directionsError) {
+      toast.error(directionsMessage);
     }
     
-    setFilteredSubjects(filtered);
-  }, [searchTerm, directionFilter, subjects]);
+    if (subjects && subjects.length > 0) {
+      applyFilters();
+    }
+  }, [subjects, subjectsError, directionsError, subjectsMessage, directionsMessage]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [searchTerm, directionFilter]);
+
   
   const getDirectionName = (directionId) => {
     const direction = directions.find(d => d._id === directionId);
@@ -184,45 +202,42 @@ const ManageSubjects = () => {
   // CRUD operations
   const handleAddSubject = () => {
     if (validateForm()) {
-      // Generate a new ID (in a real app, this would be done by the backend)
-      const newId = (Math.max(...subjects.map(s => parseInt(s._id))) + 1).toString();
-      
-      const newSubject = {
-        _id: newId,
-        ...currentSubject,
-      };
-      
-      const updatedSubjects = [...subjects, newSubject];
-      setSubjects(updatedSubjects);
-      setFilteredSubjects(updatedSubjects);
-      
-      toast.success('Subject added successfully');
-      handleCloseAddDialog();
+      dispatch(createSubject(currentSubject))
+        .unwrap()
+        .then(() => {
+          setOpenAddDialog(false);
+          toast.success('Subject added successfully');
+        })
+        .catch((error) => {
+          toast.error(error);
+        });
     }
   };
   
   const handleEditSubject = () => {
     if (validateForm()) {
-      const updatedSubjects = subjects.map(subject => 
-        subject._id === currentSubject._id ? currentSubject : subject
-      );
-      
-      setSubjects(updatedSubjects);
-      setFilteredSubjects(updatedSubjects);
-      
-      toast.success('Subject updated successfully');
-      handleCloseEditDialog();
+      dispatch(updateSubject(currentSubject))
+        .unwrap()
+        .then(() => {
+          setOpenEditDialog(false);
+          toast.success('Subject updated successfully');
+        })
+        .catch((error) => {
+          toast.error(error);
+        });
     }
   };
   
   const handleDeleteSubject = () => {
-    const updatedSubjects = subjects.filter(subject => subject._id !== subjectIdToDelete);
-    
-    setSubjects(updatedSubjects);
-    setFilteredSubjects(updatedSubjects);
-    
-    toast.success('Subject deleted successfully');
-    handleCloseDeleteDialog();
+    dispatch(deleteSubject(subjectIdToDelete))
+      .unwrap()
+      .then(() => {
+        setOpenDeleteDialog(false);
+        toast.success('Subject deleted successfully');
+      })
+      .catch((error) => {
+        toast.error(error);
+      });
   };
   
   if (isLoading) {

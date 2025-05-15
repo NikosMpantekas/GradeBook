@@ -28,19 +28,23 @@ import {
   School as SchoolIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-
-// Dummy data for schools
-const initialSchools = [
-  { _id: '1', name: 'Central High School', address: '123 Main St, City', phone: '555-1234' },
-  { _id: '2', name: 'Westside Academy', address: '456 Elm St, City', phone: '555-5678' },
-  { _id: '3', name: 'Northview School', address: '789 Oak St, City', phone: '555-9012' },
-];
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  getSchools,
+  createSchool,
+  updateSchool,
+  deleteSchool,
+  reset
+} from '../../features/schools/schoolSlice';
 
 const ManageSchools = () => {
-  const [schools, setSchools] = useState([]);
+  const dispatch = useDispatch();
+  const { schools, isLoading, isError, isSuccess, message } = useSelector(
+    (state) => state.schools
+  );
+  
   const [filteredSchools, setFilteredSchools] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   
   // Dialog states
   const [openAddDialog, setOpenAddDialog] = useState(false);
@@ -52,16 +56,27 @@ const ManageSchools = () => {
   // Form validation
   const [formErrors, setFormErrors] = useState({});
   
+  // Load schools on component mount
   useEffect(() => {
-    // Simulate API call to fetch schools
-    setTimeout(() => {
-      setSchools(initialSchools);
-      setFilteredSchools(initialSchools);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
+    dispatch(getSchools());
+    
+    return () => {
+      dispatch(reset());
+    };
+  }, [dispatch]);
   
+  // Update filtered schools when schools or search term changes
   useEffect(() => {
+    if (isError) {
+      toast.error(message);
+    }
+    
+    if (schools) {
+      applyFilters();
+    }
+  }, [schools, searchTerm, isError, message]);
+  
+  const applyFilters = () => {
     if (searchTerm.trim() === '') {
       setFilteredSchools(schools);
     } else {
@@ -72,7 +87,7 @@ const ManageSchools = () => {
       );
       setFilteredSchools(filtered);
     }
-  }, [searchTerm, schools]);
+  };
   
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -87,6 +102,8 @@ const ManageSchools = () => {
   
   const handleCloseAddDialog = () => {
     setOpenAddDialog(false);
+    setCurrentSchool({ name: '', address: '', phone: '' });
+    setFormErrors({});
   };
   
   const handleOpenEditDialog = (school) => {
@@ -97,6 +114,8 @@ const ManageSchools = () => {
   
   const handleCloseEditDialog = () => {
     setOpenEditDialog(false);
+    setCurrentSchool({ name: '', address: '', phone: '' });
+    setFormErrors({});
   };
   
   const handleOpenDeleteDialog = (id) => {
@@ -151,45 +170,42 @@ const ManageSchools = () => {
   // CRUD operations
   const handleAddSchool = () => {
     if (validateForm()) {
-      // Generate a new ID (in a real app, this would be done by the backend)
-      const newId = (Math.max(...schools.map(s => parseInt(s._id))) + 1).toString();
-      
-      const newSchool = {
-        _id: newId,
-        ...currentSchool,
-      };
-      
-      const updatedSchools = [...schools, newSchool];
-      setSchools(updatedSchools);
-      setFilteredSchools(updatedSchools);
-      
-      toast.success('School added successfully');
-      handleCloseAddDialog();
+      dispatch(createSchool(currentSchool))
+        .unwrap()
+        .then(() => {
+          setOpenAddDialog(false);
+          toast.success('School added successfully');
+        })
+        .catch((error) => {
+          toast.error(error);
+        });
     }
   };
   
   const handleEditSchool = () => {
     if (validateForm()) {
-      const updatedSchools = schools.map(school => 
-        school._id === currentSchool._id ? currentSchool : school
-      );
-      
-      setSchools(updatedSchools);
-      setFilteredSchools(updatedSchools);
-      
-      toast.success('School updated successfully');
-      handleCloseEditDialog();
+      dispatch(updateSchool(currentSchool))
+        .unwrap()
+        .then(() => {
+          setOpenEditDialog(false);
+          toast.success('School updated successfully');
+        })
+        .catch((error) => {
+          toast.error(error);
+        });
     }
   };
   
   const handleDeleteSchool = () => {
-    const updatedSchools = schools.filter(school => school._id !== schoolIdToDelete);
-    
-    setSchools(updatedSchools);
-    setFilteredSchools(updatedSchools);
-    
-    toast.success('School deleted successfully');
-    handleCloseDeleteDialog();
+    dispatch(deleteSchool(schoolIdToDelete))
+      .unwrap()
+      .then(() => {
+        setOpenDeleteDialog(false);
+        toast.success('School deleted successfully');
+      })
+      .catch((error) => {
+        toast.error(error);
+      });
   };
   
   if (isLoading) {

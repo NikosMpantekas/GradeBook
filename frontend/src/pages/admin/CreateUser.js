@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Typography,
   Paper,
@@ -26,12 +26,15 @@ import {
   VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
+import { createUser, reset } from '../../features/users/userSlice';
 
 const CreateUser = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
-  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useSelector((state) => state.auth);
+  const { isLoading, isError, isSuccess, message } = useSelector((state) => state.users);
+
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -105,27 +108,44 @@ const CreateUser = () => {
     return Object.keys(errors).length === 0;
   };
   
+  // Handle API response effects
+  useEffect(() => {
+    if (isError) {
+      toast.error(message);
+      setSubmitting(false);
+    }
+    
+    if (isSuccess) {
+      toast.success('User created successfully');
+      navigate('/app/admin/users');
+      dispatch(reset());
+    }
+    
+    return () => {
+      if (isSuccess || isError) {
+        dispatch(reset());
+      }
+    };
+  }, [isError, isSuccess, message, navigate, dispatch]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (validate()) {
-      setIsLoading(true);
+      setSubmitting(true);
       
-      // Display a message that this is a demo feature
-      toast.info('This is a demo feature - database operations are not implemented yet');
-      setIsLoading(false);
-      
-      // Display a more informative message to the user
-      console.log('Creating user with data:', formData);
-      console.log('In a real implementation, this would connect to the database');
-      
-      // Stay on the current page rather than navigating away
-      // navigate('/app/admin/users');
+      // Create new user via the API
+      dispatch(createUser({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+      }));
     }
   };
   
   const handleBack = () => {
-    navigate('/admin/users');
+    navigate('/app/admin/users');
   };
   
   return (
@@ -257,7 +277,7 @@ const CreateUser = () => {
                   disabled={isLoading}
                   sx={{ py: 1.5, px: 4 }}
                 >
-                  {isLoading ? 'Creating...' : 'Create User'}
+                  {isLoading ? 'Creating User...' : 'Create User'}
                 </Button>
               </Box>
             </Grid>

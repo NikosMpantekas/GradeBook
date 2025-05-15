@@ -33,22 +33,23 @@ import {
   TrendingUp as DirectionIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-
-// Dummy data for directions
-const initialDirections = [
-  { _id: '1', name: 'Science', description: 'Physics, Chemistry, Biology' },
-  { _id: '2', name: 'Mathematics', description: 'Algebra, Geometry, Calculus' },
-  { _id: '3', name: 'Humanities', description: 'History, Literature, Philosophy' },
-  { _id: '4', name: 'Arts', description: 'Visual Arts, Music, Drama' },
-  { _id: '5', name: 'Technology', description: 'Computer Science, Engineering' },
-  { _id: '6', name: 'Languages', description: 'English, French, Spanish' },
-];
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  getDirections,
+  createDirection,
+  updateDirection,
+  deleteDirection,
+  reset
+} from '../../features/directions/directionSlice';
 
 const ManageDirections = () => {
-  const [directions, setDirections] = useState([]);
+  const dispatch = useDispatch();
+  const { directions, isLoading, isError, isSuccess, message } = useSelector(
+    (state) => state.directions
+  );
+  
   const [filteredDirections, setFilteredDirections] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   
   // Dialog states
   const [openAddDialog, setOpenAddDialog] = useState(false);
@@ -60,16 +61,27 @@ const ManageDirections = () => {
   // Form validation
   const [formErrors, setFormErrors] = useState({});
   
+  // Load directions on component mount
   useEffect(() => {
-    // Simulate API call to fetch directions
-    setTimeout(() => {
-      setDirections(initialDirections);
-      setFilteredDirections(initialDirections);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
+    dispatch(getDirections());
+    
+    return () => {
+      dispatch(reset());
+    };
+  }, [dispatch]);
   
+  // Update filtered directions when directions or search term changes
   useEffect(() => {
+    if (isError) {
+      toast.error(message);
+    }
+    
+    if (directions) {
+      applyFilters();
+    }
+  }, [directions, searchTerm, isError, message]);
+  
+  const applyFilters = () => {
     if (searchTerm.trim() === '') {
       setFilteredDirections(directions);
     } else {
@@ -79,7 +91,7 @@ const ManageDirections = () => {
       );
       setFilteredDirections(filtered);
     }
-  }, [searchTerm, directions]);
+  };
   
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -148,45 +160,42 @@ const ManageDirections = () => {
   // CRUD operations
   const handleAddDirection = () => {
     if (validateForm()) {
-      // Generate a new ID (in a real app, this would be done by the backend)
-      const newId = (Math.max(...directions.map(d => parseInt(d._id))) + 1).toString();
-      
-      const newDirection = {
-        _id: newId,
-        ...currentDirection,
-      };
-      
-      const updatedDirections = [...directions, newDirection];
-      setDirections(updatedDirections);
-      setFilteredDirections(updatedDirections);
-      
-      toast.success('Direction added successfully');
-      handleCloseAddDialog();
+      dispatch(createDirection(currentDirection))
+        .unwrap()
+        .then(() => {
+          setOpenAddDialog(false);
+          toast.success('Direction added successfully');
+        })
+        .catch((error) => {
+          toast.error(error);
+        });
     }
   };
   
   const handleEditDirection = () => {
     if (validateForm()) {
-      const updatedDirections = directions.map(direction => 
-        direction._id === currentDirection._id ? currentDirection : direction
-      );
-      
-      setDirections(updatedDirections);
-      setFilteredDirections(updatedDirections);
-      
-      toast.success('Direction updated successfully');
-      handleCloseEditDialog();
+      dispatch(updateDirection(currentDirection))
+        .unwrap()
+        .then(() => {
+          setOpenEditDialog(false);
+          toast.success('Direction updated successfully');
+        })
+        .catch((error) => {
+          toast.error(error);
+        });
     }
   };
   
   const handleDeleteDirection = () => {
-    const updatedDirections = directions.filter(direction => direction._id !== directionIdToDelete);
-    
-    setDirections(updatedDirections);
-    setFilteredDirections(updatedDirections);
-    
-    toast.success('Direction deleted successfully');
-    handleCloseDeleteDialog();
+    dispatch(deleteDirection(directionIdToDelete))
+      .unwrap()
+      .then(() => {
+        setOpenDeleteDialog(false);
+        toast.success('Direction deleted successfully');
+      })
+      .catch((error) => {
+        toast.error(error);
+      });
   };
   
   if (isLoading) {

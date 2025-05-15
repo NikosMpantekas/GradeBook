@@ -91,7 +91,7 @@ const Notifications = () => {
   };
 
   const handleViewNotification = (id) => {
-    navigate(`/notifications/${id}`);
+    navigate(`/app/notifications/${id}`);
   };
 
   // Helper function to get notification icons

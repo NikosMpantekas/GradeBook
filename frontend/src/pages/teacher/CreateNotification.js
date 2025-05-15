@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { createNotification, reset } from '../../features/notifications/notificationSlice';
+import { getStudents } from '../../features/students/studentSlice';
 
 const CreateNotification = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ const CreateNotification = () => {
   
   const { user } = useSelector((state) => state.auth);
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.notifications);
+  const { students, isLoading: isStudentsLoading } = useSelector((state) => state.students);
   
   const [studentsToSelect, setStudentsToSelect] = useState([]);
   const [formData, setFormData] = useState({
@@ -44,30 +46,32 @@ const CreateNotification = () => {
   const [formErrors, setFormErrors] = useState({});
   
   useEffect(() => {
-    // Dummy students data - in a real app, you would fetch this from the API
-    setStudentsToSelect([
-      { _id: '1', name: 'John Doe' },
-      { _id: '2', name: 'Jane Smith' },
-      { _id: '3', name: 'Michael Johnson' },
-      { _id: '4', name: 'Emily Williams' },
-      { _id: '5', name: 'Robert Brown' },
-    ]);
-    
-    return () => {
-      dispatch(reset());
-    };
+    // Fetch students from the database
+    dispatch(getStudents());
   }, [dispatch]);
-  
+
+  useEffect(() => {
+    if (students) {
+      setStudentsToSelect(students);
+    }
+  }, [students]);
+
   useEffect(() => {
     if (isError) {
       toast.error(message);
     }
-    
+
     if (isSuccess) {
-      toast.success('Notification sent successfully');
+      toast.success('Notification created successfully');
       navigate('/app/teacher/notifications');
+      dispatch(reset());
     }
-  }, [isError, isSuccess, message, navigate]);
+
+    // Reset notification state on component unmount
+    return () => {
+      dispatch(reset());
+    };
+  }, [isError, isSuccess, message, navigate, dispatch]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -145,7 +149,7 @@ const CreateNotification = () => {
   };
   
   const handleBack = () => {
-    navigate('/teacher/notifications');
+    navigate('/app/teacher/notifications');
   };
   
   return (

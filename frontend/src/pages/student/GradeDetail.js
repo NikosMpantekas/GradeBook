@@ -44,12 +44,12 @@ const GradeDetail = () => {
   useEffect(() => {
     if (isError) {
       toast.error(message);
-      navigate('/grades');
+      navigate('/app/grades');
     }
   }, [isError, message, navigate]);
 
   const handleBack = () => {
-    navigate('/grades');
+    navigate('/app/grades');
   };
 
   // Helper to format date

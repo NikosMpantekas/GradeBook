@@ -113,11 +113,11 @@ const TeacherNotifications = () => {
   };
 
   const handleAddNotification = () => {
-    navigate('/teacher/notifications/create');
+    navigate('/app/teacher/notifications/create');
   };
 
   const handleViewNotification = (id) => {
-    navigate(`/notifications/${id}`);
+    navigate(`/app/notifications/${id}`);
   };
 
   // Delete Notification Dialog

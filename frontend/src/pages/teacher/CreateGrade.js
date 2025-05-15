@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import { createGrade, reset } from '../../features/grades/gradeSlice';
 import { getSubjectsByTeacher } from '../../features/subjects/subjectSlice';
+import { getStudentsBySubject } from '../../features/students/studentSlice';
 
 const CreateGrade = () => {
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ const CreateGrade = () => {
   const { user } = useSelector((state) => state.auth);
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.grades);
   const { subjects, isLoading: subjectsLoading } = useSelector((state) => state.subjects);
+  const { students, isLoading: studentsLoading } = useSelector((state) => state.students);
   
   const [studentsToSelect, setStudentsToSelect] = useState([]);
   const [formData, setFormData] = useState({
@@ -50,20 +52,24 @@ const CreateGrade = () => {
     // Load subjects taught by this teacher
     dispatch(getSubjectsByTeacher(user._id));
     
-    // Dummy students data - in a real app, you would fetch this from the API
-    // based on the selected subject or other criteria
-    setStudentsToSelect([
-      { _id: '1', name: 'John Doe' },
-      { _id: '2', name: 'Jane Smith' },
-      { _id: '3', name: 'Michael Johnson' },
-      { _id: '4', name: 'Emily Williams' },
-      { _id: '5', name: 'Robert Brown' },
-    ]);
-    
     return () => {
       dispatch(reset());
     };
   }, [dispatch, user._id]);
+  
+  // When a subject is selected, fetch students for that subject
+  useEffect(() => {
+    if (formData.subject) {
+      dispatch(getStudentsBySubject(formData.subject));
+    }
+  }, [dispatch, formData.subject]);
+  
+  // Update students dropdown when students are fetched from API
+  useEffect(() => {
+    if (students && students.length > 0) {
+      setStudentsToSelect(students);
+    }
+  }, [students]);
   
   useEffect(() => {
     if (isError) {
@@ -74,7 +80,7 @@ const CreateGrade = () => {
     // Not when component first loads
     if (isSuccess && formData.student !== '') {
       toast.success('Grade added successfully');
-      navigate('/teacher/grades/manage');
+      navigate('/app/teacher/grades/manage');
     }
   }, [isError, isSuccess, message, navigate, formData.student]);
   
@@ -147,11 +153,13 @@ const CreateGrade = () => {
       const gradeData = {
         student: formData.student,
         subject: formData.subject,
+        teacher: user._id,  // Add the teacher ID from the logged-in user
         value: parseInt(formData.value, 10),
         description: formData.description,
         date: format(formData.date, 'yyyy-MM-dd'),
       };
       
+      console.log('Creating grade with data:', gradeData);
       dispatch(createGrade(gradeData));
     }
   };

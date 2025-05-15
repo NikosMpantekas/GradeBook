@@ -79,7 +79,7 @@ const EditUser = () => {
         });
       } else {
         toast.error('User not found');
-        navigate('/admin/users');
+        navigate('/app/admin/users');
       }
       setIsFetching(false);
     }, 1000);
@@ -187,7 +187,7 @@ const EditUser = () => {
   };
   
   const handleBack = () => {
-    navigate('/admin/users');
+    navigate('/app/admin/users');
   };
   
   if (isFetching) {
