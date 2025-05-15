@@ -13,15 +13,24 @@ const getStudents = async (token) => {
       },
     };
 
-    const url = API_URL;
+    // Use the correct API endpoint
+    const url = '/api/users/students';
     console.log(`Making API request to: ${url}`);
     
     const response = await axios.get(url, config);
     console.log(`Received ${response.data.length} students`);
+    
+    // Ensure we always return an array
+    if (!response.data || !Array.isArray(response.data)) {
+      console.warn('API returned non-array data for students, defaulting to empty array');
+      return [];
+    }
+    
     return response.data;
   } catch (error) {
     console.error('Error fetching students:', error.response?.data || error.message);
-    throw error;
+    // Return empty array instead of throwing to prevent UI crashes
+    return [];
   }
 };
 
@@ -36,16 +45,24 @@ const getStudentsBySubject = async (subjectId, token) => {
       },
     };
 
-    // Ensure the URL is correct with proper slashes
-    const url = `${API_URL}subject/${subjectId}`;
+    // Fix URL construction to ensure proper format
+    const url = `/api/users/students/subject/${subjectId}`;
     console.log(`Making API request to: ${url}`);
     
     const response = await axios.get(url, config);
     console.log(`Received ${response.data.length} students for subject`);
+    
+    // Ensure we have an array, even if empty
+    if (!response.data || !Array.isArray(response.data)) {
+      console.warn('API returned non-array data for students, defaulting to empty array');
+      return [];
+    }
+    
     return response.data;
   } catch (error) {
     console.error(`Error fetching students for subject ${subjectId}:`, error.response?.data || error.message);
-    throw error;
+    // Instead of throwing, return empty array and let component handle fallback
+    return [];
   }
 };
 

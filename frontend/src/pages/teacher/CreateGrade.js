@@ -81,18 +81,28 @@ const CreateGrade = () => {
   
   // Update students dropdown when students are fetched from API
   useEffect(() => {
+    console.log('Students data updated:', students);
     if (students && Array.isArray(students)) {
       // Filter out any invalid student data
       const validStudents = students.filter(student => 
         student && student._id && student.name && typeof student.name === 'string'
       );
       console.log(`Found ${validStudents.length} valid students for the selected subject`); 
-      setStudentsToSelect(validStudents);
+      
+      if (validStudents.length > 0) {
+        setStudentsToSelect(validStudents);
+      } else {
+        // If no valid students for the subject, automatically fetch all students
+        console.log('No valid students found for this subject, fetching all students');
+        dispatch(getStudents());
+      }
     } else {
-      console.warn('Invalid or empty students data received:', students);
+      console.warn('Students data is not an array:', students);
+      // Dispatch getStudents as a fallback when the students data is invalid
+      dispatch(getStudents());
       setStudentsToSelect([]);
     }
-  }, [students]);
+  }, [students, dispatch]);
   
   useEffect(() => {
     if (isError) {
