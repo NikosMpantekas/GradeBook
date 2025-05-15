@@ -44,8 +44,8 @@ const Login = () => {
     }
 
     if (isSuccess || user) {
-      console.log('Login successful, redirecting to dashboard');
-      // Navigate to dashboard instead of root to prevent blank page issues
+      console.log('Login successful, redirecting to standalone dashboard');
+      // Use the direct non-nested dashboard route
       navigate('/dashboard');
     }
 

@@ -29,6 +29,16 @@ const Dashboard = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { notifications, isLoading: notificationsLoading } = useSelector((state) => state.notifications);
+  
+  // Add debug log to track component mounting
+  console.log('Dashboard component rendering with user:', user ? { role: user.role, name: user.name } : 'No user');
+  
+  // Basic navigation functions to ensure we have functionality even without Layout
+  const goToProfile = () => navigate('/app/profile');
+  const goToNotifications = () => navigate('/app/notifications');
+  const goToGrades = () => navigate('/app/grades');
+  const goToTeacherDashboard = () => navigate('/app/teacher');
+  const goToAdminDashboard = () => navigate('/app/admin');
   const { grades, isLoading: gradesLoading } = useSelector((state) => state.grades);
   const { subjects } = useSelector((state) => state.subjects);
   const { schools } = useSelector((state) => state.schools);

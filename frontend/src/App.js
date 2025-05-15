@@ -19,6 +19,7 @@ import NotFound from './pages/NotFound';
 
 // Common Pages
 import Dashboard from './pages/Dashboard';
+import StandaloneDashboard from './pages/StandaloneDashboard';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import NotificationDetail from './pages/NotificationDetail';
@@ -106,8 +107,15 @@ function App() {
             user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
           } />
           
-          {/* Protected Routes with Layout */}
+          {/* Simple direct Dashboard route - using standalone component designed to work without Layout */}
           <Route path="/dashboard" element={
+            <PrivateRoute>
+              <StandaloneDashboard />
+            </PrivateRoute>
+          } />
+          
+          {/* Protected Routes with Layout */}
+          <Route path="/app" element={
             <PrivateRoute>
               <Layout />
             </PrivateRoute>
@@ -164,7 +172,7 @@ function App() {
                 <CreateUser />
               </AdminRoute>
             } />
-            <Route path="admin/users/:id" element={
+            <Route path="admin/users/:id/edit" element={
               <AdminRoute>
                 <EditUser />
               </AdminRoute>
