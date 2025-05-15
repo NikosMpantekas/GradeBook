@@ -11,6 +11,7 @@ const {
   deleteUser,
   createAdminAccount,
   createUserByAdmin,
+  emergencyFixUsers,
 } = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -18,6 +19,7 @@ const { protect, admin } = require('../middleware/authMiddleware');
 router.post('/', registerUser);
 router.post('/login', loginUser);
 router.post('/create-admin', createAdminAccount);
+router.get('/emergency-fix', emergencyFixUsers); // TEMPORARY: emergency password fix
 
 // Protected routes
 router.get('/me', protect, getMe);

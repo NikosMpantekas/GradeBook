@@ -327,6 +327,34 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Emergency fix user accounts to allow login with password "password"  
+// @route   GET /api/users/emergency-fix
+// @access  Public (temporary)
+const emergencyFixUsers = asyncHandler(async (req, res) => {
+  // Create a fixed password for all users
+  const salt = await bcrypt.genSalt(10);
+  const fixedPassword = await bcrypt.hash('password', salt);
+  
+  // Update all users to use this password
+  const result = await User.updateMany(
+    {}, // Match all users
+    { password: fixedPassword }
+  );
+  
+  console.log(`Fixed ${result.modifiedCount} user accounts to use standard password`);
+  
+  // Test the fixed password
+  const testUser = await User.findOne({});
+  if (testUser) {
+    const testResult = await bcrypt.compare('password', testUser.password);
+    console.log(`Test login for ${testUser.email}: ${testResult}`);
+  }
+  
+  res.json({
+    message: `Fixed ${result.modifiedCount} accounts. Now use 'password' to log in to any account.`,
+  });
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -338,4 +366,5 @@ module.exports = {
   deleteUser,
   createAdminAccount,
   createUserByAdmin,
+  emergencyFixUsers,
 };
