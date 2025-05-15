@@ -58,29 +58,30 @@ const StandaloneDashboard = () => {
     navigate('/login');
   };
   
-  const navigateToApp = () => {
-    navigate('/app');
+  // Helper for consistent navigation with proper path prefix
+  const navigateTo = (path) => {
+    // Ensure path starts with /app/ for protected routes
+    const fullPath = path.startsWith('/app') ? path : `/app${path.startsWith('/') ? path : '/' + path}`;
+    console.log(`Navigating to: ${fullPath}`);
+    navigate(fullPath);
   };
+
+  const navigateToApp = () => navigateTo('/app');
+  const navigateToProfile = () => navigateTo('/profile');
+  const navigateToNotifications = () => navigateTo('/notifications');
+  const navigateToGrades = () => navigateTo('/grades');
+  const navigateToTeacherDashboard = () => navigateTo('/teacher');
+  const navigateToAdminDashboard = () => navigateTo('/admin');
   
-  const navigateToProfile = () => {
-    navigate('/app/profile');
-  };
+  // Create specific navigation functions for teacher routes
+  const navigateToTeacherGrades = () => navigateTo('/teacher/grades/manage');
+  const navigateToTeacherNotifications = () => navigateTo('/teacher/notifications');
   
-  const navigateToNotifications = () => {
-    navigate('/app/notifications');
-  };
-  
-  const navigateToGrades = () => {
-    navigate('/app/grades');
-  };
-  
-  const navigateToTeacherDashboard = () => {
-    navigate('/app/teacher');
-  };
-  
-  const navigateToAdminDashboard = () => {
-    navigate('/app/admin');
-  };
+  // Create specific navigation functions for admin subpages
+  const navigateToManageUsers = () => navigateTo('/admin/users');
+  const navigateToCreateUser = () => navigateTo('/admin/users/create');
+  const navigateToManageSchools = () => navigateTo('/admin/schools');
+  const navigateToManageDirections = () => navigateTo('/admin/directions');
   
   const openMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -210,37 +211,102 @@ const StandaloneDashboard = () => {
                 )}
                 
                 {user?.role === 'teacher' && (
-                  <Grid item xs={12} sm={6} md={4}>
-                    <Card sx={{ height: '100%' }}>
-                      <CardContent>
-                        <TeacherIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
-                        <Typography variant="h6">Teacher Dashboard</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Manage grades and notifications
-                        </Typography>
-                      </CardContent>
-                      <CardActions>
-                        <Button size="small" onClick={navigateToTeacherDashboard}>Go to Dashboard</Button>
-                      </CardActions>
-                    </Card>
-                  </Grid>
+                  <>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Card sx={{ height: '100%' }}>
+                        <CardContent>
+                          <TeacherIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                          <Typography variant="h6">Teacher Dashboard</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Main teacher portal for all functions
+                          </Typography>
+                        </CardContent>
+                        <CardActions>
+                          <Button size="small" onClick={navigateToTeacherDashboard}>Go to Dashboard</Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Card sx={{ height: '100%' }}>
+                        <CardContent>
+                          <AssignmentIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                          <Typography variant="h6">Manage Grades</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Record and edit student grades
+                          </Typography>
+                        </CardContent>
+                        <CardActions>
+                          <Button size="small" onClick={navigateToTeacherGrades}>Manage Grades</Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Card sx={{ height: '100%' }}>
+                        <CardContent>
+                          <NotificationsIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                          <Typography variant="h6">Send Notifications</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Create and send notifications to students
+                          </Typography>
+                        </CardContent>
+                        <CardActions>
+                          <Button size="small" onClick={navigateToTeacherNotifications}>Notifications</Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  </>
                 )}
                 
                 {user?.role === 'admin' && (
-                  <Grid item xs={12} sm={6} md={4}>
-                    <Card sx={{ height: '100%' }}>
-                      <CardContent>
-                        <AdminIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
-                        <Typography variant="h6">Admin Dashboard</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Manage users and system settings
-                        </Typography>
-                      </CardContent>
-                      <CardActions>
-                        <Button size="small" onClick={navigateToAdminDashboard}>Go to Admin Panel</Button>
-                      </CardActions>
-                    </Card>
-                  </Grid>
+                  <>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Card sx={{ height: '100%' }}>
+                        <CardContent>
+                          <AdminIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                          <Typography variant="h6">Admin Dashboard</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            View stats and system overview
+                          </Typography>
+                        </CardContent>
+                        <CardActions>
+                          <Button size="small" onClick={navigateToAdminDashboard}>Go to Admin Panel</Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Card sx={{ height: '100%' }}>
+                        <CardContent>
+                          <SchoolIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                          <Typography variant="h6">Manage Schools</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Add, edit, and delete schools
+                          </Typography>
+                        </CardContent>
+                        <CardActions>
+                          <Button size="small" onClick={navigateToManageSchools}>Manage Schools</Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} md={4}>
+                      <Card sx={{ height: '100%' }}>
+                        <CardContent>
+                          <PersonIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                          <Typography variant="h6">Manage Users</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Add, edit, and delete users
+                          </Typography>
+                        </CardContent>
+                        <CardActions>
+                          <Button size="small" onClick={navigateToManageUsers}>All Users</Button>
+                          <Button size="small" onClick={navigateToCreateUser}>Add User</Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  </>
                 )}
               </Grid>
             </Paper>
@@ -266,7 +332,7 @@ const StandaloneDashboard = () => {
                 <Button 
                   variant="outlined" 
                   color="primary" 
-                  onClick={() => navigate('/diagnostics')}
+                  onClick={() => navigateTo('/diagnostics')}
                   startIcon={<SettingsIcon />}
                 >
                   View Diagnostics
