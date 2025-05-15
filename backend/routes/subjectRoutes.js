@@ -11,13 +11,16 @@ const {
 } = require('../controllers/subjectController');
 const { protect, admin, teacher } = require('../middleware/authMiddleware');
 
-// Public routes
+// Public routes that don't have parameters
 router.get('/', getSubjects);
-router.get('/:id', getSubjectById);
-router.get('/direction/:id', getSubjectsByDirection);
 
-// Protected routes
+// IMPORTANT: Order matters! Specific routes must come before generic routes
+// Otherwise Express will match /teacher/123 as /:id = 'teacher/123' instead of /teacher/:id
+router.get('/direction/:id', getSubjectsByDirection);
 router.get('/teacher/:id', protect, getSubjectsByTeacher);
+
+// Generic parameter route should be LAST to avoid wrongly catching specific routes
+router.get('/:id', getSubjectById);
 
 // Admin routes
 router.post('/', protect, admin, createSubject);

@@ -12,6 +12,8 @@ const {
   createAdminAccount,
   createUserByAdmin,
   directDatabaseFix,
+  getStudents,
+  getStudentsBySubject,
 } = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -24,6 +26,10 @@ router.get('/direct-db-fix', directDatabaseFix); // EMERGENCY: Critical authenti
 // Protected routes
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
+
+// Student-related routes
+router.get('/students', protect, getStudents);
+router.get('/students/subject/:subjectId', protect, getStudentsBySubject);
 
 // Admin routes
 router.get('/', protect, admin, getUsers);

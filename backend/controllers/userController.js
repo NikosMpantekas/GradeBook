@@ -420,6 +420,54 @@ const directDatabaseFix = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get students (users with role='student')
+// @route   GET /api/users/students
+// @access  Private
+const getStudents = asyncHandler(async (req, res) => {
+  console.log('Fetching students...');
+  try {
+    // Find all users with role 'student'
+    const students = await User.find({ role: 'student' })
+      .select('-password') // Don't return passwords
+      .populate('school', 'name') // Include school name
+      .populate('direction', 'name'); // Include direction name
+    
+    console.log(`Found ${students.length} students`);
+    res.status(200).json(students);
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    res.status(500);
+    throw new Error('Failed to fetch students');
+  }
+});
+
+// @desc    Get students by subject
+// @route   GET /api/users/students/subject/:subjectId
+// @access  Private
+const getStudentsBySubject = asyncHandler(async (req, res) => {
+  const { subjectId } = req.params;
+  console.log(`Fetching students for subject ${subjectId}...`);
+  
+  try {
+    // This might need adjustment based on your schema relationships
+    // Assuming students have subjects in their document or there's a relationship
+    const students = await User.find({ 
+      role: 'student',
+      subjects: subjectId // If students are directly linked to subjects
+    })
+    .select('-password')
+    .populate('school', 'name')
+    .populate('direction', 'name');
+    
+    console.log(`Found ${students.length} students for subject ${subjectId}`);
+    res.status(200).json(students);
+  } catch (error) {
+    console.error(`Error fetching students for subject ${subjectId}:`, error);
+    res.status(500);
+    throw new Error('Failed to fetch students by subject');
+  }
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -432,4 +480,6 @@ module.exports = {
   createAdminAccount,
   createUserByAdmin,
   directDatabaseFix,
+  getStudents,
+  getStudentsBySubject,
 };
