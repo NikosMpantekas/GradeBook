@@ -49,7 +49,7 @@ const NotificationDetail = () => {
   useEffect(() => {
     if (isError) {
       toast.error(message);
-      navigate('/app/notifications');
+      navigate('/notifications');
     }
     
     // If notification is not read, mark it as read
@@ -60,7 +60,7 @@ const NotificationDetail = () => {
 
   const handleDelete = () => {
     dispatch(deleteNotification(id)).then(() => {
-      navigate('/app/notifications');
+      navigate('/notifications');
       toast.success('Notification deleted');
     });
   };
@@ -72,7 +72,7 @@ const NotificationDetail = () => {
   };
 
   const goBack = () => {
-    navigate('/app/notifications');
+    navigate('/notifications');
   };
 
   // Check if user can delete this notification

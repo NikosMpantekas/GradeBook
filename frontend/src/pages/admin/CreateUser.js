@@ -111,18 +111,21 @@ const CreateUser = () => {
     if (validate()) {
       setIsLoading(true);
       
-      // In a real app, you would dispatch an action to create the user
-      // For demonstration, we're simulating an API call
-      setTimeout(() => {
-        toast.success('User created successfully');
-        setIsLoading(false);
-        navigate('/app/admin/users');
-      }, 1500);
+      // Display a message that this is a demo feature
+      toast.info('This is a demo feature - database operations are not implemented yet');
+      setIsLoading(false);
+      
+      // Display a more informative message to the user
+      console.log('Creating user with data:', formData);
+      console.log('In a real implementation, this would connect to the database');
+      
+      // Stay on the current page rather than navigating away
+      // navigate('/app/admin/users');
     }
   };
   
   const handleBack = () => {
-    navigate('/app/admin/users');
+    navigate('/admin/users');
   };
   
   return (

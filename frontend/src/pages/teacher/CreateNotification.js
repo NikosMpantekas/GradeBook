@@ -145,7 +145,7 @@ const CreateNotification = () => {
   };
   
   const handleBack = () => {
-    navigate('/app/teacher/notifications');
+    navigate('/teacher/notifications');
   };
   
   return (

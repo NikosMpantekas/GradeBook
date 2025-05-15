@@ -176,11 +176,11 @@ const TeacherGrades = () => {
   };
 
   const handleManageGrades = () => {
-    navigate('/app/teacher/grades/manage');
+    navigate('/teacher/grades/manage');
   };
 
   const handleCreateGrade = () => {
-    navigate('/app/teacher/grades/create');
+    navigate('/teacher/grades/create');
   };
 
   const handleManageNotifications = () => {

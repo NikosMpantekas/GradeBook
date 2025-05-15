@@ -60,65 +60,65 @@ const StandaloneDashboard = () => {
   
   // Direct navigation with explicit full paths
   const navigateToApp = () => {
-    console.log('Navigating to: /app');
-    navigate('/app');
+    console.log('Navigating to: /dashboard');
+    navigate('/dashboard');
   };
   
   const navigateToProfile = () => {
-    console.log('Navigating to: /app/profile');
-    navigate('/app/profile');
+    console.log('Navigating to: /profile');
+    navigate('/profile');
   };
   
   const navigateToNotifications = () => {
-    console.log('Navigating to: /app/notifications');
-    navigate('/app/notifications');
+    console.log('Navigating to: /notifications');
+    navigate('/notifications');
   };
   
   const navigateToGrades = () => {
-    console.log('Navigating to: /app/grades');
-    navigate('/app/grades');
+    console.log('Navigating to: /grades');
+    navigate('/grades');
   };
   
   const navigateToTeacherDashboard = () => {
-    console.log('Navigating to: /app/teacher');
-    navigate('/app/teacher');
+    console.log('Navigating to: /teacher');
+    navigate('/teacher');
   };
   
   const navigateToAdminDashboard = () => {
-    console.log('Navigating to: /app/admin');
-    navigate('/app/admin');
+    console.log('Navigating to: /admin');
+    navigate('/admin');
   };
   
   // Teacher specific routes
   const navigateToTeacherGrades = () => {
-    console.log('Navigating to: /app/teacher/grades/manage');
-    navigate('/app/teacher/grades/manage');
+    console.log('Navigating to: /teacher/grades/manage');
+    navigate('/teacher/grades/manage');
   };
   
   const navigateToTeacherNotifications = () => {
-    console.log('Navigating to: /app/teacher/notifications');
-    navigate('/app/teacher/notifications');
+    console.log('Navigating to: /teacher/notifications');
+    navigate('/teacher/notifications');
   };
   
   // Admin specific routes 
   const navigateToManageUsers = () => {
-    console.log('Navigating to: /app/admin/users');
-    navigate('/app/admin/users');
+    console.log('Navigating to: /admin/users');
+    navigate('/admin/users');
   };
   
   const navigateToCreateUser = () => {
-    console.log('Navigating to: /app/admin/users/create');
-    navigate('/app/admin/users/create');
+    console.log('Navigating to: /admin/users/create');
+    navigate('/admin/users/create');
   };
   
   const navigateToManageSchools = () => {
-    console.log('Navigating to: /app/admin/schools');
-    navigate('/app/admin/schools');
+    console.log('Navigating to: /admin/schools');
+    navigate('/admin/schools');
   };
   
   const navigateToManageDirections = () => {
-    console.log('Navigating to: /app/admin/directions');
-    navigate('/app/admin/directions');
+    console.log('Navigating to: /admin/directions');
+    navigate('/admin/directions');
   };
   
   const openMenu = (event) => {

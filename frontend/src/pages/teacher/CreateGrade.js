@@ -70,11 +70,13 @@ const CreateGrade = () => {
       toast.error(message);
     }
     
-    if (isSuccess) {
+    // Only show success message and navigate if we actually created a grade
+    // Not when component first loads
+    if (isSuccess && formData.student !== '') {
       toast.success('Grade added successfully');
-      navigate('/app/teacher/grades/manage');
+      navigate('/teacher/grades/manage');
     }
-  }, [isError, isSuccess, message, navigate]);
+  }, [isError, isSuccess, message, navigate, formData.student]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;

@@ -46,7 +46,7 @@ const Login = () => {
     if (isSuccess || user) {
       console.log('Login successful, redirecting to app dashboard');
       // Use the proper app-prefixed dashboard route
-      navigate('/app/dashboard');
+      navigate('/dashboard');
     }
 
     return () => {
