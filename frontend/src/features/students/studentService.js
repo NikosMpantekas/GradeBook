@@ -4,26 +4,49 @@ const API_URL = '/api/users/students/';
 
 // Get all students
 const getStudents = async (token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
+  try {
+    console.log('Fetching all students');
+    
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
 
-  const response = await axios.get(API_URL, config);
-  return response.data;
+    const url = API_URL;
+    console.log(`Making API request to: ${url}`);
+    
+    const response = await axios.get(url, config);
+    console.log(`Received ${response.data.length} students`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching students:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // Get students by subject
 const getStudentsBySubject = async (subjectId, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
+  try {
+    console.log(`Fetching students for subject ID: ${subjectId}`);
+    
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
 
-  const response = await axios.get(`${API_URL}subject/${subjectId}`, config);
-  return response.data;
+    // Ensure the URL is correct with proper slashes
+    const url = `${API_URL}subject/${subjectId}`;
+    console.log(`Making API request to: ${url}`);
+    
+    const response = await axios.get(url, config);
+    console.log(`Received ${response.data.length} students for subject`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching students for subject ${subjectId}:`, error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // Get students by direction

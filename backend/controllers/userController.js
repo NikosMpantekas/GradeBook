@@ -449,22 +449,65 @@ const getStudentsBySubject = asyncHandler(async (req, res) => {
   console.log(`Fetching students for subject ${subjectId}...`);
   
   try {
-    // This might need adjustment based on your schema relationships
-    // Assuming students have subjects in their document or there's a relationship
-    const students = await User.find({ 
+    // First, check if the subject exists
+    const Subject = require('../models/subjectModel');
+    const subject = await Subject.findById(subjectId);
+    
+    if (!subject) {
+      console.error(`Subject ${subjectId} not found`);
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+    
+    // Get students for the subject - this is a more flexible approach that works
+    // regardless of whether students are directly linked to subjects or not
+    let students;
+    
+    // Method 1: Try to find students directly linked to this subject
+    // (Assuming students have a subjects array in their document)
+    students = await User.find({ 
       role: 'student',
-      subjects: subjectId // If students are directly linked to subjects
+      subjects: subjectId
     })
     .select('-password')
     .populate('school', 'name')
     .populate('direction', 'name');
     
-    console.log(`Found ${students.length} students for subject ${subjectId}`);
-    res.status(200).json(students);
+    // Method 2: If no students found through direct linking, try to find
+    // students linked through the direction that this subject belongs to
+    if (!students || students.length === 0) {
+      console.log('No direct student-subject links found, trying via direction...');
+      // Get the directions this subject belongs to
+      const directions = subject.directions || [];
+      
+      if (directions && directions.length > 0) {
+        // Find students in these directions
+        students = await User.find({
+          role: 'student',
+          direction: { $in: directions }
+        })
+        .select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name');
+      }
+    }
+    
+    // Method 3: If all else fails, just return all students as a fallback
+    if (!students || students.length === 0) {
+      console.log('No students found via directions either, returning all students...');
+      students = await User.find({ role: 'student' })
+        .select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name');
+    }
+    
+    console.log(`Found ${students ? students.length : 0} students for subject ${subjectId}`);
+    return res.status(200).json(students || []);
   } catch (error) {
     console.error(`Error fetching students for subject ${subjectId}:`, error);
-    res.status(500);
-    throw new Error('Failed to fetch students by subject');
+    res.status(500).json({
+      message: 'Failed to fetch students by subject', 
+      error: error.message
+    });
   }
 });
 

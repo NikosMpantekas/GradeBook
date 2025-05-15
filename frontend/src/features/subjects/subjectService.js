@@ -31,15 +31,26 @@ const getSubject = async (subjectId) => {
 
 // Get subjects by teacher ID
 const getSubjectsByTeacher = async (teacherId, token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
+  try {
+    console.log(`Fetching subjects for teacher ID: ${teacherId}`);
+    
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
 
-  const response = await axios.get(API_URL + 'teacher/' + teacherId, config);
-
-  return response.data;
+    // Ensure the URL is correct with proper slashes
+    const url = `${API_URL}teacher/${teacherId}`;
+    console.log(`Making API request to: ${url}`);
+    
+    const response = await axios.get(url, config);
+    console.log(`Received ${response.data.length} subjects for teacher`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching teacher subjects:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // Get subjects by direction ID

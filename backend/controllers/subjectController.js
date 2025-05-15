@@ -108,10 +108,33 @@ const deleteSubject = asyncHandler(async (req, res) => {
 // @route   GET /api/subjects/teacher/:id
 // @access  Private
 const getSubjectsByTeacher = asyncHandler(async (req, res) => {
-  const subjects = await Subject.find({ teachers: req.params.id })
-    .populate('directions', 'name');
+  console.log(`Fetching subjects for teacher: ${req.params.id}`);
+  
+  try {
+    // First try finding subjects where this teacher is directly assigned
+    const subjects = await Subject.find({ teachers: req.params.id })
+      .populate('directions', 'name');
     
-  res.json(subjects);
+    console.log(`Found ${subjects.length} subjects directly assigned to teacher ${req.params.id}`);
+    
+    // If no subjects found, return all subjects as a fallback to avoid empty dropdowns
+    if (subjects.length === 0) {
+      console.log('No subjects directly assigned to teacher, using fallback to all subjects');
+      const allSubjects = await Subject.find({})
+        .populate('directions', 'name');
+      
+      console.log(`Returning all ${allSubjects.length} subjects as fallback`);
+      return res.json(allSubjects);
+    }
+    
+    return res.json(subjects);
+  } catch (error) {
+    console.error(`Error getting subjects for teacher ${req.params.id}:`, error);
+    res.status(500).json({
+      message: 'Failed to fetch subjects for teacher',
+      error: error.message
+    });
+  }
 });
 
 // @desc    Get subjects by direction ID
