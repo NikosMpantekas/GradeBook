@@ -135,9 +135,9 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/diagnostics" element={<DiagnosticPage />} />
           
-          {/* Default root route - redirects to dashboard if logged in, otherwise to login */}
+          {/* Default root route - redirects to app dashboard if logged in, otherwise to login */}
           <Route path="/" element={
-            user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+            user ? <Navigate to="/app/dashboard" replace /> : <Navigate to="/login" replace />
           } />
           
           {/* Simple direct Dashboard route - using standalone component designed to work without Layout */}
