@@ -8,24 +8,30 @@ const Subscription = require('../models/subscriptionModel');
 // @route   POST /api/notifications
 // @access  Private/Teacher Admin
 const createNotification = asyncHandler(async (req, res) => {
-  const { title, message, recipients, school, direction, subject, targetRole, isImportant } = req.body;
+  const { 
+    title, 
+    message, 
+    recipients, 
+    schools, 
+    directions, 
+    subjects, 
+    targetRole, 
+    isImportant,
+    sendToAll
+  } = req.body;
 
   if (!title || !message) {
     res.status(400);
     throw new Error('Please provide title and message');
   }
 
-  // Create notification
+  // Create notification with basic info
   const notification = await Notification.create({
     title,
     message,
     sender: req.user.id,
-    recipients,
-    school,
-    direction,
-    subject,
-    targetRole: targetRole || 'all',
     isImportant: isImportant || false,
+    targetRole: targetRole || 'all',
   });
 
   if (!notification) {
@@ -33,57 +39,124 @@ const createNotification = asyncHandler(async (req, res) => {
     throw new Error('Invalid notification data');
   }
 
-  // Send push notifications to recipients
-  if (notification) {
-    // Find all users that should receive this notification
-    let userQuery = {};
+  console.log(`Creating notification: "${title}" from ${req.user.name} (${req.user.id})`);
+
+  // Find all users that should receive this notification
+  let userQuery = {};
+  
+  // Filter by specific recipients if provided
+  if (recipients && recipients.length > 0) {
+    console.log(`Filtering by ${recipients.length} specific recipients`);
+    userQuery._id = { $in: recipients };
+    // Update notification with specific recipients
+    notification.recipients = recipients;
+  } else if (sendToAll) {
+    console.log(`Sending to all users (filtered by role: ${targetRole || 'all'})`);
+    // When sending to all, only filter by role if specified
+    if (targetRole && targetRole !== 'all') {
+      userQuery.role = targetRole;
+    }
+  } else {
+    // Advanced filtering by school, direction, subject
+    console.log('Using advanced filtering');
     
-    // Filter by specific recipients if provided
-    if (recipients && recipients.length > 0) {
-      userQuery._id = { $in: recipients };
-    } else {
-      // Otherwise filter by other criteria
-      if (school) {
-        userQuery.school = school;
-      }
-      
-      if (direction) {
-        userQuery.direction = direction;
-      }
-      
-      if (subject) {
-        userQuery.subjects = subject;
-      }
-      
-      if (targetRole && targetRole !== 'all') {
-        userQuery.role = targetRole;
-      }
+    // Track which filters are being applied
+    let appliedFilters = [];
+    
+    // Create arrays to store filter collections
+    let schoolIds = [];
+    let directionIds = [];
+    let subjectIds = [];
+
+    // Apply school filters
+    if (schools && schools.length > 0) {
+      schoolIds = schools;
+      appliedFilters.push(`${schools.length} schools`);
+      notification.schools = schools;
+    }
+    
+    // Apply direction filters
+    if (directions && directions.length > 0) {
+      directionIds = directions;
+      appliedFilters.push(`${directions.length} directions`);
+      notification.directions = directions;
+    }
+    
+    // Apply subject filters
+    if (subjects && subjects.length > 0) {
+      subjectIds = subjects;
+      appliedFilters.push(`${subjects.length} subjects`);
+      notification.subjects = subjects;
     }
 
-    // Apply role-based restrictions for teachers (cannot send to admins)
-    if (req.user.role === 'teacher') {
-      userQuery.role = { $ne: 'admin' };
+    console.log(`Applied filters: ${appliedFilters.join(', ')}`);
+
+    // Build the query with OR conditions for each filter type
+    const filterConditions = [];
+    
+    if (schoolIds.length > 0) {
+      filterConditions.push({ school: { $in: schoolIds } });
     }
+    
+    if (directionIds.length > 0) {
+      filterConditions.push({ direction: { $in: directionIds } });
+    }
+    
+    if (subjectIds.length > 0) {
+      filterConditions.push({ subjects: { $in: subjectIds } });
+    }
+    
+    // Only add the $or condition if we have filters
+    if (filterConditions.length > 0) {
+      userQuery.$or = filterConditions;
+    }
+    
+    // Apply role filter if specified
+    if (targetRole && targetRole !== 'all') {
+      userQuery.role = targetRole;
+    }
+  }
 
-    const users = await User.find(userQuery).select('_id');
-    const userIds = users.map(user => user._id);
+  // Apply role-based restrictions for teachers (cannot send to admins)
+  if (req.user.role === 'teacher') {
+    userQuery.role = { $ne: 'admin' };
+    console.log('Teacher sending notification - restricted from sending to admins');
+  }
 
-    // Find all subscriptions for these users
-    const subscriptions = await Subscription.find({
-      user: { $in: userIds }
-    });
+  // Find all matching users
+  const users = await User.find(userQuery).select('_id name');
+  console.log(`Found ${users.length} matching recipients`);
+  
+  // Get the user IDs
+  const userIds = users.map(user => user._id);
 
-    // Send push notifications
-    const notificationPayload = JSON.stringify({
-      title,
-      message,
-      url: '/notifications',
-      senderId: req.user.id,
-      timestamp: new Date(),
-    });
+  // Only find subscriptions with associated user accounts
+  const subscriptions = await Subscription.find({
+    user: { $in: userIds }
+  });
+  
+  console.log(`Found ${subscriptions.length} push subscriptions for recipients`);
 
-    // Send push notifications to all subscriptions asynchronously
+  // Create push notification payload
+  const notificationPayload = JSON.stringify({
+    title,
+    message,
+    url: '/app/notifications',
+    senderId: req.user.id,
+    senderName: req.user.name,
+    timestamp: new Date(),
+    isImportant: isImportant || false,
+  });
+
+  // Send push notifications to all subscriptions asynchronously
+  if (subscriptions.length > 0) {
     const pushPromises = subscriptions.map(subscription => {
+      // Verify the subscription has all required fields
+      if (!subscription.endpoint || !subscription.keys || !subscription.keys.auth || !subscription.keys.p256dh) {
+        console.error('Invalid subscription format:', subscription.endpoint);
+        return Promise.resolve(); // Skip this invalid subscription
+      }
+      
       const pushConfig = {
         endpoint: subscription.endpoint,
         keys: {
@@ -93,20 +166,23 @@ const createNotification = asyncHandler(async (req, res) => {
       };
 
       return webpush.sendNotification(pushConfig, notificationPayload)
-        .catch(err => console.error('Error sending notification', err));
+        .catch(err => {
+          console.error(`Error sending notification to ${subscription.endpoint}:`, err.message);
+          // Don't throw to prevent Promise.all from failing
+        });
     });
 
     // Don't wait for push results for the API response
     Promise.all(pushPromises).catch(err => {
-      console.error('Error sending push notifications', err);
+      console.error('Error sending push notifications', err.message);
     });
-
-    // Update notification with actual recipients
-    notification.recipients = userIds;
-    await notification.save();
-
-    res.status(201).json(notification);
   }
+
+  // Update notification with actual recipients
+  notification.recipients = userIds;
+  await notification.save();
+
+  res.status(201).json(notification);
 });
 
 // @desc    Get all notifications (admin only)

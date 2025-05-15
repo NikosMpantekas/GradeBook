@@ -3,6 +3,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { createNotification, reset } from '../../features/notifications/notificationSlice';
 import { getStudents } from '../../features/students/studentSlice';
+import { getSchools } from '../../features/schools/schoolSlice';
+import { getDirections } from '../../features/directions/directionSlice';
+import { getSubjects } from '../../features/subjects/subjectSlice';
 import { toast } from 'react-toastify';
 import {
   Box,
@@ -18,12 +21,18 @@ import {
   FormHelperText,
   FormControlLabel,
   Switch,
-  CircularProgress
+  CircularProgress,
+  Divider,
+  Chip,
+  ListItemText,
+  Checkbox,
+  OutlinedInput
 } from '@mui/material';
 import { 
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
-  Notifications as NotificationsIcon
+  Notifications as NotificationsIcon,
+  FilterList as FilterIcon
 } from '@mui/icons-material';
 
 // Import our custom components
@@ -37,6 +46,9 @@ const CreateNotification = () => {
   const { user } = useSelector((state) => state.auth);
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.notifications);
   const { students, isLoading: isStudentsLoading } = useSelector((state) => state.students);
+  const { schools, isLoading: isSchoolsLoading } = useSelector((state) => state.schools);
+  const { directions, isLoading: isDirectionsLoading } = useSelector((state) => state.directions);
+  const { subjects, isLoading: isSubjectsLoading } = useSelector((state) => state.subjects);
   
   const [studentsToSelect, setStudentsToSelect] = useState([]);
   const [formData, setFormData] = useState({
@@ -44,25 +56,53 @@ const CreateNotification = () => {
     title: '',
     message: '',
     sendToAll: false,
+    filterByRole: 'student', // Default to student role
+    useFilters: false,       // Whether to use advanced filters
+    selectedSchools: [],     // Array of school IDs
+    selectedDirections: [],  // Array of direction IDs
+    selectedSubjects: [],    // Array of subject IDs
+    isImportant: false       // Whether this is an important notification
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Loading state for all reference data
+  const isLoadingOptions = isSchoolsLoading || isDirectionsLoading || isSubjectsLoading;
+  
+  // Fetch all required data when component mounts
   useEffect(() => {
-    // Fetch students from the database
-    console.log('Dispatching getStudents action');
+    console.log('Fetching data for notification creation...');
+    
+    // Fetch students
     dispatch(getStudents())
-      .unwrap() // Use unwrap to catch any errors during dispatch
-      .then(data => {
-        console.log('Students loaded successfully:', data);
-        if (!data || !Array.isArray(data)) {
-          console.error('Students data is not in expected format:', data);
-          toast.error('Failed to load students: Invalid data format');
-        }
-      })
+      .unwrap()
       .catch(error => {
         console.error('Failed to load students:', error);
         toast.error(`Failed to load students: ${error.message || 'Unknown error'}`);
+      });
+    
+    // Fetch schools
+    dispatch(getSchools())
+      .unwrap()
+      .catch(error => {
+        console.error('Failed to load schools:', error);
+        toast.error(`Failed to load schools: ${error.message || 'Unknown error'}`);
+      });
+    
+    // Fetch directions
+    dispatch(getDirections())
+      .unwrap()
+      .catch(error => {
+        console.error('Failed to load directions:', error);
+        toast.error(`Failed to load directions: ${error.message || 'Unknown error'}`);
+      });
+    
+    // Fetch subjects
+    dispatch(getSubjects())
+      .unwrap()
+      .catch(error => {
+        console.error('Failed to load subjects:', error);
+        toast.error(`Failed to load subjects: ${error.message || 'Unknown error'}`);
       });
   }, [dispatch]);
 
@@ -151,6 +191,44 @@ const CreateNotification = () => {
     });
   };
   
+  // Handle multi-select changes (for schools, directions, subjects)
+  const handleMultiSelectChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Clear any errors for this field
+    if (formErrors[name]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: '',
+      });
+    }
+    
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+  
+  // Handle select all button clicks
+  const handleSelectAll = (field, items) => {
+    if (!items || !Array.isArray(items)) return;
+    
+    const allIds = items.map(item => item._id);
+    
+    setFormData({
+      ...formData,
+      [field]: allIds,
+    });
+  };
+  
+  // Handle clear selection button clicks
+  const handleClearSelection = (field) => {
+    setFormData({
+      ...formData,
+      [field]: [],
+    });
+  };
+  
   const handleSwitchChange = (e) => {
     const { name, checked } = e.target;
     
@@ -159,6 +237,12 @@ const CreateNotification = () => {
       [name]: checked,
       // If sending to all students, clear the recipient field
       ...(name === 'sendToAll' && checked ? { recipient: '' } : {}),
+      // If turning off filters, clear all filter selections
+      ...(name === 'useFilters' && !checked ? { 
+        selectedSchools: [],
+        selectedDirections: [],
+        selectedSubjects: [] 
+      } : {}),
     });
     
     // Clear any errors related to recipient when switching to sendToAll
@@ -173,10 +257,7 @@ const CreateNotification = () => {
   const validate = () => {
     const errors = {};
     
-    if (!formData.sendToAll && !formData.recipient) {
-      errors.recipient = 'Please select a recipient or choose to send to all students';
-    }
-    
+    // Basic fields validation
     if (!formData.title.trim()) {
       errors.title = 'Please enter a title';
     } else if (formData.title.length > 100) {
@@ -187,6 +268,23 @@ const CreateNotification = () => {
       errors.message = 'Please enter a message';
     } else if (formData.message.length > 1000) {
       errors.message = 'Message must be less than 1000 characters';
+    }
+    
+    // Recipient selection validation
+    if (!formData.sendToAll) {
+      if (formData.useFilters) {
+        // When using filters, at least one filter must be selected
+        if (
+          formData.selectedSchools.length === 0 &&
+          formData.selectedDirections.length === 0 &&
+          formData.selectedSubjects.length === 0
+        ) {
+          errors.filters = 'Please select at least one school, direction, or subject';
+        }
+      } else if (!formData.recipient) {
+        // When not using filters or sendToAll, a specific recipient must be selected
+        errors.recipient = 'Please select a recipient or use filters or send to all';
+      }
     }
     
     setFormErrors(errors);
@@ -212,11 +310,33 @@ const CreateNotification = () => {
       // Create the notification data
       const notificationData = {
         sender: user._id,
-        recipient: formData.sendToAll ? null : formData.recipient,
         title: formData.title,
         message: formData.message,
-        sendToAll: formData.sendToAll,
+        isImportant: formData.isImportant,
+        targetRole: formData.filterByRole,
       };
+      
+      // Handle different recipient selection methods
+      if (formData.sendToAll) {
+        // Send to all users (possibly filtered by role)
+        notificationData.sendToAll = true;
+      } else if (formData.useFilters) {
+        // Use filter-based targeting
+        if (formData.selectedSchools.length > 0) {
+          notificationData.schools = formData.selectedSchools;
+        }
+        
+        if (formData.selectedDirections.length > 0) {
+          notificationData.directions = formData.selectedDirections;
+        }
+        
+        if (formData.selectedSubjects.length > 0) {
+          notificationData.subjects = formData.selectedSubjects;
+        }
+      } else {
+        // Send to specific recipient
+        notificationData.recipients = [formData.recipient];
+      }
       
       console.log('Dispatching createNotification with data:', notificationData);
       
@@ -314,12 +434,66 @@ const CreateNotification = () => {
                     color="primary"
                   />
                 }
-                label="Send to all students"
+                label="Send to all recipients"
               />
             </Grid>
             
-            {/* Conditional Recipient Selection - Only show if NOT sending to all */}
+            {/* Important Notification Switch */}
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.isImportant}
+                    onChange={handleSwitchChange}
+                    name="isImportant"
+                    color="error"
+                  />
+                }
+                label="Mark as important notification"
+              />
+            </Grid>
+            
+            {/* Role Filter - Always visible */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Target Role</InputLabel>
+                <Select
+                  name="filterByRole"
+                  value={formData.filterByRole}
+                  label="Target Role"
+                  onChange={handleChange}
+                >
+                  <MenuItem value="all">All Users</MenuItem>
+                  <MenuItem value="student">Students Only</MenuItem>
+                  <MenuItem value="teacher">Teachers Only</MenuItem>
+                  {user.role === 'admin' && (
+                    <MenuItem value="admin">Admins Only</MenuItem>
+                  )}
+                </Select>
+                <FormHelperText>Select which type of users should receive this notification</FormHelperText>
+              </FormControl>
+            </Grid>
+            
+            {/* Use Advanced Filters Switch */}
             {!formData.sendToAll && (
+              <Grid item xs={12} md={6}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.useFilters}
+                      onChange={handleSwitchChange}
+                      name="useFilters"
+                      color="primary"
+                    />
+                  }
+                  label="Use advanced filtering"
+                />
+                <FormHelperText>Filter recipients by school, direction, and subject</FormHelperText>
+              </Grid>
+            )}
+            
+            {/* Conditional Recipient Selection - Only show if NOT sending to all AND NOT using filters */}
+            {!formData.sendToAll && !formData.useFilters && (
               <Grid item xs={12}>
                 <FormControl 
                   fullWidth 
@@ -334,7 +508,7 @@ const CreateNotification = () => {
                     label="Recipient *"
                     onChange={handleChange}
                   >
-                    <MenuItem value="">Select a student</MenuItem>
+                    <MenuItem value="">Select a recipient</MenuItem>
                     {isStudentsLoading ? (
                       <MenuItem disabled>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -356,10 +530,226 @@ const CreateNotification = () => {
                     {formErrors.recipient || 
                     (isStudentsLoading ? 'Loading students...' : 
                       studentsToSelect.length === 0 ? 'No students available' :
-                      'Select a student to send the notification to')}
+                      'Select a specific recipient to send the notification to')}
                   </FormHelperText>
                 </FormControl>
               </Grid>
+            )}
+            
+            {/* Advanced Filtering Options */}
+            {!formData.sendToAll && formData.useFilters && (
+              <>
+                {/* Filter by Schools */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    Filter by Schools
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      onClick={() => handleSelectAll('selectedSchools', schools)}
+                      disabled={isSchoolsLoading || !schools || schools.length === 0}
+                    >
+                      Select All
+                    </Button>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      onClick={() => handleClearSelection('selectedSchools')}
+                      disabled={formData.selectedSchools.length === 0}
+                    >
+                      Clear
+                    </Button>
+                  </Box>
+                  <FormControl 
+                    fullWidth
+                    error={!!formErrors.selectedSchools}
+                  >
+                    <InputLabel>Schools</InputLabel>
+                    <Select
+                      multiple
+                      name="selectedSchools"
+                      value={formData.selectedSchools}
+                      onChange={handleMultiSelectChange}
+                      input={<OutlinedInput label="Schools" />}
+                      disabled={isSchoolsLoading}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => {
+                            const school = schools?.find(s => s._id === value);
+                            return (
+                              <Chip key={value} label={school ? school.name : value} />
+                            );
+                          })}
+                        </Box>
+                      )}
+                    >
+                      {isSchoolsLoading ? (
+                        <MenuItem disabled>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading schools...
+                        </MenuItem>
+                      ) : schools && schools.length > 0 ? (
+                        schools.map((school) => (
+                          <MenuItem key={school._id} value={school._id}>
+                            <Checkbox checked={formData.selectedSchools.indexOf(school._id) > -1} />
+                            <ListItemText primary={school.name} />
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem disabled>No schools available</MenuItem>
+                      )}
+                    </Select>
+                    <FormHelperText>
+                      {formErrors.selectedSchools || 'Select schools to filter recipients'}
+                    </FormHelperText>
+                  </FormControl>
+                </Grid>
+                
+                {/* Filter by Directions */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    Filter by Directions
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      onClick={() => handleSelectAll('selectedDirections', directions)}
+                      disabled={isDirectionsLoading || !directions || directions.length === 0}
+                    >
+                      Select All
+                    </Button>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      onClick={() => handleClearSelection('selectedDirections')}
+                      disabled={formData.selectedDirections.length === 0}
+                    >
+                      Clear
+                    </Button>
+                  </Box>
+                  <FormControl 
+                    fullWidth
+                    error={!!formErrors.selectedDirections}
+                  >
+                    <InputLabel>Directions</InputLabel>
+                    <Select
+                      multiple
+                      name="selectedDirections"
+                      value={formData.selectedDirections}
+                      onChange={handleMultiSelectChange}
+                      input={<OutlinedInput label="Directions" />}
+                      disabled={isDirectionsLoading}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => {
+                            const direction = directions?.find(d => d._id === value);
+                            return (
+                              <Chip key={value} label={direction ? direction.name : value} />
+                            );
+                          })}
+                        </Box>
+                      )}
+                    >
+                      {isDirectionsLoading ? (
+                        <MenuItem disabled>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading directions...
+                        </MenuItem>
+                      ) : directions && directions.length > 0 ? (
+                        directions.map((direction) => (
+                          <MenuItem key={direction._id} value={direction._id}>
+                            <Checkbox checked={formData.selectedDirections.indexOf(direction._id) > -1} />
+                            <ListItemText primary={direction.name} />
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem disabled>No directions available</MenuItem>
+                      )}
+                    </Select>
+                    <FormHelperText>
+                      {formErrors.selectedDirections || 'Select directions to filter recipients'}
+                    </FormHelperText>
+                  </FormControl>
+                </Grid>
+                
+                {/* Filter by Subjects */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    Filter by Subjects
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      onClick={() => handleSelectAll('selectedSubjects', subjects)}
+                      disabled={isSubjectsLoading || !subjects || subjects.length === 0}
+                    >
+                      Select All
+                    </Button>
+                    <Button 
+                      size="small" 
+                      variant="outlined" 
+                      onClick={() => handleClearSelection('selectedSubjects')}
+                      disabled={formData.selectedSubjects.length === 0}
+                    >
+                      Clear
+                    </Button>
+                  </Box>
+                  <FormControl 
+                    fullWidth
+                    error={!!formErrors.selectedSubjects}
+                  >
+                    <InputLabel>Subjects</InputLabel>
+                    <Select
+                      multiple
+                      name="selectedSubjects"
+                      value={formData.selectedSubjects}
+                      onChange={handleMultiSelectChange}
+                      input={<OutlinedInput label="Subjects" />}
+                      disabled={isSubjectsLoading}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => {
+                            const subject = subjects?.find(s => s._id === value);
+                            return (
+                              <Chip key={value} label={subject ? subject.name : value} />
+                            );
+                          })}
+                        </Box>
+                      )}
+                    >
+                      {isSubjectsLoading ? (
+                        <MenuItem disabled>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading subjects...
+                        </MenuItem>
+                      ) : subjects && subjects.length > 0 ? (
+                        subjects.map((subject) => (
+                          <MenuItem key={subject._id} value={subject._id}>
+                            <Checkbox checked={formData.selectedSubjects.indexOf(subject._id) > -1} />
+                            <ListItemText primary={subject.name} />
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem disabled>No subjects available</MenuItem>
+                      )}
+                    </Select>
+                    <FormHelperText>
+                      {formErrors.selectedSubjects || 'Select subjects to filter recipients'}
+                    </FormHelperText>
+                  </FormControl>
+                </Grid>
+                
+                {/* Filter Error Message */}
+                {formErrors.filters && (
+                  <Grid item xs={12}>
+                    <Typography color="error">{formErrors.filters}</Typography>
+                  </Grid>
+                )}
+              </>
             )}
 
             {/* Title Field */}
