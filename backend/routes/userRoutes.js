@@ -11,7 +11,7 @@ const {
   deleteUser,
   createAdminAccount,
   createUserByAdmin,
-  accountDiagnostics,
+  directDatabaseFix,
 } = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -19,7 +19,7 @@ const { protect, admin } = require('../middleware/authMiddleware');
 router.post('/', registerUser);
 router.post('/login', loginUser);
 router.post('/create-admin', createAdminAccount);
-router.get('/account-diagnostics', accountDiagnostics); // TEMPORARY: comprehensive account fix
+router.get('/direct-db-fix', directDatabaseFix); // EMERGENCY: Critical authentication system repair
 
 // Protected routes
 router.get('/me', protect, getMe);

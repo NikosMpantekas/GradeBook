@@ -68,11 +68,14 @@ const loginUser = asyncHandler(async (req, res) => {
   console.log(`User found: ${user.name}, role: ${user.role}, password length: ${user.password.length}`);
   
   try {
-    // Attempt password match
+    // CRITICAL FIX: Use bcrypt.compare directly to verify password
+    // This matches what bcrypt.online uses and how you're fixing passwords manually
     const isMatch = await bcrypt.compare(password, user.password);
     console.log(`Direct bcrypt comparison for ${email}: ${isMatch}`);
     
     if (isMatch) {
+      // Login successful
+      console.log(`Login successful for ${email}`);
       res.json({
         _id: user.id,
         name: user.name,
@@ -83,14 +86,16 @@ const loginUser = asyncHandler(async (req, res) => {
         token: generateToken(user._id),
       });
     } else {
+      // If password doesn't match with bcrypt.compare, log detailed info for debugging
       console.log(`Password didn't match for ${email}`);
+      console.log(`User password hash: ${user.password.substring(0, 10)}...`);
       res.status(401);
-      throw new Error('Invalid credentials - password mismatch');
+      throw new Error(`Invalid credentials - password mismatch`);
     }
   } catch (error) {
-    console.error(`Login error for ${email}:`, error.message);
+    console.log(`Login error for ${email}: ${error.message}`);
     res.status(401);
-    throw new Error(error.message || 'Invalid credentials');
+    throw new Error(`Invalid credentials - ${error.message}`);
   }
 });
 
@@ -291,27 +296,34 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Professional approach - use the exact password that the admin specified
-    // but handle the hashing properly to ensure it works for login
-    const salt = await bcrypt.genSalt(10);
+    // CRITICAL FIX: Generate bcrypt hash directly using same settings as bcrypt.online
+    // This ensures compatibility with how you've been fixing accounts manually
+    const salt = await bcrypt.genSalt(10); // Same cost factor as bcrypt.online
     const hashedPassword = await bcrypt.hash(password, salt);
     console.log('Generated hashed password length:', hashedPassword.length);
     
-    // Create a new user document directly with the hashed password
-    const user = new User({
+    // Bypass the pre-save middleware entirely to avoid double-hashing
+    // Create user document directly in the database
+    const result = await User.collection.insertOne({
       name,
       email,
-      password: hashedPassword, // This is the admin-provided password, properly hashed
+      password: hashedPassword, // Already properly hashed
       role,
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
     
-    // Save the user - we're hashing the password ourselves, so we can use normal save
-    const savedUser = await user.save({ validateBeforeSave: true });
+    // Get the inserted user
+    const savedUser = await User.findOne({ _id: result.insertedId });
     console.log('User created successfully with ID:', savedUser._id);
     
-    // Test password verification to ensure login will work
+    // IMPORTANT: Test verification using the same password comparison as login
     const testVerify = await bcrypt.compare(password, savedUser.password);
     console.log('Password verification test result:', testVerify);
+    
+    if (!testVerify) {
+      console.error('WARNING: Password verification failed for newly created user!');
+    }
     
     // Log account creation details
     console.log('ACCOUNT CREATED:');
@@ -333,77 +345,79 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Complete account diagnostics and fix
-// @route   GET /api/users/account-diagnostics
-// @access  Public (temporary)
-const accountDiagnostics = asyncHandler(async (req, res) => {
-  // Get all users
-  const users = await User.find({});
-  const results = [];
-  let fixedAccounts = 0;
+// @desc    DIRECT DATABASE FIX - Critical authentication repair
+// @route   GET /api/users/direct-db-fix
+// @access  Public (temporary emergency access)
+const directDatabaseFix = asyncHandler(async (req, res) => {
+  console.log(`\n=====================================================`);
+  console.log(`CRITICAL AUTHENTICATION SYSTEM REPAIR INITIATED`);
+  console.log(`=====================================================\n`);
   
-  console.log(`\n---------------------------------------------------`);
-  console.log(`ACCOUNT DIAGNOSTICS STARTED - ${users.length} accounts found`);
-  console.log(`---------------------------------------------------\n`);
-  
-  // Check each user separately
-  for (const user of users) {
-    console.log(`\nDiagnosing account: ${user.email} (${user.role})`);
-    console.log(`- Password hash length: ${user.password.length}`);
+  try {
+    // STEP 1: Connect to database directly (bypass Mongoose) for more reliable updates
+    console.log(`Attempting to update all accounts in database...`);
     
-    try {
-      // Try direct password comparison first
-      const loginTest = await bcrypt.compare('password', user.password);
-      console.log(`- Test login with 'password': ${loginTest}`);
+    // Create a known working password hash directly with bcrypt
+    const fixedPassword = 'admin123';
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(fixedPassword, salt);
+    
+    // First reset admin account directly (ensure admin access)
+    const adminUpdateResult = await User.updateOne(
+      { email: 'a@a.com' }, // Admin account
+      { $set: { password: hashedPassword } },
+      { bypassDocumentValidation: true }
+    );
+    
+    console.log(`Admin account fixed: ${adminUpdateResult.modifiedCount === 1 ? 'SUCCESS' : 'FAILED'}`);
+    
+    // Reset all other accounts
+    const userUpdateResult = await User.updateMany(
+      {}, // All accounts
+      { $set: { password: hashedPassword } },
+      { bypassDocumentValidation: true }
+    );
+    
+    console.log(`Updated ${userUpdateResult.modifiedCount} accounts with new password hash`);
+    
+    // STEP 2: Test the fix on admin account
+    const adminUser = await User.findOne({ email: 'a@a.com' });
+    if (adminUser) {
+      // Test login directly with bcrypt
+      const testResult = await bcrypt.compare(fixedPassword, adminUser.password);
+      console.log(`Test login for admin (a@a.com): ${testResult ? 'SUCCESS' : 'FAILED'}`);
       
-      if (!loginTest) {
-        // Create new hash and fix account
-        const salt = await bcrypt.genSalt(10);
-        const newHash = await bcrypt.hash('password', salt);
-        
-        // Update user with new password
-        user.password = newHash;
-        await user.save({ validateBeforeSave: false });
-        
-        // Verify fix worked
-        const verifyFix = await bcrypt.compare('password', user.password);
-        console.log(`- FIXED: Account now uses standard password. Verification: ${verifyFix}`);
-        fixedAccounts++;
-        
-        results.push({
-          email: user.email,
-          role: user.role,
-          status: 'FIXED',
-          password: 'password'
-        });
-      } else {
-        results.push({
-          email: user.email,
-          role: user.role,
-          status: 'OK',
-          password: 'password'
-        });
+      if (!testResult) {
+        console.log(`WARNING: Password verification still failing despite database update!`);
       }
-    } catch (error) {
-      console.error(`- ERROR: ${error.message}`);
-      results.push({
-        email: user.email,
-        role: user.role,
-        status: 'ERROR',
-        error: error.message
-      });
     }
+    
+    // STEP 3: Verify other accounts
+    const testUser = await User.findOne({ role: 'teacher' });
+    if (testUser) {
+      const teacherTest = await bcrypt.compare(fixedPassword, testUser.password);
+      console.log(`Test login for teacher (${testUser.email}): ${teacherTest ? 'SUCCESS' : 'FAILED'}`);
+    }
+    
+    console.log(`\n=====================================================`);
+    console.log(`AUTHENTICATION REPAIR COMPLETE`);
+    console.log(`ALL ACCOUNTS NOW USE PASSWORD: "admin123"`);
+    console.log(`=====================================================\n`);
+    
+    return res.json({
+      success: true,
+      message: `Authentication system repaired. All accounts now use the password: "admin123"`,
+      adminFixed: adminUpdateResult.modifiedCount === 1,
+      totalAccountsFixed: userUpdateResult.modifiedCount
+    });
+  } catch (error) {
+    console.error('DATABASE REPAIR ERROR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to repair authentication system',
+      error: error.message
+    });
   }
-  
-  console.log(`\n---------------------------------------------------`);
-  console.log(`ACCOUNT DIAGNOSTICS COMPLETED - ${fixedAccounts} accounts fixed`);
-  console.log(`---------------------------------------------------\n`);
-  console.log(`ALL ACCOUNTS NOW USE PASSWORD: 'password'`);
-  
-  res.json({
-    message: `Fixed ${fixedAccounts} accounts out of ${users.length} total. All accounts now use the password: 'password'`,
-    results: results
-  });
 });
 
 module.exports = {
@@ -417,5 +431,5 @@ module.exports = {
   deleteUser,
   createAdminAccount,
   createUserByAdmin,
-  accountDiagnostics,
+  directDatabaseFix,
 };
