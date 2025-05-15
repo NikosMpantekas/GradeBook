@@ -200,19 +200,19 @@ if (process.env.NODE_ENV === 'production') {
   let indexPath = null;
 
   console.log('Looking for build directory in these locations:');
-  possibleBuildPaths.forEach((path, i) => {
-    const exists = fs.existsSync(path);
-    console.log(`${i+1}. ${path} - ${exists ? 'EXISTS' : 'NOT FOUND'}`);
+  possibleBuildPaths.forEach((pathToCheck, i) => {
+    const exists = fs.existsSync(pathToCheck);
+    console.log(`${i+1}. ${pathToCheck} - ${exists ? 'EXISTS' : 'NOT FOUND'}`);
     if (exists && !staticPath) {
-      staticPath = path;
-      indexPath = path + '/index.html';
+      staticPath = pathToCheck;
+      indexPath = path.join(pathToCheck, 'index.html');
       
       // List files in build directory
       console.log('\nFiles in build directory:');
       try {
-        const files = fs.readdirSync(path);
+        const files = fs.readdirSync(pathToCheck);
         files.forEach(file => {
-          console.log(`- ${file} ${fs.statSync(`${path}/${file}`).isDirectory() ? '(directory)' : ''}`);
+          console.log(`- ${file} ${fs.statSync(path.join(pathToCheck, file)).isDirectory() ? '(directory)' : ''}`);
         });
       } catch (err) {
         console.error('Error reading directory:', err);
@@ -225,18 +225,28 @@ if (process.env.NODE_ENV === 'production') {
     console.log('Index.html path:', indexPath);
     console.log('Checking if index.html exists:', fs.existsSync(indexPath) ? 'YES' : 'NO');
     
-    // Serve static files
+    // First serve static files (important: this must come BEFORE the catch-all route)
     app.use(express.static(staticPath));
 
+    // CRITICAL: Make sure API routes are defined BEFORE the catch-all route
+    // This is already done above with app.use('/api/...')
+
     // For all other routes, serve index.html
-    app.get('*', (req, res) => {
-      console.log(`Serving index.html for: ${req.originalUrl}`);
+    // This is a catch-all route that must be defined LAST
+    app.get('/*', (req, res, next) => {
+      // Skip API routes - they've already been handled
+      if (req.originalUrl.startsWith('/api/')) {
+        return next();
+      }
+      
+      console.log(`Serving index.html for client-side route: ${req.originalUrl}`);
       
       if (!fs.existsSync(indexPath)) {
         console.error('ERROR: index.html does not exist at path:', indexPath);
         return res.status(500).send('Frontend build files not found. Please check server configuration.');
       }
       
+      // Send the React app's index.html for all client-side routes
       res.sendFile(indexPath);
     });
   } else {
