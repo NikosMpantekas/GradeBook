@@ -233,139 +233,75 @@ const ManageUsers = () => {
     return name.charAt(0).toUpperCase();
   };
 
-  // Add a wrapping try-catch for the entire rendering flow
-  try {
-    if (isLoading) {
-      console.log('Rendering loading state');
-      return <LoadingState message="Loading users..." fullPage={true} />;
-    }
-  
-    if (isError) {
-      console.log('Rendering error state:', message);
-      return (
-        <ErrorState 
-          message={`Failed to load users: ${message || 'Unknown error'}`}
-          fullPage={true}
-          onRetry={() => dispatch(getUsers())}
-          retryText="Retry Loading Users"
-        />
-      );
-    }
-  
-    // Explicitly check if users is undefined, null, or not an array
-    if (!users) {
-      console.log('Users is undefined or null');
-      return (
-        <Box sx={{ flexGrow: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-              Manage Users
-            </Typography>
-            <Button 
-              variant="contained" 
-              startIcon={<AddIcon />}
-              onClick={handleAddUser}
-            >
-              Add User
-            </Button>
-          </Box>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" align="center" sx={{ py: 4 }}>
-              User data not available. Please try refreshing the page.
-            </Typography>
-            <Box display="flex" justifyContent="center" mt={2}>
-              <Button 
-                variant="contained" 
-                onClick={() => dispatch(getUsers())}
-                startIcon={<RefreshIcon />}
-              >
-                Refresh Data
-              </Button>
-            </Box>
-          </Paper>
-        </Box>
-      );
-    }
-  
-    if (!Array.isArray(users)) {
-      console.log('Users is not an array:', typeof users);
-      return (
-        <Box sx={{ flexGrow: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-              Manage Users
-            </Typography>
-            <Button 
-              variant="contained" 
-              startIcon={<AddIcon />}
-              onClick={handleAddUser}
-            >
-              Add User
-            </Button>
-          </Box>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" align="center" sx={{ py: 4 }}>
-              Invalid user data format. Please try refreshing the page.
-            </Typography>
-            <Box display="flex" justifyContent="center" mt={2}>
-              <Button 
-                variant="contained" 
-                onClick={() => dispatch(getUsers())}
-                startIcon={<RefreshIcon />}
-              >
-                Refresh Data
-              </Button>
-            </Box>
-          </Paper>
-        </Box>
-      );
-    }
-  
-    if (users.length === 0) {
-      console.log('Users array is empty');
-      return (
-        <Box sx={{ flexGrow: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-              Manage Users
-            </Typography>
-            <Button 
-              variant="contained" 
-              startIcon={<AddIcon />}
-              onClick={handleAddUser}
-            >
-              Add User
-            </Button>
-          </Box>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" align="center" sx={{ py: 4 }}>
-              No users found. Click "Add User" to create one.
-            </Typography>
-          </Paper>
-        </Box>
-      );
-    }
-  } catch (error) {
-    console.error('Caught error during render:', error);
+  // Simple loading state without trying to access complex objects that might cause errors
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <CircularProgress />
+        <Typography variant="h6" sx={{ ml: 2 }}>
+          Loading users...
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Handle error state
+  if (isError) {
     return (
       <Box sx={{ flexGrow: 1 }}>
-        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-          <Typography variant="h5" color="error" sx={{ mb: 2 }}>
-            Something went wrong
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 3 }}>
-            An unexpected error occurred while displaying users. Please try refreshing the page.
-          </Typography>
-          <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'text.secondary' }}>
-            Error details: {error.message}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Manage Users
           </Typography>
           <Button 
             variant="contained" 
-            onClick={() => window.location.reload()}
-            startIcon={<RefreshIcon />}
+            startIcon={<AddIcon />}
+            onClick={handleAddUser}
           >
-            Refresh Page
+            Add User
           </Button>
+        </Box>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="h6" color="error" align="center" sx={{ mb: 2 }}>
+            Error loading users
+          </Typography>
+          <Typography variant="body1" align="center" sx={{ mb: 3 }}>
+            {message || "An unknown error occurred"}
+          </Typography>
+          <Box display="flex" justifyContent="center">
+            <Button 
+              variant="contained" 
+              onClick={() => dispatch(getUsers())}
+              startIcon={<RefreshIcon />}
+            >
+              Try Again
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
+
+  // Empty state - simple version without complex checks that might cause crashes
+  if (!users || !Array.isArray(users) || users.length === 0) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Manage Users
+          </Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleAddUser}
+          >
+            Add User
+          </Button>
+        </Box>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="h6" align="center" sx={{ py: 4 }}>
+            No users found. Click "Add User" to create one.
+          </Typography>
         </Paper>
       </Box>
     );
@@ -432,16 +368,16 @@ const ManageUsers = () => {
         </Grid>
       </Paper>
 
-      {/* Users Table */}
-      <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
+      {/* User Table */}
+      <Paper elevation={3} sx={{ mt: 3, borderRadius: 2 }}>
         <TableContainer>
-          <Table stickyHeader aria-label="users table">
+          <Table>
             <TableHead>
               <TableRow>
-                <TableCell>User</TableCell>
+                <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Role</TableCell>
-                <TableCell>Created At</TableCell>
+                <TableCell>Created</TableCell>
                 <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -468,7 +404,7 @@ const ManageUsers = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        {format(new Date(user.createdAt), 'PP')}
+                        {user.createdAt ? format(new Date(user.createdAt), 'PP') : 'Unknown'}
                       </TableCell>
                       <TableCell align="center">
                         <IconButton
@@ -478,25 +414,21 @@ const ManageUsers = () => {
                         >
                           <EditIcon />
                         </IconButton>
-                        {/* Prevent deleting the current admin user or the only admin */}
-                        {!(user.role === 'admin' && user._id === user._id) && (
-                          <IconButton
-                            color="error"
-                            aria-label="delete user"
-                            onClick={() => handleDeleteClick(user)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        )}
+                        <IconButton
+                          color="error"
+                          aria-label="delete user"
+                          onClick={() => handleDeleteClick(user)}
+                          disabled={user.role === 'admin' && user._id === user._id}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                    {users && users.length > 0
-                      ? 'No users match the filter criteria.'
-                      : 'No users found.'}
+                  <TableCell colSpan={5} align="center">
+                    No users found matching your criteria
                   </TableCell>
                 </TableRow>
               )}

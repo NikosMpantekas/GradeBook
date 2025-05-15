@@ -55,13 +55,16 @@ const Header = ({ drawerWidth, handleDrawerToggle }) => {
   };
 
   const handleNotificationsClick = () => {
-    navigate('/notifications');
+    navigate('/app/notifications');
   };
 
   const handleProfileClick = () => {
     handleClose();
-    navigate('/profile');
+    navigate('/app/profile');
   };
+  
+  // Add debug log to track navigation
+  console.log('Current user:', user);
 
   return (
     <AppBar
