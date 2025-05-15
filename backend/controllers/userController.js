@@ -150,7 +150,10 @@ const updateProfile = asyncHandler(async (req, res) => {
 // @route   GET /api/users
 // @access  Private/Admin
 const getUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({}).select('-password');
+  const users = await User.find({}).select('-password')
+    .populate('school', 'name')
+    .populate('direction', 'name')
+    .populate('subjects', 'name');
   res.json(users);
 });
 
@@ -158,7 +161,11 @@ const getUsers = asyncHandler(async (req, res) => {
 // @route   GET /api/users/:id
 // @access  Private/Admin
 const getUserById = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).select('-password');
+  const user = await User.findById(req.params.id)
+    .select('-password')
+    .populate('school', 'name')
+    .populate('direction', 'name')
+    .populate('subjects', 'name');
 
   if (user) {
     res.json(user);
@@ -197,7 +204,15 @@ const updateUser = asyncHandler(async (req, res) => {
       user.subjects = req.body.subjects;
     }
 
-    const updatedUser = await user.save();
+    // Save the user first
+    await user.save();
+    
+    // Then fetch the updated user with populated fields
+    const updatedUser = await User.findById(user._id)
+      .select('-password')
+      .populate('school', 'name')
+      .populate('direction', 'name')
+      .populate('subjects', 'name');
 
     res.json({
       _id: updatedUser._id,
