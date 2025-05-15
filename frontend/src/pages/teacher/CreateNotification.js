@@ -50,14 +50,33 @@ const CreateNotification = () => {
   
   useEffect(() => {
     // Fetch students from the database
-    dispatch(getStudents());
+    console.log('Dispatching getStudents action');
+    dispatch(getStudents())
+      .unwrap() // Use unwrap to catch any errors during dispatch
+      .then(data => {
+        console.log('Students loaded successfully:', data);
+        if (!data || !Array.isArray(data)) {
+          console.error('Students data is not in expected format:', data);
+          toast.error('Failed to load students: Invalid data format');
+        }
+      })
+      .catch(error => {
+        console.error('Failed to load students:', error);
+        toast.error(`Failed to load students: ${error.message || 'Unknown error'}`);
+      });
   }, [dispatch]);
 
   useEffect(() => {
     if (students && Array.isArray(students)) {
-      setStudentsToSelect(students);
+      console.log(`Setting ${students.length} students to select:`, students);
+      // Only include students with valid data
+      const validStudents = students.filter(student => 
+        student && student._id && student.name && typeof student.name === 'string'
+      );
+      setStudentsToSelect(validStudents);
     } else {
       // If students is not available or not an array, set an empty array
+      console.warn('Students data is invalid:', students);
       setStudentsToSelect([]);
     }
   }, [students]);
@@ -284,6 +303,7 @@ const CreateNotification = () => {
         
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={3}>
+            {/* Send To All Switch */}
             <Grid item xs={12}>
               <FormControlLabel
                 control={
@@ -298,35 +318,51 @@ const CreateNotification = () => {
               />
             </Grid>
             
+            {/* Conditional Recipient Selection - Only show if NOT sending to all */}
             {!formData.sendToAll && (
               <Grid item xs={12}>
-                <FormControl fullWidth error={!!formErrors.recipient}>
+                <FormControl 
+                  fullWidth 
+                  error={!!formErrors.recipient}
+                >
                   <InputLabel id="recipient-label">Recipient *</InputLabel>
                   <Select
                     labelId="recipient-label"
                     id="recipient"
                     name="recipient"
                     value={formData.recipient}
-                    onChange={handleChange}
                     label="Recipient *"
-                    disabled={formData.sendToAll}
+                    onChange={handleChange}
                   >
-                    <MenuItem value="">
-                      <em>Select a student</em>
-                    </MenuItem>
-                    {studentsToSelect.map((student) => (
-                      <MenuItem key={student._id} value={student._id}>
-                        {student.name}
+                    <MenuItem value="">Select a student</MenuItem>
+                    {isStudentsLoading ? (
+                      <MenuItem disabled>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading students...
+                        </Box>
                       </MenuItem>
-                    ))}
+                    ) : studentsToSelect.length > 0 ? (
+                      studentsToSelect.map((student) => (
+                        <MenuItem key={student._id} value={student._id}>
+                          {student.name}
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem disabled>No students available</MenuItem>
+                    )}
                   </Select>
-                  {formErrors.recipient && (
-                    <FormHelperText>{formErrors.recipient}</FormHelperText>
-                  )}
+                  <FormHelperText>
+                    {formErrors.recipient || 
+                    (isStudentsLoading ? 'Loading students...' : 
+                      studentsToSelect.length === 0 ? 'No students available' :
+                      'Select a student to send the notification to')}
+                  </FormHelperText>
                 </FormControl>
               </Grid>
             )}
-            
+
+            {/* Title Field */}
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -340,6 +376,7 @@ const CreateNotification = () => {
               />
             </Grid>
             
+            {/* Message Field */}
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -358,6 +395,7 @@ const CreateNotification = () => {
               />
             </Grid>
             
+            {/* Submit Button */}
             <Grid item xs={12}>
               <Button
                 type="submit"

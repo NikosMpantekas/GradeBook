@@ -66,8 +66,16 @@ const CreateGrade = () => {
   
   // Update students dropdown when students are fetched from API
   useEffect(() => {
-    if (students && students.length > 0) {
-      setStudentsToSelect(students);
+    if (students && Array.isArray(students)) {
+      // Filter out any invalid student data
+      const validStudents = students.filter(student => 
+        student && student._id && student.name && typeof student.name === 'string'
+      );
+      console.log(`Found ${validStudents.length} valid students for the selected subject`); 
+      setStudentsToSelect(validStudents);
+    } else {
+      console.warn('Invalid or empty students data received:', students);
+      setStudentsToSelect([]);
     }
   }, [students]);
   
@@ -211,19 +219,41 @@ const CreateGrade = () => {
                   value={formData.student}
                   onChange={handleChange}
                   label="Student *"
+                  disabled={!formData.subject || studentsLoading || studentsToSelect.length === 0}
                 >
                   <MenuItem value="">
                     <em>Select a student</em>
                   </MenuItem>
-                  {studentsToSelect.map((student) => (
-                    <MenuItem key={student._id} value={student._id}>
-                      {student.name}
+                  {studentsLoading ? (
+                    <MenuItem disabled>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <CircularProgress size={20} sx={{ mr: 1 }} />
+                        Loading students...
+                      </Box>
                     </MenuItem>
-                  ))}
+                  ) : !formData.subject ? (
+                    <MenuItem disabled>
+                      <em>Select a subject first</em>
+                    </MenuItem>
+                  ) : studentsToSelect.length === 0 ? (
+                    <MenuItem disabled>
+                      <em>No students available for this subject</em>
+                    </MenuItem>
+                  ) : (
+                    studentsToSelect.map((student) => (
+                      <MenuItem key={student._id} value={student._id}>
+                        {student.name}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
-                {formErrors.student && (
-                  <FormHelperText>{formErrors.student}</FormHelperText>
-                )}
+                <FormHelperText>
+                  {formErrors.student || 
+                   (studentsLoading ? 'Loading students...' : 
+                    !formData.subject ? 'Please select a subject first' :
+                    studentsToSelect.length === 0 ? 'No students found for this subject' :
+                    'Select the student to grade')}
+                </FormHelperText>
               </FormControl>
             </Grid>
             
@@ -237,19 +267,36 @@ const CreateGrade = () => {
                   value={formData.subject}
                   onChange={handleChange}
                   label="Subject *"
+                  disabled={subjectsLoading}
                 >
                   <MenuItem value="">
                     <em>Select a subject</em>
                   </MenuItem>
-                  {subjects && subjects.map((subject) => (
-                    <MenuItem key={subject._id} value={subject._id}>
-                      {subject.name}
+                  {subjectsLoading ? (
+                    <MenuItem disabled>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <CircularProgress size={20} sx={{ mr: 1 }} />
+                        Loading subjects...
+                      </Box>
                     </MenuItem>
-                  ))}
+                  ) : subjects && subjects.length > 0 ? (
+                    subjects.map((subject) => (
+                      <MenuItem key={subject._id} value={subject._id}>
+                        {subject.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      <em>No subjects available</em>
+                    </MenuItem>
+                  )}
                 </Select>
-                {formErrors.subject && (
-                  <FormHelperText>{formErrors.subject}</FormHelperText>
-                )}
+                <FormHelperText>
+                  {formErrors.subject || 
+                   (subjectsLoading ? 'Loading subjects...' : 
+                    !subjects || subjects.length === 0 ? 'No subjects assigned to you' :
+                    'Select the subject for this grade')}
+                </FormHelperText>
               </FormControl>
             </Grid>
             
