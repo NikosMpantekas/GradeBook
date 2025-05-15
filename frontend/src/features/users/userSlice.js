@@ -53,8 +53,11 @@ export const createUser = createAsyncThunk(
   'users/create',
   async (userData, thunkAPI) => {
     try {
+      console.log('Creating user with data:', { ...userData, password: '***HIDDEN***' });
       const token = thunkAPI.getState().auth.user.token;
-      return await userService.createUser(userData, token);
+      const result = await userService.createUser(userData, token);
+      console.log('User creation result:', result);
+      return result;
     } catch (error) {
       const message =
         (error.response &&

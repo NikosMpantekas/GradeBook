@@ -34,7 +34,8 @@ const createUser = async (userData, token) => {
     },
   };
 
-  const response = await axios.post(API_URL, userData, config);
+  // Use the admin-specific endpoint that properly handles password hashing
+  const response = await axios.post(API_URL + 'admin/create', userData, config);
   return response.data;
 };
 
