@@ -29,7 +29,7 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 
-import { getUser, updateUser, reset } from '../../features/users/userSlice';
+import { getUserById, updateUser, reset } from '../../features/users/userSlice';
 
 const EditUser = () => {
   const { id } = useParams();
@@ -71,7 +71,7 @@ const EditUser = () => {
     dispatch(reset());
     
     // Get user data from API
-    dispatch(getUser(id))
+    dispatch(getUserById(id))
       .unwrap()
       .then(response => {
         console.log('EditUser: User data retrieved successfully', response);
@@ -260,7 +260,7 @@ const EditUser = () => {
         
         <Button 
           variant="contained" 
-          onClick={() => dispatch(getUser(id))} 
+          onClick={() => dispatch(getUserById(id))} 
           startIcon={<IconButton><VisibilityIcon /></IconButton>}
         >
           Retry
