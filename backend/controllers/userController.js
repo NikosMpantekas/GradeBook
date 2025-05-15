@@ -62,26 +62,35 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!user) {
     console.log(`User not found for email: ${email}`);
     res.status(401);
-    throw new Error('Invalid credentials');
+    throw new Error('Invalid credentials - user not found');
   }
   
-  // Attempt password match
-  const isMatch = await user.matchPassword(password);
-  console.log(`Password match for ${email}: ${isMatch}`);
+  console.log(`User found: ${user.name}, role: ${user.role}, password length: ${user.password.length}`);
   
-  if (isMatch) {
-    res.json({
-      _id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      darkMode: user.darkMode,
-      saveCredentials: user.saveCredentials,
-      token: generateToken(user._id),
-    });
-  } else {
+  try {
+    // Attempt password match
+    const isMatch = await bcrypt.compare(password, user.password);
+    console.log(`Direct bcrypt comparison for ${email}: ${isMatch}`);
+    
+    if (isMatch) {
+      res.json({
+        _id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        darkMode: user.darkMode,
+        saveCredentials: user.saveCredentials,
+        token: generateToken(user._id),
+      });
+    } else {
+      console.log(`Password didn't match for ${email}`);
+      res.status(401);
+      throw new Error('Invalid credentials - password mismatch');
+    }
+  } catch (error) {
+    console.error(`Login error for ${email}:`, error.message);
     res.status(401);
-    throw new Error('Invalid credentials');
+    throw new Error(error.message || 'Invalid credentials');
   }
 });
 
@@ -262,10 +271,11 @@ const createAdminAccount = asyncHandler(async (req, res) => {
 });
 
 // @desc    Create user by admin
-// @route   POST /api/users
+// @route   POST /api/users/admin/create
 // @access  Private/Admin
 const createUserByAdmin = asyncHandler(async (req, res) => {
   const { name, email, password, role } = req.body;
+  console.log('Admin creating user:', { name, email, role, passwordLength: password ? password.length : 0 });
 
   if (!name || !email || !password || !role) {
     res.status(400);
@@ -280,29 +290,40 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     throw new Error('User already exists');
   }
 
-  // Hash password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  // Create user
-  const user = await User.create({
-    name,
-    email,
-    password: hashedPassword,
-    role,
-  });
-
-  if (user) {
-    res.status(201).json({
-      _id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token: generateToken(user._id),
+  try {
+    // IMPORTANT: Direct password hashing - bypassing the model middleware
+    // Generate salt and hash
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    console.log('Generated hashed password length:', hashedPassword.length);
+    
+    // Create a new user document directly with the hashed password
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword,
+      role,
     });
-  } else {
+    
+    // Save the user bypassing the middleware
+    const savedUser = await user.save();
+    console.log('User created successfully with ID:', savedUser._id);
+    
+    // Test password verification
+    const testVerify = await bcrypt.compare(password, savedUser.password);
+    console.log('Password verification test result:', testVerify);
+  
+    res.status(201).json({
+      _id: savedUser.id,
+      name: savedUser.name,
+      email: savedUser.email,
+      role: savedUser.role,
+      token: generateToken(savedUser._id),
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
     res.status(400);
-    throw new Error('Invalid user data');
+    throw new Error('Failed to create user: ' + error.message);
   }
 });
 
