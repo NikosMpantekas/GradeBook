@@ -113,19 +113,55 @@ const AdminDashboard = () => {
     });
   }, [users, schools, subjects, directions, notifications]);
   
-  // Fetch data on component mount
+  // Fetch data on component mount with force refresh  
   useEffect(() => {
-    // Dispatch actions using the imported action creators
+    // Clear any stale data in localStorage (this helps with browser cache issues)
+    const storageKeys = [
+      'persist:users',
+      'persist:schools',
+      'persist:subjects',
+      'persist:directions',
+      'persist:notifications'
+    ];
+    
+    // Clear specific cached data to force refresh
+    storageKeys.forEach(key => {
+      try {
+        if (localStorage.getItem(key)) {
+          localStorage.removeItem(key);
+        }
+      } catch (error) {
+        console.error(`Error clearing ${key} from localStorage:`, error);
+      }
+    });
+    
+    // Now fetch fresh data
     dispatch(getUsers());
     dispatch(getSchools());
     dispatch(getSubjects());
     dispatch(getDirections());
-    dispatch(getMyNotifications()); // Fetch notifications for the current user
+    dispatch(getMyNotifications());
     
     // Clean up function
     return () => {
-      // We could reset states here if needed
+      // Any cleanup if needed
     };
+  }, [dispatch]);
+  
+  // Force refresh every time the dashboard is shown
+  useEffect(() => {
+    // This will re-fetch data when the dashboard is revisited
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        dispatch(getUsers());
+        dispatch(getSchools());
+        dispatch(getSubjects());
+        dispatch(getDirections());
+        dispatch(getMyNotifications());
+      }
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
   }, [dispatch]);
   
   // Pie chart data for user roles

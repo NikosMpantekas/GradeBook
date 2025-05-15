@@ -85,32 +85,38 @@ const ManageUsers = () => {
   }, [users, searchTerm, roleFilter]);
 
   const applyFilters = () => {
-    // Safety check - ensure users is an array before spreading
+    // Safety check - ensure users is an array before filtering
     if (!users || !Array.isArray(users)) {
-      console.error('Users is not an array:', users);
+      console.log('Users is not an array:', users);
       setFilteredUsers([]);
       return;
     }
-
-    let filtered = [...users];
-
-    // Apply role filter
-    if (roleFilter) {
-      filtered = filtered.filter((user) => user && user.role === roleFilter);
+    
+    try {
+      // Create a safe copy of the users array with null/undefined checks
+      const safeUsers = users.filter(user => user !== null && user !== undefined);
+      let filtered = [...safeUsers];
+      
+      // Apply search filter
+      if (searchTerm && searchTerm.trim() !== '') {
+        const searchLower = searchTerm.toLowerCase();
+        filtered = filtered.filter(user => 
+          (user.name && user.name.toLowerCase().includes(searchLower)) ||
+          (user.email && user.email.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      // Apply role filter
+      if (roleFilter && roleFilter !== '') {
+        filtered = filtered.filter(user => user.role === roleFilter);
+      }
+      
+      setFilteredUsers(filtered);
+    } catch (error) {
+      console.error('Error applying filters:', error);
+      // Fallback to empty array in case of any error
+      setFilteredUsers([]);
     }
-
-    // Apply search filter
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (user) =>
-          user && 
-          ((user.name && user.name.toLowerCase().includes(search)) ||
-          (user.email && user.email.toLowerCase().includes(search)))
-      );
-    }
-
-    setFilteredUsers(filtered);
   };
 
   const handleChangePage = (event, newPage) => {

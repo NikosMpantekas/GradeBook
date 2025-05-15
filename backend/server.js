@@ -252,10 +252,11 @@ if (process.env.NODE_ENV === 'production') {
       '/app/*',
       '/admin*',
       '/teacher*',
-      '/profile*',
-      '/notifications*',
+      '/profile',
+      '/notifications',
       '/grades*',
-      '/settings*'
+      '/settings*',
+      '/dashboard'
     ];
     
     // Handle all protected routes

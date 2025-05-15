@@ -62,15 +62,26 @@ const CreateNotification = () => {
     }
   }, [students]);
 
+  // Use a ref to track if this is the first mount
+  const isInitialMount = React.useRef(true);
+
   useEffect(() => {
+    // On first mount, just reset any previous notification state and mark that we've mounted
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      dispatch(reset());
+      return;
+    }
+
+    // Only show error messages if not initial mount
     if (isError) {
       toast.error(message);
     }
 
+    // Only show success and navigate if not initial mount and we actually have a success
     if (isSuccess) {
       toast.success('Notification created successfully');
       navigate('/app/teacher/notifications');
-      dispatch(reset());
     }
 
     // Reset notification state on component unmount
