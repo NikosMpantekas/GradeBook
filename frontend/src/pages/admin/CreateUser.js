@@ -110,17 +110,35 @@ const CreateUser = () => {
     return Object.keys(errors).length === 0;
   };
   
+  // Create a ref to track if this is the initial mount
+  const initialMount = React.useRef(true);
+  // Another ref to track if we've submitted the form
+  const hasSubmitted = React.useRef(false);
+
   // Handle API response effects
   useEffect(() => {
+    // Skip effects on initial component mount to prevent false success messages
+    if (initialMount.current) {
+      console.log('CreateUser: Initial mount, skipping effect');
+      initialMount.current = false;
+      // Make sure we reset any stale state on mount
+      dispatch(reset());
+      return;
+    }
+
     if (isError) {
-      toast.error(message);
+      console.log('CreateUser: Error occurred:', message);
+      toast.error(message || 'Failed to create user');
       setSubmitting(false);
+      hasSubmitted.current = false;
     }
     
-    if (isSuccess) {
+    if (isSuccess && hasSubmitted.current) {
+      console.log('CreateUser: Success after form submission');
       toast.success('User created successfully');
       navigate('/app/admin/users');
       dispatch(reset());
+      hasSubmitted.current = false;
     }
     
     return () => {
@@ -135,6 +153,9 @@ const CreateUser = () => {
     
     if (validate()) {
       setSubmitting(true);
+      // Mark that we've intentionally submitted the form
+      hasSubmitted.current = true;
+      console.log('CreateUser: Form submitted, setting hasSubmitted=true');
       
       // Create new user via the API
       dispatch(createUser({
