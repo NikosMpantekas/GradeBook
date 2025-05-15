@@ -34,7 +34,7 @@ const createUser = async (userData, token) => {
     },
   };
 
-  const response = await axios.post(API_URL + 'create', userData, config);
+  const response = await axios.post(API_URL, userData, config);
   return response.data;
 };
 

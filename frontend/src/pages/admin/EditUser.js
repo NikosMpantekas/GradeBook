@@ -197,7 +197,7 @@ const EditUser = () => {
       console.log('EditUser: Submitting update for user', id);
       
       const updateData = {
-        id: id,
+        userId: id,
         userData: {
           name: formData.name,
           email: formData.email,
@@ -210,7 +210,10 @@ const EditUser = () => {
         updateData.userData.password = formData.password;
       }
       
-      dispatch(updateUser(updateData))
+      dispatch(updateUser({
+        userId: id,
+        userData: updateData.userData
+      }))
         .unwrap()
         .then(() => {
           console.log('EditUser: User updated successfully');
