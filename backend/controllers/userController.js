@@ -179,15 +179,21 @@ const updateUser = asyncHandler(async (req, res) => {
     user.email = req.body.email || user.email;
     user.role = req.body.role || user.role;
     
-    if (req.body.school) {
+    // Handle password update if provided
+    if (req.body.password) {
+      user.password = req.body.password;
+    }
+    
+    // Handle school, direction, and subjects fields
+    if (req.body.school !== undefined) {
       user.school = req.body.school;
     }
     
-    if (req.body.direction) {
+    if (req.body.direction !== undefined) {
       user.direction = req.body.direction;
     }
     
-    if (req.body.subjects) {
+    if (req.body.subjects !== undefined) {
       user.subjects = req.body.subjects;
     }
 
