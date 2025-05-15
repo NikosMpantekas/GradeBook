@@ -53,11 +53,23 @@ const registerUser = asyncHandler(async (req, res) => {
 // @access  Public
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  
+  console.log(`Login attempt for email: ${email}`);
 
   // Check for user email
   const user = await User.findOne({ email });
-
-  if (user && (await user.matchPassword(password))) {
+  
+  if (!user) {
+    console.log(`User not found for email: ${email}`);
+    res.status(401);
+    throw new Error('Invalid credentials');
+  }
+  
+  // Attempt password match
+  const isMatch = await user.matchPassword(password);
+  console.log(`Password match for ${email}: ${isMatch}`);
+  
+  if (isMatch) {
     res.json({
       _id: user.id,
       name: user.name,
@@ -249,6 +261,51 @@ const createAdminAccount = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Create user by admin
+// @route   POST /api/users
+// @access  Private/Admin
+const createUserByAdmin = asyncHandler(async (req, res) => {
+  const { name, email, password, role } = req.body;
+
+  if (!name || !email || !password || !role) {
+    res.status(400);
+    throw new Error('Please add all fields');
+  }
+
+  // Check if user exists
+  const userExists = await User.findOne({ email });
+
+  if (userExists) {
+    res.status(400);
+    throw new Error('User already exists');
+  }
+
+  // Hash password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  // Create user
+  const user = await User.create({
+    name,
+    email,
+    password: hashedPassword,
+    role,
+  });
+
+  if (user) {
+    res.status(201).json({
+      _id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id),
+    });
+  } else {
+    res.status(400);
+    throw new Error('Invalid user data');
+  }
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -259,4 +316,5 @@ module.exports = {
   updateUser,
   deleteUser,
   createAdminAccount,
+  createUserByAdmin,
 };

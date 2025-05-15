@@ -50,7 +50,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 userSchema.pre('save', async function (next) {
   // Only hash the password if it's modified (or new)
   if (!this.isModified('password')) {
-    next();
+    return next();
   }
 
   // Generate salt

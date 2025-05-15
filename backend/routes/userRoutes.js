@@ -10,6 +10,7 @@ const {
   updateUser,
   deleteUser,
   createAdminAccount,
+  createUserByAdmin,
 } = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -24,7 +25,7 @@ router.put('/profile', protect, updateProfile);
 
 // Admin routes
 router.get('/', protect, admin, getUsers);
-router.post('/admin/create', protect, admin, registerUser); // Admin user creation endpoint
+router.post('/admin/create', protect, admin, createUserByAdmin); // Admin user creation endpoint
 router.get('/:id', protect, admin, getUserById);
 router.put('/:id', protect, admin, updateUser);
 router.delete('/:id', protect, admin, deleteUser);
