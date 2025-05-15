@@ -58,30 +58,68 @@ const StandaloneDashboard = () => {
     navigate('/login');
   };
   
-  // Helper for consistent navigation with proper path prefix
-  const navigateTo = (path) => {
-    // Ensure path starts with /app/ for protected routes
-    const fullPath = path.startsWith('/app') ? path : `/app${path.startsWith('/') ? path : '/' + path}`;
-    console.log(`Navigating to: ${fullPath}`);
-    navigate(fullPath);
+  // Direct navigation with explicit full paths
+  const navigateToApp = () => {
+    console.log('Navigating to: /app');
+    navigate('/app');
   };
-
-  const navigateToApp = () => navigateTo('/app');
-  const navigateToProfile = () => navigateTo('/profile');
-  const navigateToNotifications = () => navigateTo('/notifications');
-  const navigateToGrades = () => navigateTo('/grades');
-  const navigateToTeacherDashboard = () => navigateTo('/teacher');
-  const navigateToAdminDashboard = () => navigateTo('/admin');
   
-  // Create specific navigation functions for teacher routes
-  const navigateToTeacherGrades = () => navigateTo('/teacher/grades/manage');
-  const navigateToTeacherNotifications = () => navigateTo('/teacher/notifications');
+  const navigateToProfile = () => {
+    console.log('Navigating to: /app/profile');
+    navigate('/app/profile');
+  };
   
-  // Create specific navigation functions for admin subpages
-  const navigateToManageUsers = () => navigateTo('/admin/users');
-  const navigateToCreateUser = () => navigateTo('/admin/users/create');
-  const navigateToManageSchools = () => navigateTo('/admin/schools');
-  const navigateToManageDirections = () => navigateTo('/admin/directions');
+  const navigateToNotifications = () => {
+    console.log('Navigating to: /app/notifications');
+    navigate('/app/notifications');
+  };
+  
+  const navigateToGrades = () => {
+    console.log('Navigating to: /app/grades');
+    navigate('/app/grades');
+  };
+  
+  const navigateToTeacherDashboard = () => {
+    console.log('Navigating to: /app/teacher');
+    navigate('/app/teacher');
+  };
+  
+  const navigateToAdminDashboard = () => {
+    console.log('Navigating to: /app/admin');
+    navigate('/app/admin');
+  };
+  
+  // Teacher specific routes
+  const navigateToTeacherGrades = () => {
+    console.log('Navigating to: /app/teacher/grades/manage');
+    navigate('/app/teacher/grades/manage');
+  };
+  
+  const navigateToTeacherNotifications = () => {
+    console.log('Navigating to: /app/teacher/notifications');
+    navigate('/app/teacher/notifications');
+  };
+  
+  // Admin specific routes 
+  const navigateToManageUsers = () => {
+    console.log('Navigating to: /app/admin/users');
+    navigate('/app/admin/users');
+  };
+  
+  const navigateToCreateUser = () => {
+    console.log('Navigating to: /app/admin/users/create');
+    navigate('/app/admin/users/create');
+  };
+  
+  const navigateToManageSchools = () => {
+    console.log('Navigating to: /app/admin/schools');
+    navigate('/app/admin/schools');
+  };
+  
+  const navigateToManageDirections = () => {
+    console.log('Navigating to: /app/admin/directions');
+    navigate('/app/admin/directions');
+  };
   
   const openMenu = (event) => {
     setAnchorEl(event.currentTarget);
