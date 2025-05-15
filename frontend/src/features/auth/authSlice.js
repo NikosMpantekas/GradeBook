@@ -1,11 +1,24 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authService from './authService';
 
-// Get user from localStorage
-const user = JSON.parse(localStorage.getItem('user'));
+// Get user from localStorage or sessionStorage
+const localUser = localStorage.getItem('user');
+const sessionUser = sessionStorage.getItem('user');
+
+// Use user data from either storage location
+let user = null;
+try {
+  if (localUser) {
+    user = JSON.parse(localUser);
+  } else if (sessionUser) {
+    user = JSON.parse(sessionUser);
+  }
+} catch (error) {
+  console.error('Error parsing user data from storage:', error);
+}
 
 const initialState = {
-  user: user || null,
+  user: user,
   isError: false,
   isSuccess: false,
   isLoading: false,

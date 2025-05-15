@@ -49,9 +49,40 @@ import ManageSubjects from './pages/admin/ManageSubjects';
 import { setupPushNotifications } from './services/pushNotificationService';
 
 function App() {
+  const dispatch = useDispatch();
   const { darkMode } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
   
+  // Special initialization to ensure Redux is synced with storage
+  useEffect(() => {
+    // If Redux has no user but session storage does, we need to forcibly sync
+    if (!user) {
+      try {
+        const sessionUser = sessionStorage.getItem('user');
+        const localUser = localStorage.getItem('user');
+        
+        let userData = null;
+        if (sessionUser) {
+          userData = JSON.parse(sessionUser);
+          console.log('Found user in sessionStorage, syncing with Redux');
+        } else if (localUser) {
+          userData = JSON.parse(localUser);
+          console.log('Found user in localStorage, syncing with Redux');
+        }
+        
+        if (userData && userData.token) {
+          // Create a manual login action to update Redux state
+          dispatch({
+            type: 'auth/login/fulfilled',
+            payload: userData
+          });
+        }
+      } catch (err) {
+        console.error('Error syncing storage with Redux:', err);
+      }
+    }
+  }, [user, dispatch]);
+
   // Create theme based on dark mode preference
   const theme = createTheme({
     palette: {
