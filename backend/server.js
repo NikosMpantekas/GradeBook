@@ -228,17 +228,28 @@ if (process.env.NODE_ENV === 'production') {
     // First serve static files (important: this must come BEFORE the catch-all route)
     app.use(express.static(staticPath));
 
+    // Add a special debug route to test if the server is serving static files correctly
+    app.get('/appinfo', (req, res) => {
+      res.json({
+        success: true,
+        message: 'App info debug endpoint',
+        serverTime: new Date().toISOString(),
+        environment: process.env.NODE_ENV,
+        availableRoutes: [
+          '/app',
+          '/app/profile',
+          '/app/notifications',
+          '/dashboard'
+        ]
+      });
+    });
+
     // CRITICAL: Make sure API routes are defined BEFORE the catch-all route
     // This is already done above with app.use('/api/...')
 
+    // IMPORTANT: Fix the order of middleware - this must be the LAST middleware registered!
     // For all other routes, serve index.html
-    // This is a catch-all route that must be defined LAST
-    app.get('/*', (req, res, next) => {
-      // Skip API routes - they've already been handled
-      if (req.originalUrl.startsWith('/api/')) {
-        return next();
-      }
-      
+    app.use('*', (req, res) => {
       console.log(`Serving index.html for client-side route: ${req.originalUrl}`);
       
       if (!fs.existsSync(indexPath)) {
@@ -247,7 +258,7 @@ if (process.env.NODE_ENV === 'production') {
       }
       
       // Send the React app's index.html for all client-side routes
-      res.sendFile(indexPath);
+      return res.sendFile(indexPath);
     });
   } else {
     console.error('CRITICAL ERROR: Could not find build directory in any location!');
