@@ -84,10 +84,34 @@ const CreateUser = () => {
       });
     }
     
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    // Special handling for different fields
+    if (name === 'role') {
+      // Reset school, direction, and subjects when role changes
+      const newState = {
+        ...formData,
+        [name]: value,
+      };
+      
+      // If changing to admin, clear school/direction/subjects
+      if (value === 'admin') {
+        newState.school = '';
+        newState.direction = '';
+        newState.subjects = [];
+      }
+      
+      setFormData(newState);
+    } else if (name === 'subjects') {
+      // Handle multi-select for subjects
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
   
   const handleClickShowPassword = () => {
@@ -100,6 +124,71 @@ const CreateUser = () => {
   
   const handleMouseDownPassword = (e) => {
     e.preventDefault();
+  };
+  
+  // Fetch schools, directions, and subjects when component mounts
+  useEffect(() => {
+    // Only load these options for teacher and student roles
+    if (formData.role === 'teacher' || formData.role === 'student') {
+      fetchSchools();
+      fetchDirections();
+      fetchSubjects();
+    }
+  }, [formData.role]);
+  
+  // Functions to fetch reference data
+  const fetchSchools = async () => {
+    try {
+      setLoadingOptions(prev => ({ ...prev, schools: true }));
+      setOptionsError(prev => ({ ...prev, schools: null }));
+      
+      const response = await axios.get('/api/schools');
+      setOptionsData(prev => ({ ...prev, schools: response.data }));
+    } catch (error) {
+      console.error('Error fetching schools:', error);
+      setOptionsError(prev => ({
+        ...prev,
+        schools: 'Failed to fetch schools. Please try again.'
+      }));
+    } finally {
+      setLoadingOptions(prev => ({ ...prev, schools: false }));
+    }
+  };
+  
+  const fetchDirections = async () => {
+    try {
+      setLoadingOptions(prev => ({ ...prev, directions: true }));
+      setOptionsError(prev => ({ ...prev, directions: null }));
+      
+      const response = await axios.get('/api/directions');
+      setOptionsData(prev => ({ ...prev, directions: response.data }));
+    } catch (error) {
+      console.error('Error fetching directions:', error);
+      setOptionsError(prev => ({
+        ...prev,
+        directions: 'Failed to fetch directions. Please try again.'
+      }));
+    } finally {
+      setLoadingOptions(prev => ({ ...prev, directions: false }));
+    }
+  };
+  
+  const fetchSubjects = async () => {
+    try {
+      setLoadingOptions(prev => ({ ...prev, subjects: true }));
+      setOptionsError(prev => ({ ...prev, subjects: null }));
+      
+      const response = await axios.get('/api/subjects');
+      setOptionsData(prev => ({ ...prev, subjects: response.data }));
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+      setOptionsError(prev => ({
+        ...prev,
+        subjects: 'Failed to fetch subjects. Please try again.'
+      }));
+    } finally {
+      setLoadingOptions(prev => ({ ...prev, subjects: false }));
+    }
   };
   
   const validate = () => {
@@ -122,7 +211,7 @@ const CreateUser = () => {
     }
     
     if (!formData.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
+      errors.confirmPassword = 'Confirm password is required';
     } else if (formData.password !== formData.confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
     }
@@ -131,26 +220,78 @@ const CreateUser = () => {
       errors.role = 'Role is required';
     }
     
-    // Validate role-specific fields
-    if (formData.role === 'teacher' || formData.role === 'student') {
-      // School is required for teachers and students
-      if (!formData.school) {
-        errors.school = 'School is required';
+    // Only validate school and direction fields if role is student or teacher
+    if (formData.role === 'student' || formData.role === 'teacher') {
+      // Schools and directions are optional, but if provided, should be valid
+      if (formData.school && !optionsData.schools.some(school => school._id === formData.school)) {
+        errors.school = 'Please select a valid school';
       }
       
-      // Direction is required for students
-      if (formData.role === 'student' && !formData.direction) {
-        errors.direction = 'Direction is required';
+      if (formData.direction && !optionsData.directions.some(direction => direction._id === formData.direction)) {
+        errors.direction = 'Please select a valid direction';
       }
       
-      // Subjects are required for teachers
-      if (formData.role === 'teacher' && (!formData.subjects || formData.subjects.length === 0)) {
-        errors.subjects = 'At least one subject is required';
+      // For subjects, just verify each selection is a valid subject ID if any are selected
+      if (formData.subjects && formData.subjects.length > 0) {
+        const validSubjectIds = optionsData.subjects.map(subject => subject._id);
+        const hasInvalidSubject = formData.subjects.some(subjectId => !validSubjectIds.includes(subjectId));
+        
+        if (hasInvalidSubject) {
+          errors.subjects = 'One or more selected subjects are invalid';
+        }
       }
     }
     
+    return errors;
+  };
+  
+  // Main form submission function - called when form is submitted
+  const validateAndSubmitForm = (e) => {
+    e.preventDefault();
+    
+    const errors = validate();
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    
+    if (Object.keys(errors).length === 0) {
+      setSubmitting(true);
+      // Mark that we've intentionally submitted the form
+      hasSubmitted.current = true;
+      console.log('CreateUser: Form submitted, setting hasSubmitted=true');
+      
+      // Base user data
+      const userData = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+      };
+      
+      // Add school, direction, and subjects for teachers and students
+      if (formData.role === 'teacher' || formData.role === 'student') {
+        // Only include non-empty values
+        if (formData.school) userData.school = formData.school;
+        if (formData.direction) userData.direction = formData.direction;
+        if (formData.subjects && formData.subjects.length > 0) {
+          userData.subjects = formData.subjects;
+        }
+      }
+      
+      console.log('Submitting user data:', userData);
+      
+      dispatch(createUser(userData))
+        .unwrap()
+        .then(() => {
+          toast.success('User created successfully!');
+          navigate('/app/admin/users');
+        })
+        .catch((error) => {
+          toast.error(
+            error?.message ||
+              'Error creating user. Please check your information and try again.'
+          );
+          setSubmitting(false);
+        });
+    }
   };
   
   // Create a ref to track if this is the initial mount
@@ -259,54 +400,8 @@ const CreateUser = () => {
     };
   }, [isError, isSuccess, message, navigate, dispatch]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (validate()) {
-      setSubmitting(true);
-      // Mark that we've intentionally submitted the form
-      hasSubmitted.current = true;
-      console.log('CreateUser: Form submitted, setting hasSubmitted=true');
-      
-      // Prepare user data based on role
-      const userData = {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-      };
-      
-      // Add role-specific fields
-      if (formData.role === 'teacher' || formData.role === 'student') {
-        userData.school = formData.school;
-        
-        if (formData.role === 'student' && formData.direction) {
-          userData.direction = formData.direction;
-        }
-        
-        if (formData.role === 'teacher' && formData.subjects && formData.subjects.length > 0) {
-          userData.subjects = formData.subjects;
-        }
-      }
-      
-      console.log('Creating user with data:', userData);
-      
-      // Create new user via the API
-      dispatch(createUser(userData))
-        .unwrap()
-        .then(() => {
-          // Success is handled in the useEffect
-        })
-        .catch((error) => {
-          // Additional error handling if needed
-          console.error('Failed to create user:', error);
-        })
-        .finally(() => {
-          // This ensures the submitting state is reset even if something goes wrong
-          // The main state reset is still handled in the useEffect
-        });
-    }
-  };
+  // The handleSubmit function was removed to fix the duplicate function lint error
+  // The functionality is now contained in validateAndSubmitForm defined earlier
   
   const handleBack = () => {
     navigate('/app/admin/users');
@@ -366,7 +461,7 @@ const CreateUser = () => {
         
         <Divider sx={{ mb: 3 }} />
         
-        <Box component="form" onSubmit={handleSubmit}>
+        <Box component="form" onSubmit={validateAndSubmitForm}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <TextField

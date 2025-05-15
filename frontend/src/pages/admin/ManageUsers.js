@@ -429,6 +429,8 @@ const ManageUsers = () => {
                 <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Role</TableCell>
+                <TableCell>School/Direction</TableCell>
+                <TableCell>Subjects</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell align="center">Actions</TableCell>
               </TableRow>
@@ -454,6 +456,46 @@ const ManageUsers = () => {
                           color={getRoleColor(user.role)}
                           size="small"
                         />
+                      </TableCell>
+                      <TableCell>
+                        {/* School and Direction information */}
+                        {user.school ? (
+                          <Typography variant="body2">
+                            <strong>School:</strong> {user.school.name || user.school}
+                            {user.direction && (
+                              <>
+                                <br />
+                                <strong>Direction:</strong> {user.direction.name || user.direction}
+                              </>
+                            )}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">None assigned</Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {/* Subjects information */}
+                        {user.subjects && user.subjects.length > 0 ? (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {user.subjects.slice(0, 2).map((subject, idx) => (
+                              <Chip
+                                key={idx}
+                                label={subject.name || subject}
+                                size="small"
+                                variant="outlined"
+                              />
+                            ))}
+                            {user.subjects.length > 2 && (
+                              <Chip
+                                label={`+${user.subjects.length - 2} more`}
+                                size="small"
+                                variant="outlined"
+                              />
+                            )}
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">None assigned</Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         {user.createdAt ? format(new Date(user.createdAt), 'PP') : 'Unknown'}

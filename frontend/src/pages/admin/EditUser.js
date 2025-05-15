@@ -30,6 +30,9 @@ import {
 import { toast } from 'react-toastify';
 
 import { getUserById, updateUser, reset } from '../../features/users/userSlice';
+import { getSchools } from '../../features/schools/schoolSlice';
+import { getDirections } from '../../features/directions/directionSlice';
+import { getSubjects } from '../../features/subjects/subjectSlice';
 
 const EditUser = () => {
   const { id } = useParams();
@@ -49,10 +52,21 @@ const EditUser = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [userData, setUserData] = useState(null);
   
+  // Add state for schools, directions, and subjects
+  const [schools, setSchools] = useState([]);
+  const [directions, setDirections] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
+  const [directionsLoading, setDirectionsLoading] = useState(false);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     role: '',
+    school: '',
+    direction: '',
+    subjects: [],
     changePassword: false,
     password: '',
     confirmPassword: '',
@@ -61,6 +75,36 @@ const EditUser = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   
+  // Fetch schools, directions, and subjects data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch schools
+        setSchoolsLoading(true);
+        const schoolsData = await dispatch(getSchools()).unwrap();
+        setSchools(schoolsData);
+        setSchoolsLoading(false);
+        
+        // Fetch directions
+        setDirectionsLoading(true);
+        const directionsData = await dispatch(getDirections()).unwrap();
+        setDirections(directionsData);
+        setDirectionsLoading(false);
+        
+        // Fetch subjects
+        setSubjectsLoading(true);
+        const subjectsData = await dispatch(getSubjects()).unwrap();
+        setSubjects(subjectsData);
+        setSubjectsLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch reference data:', error);
+        toast.error('Failed to load some reference data. Please refresh the page.');
+      }
+    };
+    
+    fetchData();
+  }, [dispatch]);
+
   // Fetch user data on component mount
   useEffect(() => {
     console.log('EditUser: Fetching user data for ID:', id);
@@ -82,6 +126,9 @@ const EditUser = () => {
             name: response.name || '',
             email: response.email || '',
             role: response.role || '',
+            school: response.school?._id || response.school || '',
+            direction: response.direction?._id || response.direction || '',
+            subjects: response.subjects?.map(subj => typeof subj === 'object' ? subj._id : subj) || [],
             changePassword: false,
             password: '',
             confirmPassword: '',
@@ -105,20 +152,46 @@ const EditUser = () => {
   }, [id, dispatch]);
   
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     
-    // Clear the error for this field when it's modified
-    if (formErrors[name]) {
-      setFormErrors({
-        ...formErrors,
-        [name]: '',
+    // Reset errors when field is changed
+    setFormErrors({
+      ...formErrors,
+      [name]: '',
+    });
+
+    if (name === 'changePassword') {
+      setFormData({
+        ...formData,
+        changePassword: checked,
+      });
+    } else if (name === 'subjects') {
+      // Handle multi-select for subjects
+      setFormData({
+        ...formData,
+        subjects: value,
+      });
+    } else if (name === 'role') {
+      // When role changes, reset role-specific fields if needed
+      const newState = {
+        ...formData,
+        role: value,
+      };
+      
+      // If changing to admin, clear school/direction/subjects
+      if (value === 'admin') {
+        newState.school = '';
+        newState.direction = '';
+        newState.subjects = [];
+      }
+      
+      setFormData(newState);
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
       });
     }
-    
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
   };
   
   const handleChangePasswordToggle = (e) => {
@@ -152,81 +225,77 @@ const EditUser = () => {
     e.preventDefault();
   };
   
-  const validate = () => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    hasSubmitted.current = true;
+    setIsError(false);
+    
+    // Validate form
     const errors = {};
-    
-    if (!formData.name.trim()) {
-      errors.name = 'Name is required';
+    if (!formData.name) errors.name = 'Name is required';
+    if (!formData.email) errors.email = 'Email is required';
+    if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+      errors.email = 'Please enter a valid email address';
     }
+    if (!formData.role) errors.role = 'Role is required';
     
-    if (!formData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Email is invalid';
-    }
-    
-    if (!formData.role) {
-      errors.role = 'Role is required';
-    }
-    
-    // Check password fields only if changePassword is true
+    // Password validation if changing password
     if (formData.changePassword) {
-      if (!formData.password) {
-        errors.password = 'Password is required';
-      } else if (formData.password.length < 6) {
+      if (!formData.password) errors.password = 'Password is required';
+      if (formData.password.length < 6) {
         errors.password = 'Password must be at least 6 characters';
       }
-      
-      if (!formData.confirmPassword) {
-        errors.confirmPassword = 'Please confirm your password';
-      } else if (formData.password !== formData.confirmPassword) {
+      if (!formData.confirmPassword) errors.confirmPassword = 'Please confirm your password';
+      if (formData.password !== formData.confirmPassword) {
         errors.confirmPassword = 'Passwords do not match';
       }
     }
     
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-  
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (validate()) {
-      setIsLoading(true);
-      hasSubmitted.current = true;
-      console.log('EditUser: Submitting update for user', id);
-      
-      const updateData = {
-        userId: id,
-        userData: {
-          name: formData.name,
-          email: formData.email,
-          role: formData.role
-        }
-      };
-      
-      // Only include password if changePassword is true and password is provided
-      if (formData.changePassword && formData.password) {
-        updateData.userData.password = formData.password;
-      }
-      
-      dispatch(updateUser({
-        userId: id,
-        userData: updateData.userData
-      }))
-        .unwrap()
-        .then(() => {
-          console.log('EditUser: User updated successfully');
-          toast.success('User updated successfully');
-          navigate('/app/admin/users');
-        })
-        .catch(error => {
-          console.error('EditUser: Failed to update user', error);
-          toast.error(`Failed to update user: ${error?.message || 'Unknown error'}`);
-          setIsLoading(false);
-          hasSubmitted.current = false;
-        });
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
     }
+    
+    // Create user data object
+    const userData = {
+      name: formData.name,
+      email: formData.email,
+      role: formData.role,
+    };
+    
+    // Only include password if changing it
+    if (formData.changePassword && formData.password) {
+      userData.password = formData.password;
+    }
+    
+    // Include school, direction, and subjects for teachers and students
+    if (formData.role === 'teacher' || formData.role === 'student') {
+      // Only include if there's a value to prevent sending empty strings
+      if (formData.school) userData.school = formData.school;
+      if (formData.direction) userData.direction = formData.direction;
+      if (formData.subjects && formData.subjects.length > 0) {
+        userData.subjects = formData.subjects;
+      }
+    }
+    
+    console.log('Submitting user data:', userData);
+    
+    // Update user
+    setIsLoading(true);
+    dispatch(updateUser({ id, userData }))
+      .unwrap()
+      .then(() => {
+        toast.success('User updated successfully');
+        // Redirect back to user management
+        navigate('/app/admin/users');
+      })
+      .catch(error => {
+        setIsLoading(false);
+        setIsError(true);
+        const errorMsg = error?.message || 'Failed to update user';
+        setErrorMessage(errorMsg);
+        toast.error(errorMsg);
+      });
   };
   
   const handleBack = () => {
@@ -318,25 +387,142 @@ const EditUser = () => {
               />
             </Grid>
             
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12}>
               <FormControl fullWidth error={!!formErrors.role}>
-                <InputLabel>Role *</InputLabel>
+                <InputLabel id="role-label">Role</InputLabel>
                 <Select
+                  labelId="role-label"
+                  id="role"
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  label="Role *"
-                  disabled={isLoading}
+                  label="Role"
                 >
-                  <MenuItem value="student">Student</MenuItem>
-                  <MenuItem value="teacher">Teacher</MenuItem>
                   <MenuItem value="admin">Admin</MenuItem>
+                  <MenuItem value="teacher">Teacher</MenuItem>
+                  <MenuItem value="student">Student</MenuItem>
                 </Select>
-                {formErrors.role && (
-                  <FormHelperText>{formErrors.role}</FormHelperText>
-                )}
+                <FormHelperText>{formErrors.role}</FormHelperText>
               </FormControl>
             </Grid>
+
+            {(formData.role === 'teacher' || formData.role === 'student') && (
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth error={!!formErrors.school}>
+                  <InputLabel id="school-label">School</InputLabel>
+                  <Select
+                    labelId="school-label"
+                    id="school"
+                    name="school"
+                    value={formData.school}
+                    onChange={handleChange}
+                    label="School"
+                    disabled={schoolsLoading}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {schoolsLoading ? (
+                      <MenuItem disabled>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading schools...
+                        </Box>
+                      </MenuItem>
+                    ) : (
+                      schools.map((school) => (
+                        <MenuItem key={school._id} value={school._id}>
+                          {school.name}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                  <FormHelperText>{formErrors.school}</FormHelperText>
+                </FormControl>
+              </Grid>
+            )}
+
+            {(formData.role === 'teacher' || formData.role === 'student') && (
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth error={!!formErrors.direction}>
+                  <InputLabel id="direction-label">Direction</InputLabel>
+                  <Select
+                    labelId="direction-label"
+                    id="direction"
+                    name="direction"
+                    value={formData.direction}
+                    onChange={handleChange}
+                    label="Direction"
+                    disabled={directionsLoading}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {directionsLoading ? (
+                      <MenuItem disabled>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading directions...
+                        </Box>
+                      </MenuItem>
+                    ) : (
+                      directions.map((direction) => (
+                        <MenuItem key={direction._id} value={direction._id}>
+                          {direction.name}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                  <FormHelperText>{formErrors.direction}</FormHelperText>
+                </FormControl>
+              </Grid>
+            )}
+
+            {(formData.role === 'teacher' || formData.role === 'student') && (
+              <Grid item xs={12}>
+                <FormControl fullWidth error={!!formErrors.subjects}>
+                  <InputLabel id="subjects-label">Subjects</InputLabel>
+                  <Select
+                    labelId="subjects-label"
+                    id="subjects"
+                    name="subjects"
+                    multiple
+                    value={formData.subjects || []}
+                    onChange={handleChange}
+                    label="Subjects"
+                    disabled={subjectsLoading}
+                    renderValue={(selected) => {
+                      const selectedSubjects = subjects.filter(subject => 
+                        selected.includes(subject._id)
+                      );
+                      return (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selectedSubjects.map((subject) => (
+                            <Chip key={subject._id} label={subject.name} />
+                          ))}
+                        </Box>
+                      );
+                    }}
+                  >
+                    {subjectsLoading ? (
+                      <MenuItem disabled>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading subjects...
+                        </Box>
+                      </MenuItem>
+                    ) : (
+                      subjects.map((subject) => (
+                        <MenuItem key={subject._id} value={subject._id}>
+                          {subject.name}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                  <FormHelperText>{formErrors.subjects}</FormHelperText>
+                </FormControl>
+              </Grid>
+            )}
             
             <Grid item xs={12}>
               <FormControlLabel
