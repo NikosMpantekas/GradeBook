@@ -27,6 +27,8 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { createUser, reset } from '../../features/users/userSlice';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 const CreateUser = () => {
   const navigate = useNavigate();
@@ -140,7 +142,19 @@ const CreateUser = () => {
         email: formData.email,
         password: formData.password,
         role: formData.role,
-      }));
+      }))
+        .unwrap()
+        .then(() => {
+          // Success is handled in the useEffect
+        })
+        .catch((error) => {
+          // Additional error handling if needed
+          console.error('Failed to create user:', error);
+        })
+        .finally(() => {
+          // This ensures the submitting state is reset even if something goes wrong
+          // The main state reset is still handled in the useEffect
+        });
     }
   };
   
@@ -148,6 +162,43 @@ const CreateUser = () => {
     navigate('/app/admin/users');
   };
   
+  // Show a loading state when submitting the form
+  if (submitting) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+          disabled
+          sx={{ mb: 2 }}
+        >
+          Back to Users
+        </Button>
+        <LoadingState message="Creating user..." />
+      </Box>
+    );
+  }
+
+  // Show an error state if there's an error
+  if (isError && !submitting) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+          sx={{ mb: 2 }}
+        >
+          Back to Users
+        </Button>
+        <ErrorState 
+          message={`Failed to create user: ${message || 'Unknown error'}`}
+          onRetry={() => setFormErrors({})}
+          retryText="Try Again"
+        />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Button

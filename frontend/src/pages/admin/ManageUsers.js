@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import { getUsers, deleteUser, reset } from '../../features/users/userSlice';
 import {
+  Box,
   Typography,
   Paper,
-  Box,
+  Button,
+  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -12,23 +15,15 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  Button,
-  IconButton,
   Chip,
-  TextField,
-  InputAdornment,
+  Avatar,
+  Tooltip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   CircularProgress,
-  Grid,
-  Avatar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,8 +35,11 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 
-// Import the user Redux actions
-import { getUsers as fetchUsers, deleteUser, reset } from '../../features/users/userSlice';
+// Import our custom components
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
+
+// We already have these imports at the top
 
 const ManageUsers = () => {
   const navigate = useNavigate();
@@ -59,7 +57,7 @@ const ManageUsers = () => {
 
   useEffect(() => {
     // Fetch users from the database
-    dispatch(fetchUsers());
+    dispatch(getUsers());
     
     // Cleanup function to reset state when component unmounts
     return () => {
@@ -80,11 +78,18 @@ const ManageUsers = () => {
   }, [users, searchTerm, roleFilter]);
 
   const applyFilters = () => {
+    // Safety check - ensure users is an array before spreading
+    if (!users || !Array.isArray(users)) {
+      console.error('Users is not an array:', users);
+      setFilteredUsers([]);
+      return;
+    }
+
     let filtered = [...users];
 
     // Apply role filter
     if (roleFilter) {
-      filtered = filtered.filter((user) => user.role === roleFilter);
+      filtered = filtered.filter((user) => user && user.role === roleFilter);
     }
 
     // Apply search filter
@@ -92,8 +97,9 @@ const ManageUsers = () => {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (user) =>
-          user.name.toLowerCase().includes(search) ||
-          user.email.toLowerCase().includes(search)
+          user && 
+          ((user.name && user.name.toLowerCase().includes(search)) ||
+          (user.email && user.email.toLowerCase().includes(search)))
       );
     }
 
@@ -134,13 +140,29 @@ const ManageUsers = () => {
   };
 
   const handleDeleteConfirm = () => {
-    if (userToDelete) {
-      // Dispatch action to delete the user from the database
-      dispatch(deleteUser(userToDelete._id));
-      toast.success('Deleting user...');
+    if (!userToDelete) return;
+    
+    // Prevent deleting yourself
+    if (userToDelete._id === user._id) {
+      toast.error('You cannot delete your own account');
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+      return;
     }
-    setDeleteDialogOpen(false);
-    setUserToDelete(null);
+    
+    dispatch(deleteUser(userToDelete._id))
+      .unwrap()
+      .then(() => {
+        toast.success('User deleted successfully');
+        // The users list will be refreshed via the state update in the reducer
+      })
+      .catch((error) => {
+        toast.error(`Failed to delete user: ${error.message || 'Unknown error'}`);
+      })
+      .finally(() => {
+        setDeleteDialogOpen(false);
+        setUserToDelete(null);
+      });
   };
   
   // Handle success/error after delete operation
@@ -174,9 +196,40 @@ const ManageUsers = () => {
   };
 
   if (isLoading) {
+    return <LoadingState message="Loading users..." fullPage={true} />;
+  }
+
+  if (isError) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
+      <ErrorState 
+        message={`Failed to load users: ${message || 'Unknown error'}`}
+        fullPage={true}
+        onRetry={() => dispatch(getUsers())}
+        retryText="Retry Loading Users"
+      />
+    );
+  }
+
+  if (!users || users.length === 0) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Manage Users
+          </Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleAddUser}
+          >
+            Add User
+          </Button>
+        </Box>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="h6" align="center" sx={{ py: 4 }}>
+            No users found. Click "Add User" to create one.
+          </Typography>
+        </Paper>
       </Box>
     );
   }

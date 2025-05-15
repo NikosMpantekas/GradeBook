@@ -1,32 +1,34 @@
 import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { createNotification } from '../../features/notifications/notificationSlice';
+import { getStudents } from '../../features/students/studentSlice';
+import { toast } from 'react-toastify';
 import {
-  Typography,
-  Paper,
   Box,
+  Typography,
   TextField,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  CircularProgress,
   Grid,
-  Alert,
+  MenuItem,
+  FormControl,
+  Select,
+  InputLabel,
+  Paper,
   FormHelperText,
-  Divider,
-  Switch,
   FormControlLabel,
+  Switch,
+  CircularProgress
 } from '@mui/material';
-import {
+import { 
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
-  Notifications as NotificationsIcon,
+  Notifications as NotificationsIcon
 } from '@mui/icons-material';
-import { toast } from 'react-toastify';
-import { createNotification, reset } from '../../features/notifications/notificationSlice';
-import { getStudents } from '../../features/students/studentSlice';
+
+// Import our custom components
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 const CreateNotification = () => {
   const navigate = useNavigate();
@@ -44,6 +46,7 @@ const CreateNotification = () => {
     sendToAll: false,
   });
   const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   useEffect(() => {
     // Fetch students from the database
@@ -51,8 +54,11 @@ const CreateNotification = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (students) {
+    if (students && Array.isArray(students)) {
       setStudentsToSelect(students);
+    } else {
+      // If students is not available or not an array, set an empty array
+      setStudentsToSelect([]);
     }
   }, [students]);
 
@@ -136,6 +142,9 @@ const CreateNotification = () => {
     e.preventDefault();
     
     if (validate()) {
+      // Show loading indicator or disable the submit button
+      setIsSubmitting(true);
+      
       const notificationData = {
         sender: user._id,
         recipient: formData.sendToAll ? null : formData.recipient,
@@ -144,7 +153,18 @@ const CreateNotification = () => {
         sendToAll: formData.sendToAll,
       };
       
-      dispatch(createNotification(notificationData));
+      dispatch(createNotification(notificationData))
+        .unwrap()
+        .then(() => {
+          // Success handling is done in the useEffect
+        })
+        .catch((error) => {
+          // Handle any errors that weren't caught by the slice's rejected action
+          console.error('Failed to create notification:', error);
+        })
+        .finally(() => {
+          setIsSubmitting(false);
+        });
     }
   };
   
@@ -152,6 +172,42 @@ const CreateNotification = () => {
     navigate('/app/teacher/notifications');
   };
   
+  // Display loading state while fetching students data
+  if (isStudentsLoading) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+          sx={{ mb: 2 }}
+        >
+          Back to Notifications
+        </Button>
+        <LoadingState message="Loading students data..." />
+      </Box>
+    );
+  }
+
+  // Display error state if there's an error loading students
+  if (isError && !isSubmitting) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+          sx={{ mb: 2 }}
+        >
+          Back to Notifications
+        </Button>
+        <ErrorState 
+          message={`Failed to load data: ${message || 'Unknown error'}`}
+          onRetry={() => dispatch(getStudents())}
+          retryText="Retry Loading"
+        />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Button
@@ -169,14 +225,6 @@ const CreateNotification = () => {
             Create New Notification
           </Typography>
         </Box>
-        
-        <Divider sx={{ mb: 3 }} />
-        
-        {isError && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {message}
-          </Alert>
-        )}
         
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={3}>
@@ -258,11 +306,13 @@ const CreateNotification = () => {
               <Button
                 type="submit"
                 variant="contained"
-                startIcon={<SaveIcon />}
-                disabled={isLoading}
-                sx={{ py: 1.5, px: 4 }}
+                color="primary"
+                size="large"
+                startIcon={isSubmitting ? <CircularProgress size={24} color="inherit" /> : <SaveIcon />}
+                sx={{ mt: 3 }}
+                disabled={isSubmitting || isLoading}
               >
-                {isLoading ? <CircularProgress size={24} /> : 'Send Notification'}
+                {isSubmitting ? 'Sending...' : 'Send Notification'}
               </Button>
             </Grid>
           </Grid>

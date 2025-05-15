@@ -34,29 +34,99 @@ import { Link as RouterLink } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
 
+// Import action creators
+import { getUsers } from '../../features/users/userSlice';
+import { getSchools } from '../../features/schools/schoolSlice';
+import { getSubjects } from '../../features/subjects/subjectSlice';
+import { getDirections } from '../../features/directions/directionSlice';
+import { getMyNotifications } from '../../features/notifications/notificationSlice';
+
 // Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const [isLoading, setIsLoading] = useState(false);
   
-  // Sample data - in a real application, this would come from your Redux store
+  // Get data from Redux store
+  const { users } = useSelector((state) => state.users);
+  const { schools } = useSelector((state) => state.schools);
+  const { subjects } = useSelector((state) => state.subjects);
+  const { directions } = useSelector((state) => state.directions);
+  const { notifications } = useSelector((state) => state.notifications);
+  
+  // Loading states
+  const { isLoading: usersLoading } = useSelector((state) => state.users);
+  const { isLoading: schoolsLoading } = useSelector((state) => state.schools);
+  const { isLoading: subjectsLoading } = useSelector((state) => state.subjects);
+  const { isLoading: directionsLoading } = useSelector((state) => state.directions);
+  const { isLoading: notificationsLoading } = useSelector((state) => state.notifications);
+  
+  const isLoading = usersLoading || schoolsLoading || subjectsLoading || directionsLoading || notificationsLoading;
+  
+  // Calculate stats from real data
   const [stats, setStats] = useState({
-    totalStudents: 120,
-    totalTeachers: 15,
-    totalSchools: 3,
-    totalSubjects: 24,
-    totalDirections: 6,
-    totalNotifications: 78,
-    recentUsers: [
-      { id: 1, name: 'John Doe', role: 'student', avatar: null, date: '2025-05-12' },
-      { id: 2, name: 'Mary Smith', role: 'teacher', avatar: null, date: '2025-05-11' },
-      { id: 3, name: 'Alex Johnson', role: 'student', avatar: null, date: '2025-05-10' },
-      { id: 4, name: 'Sarah Wilson', role: 'teacher', avatar: null, date: '2025-05-09' }
-    ]
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalSchools: 0,
+    totalSubjects: 0,
+    totalDirections: 0,
+    totalNotifications: 0,
+    recentUsers: []
   });
+  
+  // Update stats when data changes
+  useEffect(() => {
+    const studentCount = Array.isArray(users) ? users.filter(user => user && user.role === 'student').length : 0;
+    const teacherCount = Array.isArray(users) ? users.filter(user => user && user.role === 'teacher').length : 0;
+    const schoolCount = Array.isArray(schools) ? schools.length : 0;
+    const subjectCount = Array.isArray(subjects) ? subjects.length : 0;
+    const directionCount = Array.isArray(directions) ? directions.length : 0;
+    const notificationCount = Array.isArray(notifications) ? notifications.length : 0;
+    
+    // Get recent users (at most 5)
+    let recentUsersList = [];
+    if (Array.isArray(users) && users.length > 0) {
+      // Sort users by creation date (newest first)
+      const sortedUsers = [...users]
+        .filter(user => user && user.createdAt)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      // Take the first 5
+      recentUsersList = sortedUsers.slice(0, 5).map(user => ({
+        id: user._id,
+        name: user.name,
+        role: user.role,
+        avatar: user.avatar,
+        date: user.createdAt
+      }));
+    }
+    
+    setStats({
+      totalStudents: studentCount,
+      totalTeachers: teacherCount,
+      totalSchools: schoolCount,
+      totalSubjects: subjectCount,
+      totalDirections: directionCount,
+      totalNotifications: notificationCount,
+      recentUsers: recentUsersList
+    });
+  }, [users, schools, subjects, directions, notifications]);
+  
+  // Fetch data on component mount
+  useEffect(() => {
+    // Dispatch actions using the imported action creators
+    dispatch(getUsers());
+    dispatch(getSchools());
+    dispatch(getSubjects());
+    dispatch(getDirections());
+    dispatch(getMyNotifications()); // Fetch notifications for the current user
+    
+    // Clean up function
+    return () => {
+      // We could reset states here if needed
+    };
+  }, [dispatch]);
   
   // Pie chart data for user roles
   const userRolesData = {
