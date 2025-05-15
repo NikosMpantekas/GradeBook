@@ -29,7 +29,140 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Routes
+// EMERGENCY DIAGNOSTIC ROUTE - for debugging deployment issues
+app.get('/emergency-diagnostics', (req, res) => {
+  console.log('EMERGENCY DIAGNOSTICS ENDPOINT ACCESSED');
+  
+  // Get information about the environment
+  const diagnosticInfo = {
+    environment: process.env.NODE_ENV,
+    port: process.env.PORT,
+    mongoUriExists: !!process.env.MONGO_URI,
+    jwtSecretExists: !!process.env.JWT_SECRET,
+    headers: req.headers,
+    buildDirectories: {
+      staticPath: path.join(__dirname, '../frontend/build'),
+      staticPathExists: require('fs').existsSync(path.join(__dirname, '../frontend/build')),
+      indexPath: path.resolve(__dirname, '../', 'frontend', 'build', 'index.html'),
+      indexPathExists: require('fs').existsSync(path.resolve(__dirname, '../', 'frontend', 'build', 'index.html')),
+    },
+    serverUptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+    time: new Date().toISOString()
+  };
+  
+  if (diagnosticInfo.buildDirectories.staticPathExists) {
+    try {
+      // List files in build directory
+      const files = require('fs').readdirSync(diagnosticInfo.buildDirectories.staticPath);
+      diagnosticInfo.buildDirectories.files = files;
+      
+      // Check if index.html has content
+      if (diagnosticInfo.buildDirectories.indexPathExists) {
+        const indexContent = require('fs').readFileSync(diagnosticInfo.buildDirectories.indexPath, 'utf8');
+        diagnosticInfo.buildDirectories.indexContentLength = indexContent.length;
+        diagnosticInfo.buildDirectories.indexContentPreview = indexContent.substring(0, 100) + '...';
+      }
+    } catch (err) {
+      diagnosticInfo.buildDirectories.error = err.message;
+    }
+  }
+  
+  // Create simple HTML response with diagnostic info
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>GradeBook Emergency Diagnostics</title>
+      <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        h1 { color: #333; }
+        .success { color: green; }
+        .error { color: red; }
+      </style>
+    </head>
+    <body>
+      <h1>GradeBook Emergency Diagnostics</h1>
+      <h2>Server Environment</h2>
+      <pre>${JSON.stringify(diagnosticInfo, null, 2)}</pre>
+      
+      <h2>Manual Authentication Test</h2>
+      <form id="authForm" action="/api/users/login" method="post">
+        <div>
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required>
+        </div>
+        <div style="margin-top: 10px;">
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        <div style="margin-top: 10px;">
+          <button type="submit">Test Login</button>
+        </div>
+      </form>
+      
+      <div id="result" style="margin-top: 20px;"></div>
+      
+      <script>
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const email = document.getElementById('email').value;
+          const password = document.getElementById('password').value;
+          
+          try {
+            const response = await fetch('/api/users/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ email, password })
+            });
+            
+            const data = await response.json();
+            
+            const resultDiv = document.getElementById('result');
+            if (response.ok) {
+              resultDiv.innerHTML = 
+                '<div class="success">Login Successful!</div>' +
+                '<h3>Auth Data:</h3>' +
+                '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+              
+              // Store token for testing
+              localStorage.setItem('testToken', data.token);
+              
+              // Test a protected endpoint
+              if (data.token) {
+                const meResponse = await fetch('/api/users/me', {
+                  headers: {
+                    'Authorization': 'Bearer ' + data.token
+                  }
+                });
+                
+                const meData = await meResponse.json();
+                resultDiv.innerHTML += 
+                  '<h3>Protected Endpoint Test:</h3>' +
+                  '<pre>' + JSON.stringify(meData, null, 2) + '</pre>';
+              }
+            } else {
+              resultDiv.innerHTML = 
+                '<div class="error">Login Failed</div>' +
+                '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            }
+          } catch (error) {
+            document.getElementById('result').innerHTML = 
+              '<div class="error">Error: ' + error.message + '</div>';
+          }
+        });
+      </script>
+    </body>
+    </html>
+  `;
+  
+  res.send(htmlContent);
+});
+
+// Regular API Routes
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/grades', require('./routes/gradeRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));

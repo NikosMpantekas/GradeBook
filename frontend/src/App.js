@@ -20,6 +20,7 @@ import NotFound from './pages/NotFound';
 // Common Pages
 import Dashboard from './pages/Dashboard';
 import StandaloneDashboard from './pages/StandaloneDashboard';
+import DiagnosticPage from './pages/DiagnosticPage';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import NotificationDetail from './pages/NotificationDetail';
@@ -101,6 +102,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/diagnostics" element={<DiagnosticPage />} />
           
           {/* Default root route - redirects to dashboard if logged in, otherwise to login */}
           <Route path="/" element={
