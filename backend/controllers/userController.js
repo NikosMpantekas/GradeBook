@@ -291,8 +291,8 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
   }
 
   try {
-    // IMPORTANT: Direct password hashing - bypassing the model middleware
-    // Generate salt and hash
+    // Professional approach - use the exact password that the admin specified
+    // but handle the hashing properly to ensure it works for login
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     console.log('Generated hashed password length:', hashedPassword.length);
@@ -301,17 +301,23 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     const user = new User({
       name,
       email,
-      password: hashedPassword,
+      password: hashedPassword, // This is the admin-provided password, properly hashed
       role,
     });
     
-    // Save the user bypassing the middleware
-    const savedUser = await user.save();
+    // Save the user - we're hashing the password ourselves, so we can use normal save
+    const savedUser = await user.save({ validateBeforeSave: true });
     console.log('User created successfully with ID:', savedUser._id);
     
-    // Test password verification
+    // Test password verification to ensure login will work
     const testVerify = await bcrypt.compare(password, savedUser.password);
     console.log('Password verification test result:', testVerify);
+    
+    // Log account creation details
+    console.log('ACCOUNT CREATED:');
+    console.log(`Email: ${email}`);
+    console.log(`Role: ${role}`);
+    console.log('Password verification check:', testVerify ? 'PASSED' : 'FAILED');
   
     res.status(201).json({
       _id: savedUser.id,
