@@ -64,36 +64,68 @@ const ManageUsers = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
 
-  // Add debug logs
-  console.log('ManageUsers mounting - Initial state:', { 
-    userState: user, 
-    usersInStore: users, 
+  // Create a ref to track if users have been loaded
+  const dataLoaded = React.useRef(false);
+
+  // Debug logs
+  console.log('ManageUsers rendering:', { 
+    userState: user?.name, 
+    usersInStore: Array.isArray(users) ? users.length : 'not an array', 
     isLoadingState: isLoading, 
-    isErrorState: isError 
+    isErrorState: isError,
+    dataLoaded: dataLoaded.current
   });
 
+  // IMPORTANT: Force immediate reload when users data is empty or stale
+  // This prevents the blank screen issue when navigating to this page
   useEffect(() => {
+    // Always fetch data when the component mounts
+    console.log('Fetching users data. Current state:', {
+      usersLength: Array.isArray(users) ? users.length : 'not an array',
+      isLoading,
+      dataLoaded: dataLoaded.current
+    });
+    
+    // Clear any stale data in localStorage
     try {
-      // Fetch users from the database with error handling
-      console.log('Dispatching getUsers action');
-      dispatch(getUsers())
-        .unwrap()
-        .then(response => {
-          console.log('getUsers succeeded with response:', response);
-        })
-        .catch(error => {
-          console.error('getUsers failed with error:', error);
-          toast.error(`Error loading users: ${error}`);
-        });
+      if (localStorage.getItem('persist:users')) {
+        localStorage.removeItem('persist:users');
+      }
     } catch (error) {
-      console.error('Exception during dispatch:', error);
-      toast.error('An unexpected error occurred');
+      console.warn('Error accessing localStorage:', error);
     }
     
-    // Cleanup function to reset state when component unmounts
+    // Force a fresh data load
+    dispatch(reset());
+    dispatch(getUsers())
+      .unwrap()
+      .then(response => {
+        console.log('Users loaded successfully:', response?.length || 0, 'users');
+        dataLoaded.current = true;
+      })
+      .catch(error => {
+        console.error('Failed to load users:', error);
+        toast.error(`Error loading users: ${error?.message || 'Unknown error'}`);
+      });
+      
+    // Clean up on unmount
     return () => {
-      console.log('ManageUsers unmounting - cleaning up');
-      dispatch(reset());
+      console.log('ManageUsers unmounting');
+    };
+  }, [dispatch]);
+  
+  // Add route change listener - this ensures proper reloading on navigation
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !dataLoaded.current) {
+        dispatch(getUsers());
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [dispatch]);
   
@@ -233,14 +265,34 @@ const ManageUsers = () => {
     return name.charAt(0).toUpperCase();
   };
 
-  // Simple loading state without trying to access complex objects that might cause errors
-  if (isLoading) {
+  // Always show a basic structure even while loading to prevent blank screen
+  // This prevents the white screen flash when navigating to this page
+  if (isLoading || !dataLoaded.current) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ ml: 2 }}>
-          Loading users...
-        </Typography>
+      <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Manage Users
+          </Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleAddUser}
+            disabled={true}
+          >
+            Add User
+          </Button>
+        </Box>
+
+        <Paper elevation={3} sx={{ p: 5, borderRadius: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', minHeight: 300 }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ mt: 3 }}>
+            Loading users...
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Please wait while we retrieve user data
+          </Typography>
+        </Paper>
       </Box>
     );
   }
