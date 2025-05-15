@@ -370,7 +370,10 @@ const StandaloneDashboard = () => {
                 <Button 
                   variant="outlined" 
                   color="primary" 
-                  onClick={() => navigateTo('/diagnostics')}
+                  onClick={() => {
+                    console.log('Navigating to: /diagnostics');
+                    navigate('/diagnostics');
+                  }}
                   startIcon={<SettingsIcon />}
                 >
                   View Diagnostics
