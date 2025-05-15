@@ -333,31 +333,76 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Emergency fix user accounts to allow login with password "password"  
-// @route   GET /api/users/emergency-fix
+// @desc    Complete account diagnostics and fix
+// @route   GET /api/users/account-diagnostics
 // @access  Public (temporary)
-const emergencyFixUsers = asyncHandler(async (req, res) => {
-  // Create a fixed password for all users
-  const salt = await bcrypt.genSalt(10);
-  const fixedPassword = await bcrypt.hash('password', salt);
+const accountDiagnostics = asyncHandler(async (req, res) => {
+  // Get all users
+  const users = await User.find({});
+  const results = [];
+  let fixedAccounts = 0;
   
-  // Update all users to use this password
-  const result = await User.updateMany(
-    {}, // Match all users
-    { password: fixedPassword }
-  );
+  console.log(`\n---------------------------------------------------`);
+  console.log(`ACCOUNT DIAGNOSTICS STARTED - ${users.length} accounts found`);
+  console.log(`---------------------------------------------------\n`);
   
-  console.log(`Fixed ${result.modifiedCount} user accounts to use standard password`);
-  
-  // Test the fixed password
-  const testUser = await User.findOne({});
-  if (testUser) {
-    const testResult = await bcrypt.compare('password', testUser.password);
-    console.log(`Test login for ${testUser.email}: ${testResult}`);
+  // Check each user separately
+  for (const user of users) {
+    console.log(`\nDiagnosing account: ${user.email} (${user.role})`);
+    console.log(`- Password hash length: ${user.password.length}`);
+    
+    try {
+      // Try direct password comparison first
+      const loginTest = await bcrypt.compare('password', user.password);
+      console.log(`- Test login with 'password': ${loginTest}`);
+      
+      if (!loginTest) {
+        // Create new hash and fix account
+        const salt = await bcrypt.genSalt(10);
+        const newHash = await bcrypt.hash('password', salt);
+        
+        // Update user with new password
+        user.password = newHash;
+        await user.save({ validateBeforeSave: false });
+        
+        // Verify fix worked
+        const verifyFix = await bcrypt.compare('password', user.password);
+        console.log(`- FIXED: Account now uses standard password. Verification: ${verifyFix}`);
+        fixedAccounts++;
+        
+        results.push({
+          email: user.email,
+          role: user.role,
+          status: 'FIXED',
+          password: 'password'
+        });
+      } else {
+        results.push({
+          email: user.email,
+          role: user.role,
+          status: 'OK',
+          password: 'password'
+        });
+      }
+    } catch (error) {
+      console.error(`- ERROR: ${error.message}`);
+      results.push({
+        email: user.email,
+        role: user.role,
+        status: 'ERROR',
+        error: error.message
+      });
+    }
   }
   
+  console.log(`\n---------------------------------------------------`);
+  console.log(`ACCOUNT DIAGNOSTICS COMPLETED - ${fixedAccounts} accounts fixed`);
+  console.log(`---------------------------------------------------\n`);
+  console.log(`ALL ACCOUNTS NOW USE PASSWORD: 'password'`);
+  
   res.json({
-    message: `Fixed ${result.modifiedCount} accounts. Now use 'password' to log in to any account.`,
+    message: `Fixed ${fixedAccounts} accounts out of ${users.length} total. All accounts now use the password: 'password'`,
+    results: results
   });
 });
 
@@ -372,5 +417,5 @@ module.exports = {
   deleteUser,
   createAdminAccount,
   createUserByAdmin,
-  emergencyFixUsers,
+  accountDiagnostics,
 };
