@@ -244,7 +244,7 @@ const Dashboard = () => {
                 <Button 
                   variant="outlined" 
                   startIcon={<NotificationsIcon />}
-                  onClick={() => navigate('/notifications')}
+                  onClick={() => navigate('/app/notifications')}
                   fullWidth
                 >
                   View Notifications
@@ -280,7 +280,7 @@ const Dashboard = () => {
                       <CardActions>
                         <Button 
                           size="small" 
-                          onClick={() => navigate(`/notifications/${notification._id}`)}
+                          onClick={() => navigate(`/app/notifications/${notification._id}`)}
                         >
                           View
                         </Button>

@@ -62,32 +62,57 @@ const CreateNotification = () => {
     }
   }, [students]);
 
-  // Use a ref to track if this is the first mount
+  // Use refs to track component state
   const isInitialMount = React.useRef(true);
+  const hasSubmitted = React.useRef(false);
+  
+  // Add comprehensive debugging
+  console.log('CreateNotification render state:', {
+    isInitialMount: isInitialMount.current,
+    hasSubmitted: hasSubmitted.current,
+    isSuccess,
+    isError,
+    message,
+    studentsCount: Array.isArray(students) ? students.length : 'not an array'
+  });
 
+  // Force reset notification state on initial load
   useEffect(() => {
-    // On first mount, just reset any previous notification state and mark that we've mounted
-    if (isInitialMount.current) {
+    console.log('Initial mount effect running');
+    // Always reset notification state when component mounts
+    dispatch(reset());
+    
+    // Set initial mount to false after a small delay to ensure state is reset
+    const timer = setTimeout(() => {
+      console.log('Setting isInitialMount to false after timeout');
       isInitialMount.current = false;
-      dispatch(reset());
-      return;
-    }
-
-    // Only show error messages if not initial mount
-    if (isError) {
-      toast.error(message);
-    }
-
-    // Only show success and navigate if not initial mount and we actually have a success
-    if (isSuccess) {
-      toast.success('Notification created successfully');
-      navigate('/app/teacher/notifications');
-    }
-
-    // Reset notification state on component unmount
+    }, 300);
+    
     return () => {
+      clearTimeout(timer);
+      console.log('Component unmounting - resetting notification state');
       dispatch(reset());
     };
+  }, [dispatch]);
+  
+  // Handle success/error states separately from initial loading
+  useEffect(() => {
+    // Only process state changes if not the first mount and we've submitted the form
+    if (!isInitialMount.current && hasSubmitted.current) {
+      console.log('Processing notification state change:', { isSuccess, isError, message });
+      
+      if (isError) {
+        toast.error(message || 'Failed to send notification');
+        hasSubmitted.current = false;
+      }
+      
+      if (isSuccess) {
+        toast.success('Notification created successfully');
+        navigate('/app/teacher/notifications');
+        hasSubmitted.current = false;
+        dispatch(reset());
+      }
+    }
   }, [isError, isSuccess, message, navigate, dispatch]);
   
   const handleChange = (e) => {
@@ -151,11 +176,21 @@ const CreateNotification = () => {
   
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('Form submission attempted');
     
     if (validate()) {
+      console.log('Form validation passed, submitting notification');
+      
+      // Set our submission tracking flag
+      hasSubmitted.current = true;
+      
       // Show loading indicator or disable the submit button
       setIsSubmitting(true);
       
+      // Make sure we're not in the initial mount state
+      isInitialMount.current = false;
+      
+      // Create the notification data
       const notificationData = {
         sender: user._id,
         recipient: formData.sendToAll ? null : formData.recipient,
@@ -164,18 +199,28 @@ const CreateNotification = () => {
         sendToAll: formData.sendToAll,
       };
       
+      console.log('Dispatching createNotification with data:', notificationData);
+      
+      // First ensure any previous notification state is reset
+      dispatch(reset());
+      
+      // Then dispatch the new notification
       dispatch(createNotification(notificationData))
         .unwrap()
-        .then(() => {
+        .then((result) => {
+          console.log('Notification created successfully:', result);
           // Success handling is done in the useEffect
         })
         .catch((error) => {
-          // Handle any errors that weren't caught by the slice's rejected action
           console.error('Failed to create notification:', error);
+          toast.error(`Failed to send notification: ${error.message || 'Unknown error'}`);
+          hasSubmitted.current = false;
         })
         .finally(() => {
           setIsSubmitting(false);
         });
+    } else {
+      console.log('Form validation failed');
     }
   };
   

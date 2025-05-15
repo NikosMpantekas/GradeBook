@@ -38,6 +38,8 @@ import {
   Delete as DeleteIcon,
   Search as SearchIcon,
   FilterList as FilterIcon,
+  Refresh as RefreshIcon,
+  Visibility as ViewIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -62,12 +64,35 @@ const ManageUsers = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
 
+  // Add debug logs
+  console.log('ManageUsers mounting - Initial state:', { 
+    userState: user, 
+    usersInStore: users, 
+    isLoadingState: isLoading, 
+    isErrorState: isError 
+  });
+
   useEffect(() => {
-    // Fetch users from the database
-    dispatch(getUsers());
+    try {
+      // Fetch users from the database with error handling
+      console.log('Dispatching getUsers action');
+      dispatch(getUsers())
+        .unwrap()
+        .then(response => {
+          console.log('getUsers succeeded with response:', response);
+        })
+        .catch(error => {
+          console.error('getUsers failed with error:', error);
+          toast.error(`Error loading users: ${error}`);
+        });
+    } catch (error) {
+      console.error('Exception during dispatch:', error);
+      toast.error('An unexpected error occurred');
+    }
     
     // Cleanup function to reset state when component unmounts
     return () => {
+      console.log('ManageUsers unmounting - cleaning up');
       dispatch(reset());
     };
   }, [dispatch]);
@@ -208,40 +233,139 @@ const ManageUsers = () => {
     return name.charAt(0).toUpperCase();
   };
 
-  if (isLoading) {
-    return <LoadingState message="Loading users..." fullPage={true} />;
-  }
-
-  if (isError) {
-    return (
-      <ErrorState 
-        message={`Failed to load users: ${message || 'Unknown error'}`}
-        fullPage={true}
-        onRetry={() => dispatch(getUsers())}
-        retryText="Retry Loading Users"
-      />
-    );
-  }
-
-  if (!users || users.length === 0) {
+  // Add a wrapping try-catch for the entire rendering flow
+  try {
+    if (isLoading) {
+      console.log('Rendering loading state');
+      return <LoadingState message="Loading users..." fullPage={true} />;
+    }
+  
+    if (isError) {
+      console.log('Rendering error state:', message);
+      return (
+        <ErrorState 
+          message={`Failed to load users: ${message || 'Unknown error'}`}
+          fullPage={true}
+          onRetry={() => dispatch(getUsers())}
+          retryText="Retry Loading Users"
+        />
+      );
+    }
+  
+    // Explicitly check if users is undefined, null, or not an array
+    if (!users) {
+      console.log('Users is undefined or null');
+      return (
+        <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+              Manage Users
+            </Typography>
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />}
+              onClick={handleAddUser}
+            >
+              Add User
+            </Button>
+          </Box>
+          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+            <Typography variant="h6" align="center" sx={{ py: 4 }}>
+              User data not available. Please try refreshing the page.
+            </Typography>
+            <Box display="flex" justifyContent="center" mt={2}>
+              <Button 
+                variant="contained" 
+                onClick={() => dispatch(getUsers())}
+                startIcon={<RefreshIcon />}
+              >
+                Refresh Data
+              </Button>
+            </Box>
+          </Paper>
+        </Box>
+      );
+    }
+  
+    if (!Array.isArray(users)) {
+      console.log('Users is not an array:', typeof users);
+      return (
+        <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+              Manage Users
+            </Typography>
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />}
+              onClick={handleAddUser}
+            >
+              Add User
+            </Button>
+          </Box>
+          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+            <Typography variant="h6" align="center" sx={{ py: 4 }}>
+              Invalid user data format. Please try refreshing the page.
+            </Typography>
+            <Box display="flex" justifyContent="center" mt={2}>
+              <Button 
+                variant="contained" 
+                onClick={() => dispatch(getUsers())}
+                startIcon={<RefreshIcon />}
+              >
+                Refresh Data
+              </Button>
+            </Box>
+          </Paper>
+        </Box>
+      );
+    }
+  
+    if (users.length === 0) {
+      console.log('Users array is empty');
+      return (
+        <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+              Manage Users
+            </Typography>
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />}
+              onClick={handleAddUser}
+            >
+              Add User
+            </Button>
+          </Box>
+          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+            <Typography variant="h6" align="center" sx={{ py: 4 }}>
+              No users found. Click "Add User" to create one.
+            </Typography>
+          </Paper>
+        </Box>
+      );
+    }
+  } catch (error) {
+    console.error('Caught error during render:', error);
     return (
       <Box sx={{ flexGrow: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-            Manage Users
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="h5" color="error" sx={{ mb: 2 }}>
+            Something went wrong
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            An unexpected error occurred while displaying users. Please try refreshing the page.
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', mb: 2, color: 'text.secondary' }}>
+            Error details: {error.message}
           </Typography>
           <Button 
             variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={handleAddUser}
+            onClick={() => window.location.reload()}
+            startIcon={<RefreshIcon />}
           >
-            Add User
+            Refresh Page
           </Button>
-        </Box>
-        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-          <Typography variant="h6" align="center" sx={{ py: 4 }}>
-            No users found. Click "Add User" to create one.
-          </Typography>
         </Paper>
       </Box>
     );
