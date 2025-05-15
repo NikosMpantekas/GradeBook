@@ -179,10 +179,7 @@ const AdminDashboard = () => {
   
   useEffect(() => {
     // In a real app, you would fetch dashboard data here
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000); // Simulating data fetch
+    dispatch(getUsers()); // Simulating data fetch
   }, [dispatch]);
   
   if (isLoading) {

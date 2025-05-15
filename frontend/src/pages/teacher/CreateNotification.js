@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { createNotification } from '../../features/notifications/notificationSlice';
+import { createNotification, reset } from '../../features/notifications/notificationSlice';
 import { getStudents } from '../../features/students/studentSlice';
 import { toast } from 'react-toastify';
 import {
