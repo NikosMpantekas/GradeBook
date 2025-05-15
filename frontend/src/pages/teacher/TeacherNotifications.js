@@ -66,36 +66,72 @@ const TeacherNotifications = () => {
     };
   }, [dispatch]);
 
+  // Use a ref to track initial mount
+  const initialMount = React.useRef(true);
+
   useEffect(() => {
-    if (isError) {
-      toast.error(message);
+    // Initialize the filtered notifications array safely
+    if (initialMount.current) {
+      console.log('Initial mount of TeacherNotifications component');
+      setFilteredNotifications([]);
+      initialMount.current = false;
     }
 
-    if (notifications) {
-      // Apply search filters on the notifications
+    if (isError) {
+      console.error('Error loading notifications:', message);
+      toast.error(message || 'Failed to load notifications');
+      // Ensure we have an empty array even on error to prevent white screen
+      setFilteredNotifications([]);
+    }
+
+    // Safely apply filters to notifications with defensive coding
+    if (notifications && Array.isArray(notifications)) {
+      console.log(`Filtering ${notifications.length} notifications`);
       applyFilters(notifications);
+    } else {
+      console.warn('Notifications is not an array or is undefined:', notifications);
+      // Ensure we always have an array to prevent rendering issues
+      setFilteredNotifications([]);
     }
   }, [notifications, isError, isSuccess, message, searchTerm]);
 
   const applyFilters = (teacherNotifications) => {
-    if (!teacherNotifications) return;
-
-    let filtered = [...teacherNotifications];
-
-    // Apply search filter
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (notification) =>
-          (notification.title && notification.title.toLowerCase().includes(search)) ||
-          (notification.message && notification.message.toLowerCase().includes(search)) ||
-          (notification.recipient &&
-            notification.recipient.name &&
-            notification.recipient.name.toLowerCase().includes(search))
-      );
+    // Defensive coding - ensure teacherNotifications is valid before continuing
+    if (!teacherNotifications || !Array.isArray(teacherNotifications)) {
+      console.warn('Invalid notifications data received in applyFilters:', teacherNotifications);
+      setFilteredNotifications([]);
+      return;
     }
 
-    setFilteredNotifications(filtered);
+    try {
+      console.log(`Applying filters to ${teacherNotifications.length} notifications`);
+      let filtered = [...teacherNotifications];
+
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        filtered = filtered.filter(notification => {
+          // Ensure properties exist before accessing them
+          const hasTitle = notification && notification.title && typeof notification.title === 'string';
+          const hasMessage = notification && notification.message && typeof notification.message === 'string';
+          const hasRecipientName = notification && notification.recipient && 
+                                  notification.recipient.name && 
+                                  typeof notification.recipient.name === 'string';
+          
+          return (
+            (hasTitle && notification.title.toLowerCase().includes(search)) ||
+            (hasMessage && notification.message.toLowerCase().includes(search)) ||
+            (hasRecipientName && notification.recipient.name.toLowerCase().includes(search))
+          );
+        });
+      }
+
+      console.log(`After filtering: ${filtered.length} notifications match criteria`);
+      setFilteredNotifications(filtered);
+    } catch (error) {
+      console.error('Error in applyFilters:', error);
+      // Prevent white screen by setting an empty array as fallback
+      setFilteredNotifications([]);
+    }
   };
 
   const handleChangePage = (event, newPage) => {

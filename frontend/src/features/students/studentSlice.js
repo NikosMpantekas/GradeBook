@@ -33,16 +33,30 @@ export const getStudentsBySubject = createAsyncThunk(
   'students/getBySubject',
   async (subjectId, thunkAPI) => {
     try {
+      console.log(`Dispatching getStudentsBySubject action for subject: ${subjectId}`);
       const token = thunkAPI.getState().auth.user.token;
-      return await studentService.getStudentsBySubject(subjectId, token);
+      const response = await studentService.getStudentsBySubject(subjectId, token);
+      console.log(`Successfully received ${response.length} students for subject`); 
+      return response;
     } catch (error) {
-      const message =
-        (error.response &&
-          error.response.data &&
-          error.response.data.message) ||
-        error.message ||
-        error.toString();
-      return thunkAPI.rejectWithValue(message);
+      console.error('Failed to get students by subject:', error);
+      // If we hit a 404 or other error, fall back to getting all students
+      try {
+        console.log('Trying fallback to get all students instead');
+        const token = thunkAPI.getState().auth.user.token;
+        const allStudents = await studentService.getStudents(token);
+        console.log(`Successfully received ${allStudents.length} students as fallback`);
+        return allStudents;
+      } catch (fallbackError) {
+        console.error('Fallback to get all students also failed:', fallbackError);
+        const message =
+          (error.response &&
+            error.response.data &&
+            error.response.data.message) ||
+          error.message ||
+          error.toString();
+        return thunkAPI.rejectWithValue(message);
+      }
     }
   }
 );

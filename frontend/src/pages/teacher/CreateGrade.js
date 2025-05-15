@@ -60,7 +60,22 @@ const CreateGrade = () => {
   // When a subject is selected, fetch students for that subject
   useEffect(() => {
     if (formData.subject) {
-      dispatch(getStudentsBySubject(formData.subject));
+      console.log(`Subject selected: ${formData.subject}, fetching students...`);
+      // Try to get students for this subject
+      dispatch(getStudentsBySubject(formData.subject))
+        .unwrap()
+        .then((data) => {
+          console.log(`Successful students fetch for subject, got ${data.length} students`);
+        })
+        .catch((error) => {
+          console.error('Error fetching students for subject:', error);
+          // If this fails, load all students as a fallback
+          dispatch(getStudents());
+        });
+    } else {
+      // If no subject is selected, load all students so the dropdown is never empty
+      console.log('No subject selected, loading all students as fallback');
+      dispatch(getStudents());
     }
   }, [dispatch, formData.subject]);
   

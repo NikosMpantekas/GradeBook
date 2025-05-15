@@ -27,9 +27,9 @@ router.get('/direct-db-fix', directDatabaseFix); // EMERGENCY: Critical authenti
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
 
-// Student-related routes
-router.get('/students', protect, getStudents);
+// Student-related routes - ORDER IS CRITICAL - specific routes first
 router.get('/students/subject/:subjectId', protect, getStudentsBySubject);
+router.get('/students', protect, getStudents);
 
 // Admin routes
 router.get('/', protect, admin, getUsers);
