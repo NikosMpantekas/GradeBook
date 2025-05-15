@@ -247,6 +247,31 @@ if (process.env.NODE_ENV === 'production') {
     // CRITICAL: Make sure API routes are defined BEFORE the catch-all route
     // This is already done above with app.use('/api/...')
 
+    // Add a special route for handling /app/* paths
+    // This is critical for React Router to work correctly
+    app.get('/app/*', (req, res) => {
+      console.log(`Serving index.html for /app/* route: ${req.originalUrl}`);
+      
+      if (!fs.existsSync(indexPath)) {
+        console.error('ERROR: index.html does not exist at path:', indexPath);
+        return res.status(500).send('Frontend build files not found. Please check server configuration.');
+      }
+      
+      return res.sendFile(indexPath);
+    });
+    
+    // Add specific handler for admin routes that may miss the /app prefix
+    app.get('/admin*', (req, res) => {
+      console.log(`Redirecting /admin route to /app/admin: ${req.originalUrl}`);
+      return res.redirect(`/app${req.originalUrl}`);
+    });
+    
+    // Add specific handler for teacher routes that may miss the /app prefix
+    app.get('/teacher*', (req, res) => {
+      console.log(`Redirecting /teacher route to /app/teacher: ${req.originalUrl}`);
+      return res.redirect(`/app${req.originalUrl}`);
+    });
+    
     // IMPORTANT: Fix the order of middleware - this must be the LAST middleware registered!
     // For all other routes, serve index.html
     app.use('*', (req, res) => {
