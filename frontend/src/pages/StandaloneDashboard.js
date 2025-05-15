@@ -372,7 +372,7 @@ const StandaloneDashboard = () => {
                   color="primary" 
                   onClick={() => {
                     console.log('Navigating to: /diagnostics');
-                    navigate('/diagnostics');
+                    navigate('/diagnostics'); // Keep as is - diagnostics is a public route
                   }}
                   startIcon={<SettingsIcon />}
                 >

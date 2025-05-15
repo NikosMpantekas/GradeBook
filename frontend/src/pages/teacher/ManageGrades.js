@@ -148,7 +148,7 @@ const ManageGrades = () => {
   };
 
   const handleAddGrade = () => {
-    navigate('/teacher/grades/create');
+    navigate('/app/teacher/grades/create');
   };
 
   // Delete Grade Dialog

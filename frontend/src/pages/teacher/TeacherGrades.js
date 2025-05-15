@@ -176,19 +176,19 @@ const TeacherGrades = () => {
   };
 
   const handleManageGrades = () => {
-    navigate('/teacher/grades/manage');
+    navigate('/app/teacher/grades/manage');
   };
 
   const handleCreateGrade = () => {
-    navigate('/teacher/grades/create');
+    navigate('/app/teacher/grades/create');
   };
 
   const handleManageNotifications = () => {
-    navigate('/teacher/notifications');
+    navigate('/app/teacher/notifications');
   };
 
   const handleCreateNotification = () => {
-    navigate('/teacher/notifications/create');
+    navigate('/app/teacher/notifications/create');
   };
 
   if (gradesLoading || subjectsLoading) {

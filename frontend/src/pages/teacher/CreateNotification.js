@@ -65,7 +65,7 @@ const CreateNotification = () => {
     
     if (isSuccess) {
       toast.success('Notification sent successfully');
-      navigate('/teacher/notifications');
+      navigate('/app/teacher/notifications');
     }
   }, [isError, isSuccess, message, navigate]);
   
@@ -145,7 +145,7 @@ const CreateNotification = () => {
   };
   
   const handleBack = () => {
-    navigate('/teacher/notifications');
+    navigate('/app/teacher/notifications');
   };
   
   return (

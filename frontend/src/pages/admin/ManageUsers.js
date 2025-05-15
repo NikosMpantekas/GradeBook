@@ -131,11 +131,11 @@ const ManageUsers = () => {
   };
 
   const handleAddUser = () => {
-    navigate('/admin/users/create');
+    navigate('/app/admin/users/create');
   };
 
   const handleEditUser = (id) => {
-    navigate(`/admin/users/${id}`);
+    navigate(`/app/admin/users/${id}`);
   };
 
   // Delete User Dialog

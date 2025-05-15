@@ -72,7 +72,7 @@ const CreateGrade = () => {
     
     if (isSuccess) {
       toast.success('Grade added successfully');
-      navigate('/teacher/grades/manage');
+      navigate('/app/teacher/grades/manage');
     }
   }, [isError, isSuccess, message, navigate]);
   
@@ -155,7 +155,7 @@ const CreateGrade = () => {
   };
   
   const handleBack = () => {
-    navigate('/teacher/grades/manage');
+    navigate('/app/teacher/grades/manage');
   };
   
   if (subjectsLoading) {

@@ -40,7 +40,7 @@ const Register = () => {
     }
 
     if (isSuccess || user) {
-      navigate('/');
+      navigate('/app/dashboard');
     }
 
     dispatch(reset());

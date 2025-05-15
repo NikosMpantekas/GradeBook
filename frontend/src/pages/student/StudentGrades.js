@@ -179,7 +179,7 @@ const StudentGrades = () => {
   };
 
   const handleViewGrade = (id) => {
-    navigate(`/grades/${id}`);
+    navigate(`/app/grades/${id}`);
   };
 
   // Prepare data for Pie chart

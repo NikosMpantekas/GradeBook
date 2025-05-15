@@ -116,13 +116,13 @@ const CreateUser = () => {
       setTimeout(() => {
         toast.success('User created successfully');
         setIsLoading(false);
-        navigate('/admin/users');
+        navigate('/app/admin/users');
       }, 1500);
     }
   };
   
   const handleBack = () => {
-    navigate('/admin/users');
+    navigate('/app/admin/users');
   };
   
   return (
