@@ -30,6 +30,7 @@ import {
   Grid,
   Snackbar,
   Alert,
+  FormHelperText,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -47,6 +48,7 @@ import {
   reset,
 } from '../../features/grades/gradeSlice';
 import { getSubjectsByTeacher } from '../../features/subjects/subjectSlice';
+import { getStudentsBySubject } from '../../features/students/studentSlice';
 
 const ManageGrades = () => {
   const navigate = useNavigate();
@@ -55,6 +57,7 @@ const ManageGrades = () => {
   const { user } = useSelector((state) => state.auth);
   const { grades, isLoading, isSuccess, isError, message } = useSelector((state) => state.grades);
   const { subjects } = useSelector((state) => state.subjects);
+  const { students } = useSelector((state) => state.students);
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
