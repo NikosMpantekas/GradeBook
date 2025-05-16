@@ -21,10 +21,26 @@ const userSchema = mongoose.Schema(
       enum: ['admin', 'teacher', 'student'],
       default: 'student',
     },
+    // Updated to support multiple schools for both teachers and students
+    schools: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'School',
+      },
+    ],
+    // For backward compatibility
     school: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'School',
     },
+    // Multiple directions for teachers only
+    directions: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Direction',
+      },
+    ],
+    // For backward compatibility
     direction: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Direction',
@@ -33,6 +49,20 @@ const userSchema = mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Subject',
+      },
+    ],
+    // New field to track which teachers a student is assigned to
+    assignedTeachers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    // New field to track which students are assigned to a teacher
+    assignedStudents: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
       },
     ],
   },
