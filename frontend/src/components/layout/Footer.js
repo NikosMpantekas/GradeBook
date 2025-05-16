@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
 import { APP_VERSION } from '../../config/appConfig';
+
+// Log the version to verify it's loading correctly
+console.log('Current APP_VERSION from config:', APP_VERSION);
 
 const Footer = () => {
   return (
