@@ -68,6 +68,9 @@ const ManageGrades = () => {
     id: '',
     value: 0,
     description: '',
+    student: '',
+    subject: '',
+    date: new Date(),
   });
   const [alertState, setAlertState] = useState({
     open: false,
@@ -182,11 +185,22 @@ const ManageGrades = () => {
 
   // Edit Grade Dialog
   const handleEditClick = (grade) => {
+    // Ensure we store the complete grade data
     setEditGradeData({
       id: grade._id,
       value: grade.value,
       description: grade.description || '',
+      student: grade.student?._id || grade.student || '',
+      subject: grade.subject?._id || grade.subject || '',
+      date: grade.date ? new Date(grade.date) : new Date(),
     });
+    
+    // Make sure we have all the necessary data for editing
+    // If students aren't loaded yet, fetch them based on the subject
+    if (grade.subject && (!students || students.length === 0)) {
+      dispatch(getStudentsBySubject(grade.subject._id || grade.subject));
+    }
+    
     setEditDialogOpen(true);
   };
 
@@ -208,11 +222,14 @@ const ManageGrades = () => {
   };
 
   const handleEditSave = () => {
-    const { id, value, description } = editGradeData;
+    const { id, value, description, student, subject, date } = editGradeData;
     
-    // Create base grade data
+    // Create comprehensive grade data with all editable fields
     const gradeData = {
       value: parseInt(value, 10),
+      student: student,
+      subject: subject,
+      date: date
     };
     
     // Only include description if teacher has permission
@@ -434,10 +451,49 @@ const ManageGrades = () => {
       </Dialog>
 
       {/* Edit Grade Dialog */}
-      <Dialog open={editDialogOpen} onClose={handleEditCancel}>
+      <Dialog open={editDialogOpen} onClose={handleEditCancel} maxWidth="md" fullWidth>
         <DialogTitle>Edit Grade</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
+            {/* Added subject selection */}
+            <FormControl fullWidth margin="dense" required>
+              <InputLabel id="subject-label">Subject</InputLabel>
+              <Select
+                labelId="subject-label"
+                name="subject"
+                value={editGradeData.subject}
+                onChange={handleEditChange}
+                label="Subject"
+              >
+                {subjects.map((subject) => (
+                  <MenuItem key={subject._id} value={subject._id}>
+                    {subject.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>Select the subject for this grade</FormHelperText>
+            </FormControl>
+            
+            {/* Added student selection */}
+            <FormControl fullWidth margin="dense" required>
+              <InputLabel id="student-label">Student</InputLabel>
+              <Select
+                labelId="student-label"
+                name="student"
+                value={editGradeData.student}
+                onChange={handleEditChange}
+                label="Student"
+              >
+                {students.map((student) => (
+                  <MenuItem key={student._id} value={student._id}>
+                    {student.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>Select the student for this grade</FormHelperText>
+            </FormControl>
+            
+            {/* Grade value field */}
             <TextField
               margin="dense"
               name="value"
@@ -453,7 +509,29 @@ const ManageGrades = () => {
               required
               helperText="Enter a value between 0 and 100"
             />
-            {/* Only show description field if teacher has permission */}
+            
+            {/* Added date picker */}
+            <TextField
+              margin="dense"
+              name="date"
+              label="Date"
+              type="date"
+              fullWidth
+              variant="outlined"
+              value={editGradeData.date ? format(new Date(editGradeData.date), 'yyyy-MM-dd') : ''}
+              onChange={(e) => {
+                const newDate = e.target.value ? new Date(e.target.value) : new Date();
+                setEditGradeData({
+                  ...editGradeData,
+                  date: newDate
+                });
+              }}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ max: format(new Date(), 'yyyy-MM-dd') }}
+              helperText="Select the date for this grade"
+            />
+            
+            {/* Description field - only show if teacher has permission */}
             {(user?.canAddGradeDescriptions !== false) && (
               <TextField
                 margin="dense"

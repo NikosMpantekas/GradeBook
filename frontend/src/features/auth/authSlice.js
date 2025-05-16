@@ -106,6 +106,37 @@ export const getUserData = createAsyncThunk(
   }
 );
 
+// Update current user permissions
+export const updateCurrentUserPermissions = createAsyncThunk(
+  'auth/updatePermissions',
+  async ({userId, permissions}, thunkAPI) => {
+    try {
+      // Only proceed if this is the current logged-in user
+      const currentUser = thunkAPI.getState().auth.user;
+      if (currentUser && currentUser._id === userId) {
+        // Update permissions in local/session storage
+        const updatedUser = {
+          ...currentUser,
+          ...permissions
+        };
+        
+        // Update storage based on where the user data is currently stored
+        if (localStorage.getItem('user')) {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        } else if (sessionStorage.getItem('user')) {
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+        
+        return updatedUser;
+      }
+      return thunkAPI.getState().auth.user;
+    } catch (error) {
+      console.error('Failed to update user permissions:', error);
+      return thunkAPI.getState().auth.user;
+    }
+  }
+);
+
 export const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -115,6 +146,15 @@ export const authSlice = createSlice({
       state.isSuccess = false;
       state.isError = false;
       state.message = '';
+    },
+    updatePermissions: (state, action) => {
+      // Only update if this is the current user
+      if (state.user && state.user._id === action.payload.userId) {
+        state.user = {
+          ...state.user,
+          ...action.payload.permissions
+        };
+      }
     },
   },
   extraReducers: (builder) => {
@@ -175,6 +215,12 @@ export const authSlice = createSlice({
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
+      })
+      // Handle updating user permissions
+      .addCase(updateCurrentUserPermissions.fulfilled, (state, action) => {
+        if (action.payload && state.user && state.user._id === action.payload._id) {
+          state.user = action.payload;
+        }
       });
   },
 });

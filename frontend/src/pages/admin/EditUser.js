@@ -34,6 +34,7 @@ import {
 import { toast } from 'react-toastify';
 
 import { getUserById, updateUser, reset } from '../../features/users/userSlice';
+import { updateCurrentUserPermissions } from '../../features/auth/authSlice';
 import { getSchools } from '../../features/schools/schoolSlice';
 import { getDirections } from '../../features/directions/directionSlice';
 import { getSubjects } from '../../features/subjects/subjectSlice';
@@ -401,8 +402,25 @@ const EditUser = () => {
     setIsLoading(true);
     dispatch(updateUser({ userId: id, userData }))
       .unwrap()
-      .then(() => {
+      .then((updatedUser) => {
         toast.success('User updated successfully');
+        
+        // If the user's permissions were updated, also update them in the auth state
+        // to make the changes take effect without needing to log out
+        if (formData.role === 'teacher') {
+          // Create a permissions object with just the permission flags
+          const permissionUpdates = {
+            canSendNotifications: formData.canSendNotifications,
+            canAddGradeDescriptions: formData.canAddGradeDescriptions
+          };
+          
+          // Update the current user permissions if they match the edited user
+          dispatch(updateCurrentUserPermissions({
+            userId: id, 
+            permissions: permissionUpdates
+          }));
+        }
+        
         // Redirect back to user management
         navigate('/app/admin/users');
       })

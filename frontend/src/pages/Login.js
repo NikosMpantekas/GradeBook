@@ -145,13 +145,7 @@ const Login = () => {
               'Sign In'
             )}
           </Button>
-          <Grid container>
-            <Grid item>
-              <Link component={RouterLink} to="/register" variant="body2">
-                {"Don't have an account? Sign Up"}
-              </Link>
-            </Grid>
-          </Grid>
+          {/* Sign-up option removed as accounts are admin-created only */}
         </Box>
       </Paper>
       <Box sx={{ mt: 4, textAlign: 'center' }}>

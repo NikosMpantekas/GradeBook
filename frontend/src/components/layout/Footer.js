@@ -1,26 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
-import { APP_VERSION } from '../../config/appConfig';
-
-// Log the version to verify it's loading correctly
-console.log('Current APP_VERSION from config:', APP_VERSION);
+// Import with dynamic import to prevent caching
 
 const Footer = () => {
-  // Use state to store the version and force re-render if needed
-  const [version, setVersion] = useState(APP_VERSION);
+  // Use state to store the version
+  const [version, setVersion] = useState('');
   
-  // Force refresh of version on component mount to avoid caching issues
+  // Force refresh of version on every component mount
   useEffect(() => {
-    // This will ensure we're always using the latest version from the config
-    setVersion(APP_VERSION);
-    
-    // Add a debug message to help troubleshoot
-    console.log('Footer component mounted, APP_VERSION:', APP_VERSION);
-    
-    // Check if there's a version mismatch and warn in console
-    if (version !== APP_VERSION) {
-      console.warn(`Version mismatch detected! Displayed: ${version}, Config: ${APP_VERSION}`);
-    }
+    // Dynamic import to bypass caching issues
+    import('../../config/appConfig.js')
+      .then(module => {
+        // Get fresh version directly from module
+        setVersion(module.APP_VERSION);
+        console.log('Footer - dynamically loaded APP_VERSION:', module.APP_VERSION);
+      })
+      .catch(error => {
+        console.error('Failed to load appConfig:', error);
+        // Fallback if import fails
+        setVersion('1.1.1');
+      });
   }, []);
   
   return (
