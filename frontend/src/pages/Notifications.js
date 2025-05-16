@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
@@ -154,6 +154,7 @@ const Notifications = () => {
   };
 
   const handleEditNotification = (notification) => {
+    console.log('Edit notification:', notification);
     setCurrentNotification(notification);
     setEditForm({
       title: notification.title,
@@ -230,6 +231,7 @@ const Notifications = () => {
   // Function to open edit dialog for a notification
   const handleEdit = (e, notification) => {
     e.stopPropagation(); // Prevent triggering the list item click
+    console.log('Editing notification:', notification);
     setCurrentNotification(notification);
     setEditForm({
       title: notification.title,
@@ -327,40 +329,52 @@ const Notifications = () => {
                 <ListItem
                   alignItems="flex-start"
                   secondaryAction={
-                    <>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       {tabValue === 0 && !notification.isRead && (
-                        <IconButton 
-                          edge="end" 
-                          aria-label="mark as read"
-                          onClick={() => handleMarkAsRead(notification._id)}
-                          title="Mark as read"
-                        >
-                          <MarkEmailReadIcon />
-                        </IconButton>
+                        <Tooltip title="Mark as read">
+                          <IconButton 
+                            edge="end" 
+                            aria-label="mark as read"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification._id);
+                            }}
+                          >
+                            <MarkEmailReadIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {canEdit(notification) && (
+                        <Tooltip title="Edit notification">
+                          <IconButton 
+                            edge="end" 
+                            aria-label="edit" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(e, notification);
+                            }}
+                            sx={{ ml: 1, color: 'primary.main' }}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
                       )}
                       {(tabValue === 1 || user.role === 'admin') && (
-                        <IconButton 
-                          edge="end" 
-                          aria-label="delete" 
-                          onClick={() => handleDeleteNotification(notification._id)}
-                          title="Delete notification"
-                          sx={{ ml: 1 }}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                        <Tooltip title="Delete notification">
+                          <IconButton 
+                            edge="end" 
+                            aria-label="delete" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteNotification(notification._id);
+                            }}
+                            sx={{ ml: 1 }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
                       )}
-                      {(tabValue === 1 || user.role === 'admin') && (
-                        <IconButton 
-                          edge="end" 
-                          aria-label="edit" 
-                          onClick={() => handleEditNotification(notification)}
-                          title="Edit notification"
-                          sx={{ ml: 1 }}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      )}
-                    </>
+                    </Box>
                   }
                   sx={{ 
                     cursor: 'pointer', 
@@ -433,30 +447,19 @@ const Notifications = () => {
                           )}
                           {/* Show accurate recipient information */}
                           {tabValue === 1 && (
-                            notification.sendToAll 
-                              ? ` - To: All ${notification.targetRole === 'all' ? 'Users' : notification.targetRole.charAt(0).toUpperCase() + notification.targetRole.slice(1) + 's'}` 
-                              : notification.recipients && notification.recipients.length > 0
-                              ? ` - To: ${notification.recipients.length} specific user${notification.recipients.length > 1 ? 's' : ''}` 
-                              : ` - To: Filtered group`
+                            <>
+                              {notification.sendToAll 
+                                ? ` - To: All ${notification.targetRole === 'all' ? 'Users' : notification.targetRole.charAt(0).toUpperCase() + notification.targetRole.slice(1) + 's'}` 
+                                : notification.recipients && Array.isArray(notification.recipients) && notification.recipients.length > 0
+                                ? ` - To: ${notification.recipients.length} specific user${notification.recipients.length > 1 ? 's' : ''}` 
+                                : ` - To: Filtered group`}
+                            </>
                           )}
                         </Typography>
                       </>
                     }
                   />
-                  {/* Add edit button for notification creators or admins */}
-                  {canEdit(notification) && (
-                    <ListItemSecondaryAction>
-                      <Tooltip title="Edit notification">
-                        <IconButton 
-                          edge="end" 
-                          onClick={(e) => handleEdit(e, notification)}
-                          sx={{ color: 'primary.main' }}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </ListItemSecondaryAction>
-                  )}
+
                 </ListItem>
                 <Divider component="li" />
               </Box>
