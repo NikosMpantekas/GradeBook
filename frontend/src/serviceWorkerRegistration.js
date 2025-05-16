@@ -1,4 +1,7 @@
 // This optional code is used to register a service worker.
+// Import the app version from the central config file
+import { APP_VERSION } from './config/appConfig';
+
 // register() is not called by default.
 
 // This lets the app load faster on subsequent visits in production, and gives
@@ -35,16 +38,36 @@ export function register(config) {
 
         // Add some additional logging to localhost, pointing developers to the
         // service worker/PWA documentation.
-        navigator.serviceWorker.ready.then(() => {
+        navigator.serviceWorker.ready.then((registration) => {
           console.log(
             'This web app is being served cache-first by a service ' +
               'worker. To learn more, visit https://cra.link/PWA'
           );
+          
+          // Send the APP_VERSION to the service worker
+          if (registration.active) {
+            console.log('Sending app version to service worker:', APP_VERSION);
+            registration.active.postMessage({
+              type: 'APP_VERSION',
+              version: APP_VERSION
+            });
+          }
         });
       } else {
         // Is not localhost. Just register service worker
         registerValidSW(swUrl, config);
       }
+      
+      // For both localhost and production, send the APP_VERSION when the worker is ready
+      navigator.serviceWorker.ready.then((registration) => {
+        if (registration.active) {
+          console.log('Sending app version to service worker:', APP_VERSION);
+          registration.active.postMessage({
+            type: 'APP_VERSION',
+            version: APP_VERSION
+          });
+        }
+      });
     });
   }
 }

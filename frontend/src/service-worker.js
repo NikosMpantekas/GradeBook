@@ -13,9 +13,15 @@ import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 
-// Update this version number any time you want to force an update
-// This will invalidate the previous service worker and install the new one
-const APP_VERSION = '1.1.0';
+// The app version is now injected during service worker registration
+// See serviceWorkerRegistration.js
+// This ensures we only need to update the version in one place: src/config/appConfig.js
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'APP_VERSION') {
+    self.APP_VERSION = event.data.version;
+    console.log('Service Worker received app version:', self.APP_VERSION);
+  }
+});
 
 clientsClaim();
 

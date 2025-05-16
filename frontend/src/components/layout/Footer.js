@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Typography, Link } from '@mui/material';
+import { Box, Typography } from '@mui/material';
+import { APP_VERSION } from '../../config/appConfig';
 
 const Footer = () => {
   return (
@@ -18,18 +19,7 @@ const Footer = () => {
         {' GradeBook - Progressive Web App'}
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        {'Built with '}
-        <Link color="inherit" href="https://reactjs.org/" target="_blank" rel="noopener">
-          React
-        </Link>
-        {', '}
-        <Link color="inherit" href="https://mui.com/" target="_blank" rel="noopener">
-          Material UI
-        </Link>
-        {' and '}
-        <Link color="inherit" href="https://mongodb.com/" target="_blank" rel="noopener">
-          MongoDB
-        </Link>
+        {'Version: '}{APP_VERSION}
       </Typography>
     </Box>
   );
