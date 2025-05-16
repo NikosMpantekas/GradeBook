@@ -567,15 +567,24 @@ const CreateUser = () => {
             {/* Conditional School Selection for Teachers & Students */}
             {(formData.role === 'teacher' || formData.role === 'student') && (
               <Grid item xs={12}>
-                <FormControl fullWidth error={!!formErrors.school}>
-                  <InputLabel>School *</InputLabel>
+                <FormControl fullWidth error={!!formErrors.schools}>
+                  <InputLabel>Schools *</InputLabel>
                   <Select
-                    name="school"
-                    value={formData.school}
-                    label="School *"
+                    name="schools"
+                    value={formData.schools || []}
+                    label="Schools *"
                     onChange={handleChange}
+                    multiple
                     disabled={loadingOptions.schools}
-                  >
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const school = optionsData.schools.find(s => s._id === value);
+                          return school ? school.name : value;
+                        }).join(', ')}
+                      </Box>
+                    )}
+                  >   
                     <MenuItem value="">Select a school</MenuItem>
                     {optionsData.schools && optionsData.schools.map((school) => (
                       <MenuItem key={school._id} value={school._id}>
@@ -590,7 +599,7 @@ const CreateUser = () => {
               </Grid>
             )}
             
-            {/* Direction Selection for Students Only */}
+            {/* Direction Selection for Students - Single Direction */}
             {formData.role === 'student' && (
               <Grid item xs={12}>
                 <FormControl fullWidth error={!!formErrors.direction}>
@@ -611,6 +620,44 @@ const CreateUser = () => {
                   </Select>
                   <FormHelperText>
                     {formErrors.direction || loadingOptions.directions ? 'Loading directions...' : 'Select the student\'s direction'}
+                  </FormHelperText>
+                </FormControl>
+              </Grid>
+            )}
+            
+            {/* Direction Selection for Teachers - Multiple Directions */}
+            {formData.role === 'teacher' && (
+              <Grid item xs={12}>
+                <FormControl fullWidth error={!!formErrors.directions}>
+                  <InputLabel>Directions *</InputLabel>
+                  <Select
+                    name="directions"
+                    value={formData.directions || []}
+                    label="Directions *"
+                    onChange={handleChange}
+                    multiple
+                    disabled={loadingOptions.directions}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const direction = optionsData.directions.find(d => d._id === value);
+                          return direction ? direction.name : value;
+                        }).join(', ')}
+                      </Box>
+                    )}
+                  >
+                    <MenuItem value="">
+                      <em>Select directions</em>
+                    </MenuItem>
+                    {optionsData.directions && optionsData.directions.map((direction) => (
+                      <MenuItem key={direction._id} value={direction._id}>
+                        <Checkbox checked={formData.directions && formData.directions.indexOf(direction._id) > -1} />
+                        <ListItemText primary={direction.name} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {formErrors.directions || loadingOptions.directions ? 'Loading directions...' : 'Select the directions for this teacher'}
                   </FormHelperText>
                 </FormControl>
               </Grid>

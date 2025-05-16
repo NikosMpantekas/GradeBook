@@ -392,48 +392,18 @@ const CreateGrade = () => {
                 </FormHelperText>
               </FormControl>
             </Grid>
-            
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth error={!!formErrors.subject}>
-                <InputLabel id="subject-label">Subject *</InputLabel>
-                <Select
-                  labelId="subject-label"
-                  id="subject"
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleChange}
-                  label="Subject *"
-                  disabled={subjectsLoading}
-                >
-                  <MenuItem value="">
-                    <em>Select a subject</em>
-                  </MenuItem>
-                  {subjectsLoading ? (
-                    <MenuItem disabled>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <CircularProgress size={20} sx={{ mr: 1 }} />
-                        Loading subjects...
-                      </Box>
-                    </MenuItem>
-                  ) : subjects && subjects.length > 0 ? (
-                    subjects.map((subject) => (
-                      <MenuItem key={subject._id} value={subject._id}>
-                        {subject.name}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem disabled>
-                      <em>No subjects available</em>
-                    </MenuItem>
-                  )}
-                </Select>
-                <FormHelperText>
-                  {formErrors.subject || 
-                   (subjectsLoading ? 'Loading subjects...' : 
-                    !subjects || subjects.length === 0 ? 'No subjects assigned to you' :
-                    'Select the subject for this grade')}
-                </FormHelperText>
-              </FormControl>
+              <TextField
+                fullWidth
+                label="Grade Value *"
+                name="value"
+                type="number"
+                inputProps={{ min: 0, max: 100 }}
+                value={formData.value}
+                onChange={handleChange}
+                error={!!formErrors.value}
+                helperText={formErrors.value || 'Enter a grade value between 0 and 100'}
+              />
             </Grid>
             
             <Grid item xs={12} md={6}>

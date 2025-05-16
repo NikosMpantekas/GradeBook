@@ -358,7 +358,11 @@ const ManageSubjects = () => {
                           <>
                             <Typography variant="body2" component="span" color="text.secondary">
                               Directions: {subject.directions && subject.directions.length > 0 ? 
-                                subject.directions.map(d => typeof d === 'object' ? d.name : getDirectionName(d)).join(', ') : 
+                                subject.directions.map(d => {
+                                  if (typeof d === 'object' && d.name) return d.name;
+                                  if (typeof d === 'object' && d._id) return getDirectionName(d._id);
+                                  return getDirectionName(d);
+                                }).join(', ') : 
                                 'None assigned'}
                             </Typography>
                             <br />
@@ -453,8 +457,10 @@ const ManageSubjects = () => {
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {selected.map((value) => {
-                      const direction = directions.find(d => d._id === value);
-                      return direction ? direction.name : value;
+                      // Handle different direction formats
+                      const directionId = typeof value === 'object' ? value._id : value;
+                      const direction = directions.find(d => d._id === directionId);
+                      return direction ? direction.name : (typeof value === 'object' ? 'Unknown' : value);
                     }).join(', ')}
                   </Box>
                 )}
@@ -538,8 +544,10 @@ const ManageSubjects = () => {
                 renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                     {selected.map((value) => {
-                      const direction = directions.find(d => d._id === value);
-                      return direction ? direction.name : value;
+                      // Handle different direction formats
+                      const directionId = typeof value === 'object' ? value._id : value;
+                      const direction = directions.find(d => d._id === directionId);
+                      return direction ? direction.name : (typeof value === 'object' ? 'Unknown' : value);
                     }).join(', ')}
                   </Box>
                 )}
