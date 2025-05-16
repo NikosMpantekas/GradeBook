@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -46,9 +46,9 @@ const EditUser = () => {
   const { isLoading: userLoading, isError: userError, message: userMessage } = useSelector((state) => state.users);
   
   // Create refs to track component state
-  const initialMount = React.useRef(true);
-  const hasSubmitted = React.useRef(false);
-  const dataLoaded = React.useRef(false);
+  const initialMount = useRef(true);
+  const hasSubmitted = useRef(false);
+  const dataLoaded = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -67,6 +67,23 @@ const EditUser = () => {
   const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [teachersLoading, setTeachersLoading] = useState(false);
   const [studentsLoading, setStudentsLoading] = useState(false);
+  
+  // Add state for loading options and option data
+  const [loadingOptions, setLoadingOptions] = useState({
+    schools: false,
+    directions: false,
+    subjects: false,
+    teachers: false,
+    students: false
+  });
+  
+  const [optionsData, setOptionsData] = useState({
+    schools: [],
+    directions: [],
+    subjects: [],
+    teachers: [],
+    students: []
+  });
   
   const [formData, setFormData] = useState({
     name: '',
@@ -478,7 +495,6 @@ const EditUser = () => {
         toast.error(errorMsg);
       });
   };
-};
 
 const handleBack = () => {
   navigate('/app/admin/users');
@@ -687,6 +703,6 @@ return (
       </Paper>
     </Box>
   );
-
+};
 
 export default EditUser;
