@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { createNotification, reset } from '../../features/notifications/notificationSlice';
-import { getStudents } from '../../features/students/studentSlice';
+import { getUsersByRole } from '../../features/users/userSlice';
 import { getSchools } from '../../features/schools/schoolSlice';
 import { getDirections } from '../../features/directions/directionSlice';
 import { getSubjects } from '../../features/subjects/subjectSlice';
@@ -45,14 +45,14 @@ const CreateNotification = () => {
   
   const { user } = useSelector((state) => state.auth);
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.notifications);
-  const { students, isLoading: isStudentsLoading } = useSelector((state) => state.students);
+  const { users, isLoading: isUsersLoading } = useSelector((state) => state.users);
   const { schools, isLoading: isSchoolsLoading } = useSelector((state) => state.schools);
   const { directions, isLoading: isDirectionsLoading } = useSelector((state) => state.directions);
   const { subjects, isLoading: isSubjectsLoading } = useSelector((state) => state.subjects);
   
-  const [studentsToSelect, setStudentsToSelect] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [formData, setFormData] = useState({
-    recipient: '',
+    recipients: [],         // Array of recipient IDs (multiple selection)
     title: '',
     message: '',
     sendToAll: false,
@@ -67,18 +67,18 @@ const CreateNotification = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Loading state for all reference data
-  const isLoadingOptions = isSchoolsLoading || isDirectionsLoading || isSubjectsLoading;
+  const isLoadingOptions = isSchoolsLoading || isDirectionsLoading || isSubjectsLoading || isUsersLoading;
   
   // Fetch all required data when component mounts
   useEffect(() => {
     console.log('Fetching data for notification creation...');
     
-    // Fetch students
-    dispatch(getStudents())
+    // Load users based on default role (student)
+    dispatch(getUsersByRole(formData.filterByRole))
       .unwrap()
       .catch(error => {
-        console.error('Failed to load students:', error);
-        toast.error(`Failed to load students: ${error.message || 'Unknown error'}`);
+        console.error(`Failed to load ${formData.filterByRole}s:`, error);
+        toast.error(`Failed to load users: ${error.message || 'Unknown error'}`);
       });
     
     // Fetch schools
@@ -106,20 +106,27 @@ const CreateNotification = () => {
       });
   }, [dispatch]);
 
+  // Update available users when users data changes or role filter changes
   useEffect(() => {
-    if (students && Array.isArray(students)) {
-      console.log(`Setting ${students.length} students to select:`, students);
-      // Only include students with valid data
-      const validStudents = students.filter(student => 
-        student && student._id && student.name && typeof student.name === 'string'
+    if (users && Array.isArray(users)) {
+      console.log(`Setting ${users.length} users for role ${formData.filterByRole}:`, users);
+      // Only include users with valid data
+      const validUsers = users.filter(user => 
+        user && user._id && user.name && typeof user.name === 'string'
       );
-      setStudentsToSelect(validStudents);
+      setAvailableUsers(validUsers);
     } else {
-      // If students is not available or not an array, set an empty array
-      console.warn('Students data is invalid:', students);
-      setStudentsToSelect([]);
+      // If users is not available or not an array, set an empty array
+      console.warn('Users data is invalid:', users);
+      setAvailableUsers([]);
     }
-  }, [students]);
+  }, [users, formData.filterByRole]);
+  
+  // Reload users when role filter changes
+  useEffect(() => {
+    console.log('Role filter changed to:', formData.filterByRole);
+    dispatch(getUsersByRole(formData.filterByRole));
+  }, [dispatch, formData.filterByRole]);
 
   // Use refs to track component state
   const isInitialMount = React.useRef(true);
@@ -188,6 +195,24 @@ const CreateNotification = () => {
     setFormData({
       ...formData,
       [name]: value,
+    });
+  };
+  
+  // Special handler for multiple recipients selection
+  const handleRecipientsChange = (e) => {
+    const selectedIds = e.target.value;
+    
+    // Clear any related errors
+    if (formErrors.recipients) {
+      setFormErrors({
+        ...formErrors,
+        recipients: '',
+      });
+    }
+    
+    setFormData({
+      ...formData,
+      recipients: selectedIds,
     });
   };
   
@@ -281,9 +306,9 @@ const CreateNotification = () => {
         ) {
           errors.filters = 'Please select at least one school, direction, or subject';
         }
-      } else if (!formData.recipient) {
-        // When not using filters or sendToAll, a specific recipient must be selected
-        errors.recipient = 'Please select a recipient or use filters or send to all';
+      } else if (formData.recipients.length === 0) {
+        // When not using filters or sendToAll, at least one recipient must be selected
+        errors.recipients = 'Please select at least one recipient or use filters or send to all';
       }
     }
     
@@ -334,8 +359,8 @@ const CreateNotification = () => {
           notificationData.subjects = formData.selectedSubjects;
         }
       } else {
-        // Send to specific recipient
-        notificationData.recipients = [formData.recipient];
+        // Send to specific recipients (multiple selection supported)
+        notificationData.recipients = formData.recipients;
       }
       
       console.log('Dispatching createNotification with data:', notificationData);
@@ -492,45 +517,64 @@ const CreateNotification = () => {
               </Grid>
             )}
             
-            {/* Conditional Recipient Selection - Only show if NOT sending to all AND NOT using filters */}
+            {/* Multiple Recipients Selection - Only show if NOT sending to all AND NOT using filters */}
             {!formData.sendToAll && !formData.useFilters && (
               <Grid item xs={12}>
                 <FormControl 
                   fullWidth 
-                  error={!!formErrors.recipient}
+                  error={!!formErrors.recipients}
                 >
-                  <InputLabel id="recipient-label">Recipient *</InputLabel>
+                  <InputLabel id="recipients-label">Recipients *</InputLabel>
                   <Select
-                    labelId="recipient-label"
-                    id="recipient"
-                    name="recipient"
-                    value={formData.recipient}
-                    label="Recipient *"
-                    onChange={handleChange}
+                    labelId="recipients-label"
+                    id="recipients"
+                    multiple
+                    value={formData.recipients}
+                    label="Recipients *"
+                    onChange={handleRecipientsChange}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const selectedUser = availableUsers.find(user => user._id === value);
+                          return (
+                            <Chip 
+                              key={value} 
+                              label={selectedUser?.name || value} 
+                              size="small" 
+                            />
+                          );
+                        })}
+                      </Box>
+                    )}
+                    MenuProps={{
+                      PaperProps: {
+                        style: { maxHeight: 300 },
+                      },
+                    }}
                   >
-                    <MenuItem value="">Select a recipient</MenuItem>
-                    {isStudentsLoading ? (
+                    {isUsersLoading ? (
                       <MenuItem disabled>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <CircularProgress size={20} sx={{ mr: 1 }} />
-                          Loading students...
+                          Loading users...
                         </Box>
                       </MenuItem>
-                    ) : studentsToSelect.length > 0 ? (
-                      studentsToSelect.map((student) => (
-                        <MenuItem key={student._id} value={student._id}>
-                          {student.name}
+                    ) : availableUsers.length > 0 ? (
+                      availableUsers.map((user) => (
+                        <MenuItem key={user._id} value={user._id}>
+                          <Checkbox checked={formData.recipients.indexOf(user._id) > -1} />
+                          <ListItemText primary={user.name} secondary={user.email} />
                         </MenuItem>
                       ))
                     ) : (
-                      <MenuItem disabled>No students available</MenuItem>
+                      <MenuItem disabled>No users available for this role</MenuItem>
                     )}
                   </Select>
                   <FormHelperText>
-                    {formErrors.recipient || 
-                    (isStudentsLoading ? 'Loading students...' : 
-                      studentsToSelect.length === 0 ? 'No students available' :
-                      'Select a specific recipient to send the notification to')}
+                    {formErrors.recipients || 
+                    (isUsersLoading ? `Loading ${formData.filterByRole}s...` : 
+                      availableUsers.length === 0 ? `No ${formData.filterByRole}s available` :
+                      `Select one or more ${formData.filterByRole}s to send the notification to`)}
                   </FormHelperText>
                 </FormControl>
               </Grid>

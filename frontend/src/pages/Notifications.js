@@ -18,6 +18,13 @@ import {
   Tab,
   Badge,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
@@ -27,6 +34,7 @@ import {
   MarkEmailRead as MarkAsReadIcon,
   Send as SendIcon,
   Refresh as RefreshIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
@@ -35,6 +43,7 @@ import {
   getSentNotifications,
   markNotificationAsRead,
   deleteNotification,
+  updateNotification,
   reset,
 } from '../features/notifications/notificationSlice';
 
@@ -48,6 +57,13 @@ const Notifications = () => {
 
   const [tabValue, setTabValue] = useState(0);
   const [displayedNotifications, setDisplayedNotifications] = useState([]);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentNotification, setCurrentNotification] = useState(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    message: '',
+    isImportant: false
+  });
 
   // On component mount, check if notifications already exist in the store
   useEffect(() => {
@@ -192,11 +208,7 @@ const Notifications = () => {
             startIcon={<RefreshIcon />}
             onClick={() => {
               console.log('Manually refreshing notifications');
-              if (tabValue === 0) {
-                dispatch(getMyNotifications());
-              } else {
-                dispatch(getSentNotifications());
-              }
+              handleRefresh();
               toast.info('Refreshing notifications...');
             }}
           >
@@ -249,6 +261,17 @@ const Notifications = () => {
                           sx={{ ml: 1 }}
                         >
                           <DeleteIcon />
+                        </IconButton>
+                      )}
+                      {(tabValue === 1 || user.role === 'admin') && (
+                        <IconButton 
+                          edge="end" 
+                          aria-label="edit" 
+                          onClick={() => handleEditNotification(notification)}
+                          title="Edit notification"
+                          sx={{ ml: 1 }}
+                        >
+                          <EditIcon />
                         </IconButton>
                       )}
                     </>
@@ -358,6 +381,70 @@ const Notifications = () => {
           </Box>
         )}
       </Paper>
+      
+      {/* Edit Notification Dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={handleCloseEditDialog}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <EditIcon sx={{ mr: 1 }} />
+            Edit Notification
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {currentNotification && (
+            <Box component="form" sx={{ mt: 2 }}>
+              <TextField
+                fullWidth
+                label="Title"
+                name="title"
+                value={editForm.title}
+                onChange={handleEditFormChange}
+                margin="normal"
+                required
+              />
+              <TextField
+                fullWidth
+                label="Message"
+                name="message"
+                value={editForm.message}
+                onChange={handleEditFormChange}
+                multiline
+                rows={4}
+                margin="normal"
+                required
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={editForm.isImportant}
+                    onChange={handleEditFormChange}
+                    name="isImportant"
+                    color="error"
+                  />
+                }
+                label="Mark as important notification"
+                sx={{ mt: 2 }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditDialog}>Cancel</Button>
+          <Button 
+            onClick={handleSaveEdit} 
+            variant="contained" 
+            color="primary"
+            disabled={!editForm.title || !editForm.message}
+          >
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

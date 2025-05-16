@@ -63,12 +63,25 @@ const deleteUser = async (userId, token) => {
   return response.data;
 };
 
+// Get users by role (for notification recipient selection)
+const getUsersByRole = async (role, token) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const response = await axios.get(API_URL + 'role/' + role, config);
+  return response.data;
+};
+
 const userService = {
   getUsers,
   getUserById,
   createUser,
   updateUser,
   deleteUser,
+  getUsersByRole,
 };
 
 export default userService;

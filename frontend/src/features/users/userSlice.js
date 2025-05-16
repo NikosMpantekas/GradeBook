@@ -89,6 +89,25 @@ export const updateUser = createAsyncThunk(
   }
 );
 
+// Get users by role (for notification recipient selection)
+export const getUsersByRole = createAsyncThunk(
+  'users/getByRole',
+  async (role, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.user.token;
+      return await userService.getUsersByRole(role, token);
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 // Delete user
 export const deleteUser = createAsyncThunk(
   'users/delete',
@@ -133,6 +152,20 @@ export const userSlice = createSlice({
         state.users = action.payload;
       })
       .addCase(getUsers.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      // Handle getUsersByRole actions
+      .addCase(getUsersByRole.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getUsersByRole.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.users = action.payload;
+      })
+      .addCase(getUsersByRole.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;

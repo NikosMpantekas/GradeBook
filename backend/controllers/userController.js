@@ -532,6 +532,42 @@ const getStudentsBySubject = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get users by role
+// @route   GET /api/users/role/:role
+// @access  Private (for teachers/admins only)
+const getUsersByRole = asyncHandler(async (req, res) => {
+  // Validate that the requestor is a teacher or admin
+  if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
+    res.status(403);
+    throw new Error('Not authorized to access user lists');
+  }
+
+  const { role } = req.params;
+  
+  // Validate role parameter
+  const validRoles = ['student', 'teacher', 'admin', 'all'];
+  if (!validRoles.includes(role)) {
+    res.status(400);
+    throw new Error('Invalid role specified');
+  }
+
+  let query = {};
+  
+  // If role is 'all', don't filter by role
+  if (role !== 'all') {
+    query.role = role;
+  }
+
+  const users = await User.find(query)
+    .select('_id name email role school direction subjects')
+    .populate('school', 'name')
+    .populate('direction', 'name')
+    .populate('subjects', 'name')
+    .sort({ name: 1 });
+
+  res.json(users);
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -546,4 +582,5 @@ module.exports = {
   directDatabaseFix,
   getStudents,
   getStudentsBySubject,
+  getUsersByRole,
 };

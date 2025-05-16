@@ -14,6 +14,7 @@ const {
   directDatabaseFix,
   getStudents,
   getStudentsBySubject,
+  getUsersByRole,
 } = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -30,6 +31,9 @@ router.put('/profile', protect, updateProfile);
 // Student-related routes - ORDER IS CRITICAL - specific routes first
 router.get('/students/subject/:subjectId', protect, getStudentsBySubject);
 router.get('/students', protect, getStudents);
+
+// Role-based user filtering - for notification functionality
+router.get('/role/:role', protect, getUsersByRole);
 
 // Admin routes
 router.get('/', protect, admin, getUsers);
