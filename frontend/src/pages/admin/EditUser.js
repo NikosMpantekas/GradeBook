@@ -302,7 +302,7 @@ const EditUser = () => {
       return;
     }
     
-    // Create user data object
+    // Create user data object with all necessary properties
     const userData = {
       name: formData.name,
       email: formData.email,
@@ -314,14 +314,24 @@ const EditUser = () => {
       userData.password = formData.password;
     }
     
-    // Include school, direction, and subjects for teachers and students
+    // Always include school, direction, and subjects data for proper saving
+    // For teachers and students, these are required fields
     if (formData.role === 'teacher' || formData.role === 'student') {
-      // Only include if there's a value to prevent sending empty strings
-      if (formData.school) userData.school = formData.school;
-      if (formData.direction) userData.direction = formData.direction;
-      if (formData.subjects && formData.subjects.length > 0) {
-        userData.subjects = formData.subjects;
-      }
+      // School is required for teachers and students
+      userData.school = formData.school || null;
+      
+      // Direction is required
+      userData.direction = formData.direction || null;
+      
+      // Ensure subjects array is always included
+      userData.subjects = formData.subjects && formData.subjects.length > 0 
+        ? formData.subjects 
+        : [];
+    } else {
+      // For admins, clear these fields
+      userData.school = null;
+      userData.direction = null;
+      userData.subjects = [];
     }
     
     console.log('Submitting user data:', userData);

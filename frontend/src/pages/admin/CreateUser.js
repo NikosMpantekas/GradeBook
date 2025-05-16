@@ -268,12 +268,26 @@ const CreateUser = () => {
       
       // Add school, direction, and subjects for teachers and students
       if (formData.role === 'teacher' || formData.role === 'student') {
-        // Only include non-empty values
-        if (formData.school) userData.school = formData.school;
-        if (formData.direction) userData.direction = formData.direction;
-        if (formData.subjects && formData.subjects.length > 0) {
-          userData.subjects = formData.subjects;
+        // Include school data - required for teachers and students
+        userData.school = formData.school || null;
+        
+        // Direction is required
+        userData.direction = formData.direction || null;
+        
+        // Always include subjects array
+        userData.subjects = formData.subjects && formData.subjects.length > 0 
+          ? formData.subjects 
+          : [];
+        
+        // For teachers, add specific fields
+        if (formData.role === 'teacher' && formData.directions && formData.directions.length > 0) {
+          userData.directions = formData.directions;
         }
+      } else {
+        // For admins, ensure these fields are null/empty
+        userData.school = null;
+        userData.direction = null;
+        userData.subjects = [];
       }
       
       console.log('Submitting user data:', userData);

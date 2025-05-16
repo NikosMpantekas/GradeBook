@@ -398,25 +398,11 @@ const CreateGrade = () => {
                 label="Grade Value *"
                 name="value"
                 type="number"
-                inputProps={{ min: 0, max: 100 }}
+                InputProps={{ inputProps: { min: 0, max: 100 } }}
                 value={formData.value}
                 onChange={handleChange}
                 error={!!formErrors.value}
                 helperText={formErrors.value || 'Enter a grade value between 0 and 100'}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Grade Value *"
-                name="value"
-                type="number"
-                value={formData.value}
-                onChange={handleChange}
-                InputProps={{ inputProps: { min: 0, max: 100 } }}
-                error={!!formErrors.value}
-                helperText={formErrors.value || 'Enter a value between 0 and 100'}
               />
             </Grid>
             

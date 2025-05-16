@@ -53,6 +53,12 @@ function registerValidSW(swUrl, config) {
   navigator.serviceWorker
     .register(swUrl)
     .then((registration) => {
+      // Check for updates every hour if the app remains open
+      setInterval(() => {
+        registration.update();
+        console.log('Checking for service worker updates...');
+      }, 60 * 60 * 1000);
+
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
         if (installingWorker == null) {
@@ -65,9 +71,17 @@ function registerValidSW(swUrl, config) {
               // but the previous service worker will still serve the older
               // content until all client tabs are closed.
               console.log(
-                'New content is available and will be used when all ' +
-                  'tabs for this page are closed. See https://cra.link/PWA.'
+                'New content is available!'
               );
+
+              // Add a prompt to refresh for the new version
+              const updateConfirm = window.confirm(
+                'A new version of GradeBook is available! Click OK to refresh and use the latest version.'
+              );
+              
+              if (updateConfirm) {
+                window.location.reload();
+              }
 
               // Execute callback
               if (config && config.onUpdate) {

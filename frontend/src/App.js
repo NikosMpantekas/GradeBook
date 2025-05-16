@@ -53,6 +53,24 @@ function App() {
   const { darkMode } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
   
+  // Add service worker update handling
+  useEffect(() => {
+    // This effect handles service worker updates for PWA
+    if ('serviceWorker' in navigator) {
+      // Listen for service worker controller changes (which happen after updates)
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('Service Worker controller changed - new version available');
+        // Optional: can reload automatically or show a notification
+        // window.location.reload();
+      });
+      
+      // Force update check on page load (for home screen launches)
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'CHECK_UPDATE' });
+      }
+    }
+  }, []);
+  
   // Special initialization to ensure Redux is synced with storage
   useEffect(() => {
     // If Redux has no user but session storage does, we need to forcibly sync
