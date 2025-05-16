@@ -210,12 +210,19 @@ const ManageGrades = () => {
   const handleEditSave = () => {
     const { id, value, description } = editGradeData;
     
+    // Create base grade data
+    const gradeData = {
+      value: parseInt(value, 10),
+    };
+    
+    // Only include description if teacher has permission
+    if (user?.canAddGradeDescriptions !== false && description) {
+      gradeData.description = description;
+    }
+    
     dispatch(updateGrade({
       id,
-      gradeData: {
-        value: parseInt(value, 10),
-        description,
-      }
+      gradeData
     }))
       .then((result) => {
         if (result.meta.requestStatus === 'fulfilled') {
@@ -446,18 +453,21 @@ const ManageGrades = () => {
               required
               helperText="Enter a value between 0 and 100"
             />
-            <TextField
-              margin="dense"
-              name="description"
-              label="Description / Feedback"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={editGradeData.description}
-              onChange={handleEditChange}
-              multiline
-              rows={4}
-            />
+            {/* Only show description field if teacher has permission */}
+            {(user?.canAddGradeDescriptions !== false) && (
+              <TextField
+                margin="dense"
+                name="description"
+                label="Description / Feedback"
+                type="text"
+                fullWidth
+                variant="outlined"
+                value={editGradeData.description}
+                onChange={handleEditChange}
+                multiline
+                rows={4}
+              />
+            )}
           </Box>
         </DialogContent>
         <DialogActions>

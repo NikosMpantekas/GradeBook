@@ -225,14 +225,19 @@ const CreateGrade = () => {
     e.preventDefault();
     
     if (validate()) {
+      // Create the base grade data
       const gradeData = {
         student: formData.student,
         subject: formData.subject,
-        teacher: user._id,  // Add the teacher ID from the logged-in user
+        teacher: user._id,
         value: parseInt(formData.value, 10),
-        description: formData.description,
         date: format(formData.date, 'yyyy-MM-dd'),
       };
+      
+      // Only include description if teacher has permission
+      if (user?.canAddGradeDescriptions !== false && formData.description) {
+        gradeData.description = formData.description;
+      }
       
       console.log('Creating grade with data:', gradeData);
       dispatch(createGrade(gradeData));
@@ -423,17 +428,20 @@ const CreateGrade = () => {
               />
             </Grid>
             
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Description / Feedback"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                multiline
-                rows={4}
-              />
-            </Grid>
+            {/* Description field - only show if teacher has permission */}
+            {(user?.canAddGradeDescriptions !== false) && (
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Description / Feedback"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  multiline
+                  rows={4}
+                />
+              </Grid>
+            )}
             
             <Grid item xs={12}>
               <Button

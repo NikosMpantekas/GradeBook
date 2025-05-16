@@ -245,6 +245,11 @@ const TeacherNotifications = () => {
   };
 
   const handleAddNotification = () => {
+    // First verify permission
+    if (user?.role === 'teacher' && user?.canSendNotifications === false) {
+      toast.error('You do not have permission to create notifications');
+      return;
+    }
     navigate('/app/teacher/notifications/create');
   };
 
@@ -550,13 +555,16 @@ const TeacherNotifications = () => {
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
           Teacher Notifications
         </Typography>
-        <Button 
-          variant="contained" 
-          startIcon={<AddIcon />}
-          onClick={handleAddNotification}
-        >
-          Create Notification
-        </Button>
+        {/* Only show the Create Notification button if the user has permission */}
+        {(user?.role === 'admin' || user?.canSendNotifications !== false) && (
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleAddNotification}
+          >
+            Create Notification
+          </Button>
+        )}
       </Box>
 
       {/* Search and Filters */}

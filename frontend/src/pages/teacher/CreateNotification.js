@@ -45,6 +45,16 @@ const CreateNotification = () => {
   
   const { user } = useSelector((state) => state.auth);
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.notifications);
+  
+  // Check if teacher has permission to send notifications
+  React.useEffect(() => {
+    // Only applies to teachers, not admins
+    if (user?.role === 'teacher' && user?.canSendNotifications === false) {
+      // Teacher doesn't have permission to send notifications
+      toast.error('You do not have permission to send notifications');
+      navigate('/app/teacher/dashboard');
+    }
+  }, [user, navigate]);
   const { users, isLoading: isUsersLoading } = useSelector((state) => state.users);
   const { schools, isLoading: isSchoolsLoading } = useSelector((state) => state.schools);
   const { directions, isLoading: isDirectionsLoading } = useSelector((state) => state.directions);
