@@ -55,7 +55,7 @@ const Header = ({ drawerWidth, handleDrawerToggle }) => {
   };
 
   const handleNotificationsClick = () => {
-    navigate('/app/notifications');
+    navigate('/app/teacher/notifications');
   };
 
   const handleProfileClick = () => {
@@ -156,11 +156,8 @@ const Header = ({ drawerWidth, handleDrawerToggle }) => {
               onClose={handleClose}
             >
               <MenuItem onClick={handleProfileClick}>
-                <Typography variant="body1">
-                  {user.name}
-                </Typography>
+                Profile
               </MenuItem>
-              <MenuItem onClick={handleProfileClick}>Profile</MenuItem>
               <MenuItem onClick={onLogout}>
                 <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
                 Logout

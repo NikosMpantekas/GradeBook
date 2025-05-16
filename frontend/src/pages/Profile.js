@@ -39,17 +39,22 @@ const Profile = () => {
 
   const dispatch = useDispatch();
 
+  // Track if form has been submitted
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  
   useEffect(() => {
     if (isError) {
       toast.error(message);
     }
 
-    if (isSuccess) {
+    // Only show success message if the form was actually submitted
+    if (isSuccess && hasSubmitted) {
       toast.success('Profile updated successfully');
+      setHasSubmitted(false); // Reset after showing message
     }
 
     dispatch(reset());
-  }, [isError, isSuccess, message, dispatch]);
+  }, [isError, isSuccess, message, dispatch, hasSubmitted]);
 
   const onChange = (e) => {
     setFormData((prevState) => ({
@@ -67,7 +72,7 @@ const Profile = () => {
       const userData = {
         name,
         email,
-        darkMode: formData.darkMode,
+        // Removed darkMode from here since it's handled in the header
         saveCredentials,
       };
 
@@ -75,6 +80,8 @@ const Profile = () => {
         userData.password = password;
       }
 
+      // Set flag to indicate form was submitted to trigger success message
+      setHasSubmitted(true);
       dispatch(updateProfile(userData));
     }
   };
@@ -184,19 +191,6 @@ const Profile = () => {
               </Typography>
               
               <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={formData.darkMode}
-                        onChange={(e) => setFormData({ ...formData, darkMode: e.target.checked })}
-                        name="darkMode"
-                        color="primary"
-                      />
-                    }
-                    label="Dark Mode"
-                  />
-                </Grid>
                 <Grid item xs={12}>
                   <FormControlLabel
                     control={

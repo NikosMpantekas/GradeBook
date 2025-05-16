@@ -237,7 +237,7 @@ const Dashboard = () => {
                   <Button 
                     variant="outlined" 
                     startIcon={<AssignmentIcon />}
-                    onClick={() => navigate('/grades')}
+                    onClick={() => navigate('/app/grades')}
                     fullWidth
                   >
                     View All Grades
@@ -250,7 +250,7 @@ const Dashboard = () => {
                     <Button 
                       variant="outlined" 
                       startIcon={<AssignmentIcon />}
-                      onClick={() => navigate('/teacher/grades/manage')}
+                      onClick={() => navigate('/app/teacher/grades/manage')}
                       fullWidth
                     >
                       Manage Grades
@@ -260,7 +260,7 @@ const Dashboard = () => {
                     <Button 
                       variant="outlined" 
                       startIcon={<NotificationsIcon />}
-                      onClick={() => navigate('/teacher/notifications/create')}
+                      onClick={() => navigate('/app/teacher/notifications/create')}
                       fullWidth
                     >
                       Send Notification
@@ -274,7 +274,7 @@ const Dashboard = () => {
                     <Button 
                       variant="outlined" 
                       startIcon={<SchoolIcon />}
-                      onClick={() => navigate('/admin/users')}
+                      onClick={() => navigate('/app/admin/users')}
                       fullWidth
                     >
                       Manage Users
@@ -284,7 +284,7 @@ const Dashboard = () => {
                     <Button 
                       variant="outlined" 
                       startIcon={<SchoolIcon />}
-                      onClick={() => navigate('/admin/schools')}
+                      onClick={() => navigate('/app/admin/schools')}
                       fullWidth
                     >
                       Manage Schools
@@ -296,7 +296,7 @@ const Dashboard = () => {
                 <Button 
                   variant="outlined" 
                   startIcon={<NotificationsIcon />}
-                  onClick={() => navigate('/app/notifications')}
+                  onClick={() => navigate('/app/teacher/notifications')}
                   fullWidth
                 >
                   View Notifications
@@ -311,7 +311,7 @@ const Dashboard = () => {
                     // Force a refresh of notifications before navigation
                     dispatch(getMyNotifications()).then(() => {
                       console.log('Debug: Notifications loaded, now navigating');
-                      navigate('/app/notifications');
+                      navigate('/app/teacher/notifications');
                     });
                   }}
                   sx={{ mt: 1, fontSize: '0.75rem' }}

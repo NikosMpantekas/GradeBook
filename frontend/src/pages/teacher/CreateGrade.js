@@ -39,6 +39,8 @@ const CreateGrade = () => {
   const { students, isLoading: studentsLoading } = useSelector((state) => state.students);
   
   const [studentsToSelect, setStudentsToSelect] = useState([]);
+  const [directions, setDirections] = useState([]);
+  const [selectedDirection, setSelectedDirection] = useState('');
   const [formData, setFormData] = useState({
     student: '',
     subject: '',
@@ -52,10 +54,24 @@ const CreateGrade = () => {
     // Load subjects taught by this teacher
     dispatch(getSubjectsByTeacher(user._id));
     
+    // Fetch directions for the filter
+    fetch('/api/directions', {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+      },
+    })
+      .then(response => response.json())
+      .then(data => {
+        setDirections(data);
+      })
+      .catch(error => {
+        console.error('Error fetching directions:', error);
+      });
+    
     return () => {
       dispatch(reset());
     };
-  }, [dispatch, user._id]);
+  }, [dispatch, user._id, user.token]);
   
   // When a subject is selected, fetch students for that subject
   useEffect(() => {
@@ -84,25 +100,32 @@ const CreateGrade = () => {
     console.log('Students data updated:', students);
     if (students && Array.isArray(students)) {
       // Filter out any invalid student data
-      const validStudents = students.filter(student => 
+      let validStudents = students.filter(student => 
         student && student._id && student.name && typeof student.name === 'string'
       );
-      console.log(`Found ${validStudents.length} valid students for the selected subject`); 
+      
+      // Apply direction filter if selected
+      if (selectedDirection) {
+        validStudents = validStudents.filter(student => 
+          student.direction && 
+          (student.direction === selectedDirection || 
+           (student.direction._id && student.direction._id === selectedDirection))
+        );
+      }
+      
+      console.log(`Found ${validStudents.length} valid students for the selected subject/direction`); 
       
       if (validStudents.length > 0) {
         setStudentsToSelect(validStudents);
       } else {
-        // If no valid students for the subject, automatically fetch all students
-        console.log('No valid students found for this subject, fetching all students');
-        dispatch(getStudents());
+        // Keep the array empty to show a message rather than loading all students
+        setStudentsToSelect([]);
       }
     } else {
       console.warn('Students data is not an array:', students);
-      // Dispatch getStudents as a fallback when the students data is invalid
-      dispatch(getStudents());
       setStudentsToSelect([]);
     }
-  }, [students, dispatch]);
+  }, [students, selectedDirection]);
   
   useEffect(() => {
     if (isError) {
@@ -128,9 +151,28 @@ const CreateGrade = () => {
       });
     }
     
+    // Reset student selection when subject changes
+    if (name === 'subject') {
+      setFormData({
+        ...formData,
+        [name]: value,
+        student: '' // Reset student
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
+  };
+  
+  // Handler for direction filter change
+  const handleDirectionChange = (e) => {
+    setSelectedDirection(e.target.value);
+    // Reset student selection when direction filter changes
     setFormData({
       ...formData,
-      [name]: value,
+      student: ''
     });
   };
   
@@ -234,6 +276,75 @@ const CreateGrade = () => {
         
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={3}>
+            {/* Direction Filter */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel id="direction-filter-label">Filter by Direction</InputLabel>
+                <Select
+                  labelId="direction-filter-label"
+                  id="direction-filter"
+                  value={selectedDirection}
+                  onChange={handleDirectionChange}
+                  label="Filter by Direction"
+                >
+                  <MenuItem value="">
+                    <em>All Directions</em>
+                  </MenuItem>
+                  {directions.map((direction) => (
+                    <MenuItem key={direction._id} value={direction._id}>
+                      {direction.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>
+                  Filter students by their academic direction
+                </FormHelperText>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth error={!!formErrors.subject}>
+                <InputLabel id="subject-label">Subject *</InputLabel>
+                <Select
+                  labelId="subject-label"
+                  id="subject"
+                  name="subject"
+                  value={formData.subject}
+                  onChange={handleChange}
+                  label="Subject *"
+                  disabled={subjectsLoading}
+                >
+                  <MenuItem value="">
+                    <em>Select a subject</em>
+                  </MenuItem>
+                  {subjectsLoading ? (
+                    <MenuItem disabled>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <CircularProgress size={20} sx={{ mr: 1 }} />
+                        Loading subjects...
+                      </Box>
+                    </MenuItem>
+                  ) : subjects && subjects.length > 0 ? (
+                    subjects.map((subject) => (
+                      <MenuItem key={subject._id} value={subject._id}>
+                        {subject.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      <em>No subjects available</em>
+                    </MenuItem>
+                  )}
+                </Select>
+                <FormHelperText>
+                  {formErrors.subject || 
+                   (subjectsLoading ? 'Loading subjects...' : 
+                    !subjects || subjects.length === 0 ? 'No subjects assigned to you' :
+                    'Select the subject for this grade')}
+                </FormHelperText>
+              </FormControl>
+            </Grid>
+            
             <Grid item xs={12} md={6}>
               <FormControl fullWidth error={!!formErrors.student}>
                 <InputLabel id="student-label">Student *</InputLabel>

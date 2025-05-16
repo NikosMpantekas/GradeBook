@@ -351,7 +351,7 @@ const AdminDashboard = () => {
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
               <Button 
                 component={RouterLink} 
-                to="/admin/users" 
+                to="/app/admin/users" 
                 endIcon={<ArrowForwardIcon />}
                 size="small"
               >
@@ -373,7 +373,7 @@ const AdminDashboard = () => {
                   fullWidth
                   size="large"
                   component={RouterLink}
-                  to="/admin/users/create"
+                  to="/app/admin/users/create"
                   startIcon={<PersonIcon />}
                   sx={{ py: 1.5, justifyContent: 'flex-start' }}
                 >
@@ -386,7 +386,7 @@ const AdminDashboard = () => {
                   fullWidth
                   size="large"
                   component={RouterLink}
-                  to="/admin/schools"
+                  to="/app/admin/schools"
                   startIcon={<SchoolIcon />}
                   sx={{ py: 1.5, justifyContent: 'flex-start' }}
                 >
@@ -399,7 +399,7 @@ const AdminDashboard = () => {
                   fullWidth
                   size="large"
                   component={RouterLink}
-                  to="/admin/subjects"
+                  to="/app/admin/subjects"
                   startIcon={<MenuBookIcon />}
                   sx={{ py: 1.5, justifyContent: 'flex-start' }}
                 >
@@ -412,7 +412,7 @@ const AdminDashboard = () => {
                   fullWidth
                   size="large"
                   component={RouterLink}
-                  to="/admin/directions"
+                  to="/app/admin/directions"
                   startIcon={<TrendingUpIcon />}
                   sx={{ py: 1.5, justifyContent: 'flex-start' }}
                 >
