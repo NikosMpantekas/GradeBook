@@ -277,7 +277,6 @@ const CreateUser = () => {
           errors.subjects = 'One or more selected subjects are invalid';
         }
     }
-    }
     
     return errors;
   };

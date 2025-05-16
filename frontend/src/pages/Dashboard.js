@@ -26,7 +26,7 @@ import { getStudentGrades } from '../features/grades/gradeSlice';
 import { getSchools } from '../features/schools/schoolSlice';
 import { getDirections } from '../features/directions/directionSlice';
 import { getSubjects } from '../features/subjects/subjectSlice';
-import { useState, useEffect, useRef } from 'react';
+import { useRef } from 'react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
