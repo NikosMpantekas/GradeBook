@@ -51,19 +51,30 @@ const Dashboard = () => {
   const [userDirection, setUserDirection] = useState(null);
   const [userSubjects, setUserSubjects] = useState([]);
 
+  // Use a ref to track whether we've loaded data
+  const dataLoaded = React.useRef(false);
+
   useEffect(() => {
-    if (user) {
-      // Fetch updated user data with populated fields
-      dispatch(getUserData());
-      dispatch(getMyNotifications());
+    if (user && !dataLoaded.current) {
+      // Set flag to prevent infinite reload
+      dataLoaded.current = true;
       
+      // Fetch initial data only once
+      dispatch(getMyNotifications());
+      dispatch(getSchools());
+      dispatch(getDirections());
+      dispatch(getSubjects());
+      
+      // Only fetch grades for students
       if (user.role === 'student') {
         dispatch(getStudentGrades(user._id));
       }
       
-      dispatch(getSchools());
-      dispatch(getDirections());
-      dispatch(getSubjects());
+      // Get populated user data only if we don't already have it
+      if (!(user.school && typeof user.school === 'object') || 
+          !(user.direction && typeof user.direction === 'object')) {
+        dispatch(getUserData());
+      }
     }
   }, [user, dispatch]);
 
@@ -169,7 +180,7 @@ const Dashboard = () => {
                   <strong>Email:</strong> {user?.email}
                 </Typography>
               </Grid>
-              {user?.role === 'student' && (
+              {(user?.role === 'student' || user?.role === 'teacher') && (
                 <>
                   <Grid item xs={12}>
                     <Typography variant="body1">
@@ -179,6 +190,20 @@ const Dashboard = () => {
                   <Grid item xs={12}>
                     <Typography variant="body1">
                       <strong>Direction:</strong> {userDirection ? userDirection.name : user?.direction ? 'Loading...' : 'Not assigned'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="body1">
+                      <strong>Subjects:</strong> 
+                      {userSubjects && userSubjects.length > 0 ? (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                          {userSubjects.map(subject => (
+                            <Chip key={subject._id} label={subject.name} size="small" variant="outlined" />
+                          ))}
+                        </Box>
+                      ) : (
+                        user?.subjects && user.subjects.length > 0 ? 'Loading...' : 'Not assigned'
+                      )}
                     </Typography>
                   </Grid>
                 </>
