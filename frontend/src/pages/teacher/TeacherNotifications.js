@@ -189,7 +189,7 @@ const TeacherNotifications = () => {
       console.error('Error in applyFilters:', error);
       // Don't overwrite existing data on error
     }
-  }, [searchTerm]);
+  }, [searchTerm, senderFilter]); // Added senderFilter to dependency array
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -257,11 +257,25 @@ const TeacherNotifications = () => {
         notificationData: updatedData
       }))
         .unwrap()
-        .then(() => {
+        .then((updatedNotification) => {
           toast.success('Notification updated successfully');
           handleCloseEditDialog();
-          // Refresh notifications list
-          dispatch(getSentNotifications());
+          
+          // Manually update the notifications in state to avoid refresh issues
+          if (updatedNotification) {
+            setFilteredNotifications(prevNotifications => 
+              prevNotifications.map(notification => 
+                notification._id === updatedNotification._id ? updatedNotification : notification
+              )
+            );
+          }
+          
+          // Also refresh notifications list from the server based on user role
+          if (user && user.role === 'admin') {
+            dispatch(getAllNotifications());
+          } else {
+            dispatch(getSentNotifications());
+          }
         })
         .catch((error) => {
           toast.error(`Failed to update: ${error}`);
@@ -279,10 +293,20 @@ const TeacherNotifications = () => {
     if (notificationToDelete) {
       dispatch(deleteNotification(notificationToDelete._id))
         .unwrap()
-        .then(() => {
+        .then((response) => {
           toast.success('Notification deleted successfully');
-          // Refresh notifications list
-          dispatch(getSentNotifications());
+          
+          // Manually update local state to immediately reflect deletion
+          setFilteredNotifications(prevNotifications => 
+            prevNotifications.filter(notification => notification._id !== notificationToDelete._id)
+          );
+          
+          // Refresh notifications list from server based on user role
+          if (user && user.role === 'admin') {
+            dispatch(getAllNotifications());
+          } else {
+            dispatch(getSentNotifications());
+          }
         })
         .catch((error) => {
           toast.error(`Failed to delete: ${error}`);
@@ -298,7 +322,22 @@ const TeacherNotifications = () => {
   };
 
   const handleMarkAsRead = (id) => {
-    dispatch(markNotificationAsRead(id));
+    dispatch(markNotificationAsRead(id))
+      .unwrap()
+      .then(() => {
+        // Update the local state immediately to reflect the read status
+        setFilteredNotifications(prevNotifications => 
+          prevNotifications.map(notification => {
+            if (notification._id === id) {
+              return { ...notification, isRead: true };
+            }
+            return notification;
+          })
+        );
+      })
+      .catch(error => {
+        toast.error('Failed to mark notification as read');
+      });
   };
 
   // Helper function to get recipient display text
