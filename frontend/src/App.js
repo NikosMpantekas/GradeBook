@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -47,6 +47,9 @@ import ManageSubjects from './pages/admin/ManageSubjects';
 
 // Push notification service
 import { setupPushNotifications } from './services/pushNotificationService';
+
+// Custom components
+import HomeScreenPrompt from './components/HomeScreenPrompt';
 
 function App() {
   const dispatch = useDispatch();
@@ -146,6 +149,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <HomeScreenPrompt />
       <Router>
         <Routes>
           {/* Public Routes */}

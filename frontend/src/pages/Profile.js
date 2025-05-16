@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
-import imageCompression from 'browser-image-compression';
 import {
   Container,
   Box,
@@ -10,15 +9,12 @@ import {
   Button,
   Grid,
   Paper,
-  Avatar,
-  IconButton,
   CircularProgress,
   Divider,
   Switch,
   FormControlLabel,
-  LinearProgress,
 } from '@mui/material';
-import { PhotoCamera, Save as SaveIcon } from '@mui/icons-material';
+import { Save as SaveIcon } from '@mui/icons-material';
 import { updateProfile, reset } from '../features/auth/authSlice';
 
 const Profile = () => {
@@ -32,18 +28,11 @@ const Profile = () => {
     email: user?.email || '',
     password: '',
     password2: '',
-    avatar: user?.avatar || '',
     darkMode: darkMode,
     saveCredentials: user?.saveCredentials || false,
   });
 
-  const { name, email, password, password2, avatar, saveCredentials } = formData;
-  
-  // Add state for handling image upload
-  const [imageFile, setImageFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(avatar || '');
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
+  const { name, email, password, password2, saveCredentials } = formData;
 
   const dispatch = useDispatch();
 
@@ -51,20 +40,8 @@ const Profile = () => {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   
   const handleEditSave = () => {
-    if (isUploading) {
-      toast.info('Please wait for image compression to complete');
-      return;
-    }
-    
     onSubmit();
   };
-  
-  useEffect(() => {
-    if (user?.avatar && user.avatar !== formData.avatar) {
-      setPreviewUrl(user.avatar);
-      setFormData(prev => ({ ...prev, avatar: user.avatar }));
-    }
-  }, [user?.avatar]);
 
   useEffect(() => {
     if (isError) {
@@ -87,60 +64,6 @@ const Profile = () => {
     }));
   };
 
-  // Handle profile picture selection and compression
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // Display preview before compression
-    const reader = new FileReader();
-    reader.onload = (e) => setPreviewUrl(e.target.result);
-    reader.readAsDataURL(file);
-
-    try {
-      setIsUploading(true);
-      setUploadProgress(10);
-
-      // Compression options - targeting very small file size (a few KB)
-      const options = {
-        maxSizeMB: 0.05, // 50KB max
-        maxWidthOrHeight: 400,
-        useWebWorker: true,
-        onProgress: (percent) => setUploadProgress(Math.round(percent)),
-      };
-
-      // Compress the image
-      const compressedFile = await imageCompression(file, options);
-      setUploadProgress(90);
-      
-      console.log(`Original file size: ${file.size / 1024} KB`);
-      console.log(`Compressed file size: ${compressedFile.size / 1024} KB`);
-
-      // Convert compressed image to base64 for preview and storage
-      const reader2 = new FileReader();
-      reader2.onload = (e) => {
-        const base64String = e.target.result;
-        setFormData((prevState) => ({
-          ...prevState,
-          avatar: base64String,
-        }));
-        setPreviewUrl(base64String);
-        setUploadProgress(100);
-        
-        setTimeout(() => {
-          setIsUploading(false);
-          toast.success('Image compressed and ready to save with your profile');
-        }, 500);
-      };
-      reader2.readAsDataURL(compressedFile);
-
-    } catch (error) {
-      console.error('Error compressing image:', error);
-      toast.error('Error processing image. Please try again.');
-      setIsUploading(false);
-    }
-  };
-
   const onSubmit = (e) => {
     if (e) e.preventDefault();
 
@@ -149,11 +72,9 @@ const Profile = () => {
       return;
     }
     
-    // Always include the avatar from the form data
     const userData = {
       name,
       email,
-      avatar: formData.avatar, // Explicitly use formData.avatar to ensure it's included
       saveCredentials,
     };
 
@@ -161,8 +82,6 @@ const Profile = () => {
       userData.password = password;
     }
 
-    console.log('Submitting profile update with userData:', userData);
-    
     // Set flag to indicate form was submitted to trigger success message
     setHasSubmitted(true);
     dispatch(updateProfile(userData));
@@ -183,55 +102,21 @@ const Profile = () => {
           My Profile
         </Typography>
         
-        <Grid container spacing={4}>
-          {/* Profile Photo Section */}
-          <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Avatar 
-              src={previewUrl || avatar} 
-              alt={name} 
-              sx={{ width: 120, height: 120, mb: 2, border: '2px solid #eee' }}
-            />
-            <Typography variant="body1" sx={{ mb: 1, textAlign: 'center' }}>
-              {user?.name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
-              {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
-            </Typography>
-            
-            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              {isUploading && (
-                <Box sx={{ width: '90%', mb: 2 }}>
-                  <LinearProgress variant="determinate" value={uploadProgress} />
-                  <Typography variant="caption" sx={{ mt: 0.5, display: 'block', textAlign: 'center' }}>
-                    Compressing image: {uploadProgress}%
-                  </Typography>
-                </Box>
-              )}
-              
-              <Button
-                variant="outlined"
-                component="label"
-                startIcon={<PhotoCamera />}
-                disabled={isUploading}
-                sx={{ mb: 2 }}
-              >
-                Choose Photo
-                <input 
-                  hidden 
-                  accept="image/*" 
-                  type="file" 
-                  onChange={handleImageChange} 
-                />
-              </Button>
-              
-              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-                Images will be compressed to a few KB to save storage
+        <Grid container spacing={2}>
+          {/* User Info */}
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 0.5 }}>
+                {user?.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
               </Typography>
             </Box>
           </Grid>
           
           {/* Profile Form */}
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12}>
             <Box component="form" onSubmit={onSubmit} noValidate>
               <TextField
                 margin="normal"
