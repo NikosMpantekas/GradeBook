@@ -218,69 +218,127 @@ const getMyNotifications = asyncHandler(async (req, res) => {
   let query = {};
   
   if (user.role === 'student') {
-    // Students see notifications that meet ANY of these criteria:
-    // 1. They are explicitly in the recipients list
-    // 2. The notification is targeted to their school
-    // 3. The notification is targeted to their direction
-    // 4. The notification is targeted to their subjects (if they have any)
-    // 5. The target role is 'student' or 'all'
-    // 6. The notification is marked as sendToAll
+    // FIXED PRIVACY ISSUE: Students should only see notifications that are specifically intended for them
+    // Conditions that allow a student to see a notification:
     
-    const orConditions = [
+    // 1. Core conditions - student must meet ONE of these to see a notification:
+    //    - They are explicitly in the recipients list, OR
+    //    - The notification is marked as sendToAll
+    const coreConditions = [
       { recipients: user._id },
-      { sendToAll: true },
-      { targetRole: { $in: ['student', 'all'] } }
+      { sendToAll: true }
     ];
     
-    // Only add school condition if student has a school assigned
+    // 2. Targeting conditions - if a notification uses targeting (not specific recipients),
+    //    then student must meet ALL relevant targeting criteria:
+    //    - If targetRole specified, it must include 'student' or 'all'
+    //    - If schools specified, student's school must be included
+    //    - If directions specified, student's direction must be included
+    //    - If subjects specified, at least one of student's subjects must be included
+    
+    // First prepare a targeting condition for notifications using role/attribute targeting
+    const targetingCondition = {
+      $and: [ 
+        // Only include notifications that have targetRole set to student or all
+        { targetRole: { $in: ['student', 'all'] } }
+      ]
+    };
+    
+    // If the notification specifies schools, student must belong to one of them
     if (user.school) {
-      orConditions.push({ schools: user.school });
+      targetingCondition.$and.push({
+        $or: [
+          { schools: { $exists: false } },   // No schools specified (targets all schools)
+          { schools: { $size: 0 } },         // Empty schools array (targets all schools)
+          { schools: user.school }           // Student's school is targeted
+        ]
+      });
     }
     
-    // Only add direction condition if student has a direction assigned
+    // If the notification specifies directions, student must belong to one of them
     if (user.direction) {
-      orConditions.push({ directions: user.direction });
+      targetingCondition.$and.push({
+        $or: [
+          { directions: { $exists: false } }, // No directions specified
+          { directions: { $size: 0 } },        // Empty directions array
+          { directions: user.direction }       // Student's direction is targeted
+        ]
+      });
     }
     
-    // Only add subjects condition if student has subjects assigned
+    // If the notification specifies subjects, student must be enrolled in at least one
     if (user.subjects && user.subjects.length > 0) {
-      orConditions.push({ subjects: { $in: user.subjects } });
+      targetingCondition.$and.push({
+        $or: [
+          { subjects: { $exists: false } },   // No subjects specified
+          { subjects: { $size: 0 } },          // Empty subjects array
+          { subjects: { $in: user.subjects } } // At least one of student's subjects is targeted
+        ]
+      });
     }
     
-    // Debugging: Add a condition that always matches all notifications
-    // This is temporary to help diagnose the issue
-    // orConditions.push({ _id: { $exists: true } });
+    // Add the targeting condition as an alternative to the core conditions
+    coreConditions.push(targetingCondition);
     
-    query = { $or: orConditions };
+    // Final query uses the core conditions
+    query = { $or: coreConditions };
     
-    console.log('Student notification query:', JSON.stringify(query, null, 2));
+    console.log('Student notification query (privacy fixed):', JSON.stringify(query, null, 2));
   } else if (user.role === 'teacher') {
-    // Teachers see notifications where:
-    // 1. They are specifically listed as a recipient, OR
-    // 2. Their school is targeted, OR
-    // 3. One of their subjects is targeted, OR
-    // 4. The target role is 'teacher' or 'all'
-    // 5. The notification is marked as sendToAll
+    // FIXED PRIVACY ISSUE: Teachers should only see notifications that are specifically intended for them
+    // Following the same privacy model as students
     
-    const orConditions = [
+    // 1. Core conditions - teacher must meet ONE of these to see a notification:
+    //    - They are explicitly in the recipients list, OR
+    //    - The notification is marked as sendToAll
+    const coreConditions = [
       { recipients: user._id },
-      { sendToAll: true },
-      { targetRole: { $in: ['teacher', 'all'] } }
+      { sendToAll: true }
     ];
     
-    // Only add school condition if teacher has a school assigned
+    // 2. Targeting conditions - if a notification uses targeting (not specific recipients),
+    //    then teacher must meet ALL relevant targeting criteria:
+    //    - If targetRole specified, it must include 'teacher' or 'all'
+    //    - If schools specified, teacher's school must be included
+    //    - If subjects specified, at least one of teacher's subjects must be included
+    
+    // First prepare a targeting condition for notifications using role/attribute targeting
+    const targetingCondition = {
+      $and: [ 
+        // Only include notifications that have targetRole set to teacher or all
+        { targetRole: { $in: ['teacher', 'all'] } }
+      ]
+    };
+    
+    // If the notification specifies schools, teacher must belong to one of them
     if (user.school) {
-      orConditions.push({ schools: user.school });
+      targetingCondition.$and.push({
+        $or: [
+          { schools: { $exists: false } },   // No schools specified (targets all schools)
+          { schools: { $size: 0 } },         // Empty schools array (targets all schools)
+          { schools: user.school }           // Teacher's school is targeted
+        ]
+      });
     }
     
-    // Only add subjects condition if teacher has subjects assigned
+    // If the notification specifies subjects, teacher must teach at least one
     if (user.subjects && user.subjects.length > 0) {
-      orConditions.push({ subjects: { $in: user.subjects } });
+      targetingCondition.$and.push({
+        $or: [
+          { subjects: { $exists: false } },   // No subjects specified
+          { subjects: { $size: 0 } },          // Empty subjects array
+          { subjects: { $in: user.subjects } } // At least one of teacher's subjects is targeted
+        ]
+      });
     }
     
-    query = { $or: orConditions };
+    // Add the targeting condition as an alternative to the core conditions
+    coreConditions.push(targetingCondition);
     
-    console.log('Teacher notification query:', JSON.stringify(query, null, 2));
+    // Final query uses the core conditions
+    query = { $or: coreConditions };
+    
+    console.log('Teacher notification query (privacy fixed):', JSON.stringify(query, null, 2));
   } else if (user.role === 'admin') {
     // Admins see all notifications
     query = {};
