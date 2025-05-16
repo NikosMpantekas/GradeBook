@@ -72,6 +72,9 @@ const EditUser = () => {
     changePassword: false,
     password: '',
     confirmPassword: '',
+    // Teacher permission flags - default to true for backward compatibility
+    canSendNotifications: true,
+    canAddGradeDescriptions: true,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -154,6 +157,9 @@ const EditUser = () => {
             changePassword: false,
             password: '',
             confirmPassword: '',
+            // Set teacher permission fields if they exist, otherwise use defaults
+            canSendNotifications: response.canSendNotifications !== undefined ? response.canSendNotifications : true,
+            canAddGradeDescriptions: response.canAddGradeDescriptions !== undefined ? response.canAddGradeDescriptions : true,
           });
           dataLoaded.current = true;
         } else {
@@ -327,6 +333,12 @@ const EditUser = () => {
       userData.subjects = formData.subjects && formData.subjects.length > 0 
         ? formData.subjects 
         : [];
+      
+      // Include teacher permission fields only for teacher role
+      if (formData.role === 'teacher') {
+        userData.canSendNotifications = formData.canSendNotifications;
+        userData.canAddGradeDescriptions = formData.canAddGradeDescriptions;
+      }
     } else {
       // For admins, clear these fields
       userData.school = null;
@@ -581,6 +593,61 @@ const EditUser = () => {
                   </Select>
                   <FormHelperText>{formErrors.subjects}</FormHelperText>
                 </FormControl>
+              </Grid>
+            )}
+            
+            {/* Teacher Permission Controls */}
+            {formData.role === 'teacher' && (
+              <Grid item xs={12}>
+                <Paper elevation={1} sx={{ p: 2, mt: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
+                    Teacher Permissions
+                  </Typography>
+                  
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <FormControl component="fieldset">
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={formData.canSendNotifications}
+                              onChange={(e) => {
+                                setFormData({
+                                  ...formData,
+                                  canSendNotifications: e.target.checked
+                                });
+                              }}
+                              color="primary"
+                            />
+                          }
+                          label="Can Send Notifications"
+                        />
+                        <FormHelperText>Allow this teacher to send notifications to students</FormHelperText>
+                      </FormControl>
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <FormControl component="fieldset">
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={formData.canAddGradeDescriptions}
+                              onChange={(e) => {
+                                setFormData({
+                                  ...formData,
+                                  canAddGradeDescriptions: e.target.checked
+                                });
+                              }}
+                              color="primary"
+                            />
+                          }
+                          label="Can Add Grade Descriptions"
+                        />
+                        <FormHelperText>Allow this teacher to add descriptions to grades</FormHelperText>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                </Paper>
               </Grid>
             )}
             

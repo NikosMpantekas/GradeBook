@@ -37,7 +37,16 @@ const userSchema = mongoose.Schema(
         ref: 'Subject',
       },
     ],
-
+    
+    // Teacher permission flags
+    canSendNotifications: {
+      type: Boolean,
+      default: true, // Default to true for backward compatibility
+    },
+    canAddGradeDescriptions: {
+      type: Boolean,
+      default: true, // Default to true for backward compatibility
+    },
   },
   {
     timestamps: true,

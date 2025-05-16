@@ -208,6 +208,17 @@ const updateUser = asyncHandler(async (req, res) => {
     if (req.body.subjects !== undefined) {
       user.subjects = req.body.subjects;
     }
+    
+    // Handle teacher permission fields if this is a teacher account
+    if (user.role === 'teacher') {
+      if (req.body.canSendNotifications !== undefined) {
+        user.canSendNotifications = req.body.canSendNotifications;
+      }
+      
+      if (req.body.canAddGradeDescriptions !== undefined) {
+        user.canAddGradeDescriptions = req.body.canAddGradeDescriptions;
+      }
+    }
 
     // Save the user first
     await user.save();
@@ -219,7 +230,8 @@ const updateUser = asyncHandler(async (req, res) => {
       .populate('direction', 'name')
       .populate('subjects', 'name');
 
-    res.json({
+    // Prepare base response
+    const response = {
       _id: updatedUser._id,
       name: updatedUser.name,
       email: updatedUser.email,
@@ -227,7 +239,15 @@ const updateUser = asyncHandler(async (req, res) => {
       school: updatedUser.school,
       direction: updatedUser.direction,
       subjects: updatedUser.subjects,
-    });
+    };
+    
+    // Add teacher permission fields if applicable
+    if (updatedUser.role === 'teacher') {
+      response.canSendNotifications = updatedUser.canSendNotifications;
+      response.canAddGradeDescriptions = updatedUser.canAddGradeDescriptions;
+    }
+    
+    res.json(response);
   } else {
     res.status(404);
     throw new Error('User not found');
@@ -305,7 +325,7 @@ const createAdminAccount = asyncHandler(async (req, res) => {
 // @route   POST /api/users/admin/create
 // @access  Private/Admin
 const createUserByAdmin = asyncHandler(async (req, res) => {
-  const { name, email, password, role, school, direction, subjects } = req.body;
+  const { name, email, password, role, school, direction, subjects, canSendNotifications, canAddGradeDescriptions } = req.body;
   console.log('Admin creating user:', { 
     name, 
     email, 
@@ -313,7 +333,11 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     passwordLength: password ? password.length : 0,
     school: school || null,
     direction: direction || null,
-    subjects: subjects && subjects.length > 0 ? subjects.length : 0
+    subjects: subjects && subjects.length > 0 ? subjects.length : 0,
+    ...(role === 'teacher' ? {
+      canSendNotifications: typeof canSendNotifications === 'boolean' ? canSendNotifications : true,
+      canAddGradeDescriptions: typeof canAddGradeDescriptions === 'boolean' ? canAddGradeDescriptions : true
+    } : {})
   });
 
   if (!name || !email || !password || !role) {
@@ -358,6 +382,18 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       
       if (subjects && Array.isArray(subjects) && subjects.length > 0) {
         userDocument.subjects = subjects;
+      }
+      
+      // Add teacher-specific permission fields
+      if (role === 'teacher') {
+        // Set permission flags with default true if not specified
+        userDocument.canSendNotifications = typeof canSendNotifications === 'boolean' 
+          ? canSendNotifications 
+          : true;
+        
+        userDocument.canAddGradeDescriptions = typeof canAddGradeDescriptions === 'boolean' 
+          ? canAddGradeDescriptions 
+          : true;
       }
     }
     
