@@ -305,8 +305,16 @@ const createAdminAccount = asyncHandler(async (req, res) => {
 // @route   POST /api/users/admin/create
 // @access  Private/Admin
 const createUserByAdmin = asyncHandler(async (req, res) => {
-  const { name, email, password, role } = req.body;
-  console.log('Admin creating user:', { name, email, role, passwordLength: password ? password.length : 0 });
+  const { name, email, password, role, school, direction, subjects } = req.body;
+  console.log('Admin creating user:', { 
+    name, 
+    email, 
+    role, 
+    passwordLength: password ? password.length : 0,
+    school: school || null,
+    direction: direction || null,
+    subjects: subjects && subjects.length > 0 ? subjects.length : 0
+  });
 
   if (!name || !email || !password || !role) {
     res.status(400);
@@ -328,19 +336,41 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
     console.log('Generated hashed password length:', hashedPassword.length);
     
-    // Bypass the pre-save middleware entirely to avoid double-hashing
-    // Create user document directly in the database
-    const result = await User.collection.insertOne({
+    // Prepare user document with all fields from the request
+    const userDocument = {
       name,
       email,
       password: hashedPassword, // Already properly hashed
       role,
       createdAt: new Date(),
       updatedAt: new Date()
-    });
+    };
     
-    // Get the inserted user
-    const savedUser = await User.findOne({ _id: result.insertedId });
+    // Add additional fields if they're provided (for teachers and students)
+    if (role === 'teacher' || role === 'student') {
+      if (school) {
+        userDocument.school = school;
+      }
+      
+      if (direction) {
+        userDocument.direction = direction;
+      }
+      
+      if (subjects && Array.isArray(subjects) && subjects.length > 0) {
+        userDocument.subjects = subjects;
+      }
+    }
+    
+    // Bypass the pre-save middleware entirely to avoid double-hashing
+    // Create user document directly in the database with all fields
+    const result = await User.collection.insertOne(userDocument);
+    
+    // Get the inserted user and populate all reference fields
+    const savedUser = await User.findOne({ _id: result.insertedId })
+      .populate('school', 'name')
+      .populate('direction', 'name')
+      .populate('subjects', 'name');
+      
     console.log('User created successfully with ID:', savedUser._id);
     
     // IMPORTANT: Test verification using the same password comparison as login
@@ -355,13 +385,19 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     console.log('ACCOUNT CREATED:');
     console.log(`Email: ${email}`);
     console.log(`Role: ${role}`);
+    console.log('School:', school ? 'Set' : 'Not set');
+    console.log('Direction:', direction ? 'Set' : 'Not set');
+    console.log('Subjects:', subjects && subjects.length > 0 ? `${subjects.length} assigned` : 'None assigned');
     console.log('Password verification check:', testVerify ? 'PASSED' : 'FAILED');
   
     res.status(201).json({
-      _id: savedUser.id,
+      _id: savedUser._id,
       name: savedUser.name,
       email: savedUser.email,
       role: savedUser.role,
+      school: savedUser.school,
+      direction: savedUser.direction,
+      subjects: savedUser.subjects,
       token: generateToken(savedUser._id),
     });
   } catch (error) {

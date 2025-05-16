@@ -173,6 +173,8 @@ function App() {
           }>
             <Route path="/app/dashboard" element={<Dashboard />} />
             <Route path="/app/profile" element={<Profile />} />
+            {/* General notifications route */}
+            <Route path="/app/notifications" element={<Notifications />} />
             {/* Notification detail route still available for deep linking */}
             <Route path="/app/notifications/:id" element={<NotificationDetail />} />
             
