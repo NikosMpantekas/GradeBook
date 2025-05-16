@@ -19,7 +19,25 @@ const notificationSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     }],
-    // For filtering notifications
+    // For filtering notifications - plural fields to support multiple selections
+    schools: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+    }],
+    directions: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Direction',
+    }],
+    subjects: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject',
+    }],
+    // Flag for sending to all users
+    sendToAll: {
+      type: Boolean,
+      default: false
+    },
+    // Legacy fields for backward compatibility - to be deprecated
     school: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'School',

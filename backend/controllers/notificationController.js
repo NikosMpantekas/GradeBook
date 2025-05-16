@@ -205,47 +205,85 @@ const getAllNotifications = asyncHandler(async (req, res) => {
 const getMyNotifications = asyncHandler(async (req, res) => {
   const user = req.user;
   
+  console.log(`Getting notifications for user ${user.name} (${user._id}), role: ${user.role}`);
+  
   // Build query based on user role and attributes
   let query = {};
   
   if (user.role === 'student') {
     // Students see notifications where:
     // 1. They are specifically listed as a recipient, OR
-    // 2. Their school is targeted, OR
-    // 3. Their direction is targeted, OR
-    // 4. One of their subjects is targeted, OR
+    // 2. Their school is targeted (in the schools array), OR
+    // 3. Their direction is targeted (in the directions array), OR
+    // 4. One of their subjects is targeted (in the subjects array), OR
     // 5. The target role is 'student' or 'all'
+    // 6. The notification is marked as sendToAll
     
-    query = {
-      $or: [
-        { recipients: user._id },
-        { school: user.school },
-        { direction: user.direction },
-        { subject: { $in: user.subjects } },
-        { targetRole: { $in: ['student', 'all'] } },
-      ],
-    };
+    const orConditions = [
+      { recipients: user._id },
+      { sendToAll: true },
+      { targetRole: { $in: ['student', 'all'] } }
+    ];
+    
+    // Only add school condition if user has a school assigned
+    if (user.school) {
+      orConditions.push({ schools: user.school });
+    }
+    
+    // Only add direction condition if user has a direction assigned
+    if (user.direction) {
+      orConditions.push({ directions: user.direction });
+    }
+    
+    // Only add subjects condition if user has subjects assigned
+    if (user.subjects && user.subjects.length > 0) {
+      orConditions.push({ subjects: { $in: user.subjects } });
+    }
+    
+    query = { $or: orConditions };
+    
+    console.log('Student notification query:', JSON.stringify(query, null, 2));
   } else if (user.role === 'teacher') {
     // Teachers see notifications where:
     // 1. They are specifically listed as a recipient, OR
-    // 2. The target role is 'teacher' or 'all'
-    query = {
-      $or: [
-        { recipients: user._id },
-        { targetRole: { $in: ['teacher', 'all'] } },
-      ],
-    };
+    // 2. Their school is targeted, OR
+    // 3. One of their subjects is targeted, OR
+    // 4. The target role is 'teacher' or 'all'
+    // 5. The notification is marked as sendToAll
+    
+    const orConditions = [
+      { recipients: user._id },
+      { sendToAll: true },
+      { targetRole: { $in: ['teacher', 'all'] } }
+    ];
+    
+    // Only add school condition if teacher has a school assigned
+    if (user.school) {
+      orConditions.push({ schools: user.school });
+    }
+    
+    // Only add subjects condition if teacher has subjects assigned
+    if (user.subjects && user.subjects.length > 0) {
+      orConditions.push({ subjects: { $in: user.subjects } });
+    }
+    
+    query = { $or: orConditions };
+    
+    console.log('Teacher notification query:', JSON.stringify(query, null, 2));
   } else if (user.role === 'admin') {
     // Admins see all notifications
     query = {};
+    console.log('Admin sees all notifications');
   }
 
   const notifications = await Notification.find(query)
     .populate('sender', 'name email role')
-    .populate('school', 'name')
-    .populate('direction', 'name')
-    .populate('subject', 'name')
+    .populate('schools', 'name')
+    .populate('directions', 'name')
+    .populate('subjects', 'name')
     .sort({ createdAt: -1 });
+  
+  console.log(`Found ${notifications.length} notifications for user ${user._id}`);
   
   res.json(notifications);
 });
@@ -254,11 +292,17 @@ const getMyNotifications = asyncHandler(async (req, res) => {
 // @route   GET /api/notifications/sent
 // @access  Private/Teacher Admin
 const getSentNotifications = asyncHandler(async (req, res) => {
+  console.log(`Getting sent notifications for user ${req.user.name} (${req.user.id})`);
+  
   const notifications = await Notification.find({ sender: req.user.id })
-    .populate('school', 'name')
-    .populate('direction', 'name')
-    .populate('subject', 'name')
+    .populate('sender', 'name email role')
+    .populate('schools', 'name')
+    .populate('directions', 'name')
+    .populate('subjects', 'name')
+    .populate('recipients', 'name email role')
     .sort({ createdAt: -1 });
+  
+  console.log(`Found ${notifications.length} notifications sent by user ${req.user.id}`);
   
   res.json(notifications);
 });
