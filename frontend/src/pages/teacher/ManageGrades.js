@@ -40,6 +40,7 @@ import {
   FilterList as FilterIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
+import { getStudentsBySubject } from '../../features/students/studentSlice';
 import { toast } from 'react-toastify';
 import {
   getGradesByTeacher,
@@ -200,8 +201,14 @@ const ManageGrades = () => {
     
     // Make sure we have all the necessary data for editing
     // If students aren't loaded yet, fetch them based on the subject
-    if (grade.subject && (!students || students.length === 0)) {
-      dispatch(getStudentsBySubject(grade.subject._id || grade.subject));
+    try {
+      if (grade.subject) {
+        const subjectId = typeof grade.subject === 'object' ? grade.subject._id : grade.subject;
+        console.log('Fetching students for subject:', subjectId);
+        dispatch(getStudentsBySubject(subjectId));
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
     }
     
     setEditDialogOpen(true);
@@ -232,13 +239,15 @@ const ManageGrades = () => {
       value: parseInt(value, 10),
       student: student,
       subject: subject,
-      date: date
+      date: date instanceof Date ? format(date, 'yyyy-MM-dd') : date
     };
     
     // Only include description if teacher has permission
     if (user?.canAddGradeDescriptions !== false && description) {
       gradeData.description = description;
     }
+    
+    console.log('Updating grade with data:', { id, gradeData });
     
     dispatch(updateGrade({
       id,
@@ -468,11 +477,11 @@ const ManageGrades = () => {
                 onChange={handleEditChange}
                 label="Subject"
               >
-                {subjects.map((subject) => (
+                {Array.isArray(subjects) && subjects.length > 0 ? subjects.map((subject) => (
                   <MenuItem key={subject._id} value={subject._id}>
                     {subject.name}
                   </MenuItem>
-                ))}
+                )) : <MenuItem disabled>No subjects available</MenuItem>}
               </Select>
               <FormHelperText>Select the subject for this grade</FormHelperText>
             </FormControl>
@@ -487,11 +496,11 @@ const ManageGrades = () => {
                 onChange={handleEditChange}
                 label="Student"
               >
-                {students.map((student) => (
+                {Array.isArray(students) && students.length > 0 ? students.map((student) => (
                   <MenuItem key={student._id} value={student._id}>
                     {student.name}
                   </MenuItem>
-                ))}
+                )) : <MenuItem disabled>No students available</MenuItem>}
               </Select>
               <FormHelperText>Select the student for this grade</FormHelperText>
             </FormControl>
