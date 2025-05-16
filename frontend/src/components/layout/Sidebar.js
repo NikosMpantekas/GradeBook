@@ -78,12 +78,14 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle }) => {
         icon: <NotificationsIcon />,
         path: '/app/teacher/notifications',
         roles: ['teacher', 'admin'],
+        checkPermission: (user) => user.role === 'admin' || user.canSendNotifications !== false
       },
       {
         text: 'Send Notification',
         icon: <AddIcon />,
         path: '/app/teacher/notifications/create',
         roles: ['teacher', 'admin'],
+        checkPermission: (user) => user.role === 'admin' || user.canSendNotifications !== false
       },
       // Admin menu items
       {
@@ -125,8 +127,19 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle }) => {
       },
     ];
 
-    // Filter menu items based on user role
-    return menuItems.filter((item) => user && item.roles.includes(user.role));
+    // Filter menu items based on user role and permissions
+    return menuItems.filter((item) => {
+      // First check if user has the required role
+      const hasRole = user && item.roles.includes(user.role);
+      
+      // If there's a permission check function, apply it
+      if (hasRole && item.checkPermission) {
+        return item.checkPermission(user);
+      }
+      
+      // Otherwise just return based on role
+      return hasRole;
+    });
   };
 
   const handleNavigate = (path) => {
