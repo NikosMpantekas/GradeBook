@@ -214,7 +214,15 @@ export const notificationSlice = createSlice({
   name: 'notification',
   initialState,
   reducers: {
-    reset: (state) => initialState,
+    reset: (state) => {
+      // Modified reset: preserve notifications array but reset other state flags
+      // This prevents the notifications from disappearing when navigating between pages
+      return {
+        ...initialState,
+        notifications: state.notifications, // Keep existing notifications
+        lastFetched: state.lastFetched,    // Keep track of when we last fetched
+      };
+    },
   },
   extraReducers: (builder) => {
     builder

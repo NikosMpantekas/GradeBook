@@ -249,6 +249,24 @@ const Dashboard = () => {
                 >
                   View Notifications
                 </Button>
+                {/* Debug button - temporarily added to help identify routing issues */}
+                <Button 
+                  variant="contained" 
+                  color="secondary"
+                  size="small"
+                  onClick={() => {
+                    console.log('Debug: Manually navigating to notifications page');
+                    // Force a refresh of notifications before navigation
+                    dispatch(getMyNotifications()).then(() => {
+                      console.log('Debug: Notifications loaded, now navigating');
+                      navigate('/app/notifications');
+                    });
+                  }}
+                  sx={{ mt: 1, fontSize: '0.75rem' }}
+                  fullWidth
+                >
+                  Debug: Load Notifications
+                </Button>
               </Grid>
             </Grid>
           </Paper>

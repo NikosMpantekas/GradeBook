@@ -32,25 +32,40 @@ const getAllNotifications = async (token) => {
 // Get my notifications
 const getMyNotifications = async (token) => {
   try {
-    console.log('Fetching my notifications');
+    const endpoint = API_URL + 'me';
+    console.log('Fetching my notifications from:', endpoint);
     const config = {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     };
 
-    const response = await axios.get(API_URL + 'me', config);
-    console.log(`Received ${response.data?.length || 0} notifications for me`);
+    console.log('Request config:', { headers: { Authorization: 'Bearer [REDACTED]' } });
+    const response = await axios.get(endpoint, config);
     
-    // Ensure we always return an array, even if the API returns null/undefined
-    if (!response.data || !Array.isArray(response.data)) {
-      console.warn('API returned invalid notifications data, defaulting to empty array');
-      return [];
+    if (response.status === 200) {
+      console.log(`Received ${response.data?.length || 0} notifications for me with status ${response.status}`);
+      if (response.data?.length === 0) {
+        console.log('Received empty array from server - this is normal if user has no notifications');
+      }
+      
+      // Log the first few notifications to help with debugging
+      if (response.data && response.data.length > 0) {
+        console.log('Sample notifications:', response.data.slice(0, 2).map(n => ({
+          id: n._id,
+          title: n.title,
+          sender: n.sender?.name || 'Unknown'
+        })));
+      }
+    } else {
+      console.warn(`Unexpected response status: ${response.status}`);
     }
     
-    return response.data;
+    // Ensure we always return an array, even if the API returns null/undefined
+    return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
-    console.error('Error fetching my notifications:', error);
+    console.error('Error getting my notifications:', error?.response?.status || 'No status', 
+      error?.response?.data?.message || error.message);
     // Instead of throwing, return an empty array with error logging
     // This prevents the UI from crashing
     return [];

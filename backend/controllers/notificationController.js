@@ -205,17 +205,24 @@ const getAllNotifications = asyncHandler(async (req, res) => {
 const getMyNotifications = asyncHandler(async (req, res) => {
   const user = req.user;
   
-  console.log(`Getting notifications for user ${user.name} (${user._id}), role: ${user.role}`);
+  console.log(`Getting notifications for user ${user.name} (${user._id}) with role: ${user.role}`);
+  console.log('User details:', {
+    id: user._id,
+    role: user.role,
+    school: user.school,
+    direction: user.direction,
+    subjects: user.subjects ? user.subjects.length : 0
+  });
   
   // Build query based on user role and attributes
   let query = {};
   
   if (user.role === 'student') {
-    // Students see notifications where:
-    // 1. They are specifically listed as a recipient, OR
-    // 2. Their school is targeted (in the schools array), OR
-    // 3. Their direction is targeted (in the directions array), OR
-    // 4. One of their subjects is targeted (in the subjects array), OR
+    // Students see notifications that meet ANY of these criteria:
+    // 1. They are explicitly in the recipients list
+    // 2. The notification is targeted to their school
+    // 3. The notification is targeted to their direction
+    // 4. The notification is targeted to their subjects (if they have any)
     // 5. The target role is 'student' or 'all'
     // 6. The notification is marked as sendToAll
     
@@ -225,20 +232,24 @@ const getMyNotifications = asyncHandler(async (req, res) => {
       { targetRole: { $in: ['student', 'all'] } }
     ];
     
-    // Only add school condition if user has a school assigned
+    // Only add school condition if student has a school assigned
     if (user.school) {
       orConditions.push({ schools: user.school });
     }
     
-    // Only add direction condition if user has a direction assigned
+    // Only add direction condition if student has a direction assigned
     if (user.direction) {
       orConditions.push({ directions: user.direction });
     }
     
-    // Only add subjects condition if user has subjects assigned
+    // Only add subjects condition if student has subjects assigned
     if (user.subjects && user.subjects.length > 0) {
       orConditions.push({ subjects: { $in: user.subjects } });
     }
+    
+    // Debugging: Add a condition that always matches all notifications
+    // This is temporary to help diagnose the issue
+    // orConditions.push({ _id: { $exists: true } });
     
     query = { $or: orConditions };
     

@@ -8,7 +8,6 @@ import {
   List, 
   ListItem, 
   ListItemText, 
-  ListItemIcon, 
   ListItemAvatar,
   Avatar,
   IconButton,
@@ -27,6 +26,7 @@ import {
   Delete as DeleteIcon,
   MarkEmailRead as MarkAsReadIcon,
   Send as SendIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
@@ -49,9 +49,29 @@ const Notifications = () => {
   const [tabValue, setTabValue] = useState(0);
   const [displayedNotifications, setDisplayedNotifications] = useState([]);
 
+  // On component mount, check if notifications already exist in the store
+  useEffect(() => {
+    console.log('Notifications component mounted');
+    console.log('Initial notifications state:', {
+      count: notifications?.length || 0,
+      isLoading,
+      isError,
+      userRole: user?.role
+    });
+
+    // If notifications already exist in the store and we're showing received notifications,
+    // use them right away instead of waiting for a new fetch
+    if (tabValue === 0 && notifications && notifications.length > 0) {
+      console.log('Using existing notifications from store:', notifications.length);
+      setDisplayedNotifications(notifications);
+    }
+  }, []);
+
+  // Load notifications when tab changes
   useEffect(() => {
     console.log(`Loading notifications, tab: ${tabValue === 0 ? 'Received' : 'Sent'}`);
     if (tabValue === 0) {
+      console.log('Dispatching getMyNotifications for tab: Received');
       dispatch(getMyNotifications())
         .unwrap()
         .then((result) => {
@@ -62,6 +82,7 @@ const Notifications = () => {
           toast.error('Failed to load notifications. Please try again.');
         });
     } else {
+      console.log('Dispatching getSentNotifications for tab: Sent');
       dispatch(getSentNotifications())
         .unwrap()
         .then((result) => {
@@ -81,10 +102,17 @@ const Notifications = () => {
   useEffect(() => {
     if (isError) {
       toast.error(message);
+      console.error('Notification error state triggered:', message);
     }
 
     if (notifications) {
+      console.log(`Setting displayed notifications: ${notifications.length} items`, 
+        notifications.map(n => ({ id: n._id, title: n.title })));
       setDisplayedNotifications(notifications);
+    } else {
+      console.warn('Notifications array is falsy:', notifications);
+      // Ensure we at least have an empty array
+      setDisplayedNotifications([]);
     }
 
     return () => {
@@ -101,24 +129,32 @@ const Notifications = () => {
   };
 
   const handleDeleteNotification = (id) => {
-    dispatch(deleteNotification(id)).then(() => {
-      setDisplayedNotifications(prevState => 
-        prevState.filter(notification => notification._id !== id)
-      );
-    });
+    if (window.confirm('Are you sure you want to delete this notification?')) {
+      dispatch(deleteNotification(id));
+    }
   };
 
   const handleViewNotification = (id) => {
+    // Mark as read if not already read
+    const notification = displayedNotifications.find(n => n._id === id);
+    if (notification && !notification.isRead && tabValue === 0) {
+      dispatch(markNotificationAsRead(id));
+    }
+    
+    // Navigate to notification detail view
     navigate(`/app/notifications/${id}`);
   };
 
-  // Helper function to get notification icons
+  // Calculate unread count
+  const unreadCount = displayedNotifications?.filter(n => !n.isRead).length || 0;
+
+  // Get the appropriate icon for the notification
   const getNotificationIcon = (notification) => {
     if (notification.isImportant) {
       return <NotificationsActiveIcon color="error" />;
     }
-    if (notification.isRead) {
-      return <NotificationsNoneIcon color="disabled" />;
+    if (!notification.isRead && tabValue === 0) {
+      return <NotificationsActiveIcon color="primary" />;
     }
     return <NotificationsIcon color="primary" />;
   };
@@ -139,44 +175,50 @@ const Notifications = () => {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <Paper 
-        elevation={3} 
-        sx={{ p: 2, borderRadius: 2, mb: 3 }}
-      >
-        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
-          Notifications
-        </Typography>
+      <Paper elevation={3} sx={{ p: 2, borderRadius: 2, mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 2 
+        }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Notifications
+          </Typography>
+          
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<RefreshIcon />}
+            onClick={() => {
+              console.log('Manually refreshing notifications');
+              if (tabValue === 0) {
+                dispatch(getMyNotifications());
+              } else {
+                dispatch(getSentNotifications());
+              }
+              toast.info('Refreshing notifications...');
+            }}
+          >
+            Refresh
+          </Button>
+        </Box>
         
-        <Tabs 
-          value={tabValue} 
-          onChange={handleChangeTab} 
-          centered
-          sx={{ mb: 2 }}
-        >
-          <Tab 
-            label={
-              <Badge 
-                badgeContent={displayedNotifications?.filter(n => !n.isRead && tabValue === 0).length || 0} 
-                color="error"
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <NotificationsIcon sx={{ mr: 1 }} />
-                  Received
-                </Box>
-              </Badge>
-            } 
-          />
-          {(user?.role === 'teacher' || user?.role === 'admin') && (
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+          <Tabs value={tabValue} onChange={handleChangeTab} aria-label="notification tabs">
             <Tab 
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <SendIcon sx={{ mr: 1 }} />
-                  Sent
-                </Box>
+                <Badge color="error" badgeContent={unreadCount} max={99}>
+                  Received
+                </Badge>
               } 
+              id="tab-0" 
             />
-          )}
-        </Tabs>
+            {(user.role === 'teacher' || user.role === 'admin') && (
+              <Tab label="Sent" id="tab-1" />
+            )}
+          </Tabs>
+        </Box>
         
         <Divider sx={{ mb: 2 }} />
         
@@ -198,7 +240,7 @@ const Notifications = () => {
                           <MarkAsReadIcon />
                         </IconButton>
                       )}
-                      {(tabValue === 1 || (user?.role === 'admin')) && (
+                      {(tabValue === 1 || user.role === 'admin') && (
                         <IconButton 
                           edge="end" 
                           aria-label="delete" 
