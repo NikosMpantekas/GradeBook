@@ -9,6 +9,7 @@ import {
   ListItem, 
   ListItemText, 
   ListItemAvatar,
+  ListItemSecondaryAction,
   Avatar,
   IconButton,
   Divider,
@@ -25,15 +26,18 @@ import {
   TextField,
   FormControlLabel,
   Switch,
+  Tooltip,
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
   NotificationsActive as NotificationsActiveIcon,
   NotificationsNone as NotificationsNoneIcon,
-  Delete as DeleteIcon,
-  MarkEmailRead as MarkAsReadIcon,
-  Send as SendIcon,
+  Announcement as AnnouncementIcon,
   Refresh as RefreshIcon,
+  FilterList as FilterIcon,
+  Search as SearchIcon,
+  Person as PersonIcon,
+  Delete as DeleteIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
@@ -212,8 +216,26 @@ const Notifications = () => {
       dispatch(markNotificationAsRead(id));
     }
     
-    // Navigate to notification detail view
-    navigate(`/app/notifications/${id}`);
+    navigate(`/notifications/${id}`);
+  };
+
+  // Function to check if current user can edit a notification
+  const canEdit = (notification) => {
+    if (!user || !notification) return false;
+    // User can edit if they are the sender or an admin
+    return user._id === notification.sender?._id || user.role === 'admin';
+  };
+  
+  // Function to open edit dialog for a notification
+  const handleEdit = (e, notification) => {
+    e.stopPropagation(); // Prevent triggering the list item click
+    setCurrentNotification(notification);
+    setEditForm({
+      title: notification.title,
+      message: notification.message,
+      isImportant: notification.isImportant || false
+    });
+    setEditDialogOpen(true);
   };
 
   // Calculate unread count
@@ -232,8 +254,16 @@ const Notifications = () => {
 
   // Helper function to format date/time
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return format(date, 'PPp'); // Example: 'Apr 29, 2021, 5:34 PM'
+    if (!dateString) return 'Unknown date';
+    return format(new Date(dateString), 'MMM d, yyyy h:mm a');
+  };
+  
+  // Helper to safely get school name
+  const getSchoolName = (school) => {
+    if (!school) return 'Not assigned';
+    if (typeof school === 'object' && school.name) return school.name;
+    if (typeof school === 'string') return school;
+    return 'Assigned';
   };
 
   if (isLoading) {
@@ -400,10 +430,32 @@ const Notifications = () => {
                           {tabValue === 0 && notification.sender && (
                             ` - From: ${notification.sender.name || 'Unknown'}`
                           )}
+                          {/* Show accurate recipient information */}
+                          {tabValue === 1 && (
+                            notification.sendToAll 
+                              ? ` - To: All ${notification.targetRole === 'all' ? 'Users' : notification.targetRole.charAt(0).toUpperCase() + notification.targetRole.slice(1) + 's'}` 
+                              : notification.recipients && notification.recipients.length > 0
+                              ? ` - To: ${notification.recipients.length} specific user${notification.recipients.length > 1 ? 's' : ''}` 
+                              : ` - To: Filtered group`
+                          )}
                         </Typography>
                       </>
                     }
                   />
+                  {/* Add edit button for notification creators or admins */}
+                  {canEdit(notification) && (
+                    <ListItemSecondaryAction>
+                      <Tooltip title="Edit notification">
+                        <IconButton 
+                          edge="end" 
+                          onClick={(e) => handleEdit(e, notification)}
+                          sx={{ color: 'primary.main' }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </ListItemSecondaryAction>
+                  )}
                 </ListItem>
                 <Divider component="li" />
               </Box>
@@ -431,7 +483,7 @@ const Notifications = () => {
                 </Typography>
                 {user?.school && (
                   <Typography variant="caption" color="text.secondary" component="div" sx={{ textAlign: 'left', mb: 1 }}>
-                    <strong>School:</strong> {typeof user.school === 'object' ? user.school.name : user.school}
+                    <strong>School:</strong> {getSchoolName(user.school)}
                   </Typography>
                 )}
                 <Typography variant="caption" color="text.secondary" component="div" sx={{ textAlign: 'left' }}>

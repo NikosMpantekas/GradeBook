@@ -315,9 +315,11 @@ const getMyNotifications = asyncHandler(async (req, res) => {
     
     return res.json(verifiedNotifications);
   } else if (user.role === 'admin') {
-    // Admins can see all notifications for management purposes
-    console.log('Admin fetching all notifications');
+    // Enhanced admin view - admins can see all notifications, with special emphasis on teacher notifications
+    console.log('Admin fetching all notifications with enhanced visibility');
     
+    // Get all notifications, including ones from teachers - no filtering
+    // This ensures admins have a complete view of system activity
     const notifications = await Notification.find({})
       .populate('sender', 'name email role')
       .populate('schools', 'name')
@@ -326,7 +328,12 @@ const getMyNotifications = asyncHandler(async (req, res) => {
       .populate('recipients', 'name email role')
       .sort({ createdAt: -1 });
     
-    console.log(`Found ${notifications.length} notifications for admin ${user._id}`);
+    // Count teacher notifications for logging purposes
+    const teacherNotifications = notifications.filter(n => 
+      n.sender && n.sender.role === 'teacher'
+    );
+    
+    console.log(`Found ${notifications.length} total notifications (${teacherNotifications.length} from teachers) for admin ${user._id}`);
     return res.json(notifications);
   }
 

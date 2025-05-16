@@ -168,9 +168,31 @@ const NotificationDetail = () => {
               sx={{ mr: 1, mb: 1 }} 
             />
           )}
-          {notification.targetRole && notification.targetRole !== 'all' && (
+          {/* Display recipients more accurately based on actual data */}
+          {notification.sendToAll ? (
             <Chip 
-              label={`Target: ${notification.targetRole.charAt(0).toUpperCase() + notification.targetRole.slice(1)}s`} 
+              label={notification.targetRole === 'all' ? 'Recipients: All Users' : `Recipients: All ${notification.targetRole.charAt(0).toUpperCase() + notification.targetRole.slice(1)}s`}
+              size="small" 
+              sx={{ mr: 1, mb: 1 }}
+              color="primary" 
+            />
+          ) : notification.recipients && notification.recipients.length > 0 ? (
+            <Chip 
+              label={`Recipients: ${notification.recipients.length} specific user${notification.recipients.length > 1 ? 's' : ''}`}
+              size="small" 
+              sx={{ mr: 1, mb: 1 }}
+              color="success" 
+            />
+          ) : notification.schools || notification.directions || notification.subjects ? (
+            <Chip 
+              label="Recipients: Filtered group"
+              size="small" 
+              sx={{ mr: 1, mb: 1 }}
+              color="info" 
+            />
+          ) : (
+            <Chip 
+              label="Recipients: Unknown"
               size="small" 
               sx={{ mr: 1, mb: 1 }} 
             />
