@@ -39,6 +39,7 @@ import {
   Person as PersonIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
+  MarkEmailRead as MarkEmailReadIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
@@ -334,7 +335,7 @@ const Notifications = () => {
                           onClick={() => handleMarkAsRead(notification._id)}
                           title="Mark as read"
                         >
-                          <MarkAsReadIcon />
+                          <MarkEmailReadIcon />
                         </IconButton>
                       )}
                       {(tabValue === 1 || user.role === 'admin') && (
