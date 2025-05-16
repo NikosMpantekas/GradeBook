@@ -49,7 +49,6 @@ import {
   reset,
 } from '../../features/grades/gradeSlice';
 import { getSubjectsByTeacher } from '../../features/subjects/subjectSlice';
-import { getStudentsBySubject } from '../../features/students/studentSlice';
 
 const ManageGrades = () => {
   const navigate = useNavigate();
