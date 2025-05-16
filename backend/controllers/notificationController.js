@@ -225,7 +225,8 @@ const getMyNotifications = asyncHandler(async (req, res) => {
     //    - They are explicitly in the recipients list, OR
     //    - The notification is marked as sendToAll
     const coreConditions = [
-      { recipients: user._id },
+      // CRITICAL FIX: Use $elemMatch to properly match user ID in the recipients array
+      { recipients: { $elemMatch: { $eq: user._id } } },
       { sendToAll: true }
     ];
     
@@ -292,7 +293,8 @@ const getMyNotifications = asyncHandler(async (req, res) => {
     //    - They are explicitly in the recipients list, OR
     //    - The notification is marked as sendToAll
     const coreConditions = [
-      { recipients: user._id },
+      // CRITICAL FIX: Use $elemMatch to properly match user ID in the recipients array
+      { recipients: { $elemMatch: { $eq: user._id } } },
       { sendToAll: true }
     ];
     
@@ -353,6 +355,69 @@ const getMyNotifications = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 });
   
   console.log(`Found ${notifications.length} notifications for user ${user._id}`);
+  
+  // PRIVACY VALIDATION: Double-check that all returned notifications are truly meant for this user
+  // This is an extra layer of security to ensure no private notifications are leaked
+  if (user.role === 'student' && notifications.length > 0) {
+    console.log('Privacy validation: Checking all notifications are truly for this student');
+    
+    const validatedNotifications = notifications.filter(notification => {
+      // A notification is valid for this student if any of these conditions are true:
+      const isDirectRecipient = notification.recipients.some(r => r.toString() === user._id.toString());
+      const isSendToAll = notification.sendToAll === true;
+      
+      // If using role/school/direction/subject targeting, check they match the student
+      let isValidTargeting = false;
+      
+      if (notification.targetRole === 'student' || notification.targetRole === 'all') {
+        // Start with role check that passes
+        isValidTargeting = true;
+        
+        // Check if school filter applies and this student matches
+        if (notification.schools && notification.schools.length > 0) {
+          const studentSchoolId = user.school?.toString();
+          const notifSchoolIds = notification.schools.map(s => s._id?.toString() || s.toString());
+          
+          if (!studentSchoolId || !notifSchoolIds.includes(studentSchoolId)) {
+            isValidTargeting = false;
+          }
+        }
+        
+        // Check if direction filter applies and this student matches
+        if (isValidTargeting && notification.directions && notification.directions.length > 0) {
+          const studentDirectionId = user.direction?.toString();
+          const notifDirectionIds = notification.directions.map(d => d._id?.toString() || d.toString());
+          
+          if (!studentDirectionId || !notifDirectionIds.includes(studentDirectionId)) {
+            isValidTargeting = false;
+          }
+        }
+        
+        // Check if subject filter applies and this student matches
+        if (isValidTargeting && notification.subjects && notification.subjects.length > 0) {
+          const studentSubjectIds = (user.subjects || []).map(s => s.toString());
+          const notifSubjectIds = notification.subjects.map(s => s._id?.toString() || s.toString());
+          
+          if (studentSubjectIds.length === 0 || !studentSubjectIds.some(id => notifSubjectIds.includes(id))) {
+            isValidTargeting = false;
+          }
+        }
+      }
+      
+      // Log any filtering actions for debugging
+      if (!(isDirectRecipient || isSendToAll || isValidTargeting)) {
+        console.log(`Privacy filter: Removing notification ${notification._id} from results - not intended for user ${user._id}`);
+      }
+      
+      return isDirectRecipient || isSendToAll || isValidTargeting;
+    });
+    
+    // If we filtered out any notifications, log it
+    if (validatedNotifications.length < notifications.length) {
+      console.log(`Privacy protection: Removed ${notifications.length - validatedNotifications.length} notifications that weren't meant for this student`);
+      return res.json(validatedNotifications);
+    }
+  }
   
   res.json(notifications);
 });
