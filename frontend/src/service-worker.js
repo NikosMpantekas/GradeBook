@@ -15,7 +15,7 @@ import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 
 // Update this version number any time you want to force an update
 // This will invalidate the previous service worker and install the new one
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.0';
 
 clientsClaim();
 

@@ -74,14 +74,68 @@ function registerValidSW(swUrl, config) {
                 'New content is available!'
               );
 
-              // Add a prompt to refresh for the new version
-              const updateConfirm = window.confirm(
-                'A new version of GradeBook is available! Click OK to refresh and use the latest version.'
-              );
+              // iOS Safari requires different approach to show prompts
+              // This is more reliable across all devices including iOS
               
-              if (updateConfirm) {
+              // Create and show custom banner for updates
+              const updateBanner = document.createElement('div');
+              updateBanner.style.position = 'fixed';
+              updateBanner.style.bottom = '0';
+              updateBanner.style.left = '0';
+              updateBanner.style.right = '0';
+              updateBanner.style.padding = '12px';
+              updateBanner.style.background = '#4b6cb7';
+              updateBanner.style.color = 'white';
+              updateBanner.style.textAlign = 'center';
+              updateBanner.style.zIndex = '9999';
+              updateBanner.style.boxShadow = '0 -2px 10px rgba(0,0,0,0.2)';
+              updateBanner.style.display = 'flex';
+              updateBanner.style.flexDirection = 'column';
+              updateBanner.style.gap = '8px';
+              
+              const message = document.createElement('div');
+              message.textContent = 'A new version of GradeBook is available!';
+              message.style.fontWeight = 'bold';
+              
+              const buttonContainer = document.createElement('div');
+              buttonContainer.style.display = 'flex';
+              buttonContainer.style.justifyContent = 'center';
+              buttonContainer.style.gap = '8px';
+              
+              const updateButton = document.createElement('button');
+              updateButton.textContent = 'Update Now';
+              updateButton.style.padding = '8px 16px';
+              updateButton.style.background = 'white';
+              updateButton.style.color = '#4b6cb7';
+              updateButton.style.border = 'none';
+              updateButton.style.borderRadius = '4px';
+              updateButton.style.fontWeight = 'bold';
+              updateButton.style.cursor = 'pointer';
+              
+              const closeButton = document.createElement('button');
+              closeButton.textContent = 'Later';
+              closeButton.style.padding = '8px 16px';
+              closeButton.style.background = 'transparent';
+              closeButton.style.color = 'white';
+              closeButton.style.border = '1px solid white';
+              closeButton.style.borderRadius = '4px';
+              closeButton.style.cursor = 'pointer';
+              
+              updateButton.addEventListener('click', () => {
                 window.location.reload();
-              }
+              });
+              
+              closeButton.addEventListener('click', () => {
+                document.body.removeChild(updateBanner);
+              });
+              
+              buttonContainer.appendChild(updateButton);
+              buttonContainer.appendChild(closeButton);
+              updateBanner.appendChild(message);
+              updateBanner.appendChild(buttonContainer);
+              
+              // Add to body for iOS compatibility
+              document.body.appendChild(updateBanner);
 
               // Execute callback
               if (config && config.onUpdate) {
