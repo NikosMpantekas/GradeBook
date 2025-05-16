@@ -76,15 +76,33 @@ const Dashboard = () => {
     }
 
     // Get user's school
-    if (schools && user && user.school) {
-      const school = schools.find(s => s._id === user.school);
-      setUserSchool(school);
+    if (user && user.school) {
+      // Handle both cases: when school is an ID string or when it's already a populated object
+      if (typeof user.school === 'string') {
+        // School is just an ID, find the full object
+        if (schools) {
+          const school = schools.find(s => s._id === user.school);
+          setUserSchool(school);
+        }
+      } else {
+        // School is already a populated object
+        setUserSchool(user.school);
+      }
     }
 
     // Get user's direction
-    if (directions && user && user.direction) {
-      const direction = directions.find(d => d._id === user.direction);
-      setUserDirection(direction);
+    if (user && user.direction) {
+      // Handle both cases: when direction is an ID string or when it's already a populated object
+      if (typeof user.direction === 'string') {
+        // Direction is just an ID, find the full object
+        if (directions) {
+          const direction = directions.find(d => d._id === user.direction);
+          setUserDirection(direction);
+        }
+      } else {
+        // Direction is already a populated object
+        setUserDirection(user.direction);
+      }
     }
 
     // Get user's subjects
@@ -158,12 +176,12 @@ const Dashboard = () => {
                 <>
                   <Grid item xs={12}>
                     <Typography variant="body1">
-                      <strong>School:</strong> {userSchool ? userSchool.name : 'Not assigned'}
+                      <strong>School:</strong> {userSchool ? userSchool.name : user?.school ? 'Loading...' : 'Not assigned'}
                     </Typography>
                   </Grid>
                   <Grid item xs={12}>
                     <Typography variant="body1">
-                      <strong>Direction:</strong> {userDirection ? userDirection.name : 'Not assigned'}
+                      <strong>Direction:</strong> {userDirection ? userDirection.name : user?.direction ? 'Loading...' : 'Not assigned'}
                     </Typography>
                   </Grid>
                 </>
