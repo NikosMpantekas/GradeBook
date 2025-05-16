@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -67,8 +67,10 @@ const CreateUser = () => {
     password: '',
     confirmPassword: '',
     role: '',
-    school: '',
-    direction: '',
+    school: '', // For students
+    schools: [], // For teachers (multiple schools)
+    direction: '', // For students
+    directions: [], // For teachers (multiple directions)
     subjects: [],
     // Teacher permission flags - default to true for backward compatibility
     canSendNotifications: true,
@@ -226,25 +228,55 @@ const CreateUser = () => {
     }
     
     // Only validate school and direction fields if role is student or teacher
-    if (formData.role === 'student' || formData.role === 'teacher') {
-      // Schools and directions are optional, but if provided, should be valid
-      if (formData.school && !optionsData.schools.some(school => school._id === formData.school)) {
+    if (formData.role === 'student') {
+      // For students: single school and direction
+      if (!formData.school) {
+        errors.school = 'Please select a school for the student';
+      } else if (!optionsData.schools.some(school => school._id === formData.school)) {
         errors.school = 'Please select a valid school';
       }
       
-      if (formData.direction && !optionsData.directions.some(direction => direction._id === formData.direction)) {
+      if (!formData.direction) {
+        errors.direction = 'Please select a direction for the student';
+      } else if (!optionsData.directions.some(direction => direction._id === formData.direction)) {
         errors.direction = 'Please select a valid direction';
       }
+    } else if (formData.role === 'teacher') {
+      // For teachers: can have multiple schools and directions
+      if (formData.schools && formData.schools.length > 0) {
+        // Validate each selected school
+        const validSchoolIds = optionsData.schools.map(school => school._id);
+        const hasInvalidSchool = formData.schools.some(schoolId => !validSchoolIds.includes(schoolId));
+        
+        if (hasInvalidSchool) {
+          errors.schools = 'One or more selected schools are invalid';
+        }
+      } else {
+        errors.schools = 'Please select at least one school for the teacher';
+      }
       
-      // For subjects, just verify each selection is a valid subject ID if any are selected
-      if (formData.subjects && formData.subjects.length > 0) {
+      if (formData.directions && formData.directions.length > 0) {
+        // Validate each selected direction
+        const validDirectionIds = optionsData.directions.map(direction => direction._id);
+        const hasInvalidDirection = formData.directions.some(directionId => !validDirectionIds.includes(directionId));
+        
+        if (hasInvalidDirection) {
+          errors.directions = 'One or more selected directions are invalid';
+        }
+      } else {
+        errors.directions = 'Please select at least one direction for the teacher';
+      }
+    }
+    
+    // For subjects, just verify each selection is a valid subject ID if any are selected
+    if ((formData.role === 'teacher' || formData.role === 'student') && formData.subjects && formData.subjects.length > 0) {
         const validSubjectIds = optionsData.subjects.map(subject => subject._id);
         const hasInvalidSubject = formData.subjects.some(subjectId => !validSubjectIds.includes(subjectId));
         
         if (hasInvalidSubject) {
           errors.subjects = 'One or more selected subjects are invalid';
         }
-      }
+    }
     }
     
     return errors;
@@ -272,28 +304,37 @@ const CreateUser = () => {
       };
       
       // Add school, direction, and subjects for teachers and students
-      if (formData.role === 'teacher' || formData.role === 'student') {
-        // Include school data - required for teachers and students
+      if (formData.role === 'student') {
+        // For students: Include single school and direction
         userData.school = formData.school || null;
-        
-        // Direction is required
         userData.direction = formData.direction || null;
+        
+        // Include subjects if any (though students don't usually have subjects directly assigned)
+        userData.subjects = formData.subjects && formData.subjects.length > 0 
+          ? formData.subjects 
+          : [];
+      } else if (formData.role === 'teacher') {
+        // For teachers: handle multiple schools and directions
+        if (formData.schools && formData.schools.length > 0) {
+          userData.school = formData.schools; // Send as array for teachers
+        } else {
+          userData.school = null;
+        }
+        
+        if (formData.directions && formData.directions.length > 0) {
+          userData.direction = formData.directions; // Send as array for teachers
+        } else {
+          userData.direction = null;
+        }
         
         // Always include subjects array
         userData.subjects = formData.subjects && formData.subjects.length > 0 
           ? formData.subjects 
           : [];
         
-        // For teachers, add specific fields
-        if (formData.role === 'teacher') {
-          if (formData.directions && formData.directions.length > 0) {
-            userData.directions = formData.directions;
-          }
-          
-          // Add teacher permission fields
-          userData.canSendNotifications = formData.canSendNotifications;
-          userData.canAddGradeDescriptions = formData.canAddGradeDescriptions;
-        }
+        // Add teacher permission fields
+        userData.canSendNotifications = formData.canSendNotifications;
+        userData.canAddGradeDescriptions = formData.canAddGradeDescriptions;
       } else {
         // For admins, ensure these fields are null/empty
         userData.school = null;
@@ -319,10 +360,9 @@ const CreateUser = () => {
     }
   };
   
-  // Create a ref to track if this is the initial mount
-  const initialMount = React.useRef(true);
-  // Another ref to track if we've submitted the form
-  const hasSubmitted = React.useRef(false);
+  // Create refs to track component state
+  const initialMount = useRef(true);
+  const hasSubmitted = useRef(false);
   
   // Load schools, directions, and subjects data when component mounts
   useEffect(() => {
@@ -589,8 +629,34 @@ const CreateUser = () => {
               </FormControl>
             </Grid>
             
-            {/* Conditional School Selection for Teachers & Students */}
-            {(formData.role === 'teacher' || formData.role === 'student') && (
+            {/* School Selection for Students (Single) */}
+            {formData.role === 'student' && (
+              <Grid item xs={12}>
+                <FormControl fullWidth error={!!formErrors.school}>
+                  <InputLabel>School *</InputLabel>
+                  <Select
+                    name="school"
+                    value={formData.school || ''}
+                    label="School *"
+                    onChange={handleChange}
+                    disabled={loadingOptions.schools}
+                  >
+                    <MenuItem value="">Select a school</MenuItem>
+                    {optionsData.schools && optionsData.schools.map((school) => (
+                      <MenuItem key={school._id} value={school._id}>
+                        {school.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {formErrors.school || loadingOptions.schools ? 'Loading schools...' : 'Select the student\'s school'}
+                  </FormHelperText>
+                </FormControl>
+              </Grid>
+            )}
+            
+            {/* School Selection for Teachers (Multiple) */}
+            {formData.role === 'teacher' && (
               <Grid item xs={12}>
                 <FormControl fullWidth error={!!formErrors.schools}>
                   <InputLabel>Schools *</InputLabel>
@@ -609,29 +675,29 @@ const CreateUser = () => {
                         }).join(', ')}
                       </Box>
                     )}
-                  >   
-                    <MenuItem value="">Select a school</MenuItem>
+                  >
                     {optionsData.schools && optionsData.schools.map((school) => (
                       <MenuItem key={school._id} value={school._id}>
-                        {school.name}
+                        <Checkbox checked={formData.schools && formData.schools.indexOf(school._id) > -1} />
+                        <ListItemText primary={school.name} />
                       </MenuItem>
                     ))}
                   </Select>
                   <FormHelperText>
-                    {formErrors.school || loadingOptions.schools ? 'Loading schools...' : 'Select the user\'s school'}
+                    {formErrors.schools || loadingOptions.schools ? 'Loading schools...' : 'Select schools for this teacher'}
                   </FormHelperText>
                 </FormControl>
               </Grid>
             )}
             
-            {/* Direction Selection for Students - Single Direction */}
+            {/* Direction Selection for Students (Single) */}
             {formData.role === 'student' && (
               <Grid item xs={12}>
                 <FormControl fullWidth error={!!formErrors.direction}>
                   <InputLabel>Direction *</InputLabel>
                   <Select
                     name="direction"
-                    value={formData.direction}
+                    value={formData.direction || ''}
                     label="Direction *"
                     onChange={handleChange}
                     disabled={loadingOptions.directions}
@@ -650,7 +716,7 @@ const CreateUser = () => {
               </Grid>
             )}
             
-            {/* Direction Selection for Teachers - Multiple Directions */}
+            {/* Direction Selection for Teachers (Multiple) */}
             {formData.role === 'teacher' && (
               <Grid item xs={12}>
                 <FormControl fullWidth error={!!formErrors.directions}>
@@ -671,9 +737,6 @@ const CreateUser = () => {
                       </Box>
                     )}
                   >
-                    <MenuItem value="">
-                      <em>Select directions</em>
-                    </MenuItem>
                     {optionsData.directions && optionsData.directions.map((direction) => (
                       <MenuItem key={direction._id} value={direction._id}>
                         <Checkbox checked={formData.directions && formData.directions.indexOf(direction._id) > -1} />
@@ -682,7 +745,7 @@ const CreateUser = () => {
                     ))}
                   </Select>
                   <FormHelperText>
-                    {formErrors.directions || loadingOptions.directions ? 'Loading directions...' : 'Select the directions for this teacher'}
+                    {formErrors.directions || loadingOptions.directions ? 'Loading directions...' : 'Select directions for this teacher'}
                   </FormHelperText>
                 </FormControl>
               </Grid>

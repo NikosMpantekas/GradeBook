@@ -22,14 +22,36 @@ const userSchema = mongoose.Schema(
       default: 'student',
     },
 
+    // For students: single school reference
+    // For teachers: can be an array of schools or a single school
     school: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'School',
+      validate: {
+        validator: function(value) {
+          // Allow null/undefined, a single ObjectId, or an array of ObjectIds
+          return value === null || value === undefined || 
+                 mongoose.Types.ObjectId.isValid(value) ||
+                 (Array.isArray(value) && value.every(id => mongoose.Types.ObjectId.isValid(id)));
+        },
+        message: 'School must be a valid ObjectId or array of ObjectIds'
+      }
     },
 
+    // For students: single direction reference
+    // For teachers: can be an array of directions or a single direction
     direction: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Direction',
+      validate: {
+        validator: function(value) {
+          // Allow null/undefined, a single ObjectId, or an array of ObjectIds
+          return value === null || value === undefined || 
+                 mongoose.Types.ObjectId.isValid(value) ||
+                 (Array.isArray(value) && value.every(id => mongoose.Types.ObjectId.isValid(id)));
+        },
+        message: 'Direction must be a valid ObjectId or array of ObjectIds'
+      }
     },
     subjects: [
       {

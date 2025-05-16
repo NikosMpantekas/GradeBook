@@ -198,11 +198,23 @@ const updateUser = asyncHandler(async (req, res) => {
     
     // Handle school, direction, and subjects fields
     if (req.body.school !== undefined) {
-      user.school = req.body.school;
+      // For teachers, school can be an array
+      if (user.role === 'teacher' && Array.isArray(req.body.school)) {
+        user.school = req.body.school;
+      } else {
+        // For students or if a single school ID is provided
+        user.school = req.body.school;
+      }
     }
     
     if (req.body.direction !== undefined) {
-      user.direction = req.body.direction;
+      // For teachers, direction can be an array
+      if (user.role === 'teacher' && Array.isArray(req.body.direction)) {
+        user.direction = req.body.direction;
+      } else {
+        // For students or if a single direction ID is provided
+        user.direction = req.body.direction;
+      }
     }
     
     if (req.body.subjects !== undefined) {
@@ -326,13 +338,18 @@ const createAdminAccount = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const createUserByAdmin = asyncHandler(async (req, res) => {
   const { name, email, password, role, school, direction, subjects, canSendNotifications, canAddGradeDescriptions } = req.body;
+  
+  // For teachers, school and direction could be arrays
+  const schoolInfo = role === 'teacher' && Array.isArray(school) ? `Array with ${school.length} schools` : (school || null);
+  const directionInfo = role === 'teacher' && Array.isArray(direction) ? `Array with ${direction.length} directions` : (direction || null);
+  
   console.log('Admin creating user:', { 
     name, 
     email, 
     role, 
     passwordLength: password ? password.length : 0,
-    school: school || null,
-    direction: direction || null,
+    school: schoolInfo,
+    direction: directionInfo,
     subjects: subjects && subjects.length > 0 ? subjects.length : 0,
     ...(role === 'teacher' ? {
       canSendNotifications: typeof canSendNotifications === 'boolean' ? canSendNotifications : true,
@@ -372,14 +389,29 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     
     // Add additional fields if they're provided (for teachers and students)
     if (role === 'teacher' || role === 'student') {
+      // Handle school assignment
       if (school) {
-        userDocument.school = school;
+        // For teachers, school can be an array
+        if (role === 'teacher' && Array.isArray(school)) {
+          userDocument.school = school;
+        } else {
+          // For students or if a single school ID is provided
+          userDocument.school = school;
+        }
       }
       
+      // Handle direction assignment
       if (direction) {
-        userDocument.direction = direction;
+        // For teachers, direction can be an array
+        if (role === 'teacher' && Array.isArray(direction)) {
+          userDocument.direction = direction;
+        } else {
+          // For students or if a single direction ID is provided
+          userDocument.direction = direction;
+        }
       }
       
+      // Handle subjects assignment
       if (subjects && Array.isArray(subjects) && subjects.length > 0) {
         userDocument.subjects = subjects;
       }

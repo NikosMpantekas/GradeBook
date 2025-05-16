@@ -14,6 +14,7 @@ import {
   CardActions,
   Divider,
   Chip,
+  Stack,
 } from '@mui/material';
 import {
   AssignmentTurnedIn as AssignmentIcon,
@@ -25,6 +26,7 @@ import { getStudentGrades } from '../features/grades/gradeSlice';
 import { getSchools } from '../features/schools/schoolSlice';
 import { getDirections } from '../features/directions/directionSlice';
 import { getSubjects } from '../features/subjects/subjectSlice';
+import { useState, useEffect, useRef } from 'react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -48,8 +50,8 @@ const Dashboard = () => {
 
   const [recentNotifications, setRecentNotifications] = useState([]);
   const [recentGrades, setRecentGrades] = useState([]);
-  const [userSchool, setUserSchool] = useState(null);
-  const [userDirection, setUserDirection] = useState(null);
+  const [userSchools, setUserSchools] = useState([]);
+  const [userDirections, setUserDirections] = useState([]);
   const [userSubjects, setUserSubjects] = useState([]);
 
   // Use a ref to track whether we've loaded data
@@ -90,27 +92,59 @@ const Dashboard = () => {
       setRecentGrades(grades.slice(0, 3));
     }
 
-    // Set user's school from populated user data
+    // Set user's schools from populated user data
     if (user && user.school) {
-      if (typeof user.school === 'object' && user.school !== null) {
-        // School is a populated object
-        setUserSchool(user.school);
-      } else if (schools && typeof user.school === 'string') {
-        // School is just an ID, find the full object as fallback
-        const school = schools.find(s => s._id === user.school);
-        setUserSchool(school);
+      // Handle both single school and multiple schools
+      if (Array.isArray(user.school)) {
+        // Array of schools
+        if (user.school.length > 0 && typeof user.school[0] === 'object') {
+          // Schools are populated objects
+          setUserSchools(user.school);
+        } else if (schools && schools.length > 0) {
+          // Schools are just IDs, find the full objects
+          const schoolObjects = user.school.map(schoolId => 
+            schools.find(s => s._id === schoolId)
+          ).filter(Boolean);
+          setUserSchools(schoolObjects);
+        }
+      } else {
+        // Single school (backward compatibility)
+        if (typeof user.school === 'object' && user.school !== null) {
+          // School is a populated object
+          setUserSchools([user.school]);
+        } else if (schools && typeof user.school === 'string') {
+          // School is just an ID, find the full object as fallback
+          const school = schools.find(s => s._id === user.school);
+          if (school) setUserSchools([school]);
+        }
       }
     }
 
-    // Set user's direction from populated user data
+    // Set user's directions from populated user data
     if (user && user.direction) {
-      if (typeof user.direction === 'object' && user.direction !== null) {
-        // Direction is a populated object
-        setUserDirection(user.direction);
-      } else if (directions && typeof user.direction === 'string') {
-        // Direction is just an ID, find the full object as fallback
-        const direction = directions.find(d => d._id === user.direction);
-        setUserDirection(direction);
+      // Handle both single direction and multiple directions
+      if (Array.isArray(user.direction)) {
+        // Array of directions
+        if (user.direction.length > 0 && typeof user.direction[0] === 'object') {
+          // Directions are populated objects
+          setUserDirections(user.direction);
+        } else if (directions && directions.length > 0) {
+          // Directions are just IDs, find the full objects
+          const directionObjects = user.direction.map(directionId => 
+            directions.find(d => d._id === directionId)
+          ).filter(Boolean);
+          setUserDirections(directionObjects);
+        }
+      } else {
+        // Single direction (backward compatibility)
+        if (typeof user.direction === 'object' && user.direction !== null) {
+          // Direction is a populated object
+          setUserDirections([user.direction]);
+        } else if (directions && typeof user.direction === 'string') {
+          // Direction is just an ID, find the full object as fallback
+          const direction = directions.find(d => d._id === user.direction);
+          if (direction) setUserDirections([direction]);
+        }
       }
     }
 
@@ -196,12 +230,30 @@ const Dashboard = () => {
                 <>
                   <Grid item xs={12}>
                     <Typography variant="body1">
-                      <strong>School:</strong> {userSchool ? userSchool.name : user?.school ? 'Loading...' : 'Not assigned'}
+                      <strong>School{userSchools.length > 1 ? 's' : ''}:</strong>
+                      {userSchools && userSchools.length > 0 ? (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                          {userSchools.map(school => (
+                            <Chip key={school._id} label={school.name} size="small" variant="outlined" sx={{ color: 'white', bgcolor: 'primary.main' }} />
+                          ))}
+                        </Box>
+                      ) : (
+                        user?.school ? 'Loading...' : 'Not assigned'
+                      )}
                     </Typography>
                   </Grid>
                   <Grid item xs={12}>
                     <Typography variant="body1">
-                      <strong>Direction:</strong> {userDirection ? userDirection.name : user?.direction ? 'Loading...' : 'Not assigned'}
+                      <strong>Direction{userDirections.length > 1 ? 's' : ''}:</strong>
+                      {userDirections && userDirections.length > 0 ? (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                          {userDirections.map(direction => (
+                            <Chip key={direction._id} label={direction.name} size="small" variant="outlined" sx={{ color: 'white', bgcolor: 'secondary.main' }} />
+                          ))}
+                        </Box>
+                      ) : (
+                        user?.direction ? 'Loading...' : 'Not assigned'
+                      )}
                     </Typography>
                   </Grid>
                   <Grid item xs={12}>

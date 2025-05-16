@@ -66,8 +66,10 @@ const EditUser = () => {
     name: '',
     email: '',
     role: '',
-    school: '',
-    direction: '',
+    school: '', // For students
+    schools: [], // For teachers (multiple schools)
+    direction: '', // For students
+    directions: [], // For teachers (multiple directions)
     subjects: [],
     changePassword: false,
     password: '',
@@ -146,21 +148,52 @@ const EditUser = () => {
         console.log('EditUser: User data retrieved successfully', response);
         if (response && response._id) {
           setUserData(response);
-          setFormData({
+          // Prepare the form data based on user role
+          const newFormData = {
             ...formData,
             name: response.name || '',
             email: response.email || '',
             role: response.role || '',
-            school: response.school?._id || response.school || '',
-            direction: response.direction?._id || response.direction || '',
-            subjects: response.subjects?.map(subj => typeof subj === 'object' ? subj._id : subj) || [],
             changePassword: false,
             password: '',
             confirmPassword: '',
             // Set teacher permission fields if they exist, otherwise use defaults
             canSendNotifications: response.canSendNotifications !== undefined ? response.canSendNotifications : true,
             canAddGradeDescriptions: response.canAddGradeDescriptions !== undefined ? response.canAddGradeDescriptions : true,
-          });
+          };
+          
+          // Handle school field according to role
+          if (response.role === 'student') {
+            // For students: single school and direction
+            newFormData.school = response.school?._id || response.school || '';
+            newFormData.direction = response.direction?._id || response.direction || '';
+          } else if (response.role === 'teacher') {
+            // For teachers: can have multiple schools and directions
+            // Check if school is array
+            if (Array.isArray(response.school)) {
+              newFormData.schools = response.school.map(s => typeof s === 'object' ? s._id : s);
+            } else if (response.school) {
+              // If it's a single value, convert to array for the UI
+              newFormData.schools = [response.school?._id || response.school];
+            } else {
+              newFormData.schools = [];
+            }
+            
+            // Check if direction is array
+            if (Array.isArray(response.direction)) {
+              newFormData.directions = response.direction.map(d => typeof d === 'object' ? d._id : d);
+            } else if (response.direction) {
+              // If it's a single value, convert to array for the UI
+              newFormData.directions = [response.direction?._id || response.direction];
+            } else {
+              newFormData.directions = [];
+            }
+          }
+          
+          // Handle subjects (common for both roles)
+          newFormData.subjects = response.subjects?.map(subj => typeof subj === 'object' ? subj._id : subj) || [];
+          
+          setFormData(newFormData);
           dataLoaded.current = true;
         } else {
           console.error('EditUser: Invalid user data received', response);
@@ -320,25 +353,38 @@ const EditUser = () => {
       userData.password = formData.password;
     }
     
-    // Always include school, direction, and subjects data for proper saving
-    // For teachers and students, these are required fields
-    if (formData.role === 'teacher' || formData.role === 'student') {
-      // School is required for teachers and students
+    // Handle school, direction, and subjects based on user role
+    if (formData.role === 'student') {
+      // For students: single school and direction
       userData.school = formData.school || null;
-      
-      // Direction is required
       userData.direction = formData.direction || null;
       
       // Ensure subjects array is always included
       userData.subjects = formData.subjects && formData.subjects.length > 0 
         ? formData.subjects 
         : [];
-      
-      // Include teacher permission fields only for teacher role
-      if (formData.role === 'teacher') {
-        userData.canSendNotifications = formData.canSendNotifications;
-        userData.canAddGradeDescriptions = formData.canAddGradeDescriptions;
+    } else if (formData.role === 'teacher') {
+      // For teachers: can have multiple schools and directions
+      if (formData.schools && formData.schools.length > 0) {
+        userData.school = formData.schools; // Send as array for teachers
+      } else {
+        userData.school = null;
       }
+      
+      if (formData.directions && formData.directions.length > 0) {
+        userData.direction = formData.directions; // Send as array for teachers
+      } else {
+        userData.direction = null;
+      }
+      
+      // Ensure subjects array is always included
+      userData.subjects = formData.subjects && formData.subjects.length > 0 
+        ? formData.subjects 
+        : [];
+      
+      // Include teacher permission fields
+      userData.canSendNotifications = formData.canSendNotifications;
+      userData.canAddGradeDescriptions = formData.canAddGradeDescriptions;
     } else {
       // For admins, clear these fields
       userData.school = null;
@@ -473,8 +519,9 @@ const EditUser = () => {
                 <FormHelperText>{formErrors.role}</FormHelperText>
               </FormControl>
             </Grid>
-
-            {(formData.role === 'teacher' || formData.role === 'student') && (
+            
+            {/* School selection for Students (Single) */}
+            {formData.role === 'student' && (
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth error={!!formErrors.school}>
                   <InputLabel id="school-label">School</InputLabel>
@@ -482,7 +529,7 @@ const EditUser = () => {
                     labelId="school-label"
                     id="school"
                     name="school"
-                    value={formData.school}
+                    value={formData.school || ''}
                     onChange={handleChange}
                     label="School"
                     disabled={schoolsLoading}
@@ -509,8 +556,55 @@ const EditUser = () => {
                 </FormControl>
               </Grid>
             )}
-
-            {(formData.role === 'teacher' || formData.role === 'student') && (
+            
+            {/* School selection for Teachers (Multiple) */}
+            {formData.role === 'teacher' && (
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth error={!!formErrors.schools}>
+                  <InputLabel id="schools-label">Schools</InputLabel>
+                  <Select
+                    labelId="schools-label"
+                    id="schools"
+                    name="schools"
+                    multiple
+                    value={formData.schools || []}
+                    onChange={handleChange}
+                    label="Schools"
+                    disabled={schoolsLoading}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const school = schools.find(s => s._id === value);
+                          return (
+                            <Chip key={value} label={school ? school.name : value} />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {schoolsLoading ? (
+                      <MenuItem disabled>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading schools...
+                        </Box>
+                      </MenuItem>
+                    ) : (
+                      schools.map((school) => (
+                        <MenuItem key={school._id} value={school._id}>
+                          <Checkbox checked={formData.schools && formData.schools.indexOf(school._id) > -1} />
+                          <ListItemText primary={school.name} />
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                  <FormHelperText>{formErrors.schools}</FormHelperText>
+                </FormControl>
+              </Grid>
+            )}
+            
+            {/* Direction selection for Students (Single) */}
+            {formData.role === 'student' && (
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth error={!!formErrors.direction}>
                   <InputLabel id="direction-label">Direction</InputLabel>
@@ -518,7 +612,7 @@ const EditUser = () => {
                     labelId="direction-label"
                     id="direction"
                     name="direction"
-                    value={formData.direction}
+                    value={formData.direction || ''}
                     onChange={handleChange}
                     label="Direction"
                     disabled={directionsLoading}
@@ -545,7 +639,54 @@ const EditUser = () => {
                 </FormControl>
               </Grid>
             )}
-
+            
+            {/* Direction selection for Teachers (Multiple) */}
+            {formData.role === 'teacher' && (
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth error={!!formErrors.directions}>
+                  <InputLabel id="directions-label">Directions</InputLabel>
+                  <Select
+                    labelId="directions-label"
+                    id="directions"
+                    name="directions"
+                    multiple
+                    value={formData.directions || []}
+                    onChange={handleChange}
+                    label="Directions"
+                    disabled={directionsLoading}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const direction = directions.find(d => d._id === value);
+                          return (
+                            <Chip key={value} label={direction ? direction.name : value} />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {directionsLoading ? (
+                      <MenuItem disabled>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading directions...
+                        </Box>
+                      </MenuItem>
+                    ) : (
+                      directions.map((direction) => (
+                        <MenuItem key={direction._id} value={direction._id}>
+                          <Checkbox checked={formData.directions && formData.directions.indexOf(direction._id) > -1} />
+                          <ListItemText primary={direction.name} />
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                  <FormHelperText>{formErrors.directions}</FormHelperText>
+                </FormControl>
+              </Grid>
+            )}
+            
+            {/* Subjects selection for Teachers and Students */}
             {(formData.role === 'teacher' || formData.role === 'student') && (
               <Grid item xs={12}>
                 <FormControl fullWidth error={!!formErrors.subjects}>
