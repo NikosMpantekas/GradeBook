@@ -18,7 +18,7 @@ const Footer = () => {
       .catch(error => {
         console.error('Failed to load appConfig:', error);
         // Fallback if import fails
-        setVersion('1.1.1');
+        setVersion('0.0.0');
       });
   }, []);
   
@@ -35,7 +35,7 @@ const Footer = () => {
       <Typography variant="body2" color="text.secondary">
         {'© '}
         {new Date().getFullYear()}
-        {' GradeBook - Progressive Web App'}
+        {' GradeBook - Progressive Web App \n Created by Nikos Mpantekas'}
       </Typography>
       <Typography variant="body2" color="text.secondary">
         {'Version: '}{version} {/* Use the state variable instead of directly using APP_VERSION */}

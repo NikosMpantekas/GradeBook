@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
+import imageCompression from 'browser-image-compression';
 import {
   Container,
   Box,
@@ -15,6 +16,7 @@ import {
   Divider,
   Switch,
   FormControlLabel,
+  LinearProgress,
 } from '@mui/material';
 import { PhotoCamera, Save as SaveIcon } from '@mui/icons-material';
 import { updateProfile, reset } from '../features/auth/authSlice';
@@ -36,6 +38,12 @@ const Profile = () => {
   });
 
   const { name, email, password, password2, avatar, saveCredentials } = formData;
+  
+  // Add state for handling image upload
+  const [imageFile, setImageFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(avatar || '');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -63,6 +71,60 @@ const Profile = () => {
     }));
   };
 
+  // Handle profile picture selection and compression
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Display preview before compression
+    const reader = new FileReader();
+    reader.onload = (e) => setPreviewUrl(e.target.result);
+    reader.readAsDataURL(file);
+
+    try {
+      setIsUploading(true);
+      setUploadProgress(10);
+
+      // Compression options - targeting very small file size (a few KB)
+      const options = {
+        maxSizeMB: 0.05, // 50KB max
+        maxWidthOrHeight: 400,
+        useWebWorker: true,
+        onProgress: (percent) => setUploadProgress(Math.round(percent)),
+      };
+
+      // Compress the image
+      const compressedFile = await imageCompression(file, options);
+      setUploadProgress(90);
+      
+      console.log(`Original file size: ${file.size / 1024} KB`);
+      console.log(`Compressed file size: ${compressedFile.size / 1024} KB`);
+
+      // Convert compressed image to base64 for preview and storage
+      const reader2 = new FileReader();
+      reader2.onload = (e) => {
+        const base64String = e.target.result;
+        setFormData((prevState) => ({
+          ...prevState,
+          avatar: base64String,
+        }));
+        setPreviewUrl(base64String);
+        setUploadProgress(100);
+        
+        setTimeout(() => {
+          setIsUploading(false);
+          toast.success('Image compressed and ready to save with your profile');
+        }, 500);
+      };
+      reader2.readAsDataURL(compressedFile);
+
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      toast.error('Error processing image. Please try again.');
+      setIsUploading(false);
+    }
+  };
+
   const onSubmit = (e) => {
     e.preventDefault();
 
@@ -72,6 +134,8 @@ const Profile = () => {
       const userData = {
         name,
         email,
+        // Include avatar if it has been updated
+        avatar,
         // Removed darkMode from here since it's handled in the header
         saveCredentials,
       };
@@ -105,9 +169,9 @@ const Profile = () => {
           {/* Profile Photo Section */}
           <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Avatar 
-              src={avatar} 
+              src={previewUrl || avatar} 
               alt={name} 
-              sx={{ width: 100, height: 100, mb: 2 }}
+              sx={{ width: 120, height: 120, mb: 2, border: '2px solid #eee' }}
             />
             <Typography variant="body1" sx={{ mb: 1, textAlign: 'center' }}>
               {user?.name}
@@ -116,19 +180,36 @@ const Profile = () => {
               {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
             </Typography>
             
-            <IconButton 
-              color="primary" 
-              aria-label="upload picture" 
-              component="label"
-              sx={{ mb: 2 }}
-            >
-              <input hidden accept="image/*" type="file" />
-              <PhotoCamera />
-            </IconButton>
-            
-            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-              Upload a new profile picture (coming soon)
-            </Typography>
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              {isUploading && (
+                <Box sx={{ width: '90%', mb: 2 }}>
+                  <LinearProgress variant="determinate" value={uploadProgress} />
+                  <Typography variant="caption" sx={{ mt: 0.5, display: 'block', textAlign: 'center' }}>
+                    Compressing image: {uploadProgress}%
+                  </Typography>
+                </Box>
+              )}
+              
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<PhotoCamera />}
+                disabled={isUploading}
+                sx={{ mb: 2 }}
+              >
+                Choose Photo
+                <input 
+                  hidden 
+                  accept="image/*" 
+                  type="file" 
+                  onChange={handleImageChange} 
+                />
+              </Button>
+              
+              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+                Images will be compressed to a few KB to save storage
+              </Typography>
+            </Box>
           </Grid>
           
           {/* Profile Form */}

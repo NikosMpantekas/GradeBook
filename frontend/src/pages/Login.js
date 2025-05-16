@@ -150,7 +150,8 @@ const Login = () => {
       </Paper>
       <Box sx={{ mt: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          &copy; {new Date().getFullYear()} GradeBook PWA
+          &copy; {new Date().getFullYear()} GradeBook PWA 
+          Created by Nikos Mpantekas
         </Typography>
       </Box>
     </Container>

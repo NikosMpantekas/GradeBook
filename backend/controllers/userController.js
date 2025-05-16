@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const User = require('../models/userModel');
 
 // @desc    Register new user
@@ -130,6 +131,11 @@ const updateProfile = asyncHandler(async (req, res) => {
     user.darkMode = req.body.darkMode !== undefined ? req.body.darkMode : user.darkMode;
     user.saveCredentials = req.body.saveCredentials !== undefined ? req.body.saveCredentials : user.saveCredentials;
     
+    // Handle avatar update if provided
+    if (req.body.avatar) {
+      user.avatar = req.body.avatar;
+    }
+    
     if (req.body.password) {
       user.password = req.body.password;
     }
@@ -143,6 +149,7 @@ const updateProfile = asyncHandler(async (req, res) => {
       role: updatedUser.role,
       darkMode: updatedUser.darkMode,
       saveCredentials: updatedUser.saveCredentials,
+      avatar: updatedUser.avatar,
       token: generateToken(updatedUser._id),
     });
   } else {
@@ -235,12 +242,43 @@ const updateUser = asyncHandler(async (req, res) => {
     // Save the user first
     await user.save();
     
-    // Then fetch the updated user with populated fields
-    const updatedUser = await User.findById(user._id)
-      .select('-password')
-      .populate('school', 'name')
-      .populate('direction', 'name')
-      .populate('subjects', 'name');
+    // For populated fields, we need to handle them differently based on whether they're arrays or single values
+    let updatedUser = await User.findById(user._id).select('-password');
+    
+    // Custom population logic to handle both single items and arrays
+    if (user.role === 'teacher') {
+      // For teachers who can have multiple schools
+      if (Array.isArray(updatedUser.school)) {
+        // Populate an array of schools
+        const School = mongoose.model('School');
+        const populatedSchools = await School.find({ '_id': { $in: updatedUser.school } }).select('name');
+        updatedUser.school = populatedSchools;
+      } else if (updatedUser.school) {
+        // Populate a single school
+        updatedUser = await updatedUser.populate('school', 'name');
+      }
+      
+      // Same for directions
+      if (Array.isArray(updatedUser.direction)) {
+        // Populate an array of directions
+        const Direction = mongoose.model('Direction');
+        const populatedDirections = await Direction.find({ '_id': { $in: updatedUser.direction } }).select('name');
+        updatedUser.direction = populatedDirections;
+      } else if (updatedUser.direction) {
+        // Populate a single direction
+        updatedUser = await updatedUser.populate('direction', 'name');
+      }
+    } else {
+      // For students or admins, we use regular population (single values)
+      updatedUser = await updatedUser
+        .populate('school', 'name')
+        .populate('direction', 'name');
+    }
+    
+    // Always populate subjects
+    updatedUser = await updatedUser.populate('subjects', 'name');
+    
+    console.log('Updated user after population:', JSON.stringify(updatedUser, null, 2));
 
     // Prepare base response
     const response = {
