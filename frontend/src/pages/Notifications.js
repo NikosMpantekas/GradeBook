@@ -140,8 +140,63 @@ const Notifications = () => {
     setTabValue(newValue);
   };
 
-  const handleMarkAsRead = (id) => {
-    dispatch(markNotificationAsRead(id));
+  const handleRefresh = () => {
+    if (tabValue === 0) {
+      dispatch(getMyNotifications());
+    } else {
+      dispatch(getSentNotifications());
+    }
+  };
+
+  const handleEditNotification = (notification) => {
+    setCurrentNotification(notification);
+    setEditForm({
+      title: notification.title,
+      message: notification.message,
+      isImportant: notification.isImportant || false
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
+    setCurrentNotification(null);
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value, checked } = e.target;
+    setEditForm({
+      ...editForm,
+      [name]: name === 'isImportant' ? checked : value,
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (currentNotification && currentNotification._id) {
+      const updatedData = {
+        title: editForm.title,
+        message: editForm.message,
+        isImportant: editForm.isImportant
+      };
+      
+      dispatch(updateNotification({
+        id: currentNotification._id,
+        notificationData: updatedData
+      }))
+        .unwrap()
+        .then(() => {
+          toast.success('Notification updated successfully');
+          handleCloseEditDialog();
+          handleRefresh(); // Refresh the list after update
+        })
+        .catch((error) => {
+          toast.error(`Failed to update: ${error}`);
+        });
+    }
+  };
+
+  const handleMarkAsRead = (notificationId) => {
+    dispatch(markNotificationAsRead(notificationId));
   };
 
   const handleDeleteNotification = (id) => {

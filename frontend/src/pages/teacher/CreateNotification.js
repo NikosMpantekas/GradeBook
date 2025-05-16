@@ -139,7 +139,7 @@ const CreateNotification = () => {
     isSuccess,
     isError,
     message,
-    studentsCount: Array.isArray(students) ? students.length : 'not an array'
+    usersCount: Array.isArray(users) ? users.length : 'not an array'
   });
 
   // Force reset notification state on initial load
@@ -392,8 +392,8 @@ const CreateNotification = () => {
     navigate('/app/teacher/notifications');
   };
   
-  // Display loading state while fetching students data
-  if (isStudentsLoading) {
+  // Display loading state while fetching users data
+  if (isUsersLoading) {
     return (
       <Box sx={{ flexGrow: 1 }}>
         <Button
@@ -403,12 +403,12 @@ const CreateNotification = () => {
         >
           Back to Notifications
         </Button>
-        <LoadingState message="Loading students data..." />
+        <LoadingState message="Loading users data..." />
       </Box>
     );
   }
 
-  // Display error state if there's an error loading students
+  // Display error state if there's an error loading users
   if (isError && !isSubmitting) {
     return (
       <Box sx={{ flexGrow: 1 }}>
@@ -421,7 +421,7 @@ const CreateNotification = () => {
         </Button>
         <ErrorState 
           message={`Failed to load data: ${message || 'Unknown error'}`}
-          onRetry={() => dispatch(getStudents())}
+          onRetry={() => dispatch(getUsersByRole(formData.filterByRole))}
           retryText="Retry Loading"
         />
       </Box>
