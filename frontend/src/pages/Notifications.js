@@ -18,6 +18,7 @@ import {
   Tabs,
   Tab,
   Badge,
+  Button,
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
