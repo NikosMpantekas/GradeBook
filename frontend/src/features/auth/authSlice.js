@@ -114,18 +114,34 @@ export const updateCurrentUserPermissions = createAsyncThunk(
       // Only proceed if this is the current logged-in user
       const currentUser = thunkAPI.getState().auth.user;
       if (currentUser && currentUser._id === userId) {
-        // Update permissions in local/session storage
+        console.log('Updating permissions for current user:', userId);
+        console.log('New permissions:', permissions);
+        
+        // Create updated user object with new permissions
         const updatedUser = {
           ...currentUser,
           ...permissions
         };
         
-        // Update storage based on where the user data is currently stored
+        // Force an immediate update to both storage locations to ensure it takes effect
         if (localStorage.getItem('user')) {
+          localStorage.removeItem('user');
           localStorage.setItem('user', JSON.stringify(updatedUser));
-        } else if (sessionStorage.getItem('user')) {
-          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+          console.log('Updated localStorage with new permissions');
         }
+        
+        if (sessionStorage.getItem('user')) {
+          sessionStorage.removeItem('user');
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+          console.log('Updated sessionStorage with new permissions');
+        }
+        
+        // Force a page reload to ensure the new permissions take effect
+        // This is a somewhat heavy-handed approach but ensures UI components update
+        setTimeout(() => {
+          console.log('Permission update complete - forcing refresh');
+          window.location.reload();
+        }, 1000);
         
         return updatedUser;
       }

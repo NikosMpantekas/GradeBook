@@ -218,7 +218,8 @@ const Notifications = () => {
       dispatch(markNotificationAsRead(id));
     }
     
-    navigate(`/notifications/${id}`);
+    // Fixed path to include /app prefix to match the application's routing structure
+    navigate(`/app/notifications/${id}`);
   };
 
   // Function to check if current user can edit a notification
