@@ -49,10 +49,27 @@ const Notifications = () => {
   const [displayedNotifications, setDisplayedNotifications] = useState([]);
 
   useEffect(() => {
+    console.log(`Loading notifications, tab: ${tabValue === 0 ? 'Received' : 'Sent'}`);
     if (tabValue === 0) {
-      dispatch(getMyNotifications());
+      dispatch(getMyNotifications())
+        .unwrap()
+        .then((result) => {
+          console.log(`Successfully loaded ${result.length} notifications for the current user`);
+        })
+        .catch((error) => {
+          console.error('Error loading my notifications:', error);
+          toast.error('Failed to load notifications. Please try again.');
+        });
     } else {
-      dispatch(getSentNotifications());
+      dispatch(getSentNotifications())
+        .unwrap()
+        .then((result) => {
+          console.log(`Successfully loaded ${result.length} sent notifications`);
+        })
+        .catch((error) => {
+          console.error('Error loading sent notifications:', error);
+          toast.error('Failed to load sent notifications. Please try again.');
+        });
     }
 
     return () => {
@@ -162,7 +179,7 @@ const Notifications = () => {
         
         <Divider sx={{ mb: 2 }} />
         
-        {displayedNotifications?.length > 0 ? (
+        {Array.isArray(displayedNotifications) && displayedNotifications.length > 0 ? (
           <List>
             {displayedNotifications.map((notification) => (
               <Box key={notification._id}>
@@ -261,13 +278,40 @@ const Notifications = () => {
           <Box textAlign="center" py={4}>
             <NotificationsNoneIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
             <Typography variant="h6" color="text.secondary">
-              No notifications
+              No notifications found
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {tabValue === 0 
-                ? "You don't have any notifications yet." 
+                ? "You don't have any notifications yet. New notifications will appear here." 
                 : "You haven't sent any notifications yet."}
             </Typography>
+            
+            {tabValue === 0 && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1, maxWidth: 500, mx: 'auto' }}>
+                <Typography variant="caption" color="text.secondary" component="div" sx={{ textAlign: 'left', mb: 1 }}>
+                  <strong>User role:</strong> {user?.role || 'Unknown'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" component="div" sx={{ textAlign: 'left', mb: 1 }}>
+                  <strong>User ID:</strong> {user?._id ? user._id.substring(0, 8) + '...' : 'Not logged in'}
+                </Typography>
+                {user?.school && (
+                  <Typography variant="caption" color="text.secondary" component="div" sx={{ textAlign: 'left', mb: 1 }}>
+                    <strong>School:</strong> {typeof user.school === 'object' ? user.school.name : user.school}
+                  </Typography>
+                )}
+                <Typography variant="caption" color="text.secondary" component="div" sx={{ textAlign: 'left' }}>
+                  <strong>Last checked:</strong> {new Date().toLocaleTimeString()}
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small" 
+                  onClick={() => dispatch(getMyNotifications())}
+                  sx={{ mt: 2 }}
+                >
+                  Refresh notifications
+                </Button>
+              </Box>
+            )}
           </Box>
         )}
       </Paper>

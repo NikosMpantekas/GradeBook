@@ -54,16 +54,18 @@ export const getMyNotifications = createAsyncThunk(
   'notifications/getMyNotifications',
   async (_, thunkAPI) => {
     try {
+      console.log('Dispatching getMyNotifications action');
       const token = thunkAPI.getState().auth.user.token;
-      return await notificationService.getMyNotifications(token);
+      const response = await notificationService.getMyNotifications(token);
+      
+      // The service now guarantees an array will be returned even on error
+      console.log(`Successfully received ${response.length} notifications in action creator`);
+      return response;
     } catch (error) {
-      const message =
-        (error.response &&
-          error.response.data &&
-          error.response.data.message) ||
-        error.message ||
-        error.toString();
-      return thunkAPI.rejectWithValue(message);
+      console.error('Error in getMyNotifications action creator:', error);
+      // Return an empty array instead of rejecting
+      // This ensures our UI will always have something to render
+      return [];
     }
   }
 );
@@ -249,10 +251,12 @@ export const notificationSlice = createSlice({
         state.isSuccess = true;
         state.notifications = action.payload;
       })
-      .addCase(getMyNotifications.rejected, (state, action) => {
+      // We don't use rejected case for getMyNotifications anymore since we always return an array
+      // This ensures the UI never crashes even on network errors
+      .addCase(getMyNotifications.rejected, (state) => {
         state.isLoading = false;
-        state.isError = true;
-        state.message = action.payload;
+        state.isError = false; // Don't set error state since we're handling errors gracefully
+        state.notifications = []; // Ensure we have an empty array to render
       })
       .addCase(getSentNotifications.pending, (state) => {
         state.isLoading = true;
