@@ -39,6 +39,7 @@ import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import {
   getSentNotifications,
+  getAllNotifications,
   deleteNotification,
   markNotificationAsRead,
   updateNotification,
@@ -76,12 +77,22 @@ const TeacherNotifications = () => {
     
     // For admins, use different approach to get all notifications including teacher ones
     if (user && user.role === 'admin') {
-      console.log('Admin user detected - loading all sent notifications');
-      // Add a small delay to ensure the component is fully mounted
-      setTimeout(() => {
-        dispatch(getSentNotifications());
-      }, 100);
+      console.log('Admin user detected - loading ALL notifications');
+      // Use the admin-specific getAllNotifications endpoint instead
+      dispatch(getAllNotifications())
+        .unwrap()
+        .then(data => {
+          console.log(`Admin: Successfully fetched ${data?.length || 0} notifications`);
+          if (Array.isArray(data) && data.length > 0) {
+            setFilteredNotifications(data);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching admin notifications:', error);
+          toast.error('Failed to load notifications');
+        });
     } else {
+      // For teachers, just fetch their sent notifications
       dispatch(getSentNotifications());
     }
     
@@ -502,9 +513,39 @@ const TeacherNotifications = () => {
               value={senderFilter}
               onChange={handleSenderFilterChange}
               variant="outlined"
-              sx={{ minWidth: 200 }}
+              sx={{
+                minWidth: 200,
+                '& .MuiSelect-select': {
+                  color: 'text.primary', // Adapts to theme colors
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'text.secondary', // Adapts to theme colors
+                },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: 'divider', // Adapts to theme divider color
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'primary.main', // Uses theme primary color on hover
+                  },
+                },
+                '& .MuiNativeSelect-select': {
+                  bgcolor: 'background.paper', // Uses theme background color
+                  color: 'text.primary', // Uses theme text color
+                }
+              }}
               SelectProps={{
                 native: true,
+                MenuProps: {
+                  PaperProps: {
+                    sx: {
+                      bgcolor: 'background.paper', // Uses theme background for dropdown
+                      '& option': {
+                        padding: 1,
+                      }
+                    }
+                  }
+                }
               }}
             >
               <option value="all">All Senders</option>
