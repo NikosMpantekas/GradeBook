@@ -348,17 +348,31 @@ const Notifications = () => {
                   </ListItemAvatar>
                   <ListItemText
                     primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography 
-                          variant="subtitle1" 
-                          sx={{ 
-                            fontWeight: !notification.isRead && tabValue === 0 ? 'bold' : 'normal' 
-                          }}
-                        >
-                          {notification.title}
-                        </Typography>
-                        {notification.isImportant && (
-                          <Chip label="Important" color="error" size="small" />
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography 
+                            variant="subtitle1" 
+                            sx={{ 
+                              fontWeight: !notification.isRead && tabValue === 0 ? 'bold' : 'normal' 
+                            }}
+                          >
+                            {notification.title}
+                            {notification.isImportant && (
+                              <Chip 
+                                label="Important" 
+                                color="error" 
+                                size="small"
+                                sx={{ ml: 1 }}
+                              />
+                            )}
+                          </Typography>
+                        </Box>
+                        {/* Display sender information more prominently for admins */}
+                        {user && user.role === 'admin' && notification.sender && (
+                          <Typography variant="body2" color="text.secondary">
+                            Sent by: <span style={{ fontWeight: 'bold' }}>{notification.sender.name}</span> 
+                            ({notification.sender.role})
+                          </Typography>
                         )}
                       </Box>
                     }

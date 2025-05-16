@@ -117,10 +117,10 @@ const createNotification = asyncHandler(async (req, res) => {
     }
   }
 
-  // Apply role-based restrictions for teachers (cannot send to admins)
+  // Apply role-based restrictions for teachers (can only send to students)
   if (req.user.role === 'teacher') {
-    userQuery.role = { $ne: 'admin' };
-    console.log('Teacher sending notification - restricted from sending to admins');
+    userQuery.role = 'student'; // Restrict teachers to only send to students
+    console.log('Teacher sending notification - restricted to student recipients only');
   }
 
   // Find all matching users

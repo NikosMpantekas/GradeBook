@@ -480,23 +480,32 @@ const CreateNotification = () => {
             
             {/* Role Filter - Always visible */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Target Role</InputLabel>
-                <Select
-                  name="filterByRole"
-                  value={formData.filterByRole}
-                  label="Target Role"
-                  onChange={handleChange}
-                >
-                  <MenuItem value="all">All Users</MenuItem>
-                  <MenuItem value="student">Students Only</MenuItem>
-                  <MenuItem value="teacher">Teachers Only</MenuItem>
-                  {user.role === 'admin' && (
-                    <MenuItem value="admin">Admins Only</MenuItem>
-                  )}
-                </Select>
-                <FormHelperText>Select which type of users should receive this notification</FormHelperText>
-              </FormControl>
+                {/* For teachers, restrict sending to students only */}
+                {user.role === 'teacher' ? (
+                  <Box sx={{ my: 2, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+                    <Typography variant="body2">
+                      <strong>Note:</strong> As a teacher, you can only send notifications to students.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <FormControl fullWidth>
+                    <InputLabel>Target Role</InputLabel>
+                    <Select
+                      name="filterByRole"
+                      value={formData.filterByRole}
+                      label="Target Role"
+                      onChange={handleChange}
+                    >
+                      <MenuItem value="all">All Users</MenuItem>
+                      <MenuItem value="student">Students Only</MenuItem>
+                      <MenuItem value="teacher">Teachers Only</MenuItem>
+                      {user.role === 'admin' && (
+                        <MenuItem value="admin">Admins Only</MenuItem>
+                      )}
+                    </Select>
+                    <FormHelperText>Select which type of users should receive this notification</FormHelperText>
+                  </FormControl>
+                )}
             </Grid>
             
             {/* Use Advanced Filters Switch */}
