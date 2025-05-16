@@ -72,6 +72,38 @@ const logout = () => {
   sessionStorage.removeItem('user');
 };
 
+// Get current user data with populated fields
+const getUserData = async (token) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const response = await axios.get(API_URL + 'me', config);
+  
+  if (response.data) {
+    // Update the stored user data but preserve the token
+    const updatedUser = {
+      ...response.data,
+      token: token // Keep the original token
+    };
+    
+    // Update in both storage locations to ensure it's available
+    if (localStorage.getItem('user')) {
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+    
+    if (sessionStorage.getItem('user')) {
+      sessionStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+    
+    return updatedUser;
+  }
+  
+  return response.data;
+};
+
 // Update profile
 const updateProfile = async (userData, token) => {
   const config = {
@@ -100,6 +132,7 @@ const authService = {
   login,
   logout,
   updateProfile,
+  getUserData,
 };
 
 export default authService;

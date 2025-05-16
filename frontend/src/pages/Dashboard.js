@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import { getUserData } from '../features/auth/authSlice';
 import { 
   Typography, 
   Grid, 
@@ -52,6 +53,8 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
+      // Fetch updated user data with populated fields
+      dispatch(getUserData());
       dispatch(getMyNotifications());
       
       if (user.role === 'student') {
@@ -75,33 +78,27 @@ const Dashboard = () => {
       setRecentGrades(grades.slice(0, 3));
     }
 
-    // Get user's school
+    // Set user's school from populated user data
     if (user && user.school) {
-      // Handle both cases: when school is an ID string or when it's already a populated object
-      if (typeof user.school === 'string') {
-        // School is just an ID, find the full object
-        if (schools) {
-          const school = schools.find(s => s._id === user.school);
-          setUserSchool(school);
-        }
-      } else {
-        // School is already a populated object
+      if (typeof user.school === 'object' && user.school !== null) {
+        // School is a populated object
         setUserSchool(user.school);
+      } else if (schools && typeof user.school === 'string') {
+        // School is just an ID, find the full object as fallback
+        const school = schools.find(s => s._id === user.school);
+        setUserSchool(school);
       }
     }
 
-    // Get user's direction
+    // Set user's direction from populated user data
     if (user && user.direction) {
-      // Handle both cases: when direction is an ID string or when it's already a populated object
-      if (typeof user.direction === 'string') {
-        // Direction is just an ID, find the full object
-        if (directions) {
-          const direction = directions.find(d => d._id === user.direction);
-          setUserDirection(direction);
-        }
-      } else {
-        // Direction is already a populated object
+      if (typeof user.direction === 'object' && user.direction !== null) {
+        // Direction is a populated object
         setUserDirection(user.direction);
+      } else if (directions && typeof user.direction === 'string') {
+        // Direction is just an ID, find the full object as fallback
+        const direction = directions.find(d => d._id === user.direction);
+        setUserDirection(direction);
       }
     }
 

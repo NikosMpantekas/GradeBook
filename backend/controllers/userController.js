@@ -103,7 +103,12 @@ const loginUser = asyncHandler(async (req, res) => {
 // @route   GET /api/users/me
 // @access  Private
 const getMe = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.id).select('-password');
+  // Find user and populate all reference fields
+  const user = await User.findById(req.user.id)
+    .select('-password')
+    .populate('school', 'name') // Populate school with name field
+    .populate('direction', 'name') // Populate direction with name field
+    .populate('subjects', 'name'); // Populate subjects with name field
 
   if (user) {
     res.status(200).json(user);
