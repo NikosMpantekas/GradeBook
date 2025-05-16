@@ -206,220 +206,133 @@ const getMyNotifications = asyncHandler(async (req, res) => {
   const user = req.user;
   
   console.log(`Getting notifications for user ${user.name} (${user._id}) with role: ${user.role}`);
-  console.log('User details:', {
-    id: user._id,
-    role: user.role,
-    school: user.school,
-    direction: user.direction,
-    subjects: user.subjects ? user.subjects.length : 0
-  });
   
-  // Build query based on user role and attributes
-  let query = {};
+  // COMPLETE REWRITE: This is a fundamental fix to the notification privacy issue
+  // The previous approach was overly complex and had edge cases where notifications leaked
+  // STUDENTS SHOULD ONLY SEE THEIR OWN NOTIFICATIONS, PERIOD.
   
   if (user.role === 'student') {
-    // FIXED PRIVACY ISSUE: Students should only see notifications that are specifically intended for them
-    // Conditions that allow a student to see a notification:
+    // For students, we use a simple, direct, and foolproof approach:
+    // A student can ONLY see notifications where either:
+    // 1. They are explicitly listed as a recipient (their ID is in the recipients array) OR
+    // 2. It's a true global notification (sendToAll: true)
     
-    // 1. Core conditions - student must meet ONE of these to see a notification:
-    //    - They are explicitly in the recipients list, OR
-    //    - The notification is marked as sendToAll
-    const coreConditions = [
-      // CRITICAL FIX: Use $elemMatch to properly match user ID in the recipients array
-      { recipients: { $elemMatch: { $eq: user._id } } },
-      { sendToAll: true }
-    ];
-    
-    // 2. Targeting conditions - if a notification uses targeting (not specific recipients),
-    //    then student must meet ALL relevant targeting criteria:
-    //    - If targetRole specified, it must include 'student' or 'all'
-    //    - If schools specified, student's school must be included
-    //    - If directions specified, student's direction must be included
-    //    - If subjects specified, at least one of student's subjects must be included
-    
-    // First prepare a targeting condition for notifications using role/attribute targeting
-    const targetingCondition = {
-      $and: [ 
-        // Only include notifications that have targetRole set to student or all
-        { targetRole: { $in: ['student', 'all'] } }
+    // We're not using any other conditions - this is the most restrictive and secure approach
+    const strictPrivacyQuery = {
+      $or: [
+        // Direct recipient - their ID must be in the recipients array
+        { recipients: user._id },
+        // Global notifications only - must have sendToAll flag set to true
+        { sendToAll: true }
       ]
     };
     
-    // If the notification specifies schools, student must belong to one of them
-    if (user.school) {
-      targetingCondition.$and.push({
-        $or: [
-          { schools: { $exists: false } },   // No schools specified (targets all schools)
-          { schools: { $size: 0 } },         // Empty schools array (targets all schools)
-          { schools: user.school }           // Student's school is targeted
-        ]
-      });
-    }
-    
-    // If the notification specifies directions, student must belong to one of them
-    if (user.direction) {
-      targetingCondition.$and.push({
-        $or: [
-          { directions: { $exists: false } }, // No directions specified
-          { directions: { $size: 0 } },        // Empty directions array
-          { directions: user.direction }       // Student's direction is targeted
-        ]
-      });
-    }
-    
-    // If the notification specifies subjects, student must be enrolled in at least one
-    if (user.subjects && user.subjects.length > 0) {
-      targetingCondition.$and.push({
-        $or: [
-          { subjects: { $exists: false } },   // No subjects specified
-          { subjects: { $size: 0 } },          // Empty subjects array
-          { subjects: { $in: user.subjects } } // At least one of student's subjects is targeted
-        ]
-      });
-    }
-    
-    // Add the targeting condition as an alternative to the core conditions
-    coreConditions.push(targetingCondition);
-    
-    // Final query uses the core conditions
-    query = { $or: coreConditions };
-    
-    console.log('Student notification query (privacy fixed):', JSON.stringify(query, null, 2));
-  } else if (user.role === 'teacher') {
-    // FIXED PRIVACY ISSUE: Teachers should only see notifications that are specifically intended for them
-    // Following the same privacy model as students
-    
-    // 1. Core conditions - teacher must meet ONE of these to see a notification:
-    //    - They are explicitly in the recipients list, OR
-    //    - The notification is marked as sendToAll
-    const coreConditions = [
-      // CRITICAL FIX: Use $elemMatch to properly match user ID in the recipients array
-      { recipients: { $elemMatch: { $eq: user._id } } },
-      { sendToAll: true }
+    // Add additional role restriction for extra security
+    // A student should only see notifications targeted to students or all users
+    strictPrivacyQuery.$and = [
+      { targetRole: { $in: ['student', 'all'] } }
     ];
     
-    // 2. Targeting conditions - if a notification uses targeting (not specific recipients),
-    //    then teacher must meet ALL relevant targeting criteria:
-    //    - If targetRole specified, it must include 'teacher' or 'all'
-    //    - If schools specified, teacher's school must be included
-    //    - If subjects specified, at least one of teacher's subjects must be included
+    console.log('STRICT PRIVACY: Student notification query:', JSON.stringify(strictPrivacyQuery, null, 2));
     
-    // First prepare a targeting condition for notifications using role/attribute targeting
-    const targetingCondition = {
-      $and: [ 
-        // Only include notifications that have targetRole set to teacher or all
-        { targetRole: { $in: ['teacher', 'all'] } }
-      ]
-    };
+    const notifications = await Notification.find(strictPrivacyQuery)
+      .populate('sender', 'name email role')
+      .populate('schools', 'name')
+      .populate('directions', 'name')
+      .populate('subjects', 'name')
+      .sort({ createdAt: -1 });
     
-    // If the notification specifies schools, teacher must belong to one of them
-    if (user.school) {
-      targetingCondition.$and.push({
-        $or: [
-          { schools: { $exists: false } },   // No schools specified (targets all schools)
-          { schools: { $size: 0 } },         // Empty schools array (targets all schools)
-          { schools: user.school }           // Teacher's school is targeted
-        ]
-      });
-    }
+    console.log(`Found ${notifications.length} notifications for student ${user._id}`);
     
-    // If the notification specifies subjects, teacher must teach at least one
-    if (user.subjects && user.subjects.length > 0) {
-      targetingCondition.$and.push({
-        $or: [
-          { subjects: { $exists: false } },   // No subjects specified
-          { subjects: { $size: 0 } },          // Empty subjects array
-          { subjects: { $in: user.subjects } } // At least one of teacher's subjects is targeted
-        ]
-      });
-    }
-    
-    // Add the targeting condition as an alternative to the core conditions
-    coreConditions.push(targetingCondition);
-    
-    // Final query uses the core conditions
-    query = { $or: coreConditions };
-    
-    console.log('Teacher notification query (privacy fixed):', JSON.stringify(query, null, 2));
-  } else if (user.role === 'admin') {
-    // Admins see all notifications
-    query = {};
-    console.log('Admin sees all notifications');
-  }
-
-  const notifications = await Notification.find(query)
-    .populate('sender', 'name email role')
-    .populate('schools', 'name')
-    .populate('directions', 'name')
-    .populate('subjects', 'name')
-    .sort({ createdAt: -1 });
-  
-  console.log(`Found ${notifications.length} notifications for user ${user._id}`);
-  
-  // PRIVACY VALIDATION: Double-check that all returned notifications are truly meant for this user
-  // This is an extra layer of security to ensure no private notifications are leaked
-  if (user.role === 'student' && notifications.length > 0) {
-    console.log('Privacy validation: Checking all notifications are truly for this student');
-    
-    const validatedNotifications = notifications.filter(notification => {
-      // A notification is valid for this student if any of these conditions are true:
-      const isDirectRecipient = notification.recipients.some(r => r.toString() === user._id.toString());
-      const isSendToAll = notification.sendToAll === true;
+    // Double-check that each notification has this student's ID in recipients or sendToAll=true
+    const verifiedNotifications = notifications.filter(notification => {
+      const isDirectRecipient = notification.recipients.some(r => 
+        r.toString() === user._id.toString());
+      const isGlobal = notification.sendToAll === true;
       
-      // If using role/school/direction/subject targeting, check they match the student
-      let isValidTargeting = false;
-      
-      if (notification.targetRole === 'student' || notification.targetRole === 'all') {
-        // Start with role check that passes
-        isValidTargeting = true;
-        
-        // Check if school filter applies and this student matches
-        if (notification.schools && notification.schools.length > 0) {
-          const studentSchoolId = user.school?.toString();
-          const notifSchoolIds = notification.schools.map(s => s._id?.toString() || s.toString());
-          
-          if (!studentSchoolId || !notifSchoolIds.includes(studentSchoolId)) {
-            isValidTargeting = false;
-          }
-        }
-        
-        // Check if direction filter applies and this student matches
-        if (isValidTargeting && notification.directions && notification.directions.length > 0) {
-          const studentDirectionId = user.direction?.toString();
-          const notifDirectionIds = notification.directions.map(d => d._id?.toString() || d.toString());
-          
-          if (!studentDirectionId || !notifDirectionIds.includes(studentDirectionId)) {
-            isValidTargeting = false;
-          }
-        }
-        
-        // Check if subject filter applies and this student matches
-        if (isValidTargeting && notification.subjects && notification.subjects.length > 0) {
-          const studentSubjectIds = (user.subjects || []).map(s => s.toString());
-          const notifSubjectIds = notification.subjects.map(s => s._id?.toString() || s.toString());
-          
-          if (studentSubjectIds.length === 0 || !studentSubjectIds.some(id => notifSubjectIds.includes(id))) {
-            isValidTargeting = false;
-          }
-        }
+      if (!isDirectRecipient && !isGlobal) {
+        console.error(`PRIVACY ERROR: Notification ${notification._id} leaked to student ${user._id} despite not being a recipient`);
+        return false;
       }
       
-      // Log any filtering actions for debugging
-      if (!(isDirectRecipient || isSendToAll || isValidTargeting)) {
-        console.log(`Privacy filter: Removing notification ${notification._id} from results - not intended for user ${user._id}`);
-      }
-      
-      return isDirectRecipient || isSendToAll || isValidTargeting;
+      return true;
     });
     
-    // If we filtered out any notifications, log it
-    if (validatedNotifications.length < notifications.length) {
-      console.log(`Privacy protection: Removed ${notifications.length - validatedNotifications.length} notifications that weren't meant for this student`);
-      return res.json(validatedNotifications);
+    if (verifiedNotifications.length < notifications.length) {
+      console.warn(`PRIVACY PROTECTION: Filtered out ${notifications.length - verifiedNotifications.length} notifications that weren't meant for student ${user._id}`);
     }
+    
+    return res.json(verifiedNotifications);
+  } else if (user.role === 'teacher') {
+    // Apply the same strict privacy approach for teachers
+    // Teachers can only see notifications where either:
+    // 1. They are explicitly listed as a recipient (their ID is in the recipients array) OR
+    // 2. It's a true global notification (sendToAll: true)
+    
+    const strictPrivacyQuery = {
+      $or: [
+        // Direct recipient - their ID must be in the recipients array
+        { recipients: user._id },
+        // Global notifications only - must have sendToAll flag set to true
+        { sendToAll: true }
+      ]
+    };
+    
+    // Add additional role restriction for extra security
+    // A teacher should only see notifications targeted to teachers or all users
+    strictPrivacyQuery.$and = [
+      { targetRole: { $in: ['teacher', 'all'] } }
+    ];
+    
+    console.log('STRICT PRIVACY: Teacher notification query:', JSON.stringify(strictPrivacyQuery, null, 2));
+    
+    const notifications = await Notification.find(strictPrivacyQuery)
+      .populate('sender', 'name email role')
+      .populate('schools', 'name')
+      .populate('directions', 'name')
+      .populate('subjects', 'name')
+      .sort({ createdAt: -1 });
+    
+    console.log(`Found ${notifications.length} notifications for teacher ${user._id}`);
+    
+    // Double-check that each notification has this teacher's ID in recipients or sendToAll=true
+    const verifiedNotifications = notifications.filter(notification => {
+      const isDirectRecipient = notification.recipients.some(r => 
+        r.toString() === user._id.toString());
+      const isGlobal = notification.sendToAll === true;
+      
+      if (!isDirectRecipient && !isGlobal) {
+        console.error(`PRIVACY ERROR: Notification ${notification._id} leaked to teacher ${user._id} despite not being a recipient`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    if (verifiedNotifications.length < notifications.length) {
+      console.warn(`PRIVACY PROTECTION: Removed ${notifications.length - verifiedNotifications.length} notifications that weren't meant for teacher ${user._id}`);
+    }
+    
+    return res.json(verifiedNotifications);
+  } else if (user.role === 'admin') {
+    // Admins can see all notifications for management purposes
+    console.log('Admin fetching all notifications');
+    
+    const notifications = await Notification.find({})
+      .populate('sender', 'name email role')
+      .populate('schools', 'name')
+      .populate('directions', 'name')
+      .populate('subjects', 'name')
+      .populate('recipients', 'name email role')
+      .sort({ createdAt: -1 });
+    
+    console.log(`Found ${notifications.length} notifications for admin ${user._id}`);
+    return res.json(notifications);
   }
-  
-  res.json(notifications);
+
+  // If we reach this point, there's an unhandled user role
+  console.error(`Unhandled user role: ${user.role} - No notifications will be returned`);
+  return res.json([]);
 });
 
 // @desc    Get notifications sent by a user
