@@ -44,7 +44,7 @@ const EditUser = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  // Get user state from Redux
+  const { user: currentUser } = useSelector((state) => state.auth);
   const { isLoading: userLoading, isError: userError, message: userMessage } = useSelector((state) => state.users);
   
   // Create refs to track component state
@@ -414,15 +414,37 @@ const EditUser = () => {
             canAddGradeDescriptions: formData.canAddGradeDescriptions
           };
           
-          // Update the current user permissions if they match the edited user
-          dispatch(updateCurrentUserPermissions({
-            userId: id, 
-            permissions: permissionUpdates
-          }));
+          // For the logged-in user, we need a special approach that guarantees a fresh login
+          // This is a direct solution when an admin modifies their own permissions
+          if (currentUser && currentUser._id === id) {
+            toast.info('Refreshing your session with the new permissions...', { autoClose: 2000 });
+            
+            // Remove the current user data to force a fresh fetch
+            if (localStorage.getItem('user')) {
+              localStorage.removeItem('user');
+            }
+            if (sessionStorage.getItem('user')) {
+              sessionStorage.removeItem('user');
+            }
+            
+            // Force a full page reload which will redirect to login
+            setTimeout(() => {
+              window.location.href = '/login';
+            }, 1500);
+          } else {
+            // For other users, just update permissions in state
+            dispatch(updateCurrentUserPermissions({
+              userId: id, 
+              permissions: permissionUpdates
+            }));
+            
+            // Redirect back to user management
+            navigate('/app/admin/users');
+          }
+        } else {
+          // Redirect back to user management
+          navigate('/app/admin/users');
         }
-        
-        // Redirect back to user management
-        navigate('/app/admin/users');
       })
       .catch(error => {
         setIsLoading(false);
