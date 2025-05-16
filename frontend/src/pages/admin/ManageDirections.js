@@ -174,14 +174,24 @@ const ManageDirections = () => {
   
   const handleEditDirection = () => {
     if (validateForm()) {
-      dispatch(updateDirection(currentDirection))
+      // Structure the update data correctly with id and directionData separately
+      const directionId = currentDirection._id;
+      const directionData = {
+        name: currentDirection.name,
+        description: currentDirection.description,
+        // Include any other fields that are part of the direction model
+      };
+      
+      dispatch(updateDirection({ id: directionId, directionData }))
         .unwrap()
         .then(() => {
           setOpenEditDialog(false);
+          // Refresh the directions list after update
+          dispatch(getDirections());
           toast.success('Direction updated successfully');
         })
         .catch((error) => {
-          toast.error(error);
+          toast.error(`Failed to update direction: ${error}`);
         });
     }
   };

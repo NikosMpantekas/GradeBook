@@ -115,9 +115,20 @@ const Dashboard = () => {
     }
 
     // Get user's subjects
-    if (subjects && user && user.subjects && user.subjects.length > 0) {
-      const userSubjectsData = subjects.filter(s => user.subjects.includes(s._id));
-      setUserSubjects(userSubjectsData);
+    if (subjects && user && user.subjects) {
+      // Handle both cases: when subjects are objects or just IDs
+      if (user.subjects[0] && typeof user.subjects[0] === 'object') {
+        // Subjects are already populated objects
+        setUserSubjects(user.subjects);
+      } else if (subjects.length > 0 && user.subjects.length > 0) {
+        // Subjects are just IDs, need to match with full objects
+        const userSubjectsData = subjects.filter(subject => 
+          user.subjects.some(userSubject => 
+            (typeof userSubject === 'string' ? userSubject : userSubject._id) === subject._id
+          )
+        );
+        setUserSubjects(userSubjectsData);
+      }
     }
   }, [notifications, grades, schools, directions, subjects, user]);
 

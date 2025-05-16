@@ -216,14 +216,24 @@ const ManageSubjects = () => {
   
   const handleEditSubject = () => {
     if (validateForm()) {
-      dispatch(updateSubject(currentSubject))
+      // Structure the update data correctly with id and subjectData separately
+      const subjectId = currentSubject._id;
+      const subjectData = {
+        name: currentSubject.name,
+        description: currentSubject.description,
+        // Include any other fields that are part of the subject model
+      };
+      
+      dispatch(updateSubject({ id: subjectId, subjectData }))
         .unwrap()
         .then(() => {
           setOpenEditDialog(false);
+          // Refresh the subjects list after update
+          dispatch(getSubjects());
           toast.success('Subject updated successfully');
         })
         .catch((error) => {
-          toast.error(error);
+          toast.error(`Failed to update subject: ${error}`);
         });
     }
   };

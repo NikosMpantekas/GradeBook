@@ -160,7 +160,7 @@ const ManageSchools = () => {
     if (!currentSchool.phone.trim()) {
       errors.phone = 'Phone number is required';
     } else if (!/^\d{3}-\d{4}$/.test(currentSchool.phone) && !/^\d{10}$/.test(currentSchool.phone)) {
-      errors.phone = 'Phone number format should be 555-1234 or 5551234';
+      errors.phone = 'Phone number should have 10 digits ';
     }
     
     setFormErrors(errors);
@@ -184,14 +184,27 @@ const ManageSchools = () => {
   
   const handleEditSchool = () => {
     if (validateForm()) {
-      dispatch(updateSchool(currentSchool))
+      // Structure the update data correctly with id and schoolData separately
+      const schoolId = currentSchool._id; 
+      const schoolData = {
+        name: currentSchool.name,
+        address: currentSchool.address,
+        phone: currentSchool.phone,
+        email: currentSchool.email,
+        website: currentSchool.website,
+        logo: currentSchool.logo
+      };
+      
+      dispatch(updateSchool({ id: schoolId, schoolData }))
         .unwrap()
         .then(() => {
           setOpenEditDialog(false);
+          // Refresh the schools list after update
+          dispatch(getSchools());
           toast.success('School updated successfully');
         })
         .catch((error) => {
-          toast.error(error);
+          toast.error(`Failed to update school: ${error}`);
         });
     }
   };
@@ -352,7 +365,6 @@ const ManageSchools = () => {
               value={currentSchool.phone}
               onChange={handleInputChange}
               error={!!formErrors.phone}
-              helperText={formErrors.phone || 'Format: 555-1234 or 5551234'}
             />
           </Box>
         </DialogContent>
@@ -399,7 +411,6 @@ const ManageSchools = () => {
               value={currentSchool.phone}
               onChange={handleInputChange}
               error={!!formErrors.phone}
-              helperText={formErrors.phone || 'Format: 555-1234 or 5551234'}
             />
           </Box>
         </DialogContent>
