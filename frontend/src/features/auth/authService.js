@@ -112,15 +112,33 @@ const updateProfile = async (userData, token) => {
     },
   };
 
+  console.log('Updating profile with data:', userData);
   const response = await axios.put(API_URL + 'profile', userData, config);
+  console.log('Profile update response:', response.data);
 
   if (response.data) {
-    // Update stored user data
-    if (userData.saveCredentials) {
+    // Make sure we update both storage locations to ensure avatar persists
+    // Check if data is in localStorage
+    const localData = localStorage.getItem('user');
+    if (localData) {
+      console.log('Updating user data in localStorage with new profile');
       localStorage.setItem('user', JSON.stringify(response.data));
-    } else {
+    }
+    
+    // Check if data is in sessionStorage
+    const sessionData = sessionStorage.getItem('user');
+    if (sessionData) {
+      console.log('Updating user data in sessionStorage with new profile');
       sessionStorage.setItem('user', JSON.stringify(response.data));
-      localStorage.removeItem('user');
+    }
+    
+    // If no existing storage, use preference from userData
+    if (!localData && !sessionData) {
+      if (userData.saveCredentials) {
+        localStorage.setItem('user', JSON.stringify(response.data));
+      } else {
+        sessionStorage.setItem('user', JSON.stringify(response.data));
+      }
     }
   }
 

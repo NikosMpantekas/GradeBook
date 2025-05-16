@@ -50,6 +50,22 @@ const Profile = () => {
   // Track if form has been submitted
   const [hasSubmitted, setHasSubmitted] = useState(false);
   
+  const handleEditSave = () => {
+    if (isUploading) {
+      toast.info('Please wait for image compression to complete');
+      return;
+    }
+    
+    onSubmit();
+  };
+  
+  useEffect(() => {
+    if (user?.avatar && user.avatar !== formData.avatar) {
+      setPreviewUrl(user.avatar);
+      setFormData(prev => ({ ...prev, avatar: user.avatar }));
+    }
+  }, [user?.avatar]);
+
   useEffect(() => {
     if (isError) {
       toast.error(message);
@@ -126,28 +142,30 @@ const Profile = () => {
   };
 
   const onSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     if (password !== password2) {
       toast.error('Passwords do not match');
-    } else {
-      const userData = {
-        name,
-        email,
-        // Include avatar if it has been updated
-        avatar,
-        // Removed darkMode from here since it's handled in the header
-        saveCredentials,
-      };
-
-      if (password) {
-        userData.password = password;
-      }
-
-      // Set flag to indicate form was submitted to trigger success message
-      setHasSubmitted(true);
-      dispatch(updateProfile(userData));
+      return;
     }
+    
+    // Always include the avatar from the form data
+    const userData = {
+      name,
+      email,
+      avatar: formData.avatar, // Explicitly use formData.avatar to ensure it's included
+      saveCredentials,
+    };
+
+    if (password) {
+      userData.password = password;
+    }
+
+    console.log('Submitting profile update with userData:', userData);
+    
+    // Set flag to indicate form was submitted to trigger success message
+    setHasSubmitted(true);
+    dispatch(updateProfile(userData));
   };
 
   return (
