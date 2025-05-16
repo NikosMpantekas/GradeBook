@@ -24,6 +24,8 @@ import {
   DialogTitle,
   CircularProgress,
   Grid,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -31,6 +33,7 @@ import {
   Search as SearchIcon,
   Visibility as VisibilityIcon,
   MarkEmailRead as MarkReadIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -38,6 +41,7 @@ import {
   getSentNotifications,
   deleteNotification,
   markNotificationAsRead,
+  updateNotification,
   reset,
 } from '../../features/notifications/notificationSlice';
 
@@ -56,75 +60,40 @@ const TeacherNotifications = () => {
   const [filteredNotifications, setFilteredNotifications] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentNotification, setCurrentNotification] = useState(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    message: '',
+    isImportant: false
+  });
 
+  // Load notifications immediately on component mount
   useEffect(() => {
-    console.log('TeacherNotifications component mounted');
-    // Initialize an empty array to prevent initial render issues
-    setFilteredNotifications([]);
-    
-    // Get notifications sent by this teacher
-    try {
-      dispatch(getSentNotifications())
-        .unwrap()
-        .then(data => {
-          console.log('getSentNotifications success:', data);
-          // If we get here, we've already been successful, so we can set the data directly
-          if (Array.isArray(data)) {
-            setFilteredNotifications(data);
-          } else {
-            console.warn('Received non-array data:', data);
-            setFilteredNotifications([]);
-          }
-        })
-        .catch(error => {
-          console.error('getSentNotifications failure:', error);
-          toast.error('Failed to load notifications. Please try again.');
-          setFilteredNotifications([]);
-        });
-    } catch (error) {
-      console.error('Error dispatching getSentNotifications:', error);
-      setFilteredNotifications([]);
-    }
-    
-    return () => {
-      dispatch(reset());
-    };
+    console.log('TeacherNotifications component mounted - loading notifications');
+    dispatch(getSentNotifications());
+    // Don't reset on unmount to avoid data flashing
+    return () => {};
   }, [dispatch]);
 
-  // Use a ref to track initial mount
-  const initialMount = React.useRef(true);
-
+  // When notifications data changes, update our filtered list
   useEffect(() => {
-    // Initialize the filtered notifications array safely
-    if (initialMount.current) {
-      console.log('Initial mount of TeacherNotifications component');
-      setFilteredNotifications([]);
-      initialMount.current = false;
-    }
-
     if (isError) {
-      console.error('Error loading notifications:', message);
+      console.error('Error in notifications:', message);
       toast.error(message || 'Failed to load notifications');
-      // Ensure we have an empty array even on error to prevent white screen
-      setFilteredNotifications([]);
     }
 
-    // Safely apply filters to notifications with defensive coding
+    // Make sure we have data to show
     if (notifications && Array.isArray(notifications)) {
-      console.log(`Filtering ${notifications.length} notifications`);
+      console.log(`Setting up ${notifications.length} notifications`);
       applyFilters(notifications);
-    } else {
-      console.warn('Notifications is not an array or is undefined:', notifications);
-      // Ensure we always have an array to prevent rendering issues
-      setFilteredNotifications([]);
     }
   }, [notifications, isError, isSuccess, message, searchTerm]);
 
-  const applyFilters = (teacherNotifications) => {
-    // Defensive coding - ensure teacherNotifications is valid before continuing
+  const applyFilters = useCallback((teacherNotifications) => {
+    // Defensive coding - ensure teacherNotifications is valid
     if (!teacherNotifications || !Array.isArray(teacherNotifications)) {
-      console.warn('Invalid notifications data received in applyFilters:', teacherNotifications);
-      setFilteredNotifications([]);
+      console.warn('Invalid notifications data in applyFilters');
       return;
     }
 
@@ -136,28 +105,31 @@ const TeacherNotifications = () => {
         const search = searchTerm.toLowerCase();
         filtered = filtered.filter(notification => {
           // Ensure properties exist before accessing them
-          const hasTitle = notification && notification.title && typeof notification.title === 'string';
-          const hasMessage = notification && notification.message && typeof notification.message === 'string';
-          const hasRecipientName = notification && notification.recipient && 
-                                  notification.recipient.name && 
-                                  typeof notification.recipient.name === 'string';
+          const hasTitle = notification?.title && typeof notification.title === 'string';
+          const hasMessage = notification?.message && typeof notification.message === 'string';
+          
+          // Handle different recipient formats
+          let hasMatchingRecipient = false;
+          if (notification.recipient && notification.recipient.name) {
+            // Single recipient case
+            hasMatchingRecipient = notification.recipient.name.toLowerCase().includes(search);
+          }
           
           return (
             (hasTitle && notification.title.toLowerCase().includes(search)) ||
             (hasMessage && notification.message.toLowerCase().includes(search)) ||
-            (hasRecipientName && notification.recipient.name.toLowerCase().includes(search))
+            hasMatchingRecipient
           );
         });
       }
 
-      console.log(`After filtering: ${filtered.length} notifications match criteria`);
+      console.log(`After filtering: ${filtered.length} notifications`);
       setFilteredNotifications(filtered);
     } catch (error) {
       console.error('Error in applyFilters:', error);
-      // Prevent white screen by setting an empty array as fallback
-      setFilteredNotifications([]);
+      // Don't overwrite existing data on error
     }
-  };
+  }, [searchTerm]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -181,6 +153,56 @@ const TeacherNotifications = () => {
     navigate(`/app/notifications/${id}`);
   };
 
+  // Edit Notification
+  const handleEditClick = (notification) => {
+    console.log('Editing notification:', notification);
+    setCurrentNotification(notification);
+    setEditForm({
+      title: notification.title,
+      message: notification.message,
+      isImportant: notification.isImportant || false
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
+    setCurrentNotification(null);
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value, checked } = e.target;
+    setEditForm({
+      ...editForm,
+      [name]: name === 'isImportant' ? checked : value,
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (currentNotification && currentNotification._id) {
+      const updatedData = {
+        title: editForm.title,
+        message: editForm.message,
+        isImportant: editForm.isImportant
+      };
+      
+      dispatch(updateNotification({
+        id: currentNotification._id,
+        notificationData: updatedData
+      }))
+        .unwrap()
+        .then(() => {
+          toast.success('Notification updated successfully');
+          handleCloseEditDialog();
+          // Refresh notifications list
+          dispatch(getSentNotifications());
+        })
+        .catch((error) => {
+          toast.error(`Failed to update: ${error}`);
+        });
+    }
+  };
+
   // Delete Notification Dialog
   const handleDeleteClick = (notification) => {
     setNotificationToDelete(notification);
@@ -189,7 +211,16 @@ const TeacherNotifications = () => {
 
   const handleDeleteConfirm = () => {
     if (notificationToDelete) {
-      dispatch(deleteNotification(notificationToDelete._id));
+      dispatch(deleteNotification(notificationToDelete._id))
+        .unwrap()
+        .then(() => {
+          toast.success('Notification deleted successfully');
+          // Refresh notifications list
+          dispatch(getSentNotifications());
+        })
+        .catch((error) => {
+          toast.error(`Failed to delete: ${error}`);
+        });
     }
     setDeleteDialogOpen(false);
     setNotificationToDelete(null);
@@ -204,9 +235,28 @@ const TeacherNotifications = () => {
     dispatch(markNotificationAsRead(id));
   };
 
+  // Helper function to get recipient display text
+  const getRecipientDisplayText = (notification) => {
+    if (!notification) return 'Unknown';
+    
+    if (notification.sendToAll) {
+      return `All ${notification.targetRole === 'all' ? 'Users' : notification.targetRole.charAt(0).toUpperCase() + notification.targetRole.slice(1) + 's'}`;
+    }
+    
+    if (notification.recipients && Array.isArray(notification.recipients) && notification.recipients.length > 0) {
+      return `${notification.recipients.length} selected ${notification.recipients.length === 1 ? 'user' : 'users'}`;
+    }
+    
+    if (notification.recipient && notification.recipient.name) {
+      return notification.recipient.name;
+    }
+    
+    return 'Filtered group';
+  };
+
   // Enhanced loading and error state handling to prevent blank screens
   const renderContent = () => {
-    // Show loading indicator only if we're loading AND we don't have any notifications to show
+    // Always show loading indicator if we're loading and have no data yet
     if (isLoading && (!filteredNotifications || filteredNotifications.length === 0)) {
       return (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
@@ -240,7 +290,7 @@ const TeacherNotifications = () => {
                   .map((notification) => (
                     <TableRow hover key={notification._id || 'no-id-' + Math.random()}>
                       <TableCell>
-                        {notification.recipient ? notification.recipient.name : 'All Students'}
+                        {getRecipientDisplayText(notification)}
                       </TableCell>
                       <TableCell>{notification.title || 'No title'}</TableCell>
                       <TableCell>
@@ -261,20 +311,38 @@ const TeacherNotifications = () => {
                           label={notification.isRead ? 'Read' : 'Unread'}
                           color={notification.isRead ? 'success' : 'warning'}
                         />
+                        {notification.isImportant && (
+                          <Chip 
+                            label="Important" 
+                            color="error" 
+                            size="small"
+                            sx={{ ml: 1 }}
+                          />
+                        )}
                       </TableCell>
                       <TableCell align="center">
                         <IconButton
                           color="primary"
                           onClick={() => handleViewNotification(notification._id)}
                           size="small"
+                          title="View notification"
                         >
                           <VisibilityIcon />
+                        </IconButton>
+                        <IconButton
+                          color="primary"
+                          onClick={() => handleEditClick(notification)}
+                          size="small"
+                          title="Edit notification"
+                        >
+                          <EditIcon />
                         </IconButton>
                         {!notification.isRead && (
                           <IconButton
                             color="success"
                             onClick={() => handleMarkAsRead(notification._id)}
                             size="small"
+                            title="Mark as read"
                           >
                             <MarkReadIcon />
                           </IconButton>
@@ -283,6 +351,7 @@ const TeacherNotifications = () => {
                           color="error"
                           onClick={() => handleDeleteClick(notification)}
                           size="small"
+                          title="Delete notification"
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -388,6 +457,70 @@ const TeacherNotifications = () => {
           <Button onClick={handleDeleteCancel}>Cancel</Button>
           <Button onClick={handleDeleteConfirm} color="error" variant="contained">
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Notification Dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={handleCloseEditDialog}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <EditIcon sx={{ mr: 1 }} />
+            Edit Notification
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {currentNotification && (
+            <Box component="form" sx={{ mt: 2 }}>
+              <TextField
+                fullWidth
+                label="Title"
+                name="title"
+                value={editForm.title}
+                onChange={handleEditFormChange}
+                margin="normal"
+                required
+              />
+              <TextField
+                fullWidth
+                label="Message"
+                name="message"
+                value={editForm.message}
+                onChange={handleEditFormChange}
+                multiline
+                rows={4}
+                margin="normal"
+                required
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={editForm.isImportant}
+                    onChange={handleEditFormChange}
+                    name="isImportant"
+                    color="error"
+                  />
+                }
+                label="Mark as important notification"
+                sx={{ mt: 2 }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditDialog}>Cancel</Button>
+          <Button 
+            onClick={handleSaveEdit} 
+            variant="contained" 
+            color="primary"
+            disabled={!editForm.title || !editForm.message}
+          >
+            Save Changes
           </Button>
         </DialogActions>
       </Dialog>
