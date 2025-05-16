@@ -57,6 +57,7 @@ const TeacherNotifications = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
+  const [senderFilter, setSenderFilter] = useState('all'); // Add sender filter state
   const [filteredNotifications, setFilteredNotifications] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState(null);
@@ -67,16 +68,28 @@ const TeacherNotifications = () => {
     message: '',
     isImportant: false
   });
+  const [senders, setSenders] = useState([]); // Track available senders for filter
 
   // Load notifications immediately on component mount
   useEffect(() => {
     console.log('TeacherNotifications component mounted - loading notifications');
-    dispatch(getSentNotifications());
+    
+    // For admins, use different approach to get all notifications including teacher ones
+    if (user && user.role === 'admin') {
+      console.log('Admin user detected - loading all sent notifications');
+      // Add a small delay to ensure the component is fully mounted
+      setTimeout(() => {
+        dispatch(getSentNotifications());
+      }, 100);
+    } else {
+      dispatch(getSentNotifications());
+    }
+    
     // Don't reset on unmount to avoid data flashing
     return () => {};
-  }, [dispatch]);
+  }, [dispatch, user]);
 
-  // When notifications data changes, update our filtered list
+  // When notifications data changes, update our filtered list and extract senders
   useEffect(() => {
     if (isError) {
       console.error('Error in notifications:', message);
@@ -86,9 +99,29 @@ const TeacherNotifications = () => {
     // Make sure we have data to show
     if (notifications && Array.isArray(notifications)) {
       console.log(`Setting up ${notifications.length} notifications`);
+      
+      // Extract unique senders for the filter dropdown
+      const uniqueSenders = notifications.reduce((acc, notification) => {
+        if (notification.sender && notification.sender._id && notification.sender.name) {
+          // Only add sender if not already in the list
+          if (!acc.some(s => s.id === notification.sender._id)) {
+            acc.push({
+              id: notification.sender._id,
+              name: notification.sender.name,
+              role: notification.sender.role || 'Unknown'
+            });
+          }
+        }
+        return acc;
+      }, []);
+      
+      console.log('Unique senders extracted:', uniqueSenders.length);
+      setSenders(uniqueSenders);
+      
+      // Apply both search and sender filters
       applyFilters(notifications);
     }
-  }, [notifications, isError, isSuccess, message, searchTerm]);
+  }, [notifications, isError, isSuccess, message, searchTerm, senderFilter]);
 
   const applyFilters = useCallback((teacherNotifications) => {
     // Defensive coding - ensure teacherNotifications is valid
@@ -101,6 +134,15 @@ const TeacherNotifications = () => {
       console.log(`Applying filters to ${teacherNotifications.length} notifications`);
       let filtered = [...teacherNotifications];
 
+      // First apply sender filter if selected
+      if (senderFilter && senderFilter !== 'all') {
+        filtered = filtered.filter(notification => 
+          notification.sender && notification.sender._id === senderFilter
+        );
+        console.log(`After sender filter (${senderFilter}): ${filtered.length} notifications`);
+      }
+
+      // Then apply search term filter
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         filtered = filtered.filter(notification => {
@@ -115,10 +157,17 @@ const TeacherNotifications = () => {
             hasMatchingRecipient = notification.recipient.name.toLowerCase().includes(search);
           }
           
+          // Also search in sender name for more comprehensive results
+          let hasMatchingSender = false;
+          if (notification.sender && notification.sender.name) {
+            hasMatchingSender = notification.sender.name.toLowerCase().includes(search);
+          }
+          
           return (
             (hasTitle && notification.title.toLowerCase().includes(search)) ||
             (hasMessage && notification.message.toLowerCase().includes(search)) ||
-            hasMatchingRecipient
+            hasMatchingRecipient ||
+            hasMatchingSender
           );
         });
       }
@@ -142,6 +191,12 @@ const TeacherNotifications = () => {
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
+    setPage(0);
+  };
+  
+  // Handle sender filter change
+  const handleSenderFilterChange = (event) => {
+    setSenderFilter(event.target.value);
     setPage(0);
   };
 
@@ -421,22 +476,46 @@ const TeacherNotifications = () => {
         </Button>
       </Box>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Search notifications..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search notifications..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          
+          {/* Sender filter - only show if there are senders to filter by */}
+          {senders.length > 0 && (
+            <TextField
+              select
+              label="Filter by Sender"
+              value={senderFilter}
+              onChange={handleSenderFilterChange}
+              variant="outlined"
+              sx={{ minWidth: 200 }}
+              SelectProps={{
+                native: true,
+              }}
+            >
+              <option value="all">All Senders</option>
+              {senders.map((sender) => (
+                <option key={sender.id} value={sender.id}>
+                  {sender.name} ({sender.role})
+                </option>
+              ))}
+            </TextField>
+          )}
+        </Box>
       </Paper>
 
       {/* Render notifications table with enhanced error handling */}

@@ -46,12 +46,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle }) => {
         path: '/app/grades',
         roles: ['student'],
       },
-      {
-        text: 'Notifications',
-        icon: <NotificationsIcon />,
-        path: '/app/notifications',
-        roles: ['student', 'teacher', 'admin'],
-      },
+      // Notifications moved to teacher section only
+
       // Teacher menu items
       {
         text: 'Teacher Dashboard',
