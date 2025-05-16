@@ -45,6 +45,7 @@ import {
   updateNotification,
   reset,
 } from '../../features/notifications/notificationSlice';
+import { getDirections } from '../../features/directions/directionSlice';
 
 const TeacherNotifications = () => {
   const navigate = useNavigate();
@@ -54,11 +55,13 @@ const TeacherNotifications = () => {
   const { notifications, isLoading, isSuccess, isError, message } = useSelector(
     (state) => state.notifications
   );
+  const { directions, isLoading: isDirectionsLoading } = useSelector((state) => state.directions);
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [senderFilter, setSenderFilter] = useState('all'); // Add sender filter state
+  const [directionFilter, setDirectionFilter] = useState('all'); // Add direction filter state
   const [filteredNotifications, setFilteredNotifications] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState(null);
@@ -74,6 +77,14 @@ const TeacherNotifications = () => {
   // Load notifications immediately on component mount
   useEffect(() => {
     console.log('TeacherNotifications component mounted - loading notifications');
+    
+    // Fetch directions for filtering
+    dispatch(getDirections())
+      .unwrap()
+      .catch(error => {
+        console.error('Failed to load directions:', error);
+        toast.error(`Failed to load directions: ${error.message || 'Unknown error'}`);
+      });
     
     // For admins, use different approach to get all notifications including teacher ones
     if (user && user.role === 'admin') {
@@ -129,10 +140,10 @@ const TeacherNotifications = () => {
       console.log('Unique senders extracted:', uniqueSenders.length);
       setSenders(uniqueSenders);
       
-      // Apply both search and sender filters
+      // Apply search, sender, and direction filters
       applyFilters(notifications);
     }
-  }, [notifications, isError, isSuccess, message, searchTerm, senderFilter]);
+  }, [notifications, isError, isSuccess, message, searchTerm, senderFilter, directionFilter]);
 
   const applyFilters = useCallback((teacherNotifications) => {
     // Defensive coding - ensure teacherNotifications is valid
@@ -151,6 +162,22 @@ const TeacherNotifications = () => {
           notification.sender && notification.sender._id === senderFilter
         );
         console.log(`After sender filter (${senderFilter}): ${filtered.length} notifications`);
+      }
+      
+      // Apply direction filter if selected
+      if (directionFilter && directionFilter !== 'all') {
+        filtered = filtered.filter(notification => {
+          // Filter by notification.directions if available
+          if (notification.directions && Array.isArray(notification.directions) && notification.directions.length > 0) {
+            return notification.directions.some(dir => {
+              // Handle both string IDs and object references
+              const dirId = typeof dir === 'object' ? dir._id : dir;
+              return dirId === directionFilter;
+            });
+          }
+          return false;
+        });
+        console.log(`After direction filter (${directionFilter}): ${filtered.length} notifications`);
       }
 
       // Then apply search term filter
@@ -189,7 +216,7 @@ const TeacherNotifications = () => {
       console.error('Error in applyFilters:', error);
       // Don't overwrite existing data on error
     }
-  }, [searchTerm, senderFilter]); // Added senderFilter to dependency array
+  }, [searchTerm, senderFilter, directionFilter]); // Added directionFilter to dependency array
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -208,6 +235,12 @@ const TeacherNotifications = () => {
   // Handle sender filter change
   const handleSenderFilterChange = (event) => {
     setSenderFilter(event.target.value);
+    setPage(0);
+  };
+  
+  // Handle direction filter change
+  const handleDirectionFilterChange = (event) => {
+    setDirectionFilter(event.target.value);
     setPage(0);
   };
 
@@ -593,6 +626,63 @@ const TeacherNotifications = () => {
                   {sender.name} ({sender.role})
                 </option>
               ))}
+            </TextField>
+          )}
+          
+          {/* Direction filter - only show if there are directions to filter by */}
+          {directions && directions.length > 0 && (
+            <TextField
+              select
+              label="Filter by Direction"
+              value={directionFilter}
+              onChange={handleDirectionFilterChange}
+              variant="outlined"
+              disabled={isDirectionsLoading}
+              sx={{
+                minWidth: 200,
+                '& .MuiSelect-select': {
+                  color: 'text.primary', // Adapts to theme colors
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'text.secondary', // Adapts to theme colors
+                },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: 'divider', // Adapts to theme divider color
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'primary.main', // Uses theme primary color on hover
+                  },
+                },
+                '& .MuiNativeSelect-select': {
+                  bgcolor: 'background.paper', // Uses theme background color
+                  color: 'text.primary', // Uses theme text color
+                }
+              }}
+              SelectProps={{
+                native: true,
+                MenuProps: {
+                  PaperProps: {
+                    sx: {
+                      bgcolor: 'background.paper', // Uses theme background for dropdown
+                      '& option': {
+                        padding: 1,
+                      }
+                    }
+                  }
+                }
+              }}
+            >
+              <option value="all">All Directions</option>
+              {isDirectionsLoading ? (
+                <option disabled>Loading directions...</option>
+              ) : (
+                directions.map((direction) => (
+                  <option key={direction._id} value={direction._id}>
+                    {direction.name}
+                  </option>
+                ))
+              )}
             </TextField>
           )}
         </Box>

@@ -519,9 +519,30 @@ const ManageSubjects = () => {
                 id="directions"
                 name="directions"
                 multiple
-                value={currentSubject.directions || []}
-                onChange={handleInputChange}
+                value={Array.isArray(currentSubject.directions) ? currentSubject.directions : []}
+                onChange={(e) => {
+                  // Handle multiple select separately
+                  setCurrentSubject({
+                    ...currentSubject,
+                    directions: e.target.value
+                  });
+                  // Clear any errors
+                  if (formErrors.directions) {
+                    setFormErrors({
+                      ...formErrors,
+                      directions: ''
+                    });
+                  }
+                }}
                 label="Directions"
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => {
+                      const direction = directions.find(d => d._id === value);
+                      return direction ? direction.name : value;
+                    }).join(', ')}
+                  </Box>
+                )}
               >
                 <MenuItem value="">
                   <em>Select a direction</em>

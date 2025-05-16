@@ -51,6 +51,7 @@ const CreateNotification = () => {
   const { subjects, isLoading: isSubjectsLoading } = useSelector((state) => state.subjects);
   
   const [availableUsers, setAvailableUsers] = useState([]);
+  const [filteredSubjects, setFilteredSubjects] = useState([]);
   const [formData, setFormData] = useState({
     recipients: [],         // Array of recipient IDs (multiple selection)
     title: '',
@@ -100,6 +101,10 @@ const CreateNotification = () => {
     // Fetch subjects
     dispatch(getSubjects())
       .unwrap()
+      .then(data => {
+        // Initialize filtered subjects with all subjects initially
+        setFilteredSubjects(data);
+      })
       .catch(error => {
         console.error('Failed to load subjects:', error);
         toast.error(`Failed to load subjects: ${error.message || 'Unknown error'}`);
@@ -132,6 +137,28 @@ const CreateNotification = () => {
   const isInitialMount = React.useRef(true);
   const hasSubmitted = React.useRef(false);
   
+  // Initialize filtered subjects when subjects change
+  useEffect(() => {
+    if (subjects && subjects.length > 0) {
+      // If directions are selected, filter subjects by those directions
+      if (formData.selectedDirections && formData.selectedDirections.length > 0) {
+        const directionSubjects = subjects.filter(subject => 
+          subject.directions && 
+          // Check if any of the selected directions match with this subject's directions
+          subject.directions.some(dir => {
+            // Handle both string IDs and object references
+            const dirId = typeof dir === 'object' ? dir._id : dir;
+            return formData.selectedDirections.includes(dirId);
+          })
+        );
+        setFilteredSubjects(directionSubjects);
+      } else {
+        // If no directions selected, show all subjects
+        setFilteredSubjects(subjects);
+      }
+    }
+  }, [subjects, formData.selectedDirections]);
+  
   // Add comprehensive debugging
   console.log('CreateNotification render state:', {
     isInitialMount: isInitialMount.current,
@@ -139,7 +166,8 @@ const CreateNotification = () => {
     isSuccess,
     isError,
     message,
-    usersCount: Array.isArray(users) ? users.length : 'not an array'
+    usersCount: Array.isArray(users) ? users.length : 'not an array',
+    filteredSubjectsCount: filteredSubjects.length
   });
 
   // Force reset notification state on initial load
@@ -228,10 +256,38 @@ const CreateNotification = () => {
       });
     }
     
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    // Special handling for directions selection to filter subjects
+    if (name === 'selectedDirections') {
+      // Reset subjects selection when directions change
+      setFormData({
+        ...formData,
+        [name]: value,
+        selectedSubjects: [] // Clear subject selection when directions change
+      });
+      
+      // Filter subjects based on selected directions
+      if (value && value.length > 0 && subjects && subjects.length > 0) {
+        const directionSubjects = subjects.filter(subject => 
+          subject.directions && 
+          // Check if any of the selected directions match with this subject's directions
+          subject.directions.some(dir => {
+            // Handle both string IDs and object references
+            const dirId = typeof dir === 'object' ? dir._id : dir;
+            return value.includes(dirId);
+          })
+        );
+        setFilteredSubjects(directionSubjects);
+      } else {
+        // If no directions selected, show all subjects
+        setFilteredSubjects(subjects);
+      }
+    } else {
+      // Normal behavior for other fields
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
   
   // Handle select all button clicks
@@ -737,8 +793,8 @@ const CreateNotification = () => {
                     <Button 
                       size="small" 
                       variant="outlined" 
-                      onClick={() => handleSelectAll('selectedSubjects', subjects)}
-                      disabled={isSubjectsLoading || !subjects || subjects.length === 0}
+                      onClick={() => handleSelectAll('selectedSubjects', filteredSubjects)}
+                      disabled={isSubjectsLoading || !filteredSubjects || filteredSubjects.length === 0}
                     >
                       Select All
                     </Button>
@@ -779,13 +835,28 @@ const CreateNotification = () => {
                           <CircularProgress size={20} sx={{ mr: 1 }} />
                           Loading subjects...
                         </MenuItem>
-                      ) : subjects && subjects.length > 0 ? (
-                        subjects.map((subject) => (
+                      ) : filteredSubjects && filteredSubjects.length > 0 ? (
+                        filteredSubjects.map((subject) => (
                           <MenuItem key={subject._id} value={subject._id}>
                             <Checkbox checked={formData.selectedSubjects.indexOf(subject._id) > -1} />
-                            <ListItemText primary={subject.name} />
+                            <ListItemText 
+                              primary={subject.name} 
+                              secondary={
+                                subject.directions && subject.directions.length > 0 ?
+                                subject.directions.map(dir => {
+                                  if (typeof dir === 'object' && dir.name) {
+                                    return dir.name;
+                                  } else {
+                                    const dirObj = directions?.find(d => d._id === dir);
+                                    return dirObj ? dirObj.name : '';
+                                  }
+                                }).filter(Boolean).join(', ') : ''
+                              }
+                            />
                           </MenuItem>
                         ))
+                      ) : formData.selectedDirections && formData.selectedDirections.length > 0 ? (
+                        <MenuItem disabled>No subjects found for selected directions</MenuItem>
                       ) : (
                         <MenuItem disabled>No subjects available</MenuItem>
                       )}

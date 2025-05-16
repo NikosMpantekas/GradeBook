@@ -57,6 +57,7 @@ const EditUser = () => {
   const [schools, setSchools] = useState([]);
   const [directions, setDirections] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [filteredSubjects, setFilteredSubjects] = useState([]);
   const [schoolsLoading, setSchoolsLoading] = useState(false);
   const [directionsLoading, setDirectionsLoading] = useState(false);
   const [subjectsLoading, setSubjectsLoading] = useState(false);
@@ -105,6 +106,26 @@ const EditUser = () => {
     
     fetchData();
   }, [dispatch]);
+
+  // Initialize filtered subjects when subjects change
+  useEffect(() => {
+    // Initialize with all subjects if no direction selected
+    if (!formData.direction) {
+      setFilteredSubjects(subjects);
+      return;
+    }
+    
+    // Filter based on selected direction
+    const directionSubjects = subjects.filter(subject => 
+      subject.directions && (
+        (Array.isArray(subject.directions) && subject.directions.includes(formData.direction)) ||
+        (Array.isArray(subject.directions) && subject.directions.some(d => 
+          (typeof d === 'object' && d._id === formData.direction) || d === formData.direction
+        ))
+      )
+    );
+    setFilteredSubjects(directionSubjects);
+  }, [subjects, formData.direction]);
 
   // Fetch user data on component mount
   useEffect(() => {
@@ -172,6 +193,30 @@ const EditUser = () => {
         ...formData,
         subjects: value,
       });
+    } else if (name === 'direction') {
+      // When direction changes, filter subjects and reset subject selection
+      setFormData({
+        ...formData,
+        direction: value,
+        subjects: [], // Clear subject selection when direction changes
+      });
+      
+      // Filter subjects based on the selected direction
+      if (value) {
+        // Filter subjects that belong to this direction
+        const directionSubjects = subjects.filter(subject => 
+          subject.directions && (
+            (Array.isArray(subject.directions) && subject.directions.includes(value)) ||
+            (Array.isArray(subject.directions) && subject.directions.some(d => 
+              (typeof d === 'object' && d._id === value) || d === value
+            ))
+          )
+        );
+        setFilteredSubjects(directionSubjects);
+      } else {
+        // If no direction selected, show all subjects
+        setFilteredSubjects(subjects);
+      }
     } else if (name === 'role') {
       // When role changes, reset role-specific fields if needed
       const newState = {
@@ -512,12 +557,16 @@ const EditUser = () => {
                           Loading subjects...
                         </Box>
                       </MenuItem>
-                    ) : (
-                      subjects.map((subject) => (
+                    ) : filteredSubjects.length > 0 ? (
+                      filteredSubjects.map((subject) => (
                         <MenuItem key={subject._id} value={subject._id}>
                           {subject.name}
                         </MenuItem>
                       ))
+                    ) : (
+                      <MenuItem disabled>
+                        <em>No subjects available for this direction</em>
+                      </MenuItem>
                     )}
                   </Select>
                   <FormHelperText>{formErrors.subjects}</FormHelperText>
