@@ -55,7 +55,13 @@ const Header = ({ drawerWidth, handleDrawerToggle }) => {
   };
 
   const handleNotificationsClick = () => {
-    navigate('/app/teacher/notifications');
+    // Route based on user role
+    if (user?.role === 'student') {
+      navigate('/app/notifications');
+    } else {
+      // For teachers and admins
+      navigate('/app/teacher/notifications');
+    }
   };
 
   const handleProfileClick = () => {

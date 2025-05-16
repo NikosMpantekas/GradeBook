@@ -43,12 +43,13 @@ const Layout = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 1.5, sm: 3 }, // Less padding on mobile for more content space
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
           display: 'flex',
           flexDirection: 'column',
           minHeight: '100vh',
+          overflowX: 'hidden', // Prevent horizontal scrolling
         }}
       >
         <Container sx={{ mt: 8, mb: 2, flexGrow: 1 }}>

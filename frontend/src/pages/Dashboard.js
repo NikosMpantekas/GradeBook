@@ -149,13 +149,13 @@ const Dashboard = () => {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, sm: 3 }}>
         {/* Welcome Card */}
         <Grid item xs={12}>
           <Paper 
             elevation={2} 
             sx={{ 
-              p: 3, 
+              p: { xs: 2, sm: 3 }, 
               display: 'flex', 
               flexDirection: 'column',
               borderRadius: 2,
@@ -176,7 +176,7 @@ const Dashboard = () => {
 
         {/* User Info Section */}
         <Grid item xs={12} md={6}>
-          <Paper elevation={2} sx={{ p: 2, height: '100%', borderRadius: 2 }}>
+          <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', borderRadius: 2 }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
               My Information
             </Typography>
@@ -319,7 +319,7 @@ const Dashboard = () => {
 
         {/* Recent Notifications Section */}
         <Grid item xs={12} md={user?.role === 'student' ? 6 : 12}>
-          <Paper elevation={2} sx={{ p: 2, height: '100%', borderRadius: 2 }}>
+          <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', borderRadius: 2 }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
               Recent Notifications
             </Typography>
@@ -363,7 +363,7 @@ const Dashboard = () => {
         {/* Recent Grades Section (Students only) */}
         {user?.role === 'student' && (
           <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 2, height: '100%', borderRadius: 2 }}>
+            <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', borderRadius: 2 }}>
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
                 Recent Grades
               </Typography>
