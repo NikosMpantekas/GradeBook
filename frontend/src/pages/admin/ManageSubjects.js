@@ -63,7 +63,7 @@ const ManageSubjects = () => {
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [currentSubject, setCurrentSubject] = useState({ name: '', direction: '', description: '' });
+  const [currentSubject, setCurrentSubject] = useState({ name: '', directions: [], description: '' });
   const [subjectIdToDelete, setSubjectIdToDelete] = useState(null);
   
   // Form validation
@@ -87,7 +87,14 @@ const ManageSubjects = () => {
       
       // Apply direction filter
       if (directionFilter) {
-        filtered = filtered.filter(subject => subject.direction === directionFilter);
+        filtered = filtered.filter(subject => 
+          subject.directions && (
+            // Handle case where directions is an array of IDs
+            (Array.isArray(subject.directions) && subject.directions.includes(directionFilter)) ||
+            // Handle case where directions is an array of objects
+            (Array.isArray(subject.directions) && subject.directions.some(d => d._id === directionFilter))
+          )
+        );
       }
       
       // Apply search filter
@@ -123,8 +130,20 @@ const ManageSubjects = () => {
 
   
   const getDirectionName = (directionId) => {
+    if (!directionId) return 'None assigned';
     const direction = directions.find(d => d._id === directionId);
-    return direction ? direction.name : 'Unknown Direction';
+    return direction ? direction.name : 'Unknown';
+  };
+  
+  // Helper to get an array of direction names
+  const getDirectionNames = (directionIds) => {
+    if (!directionIds || directionIds.length === 0) return 'None assigned';
+    return directionIds
+      .map(id => {
+        const direction = directions.find(d => d._id === id);
+        return direction ? direction.name : 'Unknown';
+      })
+      .join(', ');
   };
   
   const handleSearchChange = (e) => {
@@ -137,7 +156,7 @@ const ManageSubjects = () => {
   
   // Dialog handlers
   const handleOpenAddDialog = () => {
-    setCurrentSubject({ name: '', direction: '', description: '' });
+    setCurrentSubject({ name: '', directions: [], description: '' });
     setFormErrors({});
     setOpenAddDialog(true);
   };
@@ -147,7 +166,12 @@ const ManageSubjects = () => {
   };
   
   const handleOpenEditDialog = (subject) => {
-    setCurrentSubject(subject);
+    setCurrentSubject({
+      _id: subject._id,
+      name: subject.name,
+      directions: subject.directions || [],
+      description: subject.description || '',
+    });
     setFormErrors({});
     setOpenEditDialog(true);
   };
@@ -191,9 +215,7 @@ const ManageSubjects = () => {
       errors.name = 'Subject name is required';
     }
     
-    if (!currentSubject.direction) {
-      errors.direction = 'Direction is required';
-    }
+    // Direction is now optional, removed validation
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -221,7 +243,7 @@ const ManageSubjects = () => {
       const subjectData = {
         name: currentSubject.name,
         description: currentSubject.description,
-        // Include any other fields that are part of the subject model
+        directions: currentSubject.directions, // Include directions array
       };
       
       dispatch(updateSubject({ id: subjectId, subjectData }))
@@ -335,7 +357,9 @@ const ManageSubjects = () => {
                         secondary={
                           <>
                             <Typography variant="body2" component="span" color="text.secondary">
-                              Direction: {getDirectionName(subject.direction)}
+                              Directions: {subject.directions && subject.directions.length > 0 ? 
+                                subject.directions.map(d => typeof d === 'object' ? d.name : getDirectionName(d)).join(', ') : 
+                                'None assigned'}
                             </Typography>
                             <br />
                             <Typography variant="body2" component="span">
@@ -402,16 +426,17 @@ const ManageSubjects = () => {
             <FormControl 
               fullWidth 
               margin="dense"
-              error={!!formErrors.direction}
+              error={!!formErrors.directions}
             >
-              <InputLabel id="direction-label">Direction *</InputLabel>
+              <InputLabel id="directions-label">Directions</InputLabel>
               <Select
-                labelId="direction-label"
-                id="direction"
-                name="direction"
-                value={currentSubject.direction}
+                labelId="directions-label"
+                id="directions"
+                name="directions"
+                multiple
+                value={currentSubject.directions || []}
                 onChange={handleInputChange}
-                label="Direction *"
+                label="Directions"
               >
                 <MenuItem value="">
                   <em>Select a direction</em>
@@ -465,16 +490,17 @@ const ManageSubjects = () => {
             <FormControl 
               fullWidth 
               margin="dense"
-              error={!!formErrors.direction}
+              error={!!formErrors.directions}
             >
-              <InputLabel id="edit-direction-label">Direction *</InputLabel>
+              <InputLabel id="edit-directions-label">Directions</InputLabel>
               <Select
-                labelId="edit-direction-label"
-                id="direction"
-                name="direction"
-                value={currentSubject.direction}
+                labelId="edit-directions-label"
+                id="directions"
+                name="directions"
+                multiple
+                value={currentSubject.directions || []}
                 onChange={handleInputChange}
-                label="Direction *"
+                label="Directions"
               >
                 <MenuItem value="">
                   <em>Select a direction</em>
