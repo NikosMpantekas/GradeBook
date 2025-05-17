@@ -127,7 +127,37 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle }) => {
         path: '/app/tenants',
         roles: ['superadmin'],
       },
-      // Tenant profile for school owner
+      // School Owner menu items
+      {
+        text: 'School Dashboard',
+        icon: <DashboardIcon />,
+        path: '/app/school-owner',
+        roles: ['school_owner'],
+      },
+      {
+        text: 'Manage Users',
+        icon: <UsersIcon />,
+        path: '/app/school-owner/users',
+        roles: ['school_owner'],
+      },
+      {
+        text: 'Manage Schools',
+        icon: <SchoolsIcon />,
+        path: '/app/school-owner/schools',
+        roles: ['school_owner'],
+      },
+      {
+        text: 'Manage Subjects',
+        icon: <SubjectsIcon />,
+        path: '/app/school-owner/subjects',
+        roles: ['school_owner'],
+      },
+      {
+        text: 'School Announcements',
+        icon: <NotificationsIcon />,
+        path: '/app/school-owner/notifications',
+        roles: ['school_owner'],
+      },
       {
         text: 'School Settings',
         icon: <SettingsIcon />,

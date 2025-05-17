@@ -12,6 +12,7 @@ import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import TeacherRoute from './components/TeacherRoute';
 import TenantRoute from './components/TenantRoute';
+import SchoolOwnerRoute from './components/SchoolOwnerRoute';
 
 // Public Pages
 import Login from './pages/Login';
@@ -45,6 +46,10 @@ import EditUser from './pages/admin/EditUser';
 import ManageSchools from './pages/admin/ManageSchools';
 import ManageDirections from './pages/admin/ManageDirections';
 import ManageSubjects from './pages/admin/ManageSubjects';
+
+// School Owner Pages
+import SchoolOwnerDashboard from './pages/schoolowner/SchoolOwnerDashboard';
+import SchoolOwnerManageUsers from './pages/schoolowner/ManageUsers';
 
 // Tenant Management Pages
 import TenantDashboard from './components/tenant/TenantDashboard';
@@ -253,6 +258,48 @@ function App() {
               <AdminRoute>
                 <ManageSubjects />
               </AdminRoute>
+            } />
+            
+            {/* School Owner Routes */}
+            <Route path="/app/school-owner" element={
+              <SchoolOwnerRoute>
+                <SchoolOwnerDashboard />
+              </SchoolOwnerRoute>
+            } />
+            <Route path="/app/school-owner/users" element={
+              <SchoolOwnerRoute>
+                <SchoolOwnerManageUsers />
+              </SchoolOwnerRoute>
+            } />
+            <Route path="/app/school-owner/users/create" element={
+              <SchoolOwnerRoute>
+                <CreateUser />
+              </SchoolOwnerRoute>
+            } />
+            <Route path="/app/school-owner/users/:id" element={
+              <SchoolOwnerRoute>
+                <EditUser />
+              </SchoolOwnerRoute>
+            } />
+            <Route path="/app/school-owner/schools" element={
+              <SchoolOwnerRoute>
+                <ManageSchools />
+              </SchoolOwnerRoute>
+            } />
+            <Route path="/app/school-owner/subjects" element={
+              <SchoolOwnerRoute>
+                <ManageSubjects />
+              </SchoolOwnerRoute>
+            } />
+            <Route path="/app/school-owner/notifications" element={
+              <SchoolOwnerRoute>
+                <TeacherNotifications />
+              </SchoolOwnerRoute>
+            } />
+            <Route path="/app/school-owner/notifications/create" element={
+              <SchoolOwnerRoute>
+                <CreateNotification />
+              </SchoolOwnerRoute>
             } />
             
             {/* Tenant Management Routes */}

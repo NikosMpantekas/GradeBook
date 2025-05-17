@@ -37,6 +37,20 @@ const Dashboard = () => {
   // Add debug log to track component mounting
   console.log('Dashboard component rendering with user:', user ? { role: user.role, name: user.name } : 'No user');
   
+  // Redirect to appropriate dashboard based on role
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'admin') {
+        navigate('/app/admin');
+      } else if (user.role === 'teacher') {
+        navigate('/app/teacher');
+      } else if (user.role === 'school_owner') {
+        navigate('/app/school-owner');
+      }
+      // Students stay on the main dashboard
+    }
+  }, [user, navigate]);
+  
   // Basic navigation functions to ensure we have functionality even without Layout
   const goToProfile = () => navigate('/app/profile');
   const goToNotifications = () => navigate('/app/notifications');
