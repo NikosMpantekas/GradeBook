@@ -11,7 +11,7 @@ const {
   markNotificationAsRead,
 } = require('../controllers/notificationController');
 const { protect } = require('../middleware/authMiddleware');
-const { admin, teacher } = require('../middleware/tenantMiddleware');
+const { adminOrHigher, teacherOrHigher } = require('../middleware/tenantMiddleware');
 
 // Protected routes
 router.get('/me', protect, getMyNotifications);
@@ -20,11 +20,11 @@ router.get('/:id', protect, getNotificationById);
 router.put('/:id/read', protect, markNotificationAsRead);
 
 // Teacher & Admin routes
-router.post('/', protect, teacher, createNotification);
-router.put('/:id', protect, teacher, updateNotification);
-router.delete('/:id', protect, teacher, deleteNotification);
+router.post('/', protect, teacherOrHigher, createNotification);
+router.put('/:id', protect, teacherOrHigher, updateNotification);
+router.delete('/:id', protect, teacherOrHigher, deleteNotification);
 
 // Admin routes
-router.get('/', protect, admin, getAllNotifications);
+router.get('/', protect, adminOrHigher, getAllNotifications);
 
 module.exports = router;

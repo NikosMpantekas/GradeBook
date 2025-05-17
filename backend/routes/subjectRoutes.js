@@ -10,7 +10,7 @@ const {
   getSubjectsByDirection,
 } = require('../controllers/subjectController');
 const { protect } = require('../middleware/authMiddleware');
-const { admin, teacher } = require('../middleware/tenantMiddleware');
+const { adminOrHigher, teacherOrHigher } = require('../middleware/tenantMiddleware');
 
 // Public routes that don't have parameters
 router.get('/', getSubjects);
@@ -24,8 +24,8 @@ router.get('/teacher/:id', protect, getSubjectsByTeacher);
 router.get('/:id', getSubjectById);
 
 // Admin routes
-router.post('/', protect, admin, createSubject);
-router.put('/:id', protect, admin, updateSubject);
-router.delete('/:id', protect, admin, deleteSubject);
+router.post('/', protect, adminOrHigher, createSubject);
+router.put('/:id', protect, adminOrHigher, updateSubject);
+router.delete('/:id', protect, adminOrHigher, deleteSubject);
 
 module.exports = router;

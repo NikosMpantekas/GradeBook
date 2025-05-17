@@ -8,15 +8,15 @@ const {
   deleteSchool,
 } = require('../controllers/schoolController');
 const { protect } = require('../middleware/authMiddleware');
-const { admin } = require('../middleware/tenantMiddleware');
+const { adminOrHigher } = require('../middleware/tenantMiddleware');
 
 // Public routes
 router.get('/', getSchools);
 router.get('/:id', getSchoolById);
 
 // Admin routes
-router.post('/', protect, admin, createSchool);
-router.put('/:id', protect, admin, updateSchool);
-router.delete('/:id', protect, admin, deleteSchool);
+router.post('/', protect, adminOrHigher, createSchool);
+router.put('/:id', protect, adminOrHigher, updateSchool);
+router.delete('/:id', protect, adminOrHigher, deleteSchool);
 
 module.exports = router;

@@ -11,7 +11,7 @@ const {
   deleteGrade,
 } = require('../controllers/gradeController');
 const { protect } = require('../middleware/authMiddleware');
-const { admin, teacher } = require('../middleware/tenantMiddleware');
+const { adminOrHigher, teacherOrHigher } = require('../middleware/tenantMiddleware');
 
 // Protected routes
 router.get('/student/:id', protect, getStudentGrades);
@@ -20,11 +20,11 @@ router.get('/teacher/:id', protect, getGradesByTeacher);
 router.get('/:id', protect, getGradeById);
 
 // Teacher routes
-router.post('/', protect, teacher, createGrade);
-router.put('/:id', protect, teacher, updateGrade);
-router.delete('/:id', protect, teacher, deleteGrade);
+router.post('/', protect, teacherOrHigher, createGrade);
+router.put('/:id', protect, teacherOrHigher, updateGrade);
+router.delete('/:id', protect, teacherOrHigher, deleteGrade);
 
 // Admin routes
-router.get('/', protect, admin, getAllGrades);
+router.get('/', protect, adminOrHigher, getAllGrades);
 
 module.exports = router;

@@ -8,15 +8,15 @@ const {
   deleteDirection,
 } = require('../controllers/directionController');
 const { protect } = require('../middleware/authMiddleware');
-const { admin } = require('../middleware/tenantMiddleware');
+const { adminOrHigher } = require('../middleware/tenantMiddleware');
 
 // Public routes
 router.get('/', getDirections);
 router.get('/:id', getDirectionById);
 
 // Admin routes
-router.post('/', protect, admin, createDirection);
-router.put('/:id', protect, admin, updateDirection);
-router.delete('/:id', protect, admin, deleteDirection);
+router.post('/', protect, adminOrHigher, createDirection);
+router.put('/:id', protect, adminOrHigher, updateDirection);
+router.delete('/:id', protect, adminOrHigher, deleteDirection);
 
 module.exports = router;
