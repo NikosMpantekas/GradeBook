@@ -109,7 +109,7 @@ const ManageUsers = () => {
   // Apply filters when search query or role filter changes
   useEffect(() => {
     applyFilters();
-  }, [searchQuery, roleFilter, users]);
+  }, [searchQuery, roleFilter, users, applyFilters]);
 
   // Filter function
   const applyFilters = () => {

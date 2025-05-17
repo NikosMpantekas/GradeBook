@@ -19,7 +19,6 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  ListItemButton,
   CircularProgress,
   Alert
 } from '@mui/material';
@@ -29,14 +28,12 @@ import SchoolIcon from '@mui/icons-material/School';
 import PeopleIcon from '@mui/icons-material/People';
 import PersonIcon from '@mui/icons-material/Person';
 import ClassIcon from '@mui/icons-material/Class';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SubjectIcon from '@mui/icons-material/Subject';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import BusinessIcon from '@mui/icons-material/Business';
+// Removed unused icons: MenuBookIcon, DashboardIcon, AddCircleOutlineIcon
 
 const SchoolOwnerDashboard = () => {
   const navigate = useNavigate();

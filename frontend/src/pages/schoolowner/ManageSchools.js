@@ -12,7 +12,6 @@ import {
   Typography,
   Button,
   TextField,
-  Grid,
   Box,
   IconButton,
   Table,
@@ -42,7 +41,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PhoneIcon from '@mui/icons-material/Phone';
 
 const ManageSchools = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Commented out as it's not currently used
   const { user } = useSelector(state => state.auth);
   
   // State
@@ -107,7 +106,7 @@ const ManageSchools = () => {
   // Apply filters when search query changes
   useEffect(() => {
     applyFilters();
-  }, [searchQuery, schools]);
+  }, [searchQuery, schools, applyFilters]);
 
   // Filter function
   const applyFilters = () => {

@@ -47,7 +47,7 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import CategoryIcon from '@mui/icons-material/Category';
 
 const ManageSubjects = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Commented out as it's not currently used
   const { user } = useSelector(state => state.auth);
   
   // State
@@ -125,7 +125,7 @@ const ManageSubjects = () => {
   // Apply filters when search query or direction filter changes
   useEffect(() => {
     applyFilters();
-  }, [searchQuery, directionFilter, subjects]);
+  }, [searchQuery, directionFilter, subjects, applyFilters]);
 
   // Filter function
   const applyFilters = () => {
@@ -312,11 +312,11 @@ const ManageSubjects = () => {
     return true;
   };
 
-  // Helper function to get direction name by ID
-  const getDirectionName = (directionId) => {
-    const direction = directions.find(d => d._id === directionId);
-    return direction ? direction.name : 'N/A';
-  };
+  // Helper function removed as it's not currently used
+  // const getDirectionName = (directionId) => {
+  //   const direction = directions.find(d => d._id === directionId);
+  //   return direction ? direction.name : 'N/A';
+  // };
 
   if (loading && subjects.length === 0) {
     return (

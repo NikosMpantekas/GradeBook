@@ -15,6 +15,7 @@ const {
   getStudents,
   getStudentsBySubject,
   getUsersByRole,
+  getUsersByTenant,
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 const { adminOrHigher, superadminOnly, schoolOwnerOrHigher, teacherOrHigher } = require('../middleware/tenantMiddleware');
