@@ -61,46 +61,93 @@ const ManageSchools = () => {
   
   // Fetch schools on component mount
   useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates after unmount
+    
     const fetchSchools = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        if (!user?.token) {
+      // Validate user token before proceeding
+      if (!user?.token) {
+        console.error('No authentication token found');
+        if (isMounted) {
           setError('Authentication information missing');
           setLoading(false);
-          return;
+        }
+        return;
+      }
+
+      try {
+        if (isMounted) {
+          setLoading(true);
+          setError(null);
         }
 
+        // Configure request with timeout to prevent hanging
         const config = {
-          headers: { Authorization: `Bearer ${user.token}` }
+          headers: { Authorization: `Bearer ${user.token}` },
+          timeout: 10000 // 10 seconds timeout
         };
 
-        // Fetch schools for this tenant
-        console.log('Fetching schools...');
+        // Detailed logging to track API request lifecycle
+        console.log(`[${new Date().toISOString()}] Fetching schools...`);
+        
+        // Make the API request
         const response = await axios.get(`${API_URL}/schools`, config);
-        console.log('Schools fetched successfully:', response.data.length);
-        setSchools(response.data);
-        setFilteredSchools(response.data);
+        
+        console.log(`[${new Date().toISOString()}] Schools API response received:`, 
+          response.status, 
+          Array.isArray(response.data) ? `${response.data.length} schools` : 'Invalid data format');
+
+        // Update state only if component is still mounted
+        if (isMounted) {
+          if (Array.isArray(response.data)) {
+            setSchools(response.data);
+            setFilteredSchools(response.data);
+          } else {
+            console.error('Invalid data format received from schools API');
+            setError('Invalid data received from server');
+          }
+        }
       } catch (err) {
-        console.error('Error fetching schools:', err);
-        // More detailed error handling
-        if (err.response) {
-          // Server responded with an error
-          setError(`Server error: ${err.response.data?.message || err.response.statusText || 'Unknown error'}`);
-        } else if (err.request) {
-          // Request was made but no response
-          setError('Network error: Could not connect to server. Please try again later.');
-        } else {
-          // Error in setting up the request
-          setError(`Error: ${err.message || 'Unknown error'}`);
+        console.error(`[${new Date().toISOString()}] Error fetching schools:`, err);
+        
+        // Only update state if component still mounted
+        if (isMounted) {
+          if (err.response) {
+            // Server responded with an error status
+            const status = err.response.status;
+            const message = err.response.data?.message || err.response.statusText || 'Unknown server error';
+            console.error(`Server error: ${status} - ${message}`);
+            
+            if (status === 401 || status === 403) {
+              setError(`Access denied: ${message}. Please check your permissions.`);
+            } else {
+              setError(`Server error (${status}): ${message}`);
+            }
+          } else if (err.code === 'ECONNABORTED') {
+            // Request timed out
+            setError('Request timed out. The server is taking too long to respond. Please try again later.');
+          } else if (err.request) {
+            // No response received
+            setError('Network error: Could not connect to server. Please check your internet connection.');
+          } else {
+            // Error in request setup
+            setError(`Error: ${err.message || 'Unknown error'}`);
+          }
         }
       } finally {
-        setLoading(false);
+        // Only update loading state if component still mounted
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchSchools();
+    
+    // Cleanup function to prevent memory leaks and state updates after unmount
+    return () => {
+      isMounted = false;
+      console.log('Cleaning up schools fetch');
+    };
   }, [user]);
 
   // Apply filters when search query changes

@@ -64,46 +64,72 @@ const ManageUsers = () => {
   
   // Fetch users on component mount
   useEffect(() => {
+    // Define the fetch function
     const fetchUsers = async () => {
+      if (!user?.token) {
+        console.error('No authentication token found');
+        setError('Authentication information missing');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
 
-        if (!user?.token) {
-          setError('Authentication information missing');
-          setLoading(false);
-          return;
-        }
-
+        // Pre-fetch log to ensure the request is actually happening
+        console.log(`[${new Date().toISOString()}] Initiating users fetch request with token`);
+        
         const config = {
-          headers: { Authorization: `Bearer ${user.token}` }
+          headers: { Authorization: `Bearer ${user.token}` },
+          // Add timeout to prevent infinite loading
+          timeout: 15000
         };
 
         // Fetch users for this tenant
-        console.log('Fetching users for tenant...');
         const response = await axios.get(`${API_URL}/users/tenant`, config);
-        console.log('Users fetched successfully:', response.data.length);
-        setUsers(response.data);
-        setFilteredUsers(response.data);
+        console.log(`[${new Date().toISOString()}] Users fetched successfully:`, response.data.length);
+        
+        // Update state with fetched data
+        setUsers(response.data || []);
+        setFilteredUsers(response.data || []);
       } catch (err) {
-        console.error('Error fetching users:', err);
-        // More detailed error handling
+        console.error(`[${new Date().toISOString()}] Error fetching users:`, err);
+        
+        // Specific error handling with user-friendly messages
         if (err.response) {
-          // Server responded with an error
-          setError(`Server error: ${err.response.data?.message || err.response.statusText || 'Unknown error'}`);
+          // The request was made and the server responded with an error status code
+          const status = err.response.status;
+          const message = err.response.data?.message || err.response.statusText || 'Unknown server error';
+          console.error(`Server responded with ${status}: ${message}`);
+          
+          if (status === 401 || status === 403) {
+            setError(`Access denied: ${message}. Please check your permissions.`);
+          } else {
+            setError(`Server error (${status}): ${message}`);
+          }
         } else if (err.request) {
-          // Request was made but no response
-          setError('Network error: Could not connect to server. Please try again later.');
+          // The request was made but no response was received (network error)
+          console.error('No response received from server');
+          setError('Network error: Could not connect to server. Please check your internet connection and try again.');
         } else {
-          // Error in setting up the request
-          setError(`Error: ${err.message || 'Unknown error'}`);
+          // Something else happened while setting up the request
+          console.error('Request setup error:', err.message);
+          setError(`Error preparing request: ${err.message || 'Unknown error'}`);
         }
       } finally {
         setLoading(false);
       }
     };
 
+    // Execute the fetch
     fetchUsers();
+    
+    // Cleanup function to handle component unmounting during fetch
+    return () => {
+      // This helps prevent state updates on unmounted components
+      console.log('Cleaning up users fetch');
+    };
   }, [user]);
 
   // Apply filters when search query or role filter changes

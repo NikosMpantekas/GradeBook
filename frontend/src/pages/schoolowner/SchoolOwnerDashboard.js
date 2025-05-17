@@ -50,75 +50,136 @@ const SchoolOwnerDashboard = () => {
   });
 
   useEffect(() => {
+    let isMounted = true; // Flag to prevent memory leaks
+    let controller; // For aborting fetch requests
+    
     const fetchTenantInfo = async () => {
+      // Create abort controller for this request cycle
+      controller = new AbortController();
+      
       try {
-        setLoading(true);
-        setError(null);
+        // Only set loading if component is mounted
+        if (isMounted) {
+          setLoading(true);
+          setError(null);
+        }
         
+        // Validate authentication
         if (!user?.token) {
-          setError('Authentication information missing');
-          setLoading(false);
+          if (isMounted) {
+            console.error('Missing authentication token in SchoolOwnerDashboard');
+            setError('Authentication information missing');
+            setLoading(false);
+          }
           return;
         }
         
+        // Configure request with timeout and abort signal
         const config = {
-          headers: { Authorization: `Bearer ${user.token}` }
+          headers: { Authorization: `Bearer ${user.token}` },
+          timeout: 8000, // 8 second timeout
+          signal: controller.signal
         };
         
-        console.log('Fetching tenant information for school owner dashboard...');
+        console.log(`[${new Date().toISOString()}] SchoolOwnerDashboard: Fetching tenant information...`);
         
-        // First, fetch tenant information
-        const tenantResponse = await axios.get(
-          `${API_URL}/tenants/owner`, 
-          config
-        );
+        // First, fetch tenant information with proper error handling
+        let tenantResponse;
+        try {
+          tenantResponse = await axios.get(`${API_URL}/tenants/owner`, config);
+          console.log(`[${new Date().toISOString()}] Tenant information fetched successfully:`, 
+            tenantResponse.status,
+            tenantResponse.data?._id ? 'Valid tenant data' : 'Invalid tenant data');
+        } catch (tenantError) {
+          console.error(`[${new Date().toISOString()}] Failed to fetch tenant:`, tenantError.message);
+          if (isMounted) {
+            setError(tenantError.response?.data?.message || 'Failed to load tenant information');
+            setLoading(false);
+          }
+          return; // Exit early - can't proceed without tenant info
+        }
         
-        console.log('Tenant information fetched successfully');
-        
-        if (tenantResponse.data) {
+        // Update tenant info if valid and component is mounted
+        if (tenantResponse?.data && isMounted) {
           setTenantInfo(tenantResponse.data);
           
-          // Then fetch tenant stats
+          // Then fetch tenant stats with separate try/catch to isolate failures
           try {
-            console.log('Fetching tenant statistics...');
+            console.log(`[${new Date().toISOString()}] Fetching tenant statistics for tenant:`, tenantResponse.data._id);
+            
             const statsResponse = await axios.get(
               `${API_URL}/tenants/${tenantResponse.data._id}/stats`, 
               config
             );
-            console.log('Tenant statistics fetched successfully');
-            setStats(statsResponse.data);
-          } catch (statsErr) {
-            console.error('Error fetching stats:', statsErr);
-            // More detailed error handling for stats
-            if (statsErr.response) {
-              console.warn(`Stats API responded with error: ${statsErr.response.status} - ${statsErr.response.data?.message || 'Unknown error'}`);
-            } else if (statsErr.request) {
-              console.warn('No response received when fetching stats');
-            } else {
-              console.warn(`Stats error: ${statsErr.message}`);
+            
+            console.log(`[${new Date().toISOString()}] Tenant statistics fetched successfully`);
+            
+            // Only update state if component is still mounted
+            if (isMounted) {
+              setStats(statsResponse.data || {
+                totalUsers: 0,
+                totalStudents: 0,
+                totalTeachers: 0,
+                totalAdmins: 0
+              });
             }
-            // Don't fail entire component if just stats fail
+          } catch (statsErr) {
+            console.error(`[${new Date().toISOString()}] Error fetching stats:`, statsErr.message);
+            
+            // Don't fail entire component if just stats fail, use default values
+            if (isMounted) {
+              // Set default stats
+              setStats({
+                totalUsers: 0,
+                totalStudents: 0,
+                totalTeachers: 0,
+                totalAdmins: 0
+              });
+            }
           }
         }
       } catch (err) {
-        console.error('Error fetching tenant info:', err);
-        // More detailed error handling
-        if (err.response) {
-          // Server responded with an error
-          setError(`Server error: ${err.response.data?.message || err.response.statusText || 'Unknown error'}`);
-        } else if (err.request) {
-          // Request was made but no response
-          setError('Network error: Could not connect to server. Please try again later.');
-        } else {
-          // Error in setting up the request
-          setError(`Error: ${err.message || 'Unknown error'}`);
+        // Handle unexpected errors
+        console.error(`[${new Date().toISOString()}] Critical error in SchoolOwnerDashboard:`, err);
+        
+        if (isMounted) {
+          if (axios.isCancel(err)) {
+            console.log('Request was cancelled');
+          } else if (err.code === 'ECONNABORTED') {
+            setError('Request timed out. The server is taking too long to respond.');
+          } else if (err.response) {
+            const status = err.response.status;
+            const message = err.response.data?.message || err.response.statusText || 'Unknown error';
+            
+            if (status === 401 || status === 403) {
+              setError(`Access denied: ${message}. Please check you have the correct permissions.`);
+            } else {
+              setError(`Server error (${status}): ${message}`);
+            }
+          } else if (err.request) {
+            setError('Network error: No response received from server. Please check your connection.');
+          } else {
+            setError(`Error: ${err.message || 'An unknown error occurred'}`);
+          }
         }
       } finally {
-        setLoading(false);
+        // Final cleanup - only update state if still mounted
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
     fetchTenantInfo();
+    
+    // Cleanup function to abort any pending requests and prevent memory leaks
+    return () => {
+      isMounted = false;
+      if (controller) {
+        controller.abort();
+      }
+      console.log('Cleaning up SchoolOwnerDashboard component');
+    };
   }, [user]);
   
   // Helper function for navigating to different sections

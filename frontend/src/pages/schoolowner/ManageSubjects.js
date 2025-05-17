@@ -74,52 +74,111 @@ const ManageSubjects = () => {
   
   // Fetch subjects and directions on component mount
   useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates after unmount
+    
     const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        if (!user?.token) {
+      // Validate user authentication first
+      if (!user?.token) {
+        console.error('No authentication token found in ManageSubjects');
+        if (isMounted) {
           setError('Authentication information missing');
           setLoading(false);
-          return;
+        }
+        return;
+      }
+
+      try {
+        if (isMounted) {
+          setLoading(true);
+          setError(null);
         }
 
+        // Setup request configuration with timeout to prevent hanging
         const config = {
-          headers: { Authorization: `Bearer ${user.token}` }
+          headers: { Authorization: `Bearer ${user.token}` },
+          timeout: 8000 // 8 second timeout to prevent hanging
         };
 
-        // Fetch subjects
-        console.log('Fetching subjects...');
-        const subjectsResponse = await axios.get(`${API_URL}/subjects`, config);
-        console.log('Subjects fetched successfully:', subjectsResponse.data.length);
-        setSubjects(subjectsResponse.data);
-        setFilteredSubjects(subjectsResponse.data);
+        // Use Promise.all for parallel requests to improve loading time
+        console.log(`[${new Date().toISOString()}] Starting parallel fetch for subjects and directions`);
         
-        // Fetch directions
-        console.log('Fetching directions...');
-        const directionsResponse = await axios.get(`${API_URL}/directions`, config);
-        console.log('Directions fetched successfully:', directionsResponse.data.length);
-        setDirections(directionsResponse.data);
+        const [subjectsResponse, directionsResponse] = await Promise.all([
+          // Fetch subjects with error handling
+          axios.get(`${API_URL}/subjects`, config).catch(error => {
+            console.error(`[${new Date().toISOString()}] Subjects fetch failed:`, error.message);
+            // Return empty array to prevent complete failure
+            return { data: [] };
+          }),
+          
+          // Fetch directions with error handling
+          axios.get(`${API_URL}/directions`, config).catch(error => {
+            console.error(`[${new Date().toISOString()}] Directions fetch failed:`, error.message);
+            // Return empty array to prevent complete failure
+            return { data: [] };
+          })
+        ]);
+
+        console.log(`[${new Date().toISOString()}] Fetch completed:`, 
+          `Subjects: ${subjectsResponse.data?.length || 0},`, 
+          `Directions: ${directionsResponse.data?.length || 0}`);
+        
+        // Only update state if component is still mounted
+        if (isMounted) {
+          // Validate and set subjects data
+          if (Array.isArray(subjectsResponse.data)) {
+            setSubjects(subjectsResponse.data);
+            setFilteredSubjects(subjectsResponse.data);
+          } else {
+            console.warn('Invalid subjects data format');
+            setSubjects([]);
+            setFilteredSubjects([]);
+          }
+          
+          // Validate and set directions data
+          if (Array.isArray(directionsResponse.data)) {
+            setDirections(directionsResponse.data);
+          } else {
+            console.warn('Invalid directions data format');
+            setDirections([]);
+          }
+        }
       } catch (err) {
-        console.error('Error fetching data:', err);
-        // More detailed error handling
-        if (err.response) {
-          // Server responded with an error
-          setError(`Server error: ${err.response.data?.message || err.response.statusText || 'Unknown error'}`);
-        } else if (err.request) {
-          // Request was made but no response
-          setError('Network error: Could not connect to server. Please try again later.');
-        } else {
-          // Error in setting up the request
-          setError(`Error: ${err.message || 'Unknown error'}`);
+        console.error(`[${new Date().toISOString()}] Error in ManageSubjects data fetch:`, err);
+        
+        // Only update error state if still mounted
+        if (isMounted) {
+          if (err.code === 'ECONNABORTED') {
+            setError('Request timed out. Please try refreshing the page.');
+          } else if (err.response) {
+            const status = err.response.status;
+            const message = err.response.data?.message || err.response.statusText || 'Unknown error';
+            
+            if (status === 401 || status === 403) {
+              setError(`Access denied: ${message}. You may not have permission to view this content.`);
+            } else {
+              setError(`Server error (${status}): ${message}`);
+            }
+          } else if (err.request) {
+            setError('Network error: Could not connect to server. Please check your connection and try again.');
+          } else {
+            setError(`Error: ${err.message || 'Unknown error'}`);
+          }
         }
       } finally {
-        setLoading(false);
+        // Only update loading state if component is still mounted
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
+    
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted = false;
+      console.log('Cleaning up ManageSubjects component');
+    };
   }, [user]);
 
   // Apply filters when search query or direction filter changes
