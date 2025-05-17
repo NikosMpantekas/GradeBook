@@ -60,7 +60,19 @@ const createTenant = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Create the tenant first
+    // Hash the owner's password first
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(ownerPassword, salt);
+    
+    // Create a temporary owner document to get an ID, but don't save it yet
+    const ownerTemp = new User({
+      name: ownerName,
+      email: ownerEmail,
+      password: hashedPassword,
+      role: 'school_owner'
+    });
+    
+    // Now create the tenant with the owner reference
     const tenant = await Tenant.create({
       name,
       databaseName,
@@ -69,25 +81,13 @@ const createTenant = asyncHandler(async (req, res) => {
       maxUsers: maxUsers || 100,
       settings: settings || {},
       createdBy: req.user._id,
-      status: 'active'
+      status: 'active',
+      owner: ownerTemp._id  // Set the owner reference before saving the tenant
     });
 
-    // Hash the owner's password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(ownerPassword, salt);
-
-    // Create the owner account
-    const owner = await User.create({
-      name: ownerName,
-      email: ownerEmail,
-      password: hashedPassword,
-      role: 'school_owner',
-      tenantId: tenant._id
-    });
-
-    // Update the tenant with the owner reference
-    tenant.owner = owner._id;
-    await tenant.save();
+    // Now finalize the owner account with the tenant reference
+    ownerTemp.tenantId = tenant._id;
+    const owner = await ownerTemp.save();
 
     // Initialize the tenant's database with basic collections
     // (This will be done automatically when accessing the tenant's database)
