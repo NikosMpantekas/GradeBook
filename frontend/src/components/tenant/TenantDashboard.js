@@ -53,8 +53,9 @@ const TenantDashboard = () => {
   // Form state for creating a new tenant
   const [newTenant, setNewTenant] = useState({
     name: '',
-    dbUri: '',
-    schoolName: '',
+    databaseName: '',
+    contactEmail: '',
+    contactPhone: '',
     ownerName: '',
     ownerEmail: '',
     ownerPassword: '',
@@ -115,8 +116,9 @@ const TenantDashboard = () => {
       // Reset form and close modal
       setNewTenant({
         name: '',
-        dbUri: '',
-        schoolName: '',
+        databaseName: '',
+        contactEmail: '',
+        contactPhone: '',
         ownerName: '',
         ownerEmail: '',
         ownerPassword: '',
@@ -321,13 +323,37 @@ const TenantDashboard = () => {
             
             <TextField
               margin="normal"
+              required
               fullWidth
-              label="Database URI (Optional)"
-              name="dbUri"
-              value={newTenant.dbUri}
+              label="Database Name"
+              name="databaseName"
+              value={newTenant.databaseName}
               onChange={handleInputChange}
-              placeholder="mongodb://localhost:27017/my-tenant-db"
-              helperText="If not provided, the system default database will be used."
+              placeholder="school_name_db"
+              helperText="A unique identifier for this tenant's database (no spaces or special characters)."
+            />
+            
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              label="Contact Email"
+              name="contactEmail"
+              value={newTenant.contactEmail}
+              onChange={handleInputChange}
+              placeholder="contact@school.com"
+              helperText="Primary contact email for the school."
+            />
+            
+            <TextField
+              margin="normal"
+              fullWidth
+              label="Contact Phone"
+              name="contactPhone"
+              value={newTenant.contactPhone}
+              onChange={handleInputChange}
+              placeholder="+1 (123) 456-7890"
+              helperText="Optional contact phone number."
             />
             
             <Divider sx={{ mt: 3, mb: 2 }} />
