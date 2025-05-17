@@ -2,50 +2,103 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
-const User = require('../models/userModel');
+const { getModel } = require('../config/multiDbManager');
+const userSchema = require('../models/userModel').schema;
+const tenantSchema = require('../models/tenantModel').schema;
 
-// @desc    Register new user
+// @desc    Register new user (now protected and requires tenant context)
 // @route   POST /api/users
-// @access  Public
+// @access  Private/Admin or SchoolOwner
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, school, direction, subjects } = req.body;
 
   if (!name || !email || !password) {
     res.status(400);
-    throw new Error('Please add all fields');
+    throw new Error('Please add all required fields');
+  }
+  
+  // This function now requires authentication and tenant context
+  if (!req.user || !req.tenantId) {
+    res.status(401);
+    throw new Error('Not authorized - tenant context required');
+  }
+  
+  // Only admin, school_owner, or superadmin can register users
+  if (req.user.role !== 'admin' && req.user.role !== 'school_owner' && req.user.role !== 'superadmin') {
+    res.status(403);
+    throw new Error('Not authorized to register users');
   }
 
-  // Check if user exists
-  const userExists = await User.findOne({ email });
+  try {
+    // First check if user exists in the main database (email must be unique system-wide)
+    const MainUser = await getModel('main', 'User', userSchema);
+    const userExistsGlobally = await MainUser.findOne({ email });
 
-  if (userExists) {
+    if (userExistsGlobally) {
+      res.status(400);
+      throw new Error('Email already in use by another account');
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Determine which tenant database to use
+    // For superadmin creating school_owner, use main database
+    // For all others, use the tenant database
+    let user;
+    
+    // Prepare base user object
+    const userData = {
+      name,
+      email,
+      password: hashedPassword,
+      role: role || 'student', // Default role is student
+    };
+    
+    if (req.user.role === 'superadmin' && role === 'school_owner') {
+      // Superadmin creating school owner - use main database
+      // This will be linked to a tenant later when creating the tenant
+      user = await MainUser.create(userData);
+    } else {
+      // Regular user creation within a tenant
+      // Include tenant reference
+      userData.tenantId = req.tenantId;
+      
+      // Include school, direction, subjects if provided and appropriate
+      if (role === 'student' || role === 'teacher') {
+        if (school) userData.school = school;
+        if (direction) userData.direction = direction;
+        if (subjects) userData.subjects = subjects;
+      }
+      
+      // Create user in main database for authentication
+      user = await MainUser.create(userData);
+      
+      // Also create the user in the tenant's database for data operations
+      if (req.tenantId !== 'main') {
+        const TenantUser = await getModel(req.tenantId, 'User', userSchema);
+        await TenantUser.create(userData);
+      }
+    }
+
+    if (user) {
+      res.status(201).json({
+        _id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+        token: generateToken(user._id),
+      });
+    } else {
+      res.status(400);
+      throw new Error('Failed to create user');
+    }
+  } catch (error) {
+    console.error('Error registering user:', error);
     res.status(400);
-    throw new Error('User already exists');
-  }
-
-  // Hash password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  // Create user
-  const user = await User.create({
-    name,
-    email,
-    password: hashedPassword,
-    role: role || 'student', // Default role is student
-  });
-
-  if (user) {
-    res.status(201).json({
-      _id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token: generateToken(user._id),
-    });
-  } else {
-    res.status(400);
-    throw new Error('Invalid user data');
+    throw new Error(error.message || 'Invalid user data');
   }
 });
 
@@ -57,39 +110,69 @@ const loginUser = asyncHandler(async (req, res) => {
   
   console.log(`Login attempt for email: ${email}`);
 
-  // Check for user email
-  const user = await User.findOne({ email });
-  
-  if (!user) {
-    console.log(`User not found for email: ${email}`);
-    res.status(401);
-    throw new Error('Invalid credentials - user not found');
-  }
-  
-  console.log(`User found: ${user.name}, role: ${user.role}, password length: ${user.password.length}`);
-  
   try {
-    // CRITICAL FIX: Use bcrypt.compare directly to verify password
-    // This matches what bcrypt.online uses and how you're fixing passwords manually
+    // Get User model from the main database
+    const MainUser = await getModel('main', 'User', userSchema);
+    
+    // Check for user email in the main database
+    const user = await MainUser.findOne({ email }).select('+password');
+    
+    if (!user) {
+      console.log(`User not found for email: ${email}`);
+      res.status(401);
+      throw new Error('Invalid credentials - user not found');
+    }
+    
+    console.log(`User found: ${user.name}, role: ${user.role}, password length: ${user.password ? user.password.length : 'undefined'}`);
+    
+    // Check if the password matches
+    if (!user.password) {
+      console.error('User record has no password field');
+      res.status(500);
+      throw new Error('User account is misconfigured - contact support');
+    }
+    
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log(`Direct bcrypt comparison for ${email}: ${isMatch}`);
+    console.log(`Password comparison for ${email}: ${isMatch}`);
     
     if (isMatch) {
       // Login successful
       console.log(`Login successful for ${email}`);
-      res.json({
+      
+      // For school owners, add tenant information
+      let tenantInfo = null;
+      if (user.role === 'school_owner' && user.tenantId) {
+        const TenantModel = await getModel('main', 'Tenant', tenantSchema);
+        tenantInfo = await TenantModel.findById(user.tenantId).select('name status');
+        
+        // Check if the tenant is active
+        if (!tenantInfo || tenantInfo.status !== 'active') {
+          console.log(`Tenant not active for user ${email}`);
+          res.status(403);
+          throw new Error('Your school account is currently inactive. Please contact support.');
+        }
+      }
+      
+      // Prepare response
+      const responseData = {
         _id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
-        darkMode: user.darkMode,
-        saveCredentials: user.saveCredentials,
-        token: generateToken(user._id),
-      });
+        darkMode: user.darkMode || false,
+        saveCredentials: user.saveCredentials || false,
+        token: generateToken(user._id)
+      };
+      
+      // Add tenantId for non-superadmin users
+      if (user.role !== 'superadmin' && user.tenantId) {
+        responseData.tenantId = user.tenantId;
+      }
+      
+      res.json(responseData);
     } else {
-      // If password doesn't match with bcrypt.compare, log detailed info for debugging
+      // If password doesn't match, log info for debugging
       console.log(`Password didn't match for ${email}`);
-      console.log(`User password hash: ${user.password.substring(0, 10)}...`);
       res.status(401);
       throw new Error(`Invalid credentials - password mismatch`);
     }
@@ -100,22 +183,78 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get user data
+// @desc    Get current user data with populated fields from appropriate tenant
 // @route   GET /api/users/me
 // @access  Private
 const getMe = asyncHandler(async (req, res) => {
-  // Find user and populate all reference fields
-  const user = await User.findById(req.user.id)
-    .select('-password')
-    .populate('school', 'name') // Populate school with name field
-    .populate('direction', 'name') // Populate direction with name field
-    .populate('subjects', 'name'); // Populate subjects with name field
-
-  if (user) {
+  try {
+    // req.user comes from the authentication middleware
+    // req.tenantId comes from the tenant resolver middleware
+    if (!req.user) {
+      res.status(401);
+      throw new Error('Not authorized');
+    }
+    
+    let user;
+    const userId = req.user._id;
+    
+    if (req.user.role === 'superadmin') {
+      // For superadmin, simply return the user from main database
+      const MainUser = await getModel('main', 'User', userSchema);
+      user = await MainUser.findById(userId).select('-password');
+    } else if (req.user.role === 'school_owner') {
+      // For school owners, get their tenant info too
+      const MainUser = await getModel('main', 'User', userSchema);
+      user = await MainUser.findById(userId).select('-password');
+      
+      // Add tenant information
+      if (user.tenantId) {
+        const TenantModel = await getModel('main', 'Tenant', tenantSchema);
+        const tenantInfo = await TenantModel.findById(user.tenantId)
+          .select('name status');
+          
+        if (tenantInfo) {
+          user = user.toObject();
+          user.tenantInfo = {
+            name: tenantInfo.name,
+            status: tenantInfo.status
+          };
+        }
+      }
+    } else {
+      // For regular users, get from their tenant database with populated fields
+      if (!req.tenantId) {
+        res.status(400);
+        throw new Error('Tenant ID not found for this user');
+      }
+      
+      const TenantUser = await getModel(req.tenantId, 'User', userSchema);
+      
+      // Use the tenant's user database for data
+      user = await TenantUser.findById(userId)
+        .select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name')
+        .populate('subjects', 'name');
+        
+      if (!user) {
+        // Fall back to main database if not found in tenant DB
+        // This could happen during initial setup or if tenant DB was reset
+        const MainUser = await getModel('main', 'User', userSchema);
+        user = await MainUser.findById(userId).select('-password');
+      }
+    }
+    
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+    
     res.status(200).json(user);
-  } else {
-    res.status(404);
-    throw new Error('User not found');
+  } catch (error) {
+    console.error('Error in getMe:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error retrieving user data');
   }
 });
 
@@ -158,45 +297,284 @@ const updateProfile = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get all users (admin only)
+// @desc    Get all users based on role and tenant
 // @route   GET /api/users
-// @access  Private/Admin
+// @access  Private/Admin or SchoolOwner or SuperAdmin
 const getUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({}).select('-password')
-    .populate('school', 'name')
-    .populate('direction', 'name')
-    .populate('subjects', 'name');
-  res.json(users);
-});
+  try {
+    if (!req.user) {
+      res.status(401);
+      throw new Error('Not authorized');
+    }
 
-// @desc    Get user by ID (admin only)
-// @route   GET /api/users/:id
-// @access  Private/Admin
-const getUserById = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id)
-    .select('-password')
-    .populate('school', 'name')
-    .populate('direction', 'name')
-    .populate('subjects', 'name');
+    let users = [];
 
-  if (user) {
-    res.json(user);
-  } else {
-    res.status(404);
-    throw new Error('User not found');
+    // Handle different authorization scenarios
+    if (req.user.role === 'superadmin') {
+      // Superadmin can view all users or filter by tenant
+      const MainUser = await getModel('main', 'User', userSchema);
+      const query = {};
+      
+      // Allow filtering by tenant
+      if (req.query.tenantId) {
+        query.tenantId = req.query.tenantId;
+      }
+
+      // Allow filtering by role
+      if (req.query.role) {
+        query.role = req.query.role;
+      }
+
+      users = await MainUser.find(query)
+        .select('-password')
+        .populate('tenantId', 'name status');
+      
+      // For users with a tenant, add the tenant info to each user
+      if (users.length > 0) {
+        const TenantModel = await getModel('main', 'Tenant', tenantSchema);
+        const tenantIds = users
+          .filter(user => user.tenantId)
+          .map(user => user.tenantId);
+        
+        if (tenantIds.length > 0) {
+          const tenants = await TenantModel.find({ _id: { $in: tenantIds } })
+            .select('name status');
+          
+          const tenantsMap = {};
+          tenants.forEach(tenant => {
+            tenantsMap[tenant._id.toString()] = {
+              name: tenant.name,
+              status: tenant.status
+            };
+          });
+          
+          users = users.map(user => {
+            const userObj = user.toObject();
+            if (user.tenantId && tenantsMap[user.tenantId.toString()]) {
+              userObj.tenantInfo = tenantsMap[user.tenantId.toString()];
+            }
+            return userObj;
+          });
+        }
+      }
+    } else if (req.user.role === 'school_owner' || req.user.role === 'admin') {
+      // School owners and admins can only see users in their tenant
+      if (!req.tenantId) {
+        res.status(400);
+        throw new Error('Tenant ID not provided');
+      }
+
+      const TenantUser = await getModel(req.tenantId, 'User', userSchema);
+      users = await TenantUser.find({})
+        .select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name')
+        .populate('subjects', 'name');
+    } else {
+      // Regular users (teacher/student) cannot access this endpoint
+      res.status(403);
+      throw new Error('Not authorized to access user list');
+    }
+
+    res.json(users);
+  } catch (error) {
+    console.error('Error getting users:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error retrieving users');
   }
 });
 
-// @desc    Update user (admin only)
-// @route   PUT /api/users/:id
-// @access  Private/Admin
-const updateUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
+// @desc    Get user by ID
+// @route   GET /api/users/:id
+// @access  Private/Admin or SchoolOwner or SuperAdmin
+const getUserById = asyncHandler(async (req, res) => {
+  try {
+    // Check authorization
+    if (!req.user || !req.tenantId) {
+      res.status(401);
+      throw new Error('Not authorized');
+    }
+    
+    const userId = req.params.id;
+    let user = null;
+    
+    // Handle different authorization scenarios
+    if (req.user.role === 'superadmin') {
+      // Superadmin can get any user from any database
+      const MainUser = await getModel('main', 'User', userSchema);
+      user = await MainUser.findById(userId)
+        .select('-password')
+        .populate('tenantId', 'name');
+        
+      // If this is a tenant user, add tenant info
+      if (user && user.tenantId) {
+        const TenantModel = await getModel('main', 'Tenant', tenantSchema);
+        const tenantInfo = await TenantModel.findById(user.tenantId);
+        if (tenantInfo) {
+          user = user.toObject();
+          user.tenantInfo = {
+            name: tenantInfo.name,
+            status: tenantInfo.status
+          };
+        }
+      }
+    } else if (req.user.role === 'school_owner') {
+      // School owners can only view users in their own tenant
+      // First verify the user belongs to this tenant
+      const MainUser = await getModel('main', 'User', userSchema);
+      const checkUser = await MainUser.findById(userId).select('tenantId');
+      
+      if (!checkUser || !checkUser.tenantId || checkUser.tenantId.toString() !== req.user.tenantId.toString()) {
+        res.status(403);
+        throw new Error('Not authorized to access this user');
+      }
+      
+      // Get user from tenant database with populated fields
+      const TenantUser = await getModel(req.tenantId, 'User', userSchema);
+      user = await TenantUser.findById(userId)
+        .select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name')
+        .populate('subjects', 'name');
+    } else if (req.user.role === 'admin') {
+      // Admin can only view users in their own tenant
+      // This will always be the tenant context from req.tenantId
+      const TenantUser = await getModel(req.tenantId, 'User', userSchema);
+      user = await TenantUser.findById(userId)
+        .select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name')
+        .populate('subjects', 'name');
+    } else {
+      // Regular users cannot access other users' data
+      res.status(403);
+      throw new Error('Not authorized to view user details');
+    }
 
-  if (user) {
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Error getting user by ID:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error retrieving user data');
+  }
+});
+
+// @desc    Update user
+// @route   PUT /api/users/:id
+// @access  Private/Admin or SchoolOwner or SuperAdmin
+const updateUser = asyncHandler(async (req, res) => {
+  try {
+    // Check authorization
+    if (!req.user || !req.tenantId) {
+      res.status(401);
+      throw new Error('Not authorized');
+    }
+    
+    const userId = req.params.id;
+    let user = null;
+    let mainDbUser = null; // Reference to the user in the main DB
+    
+    // Check authorization level and get the appropriate user
+    if (req.user.role === 'superadmin') {
+      // Superadmin can update any user
+      const MainUser = await getModel('main', 'User', userSchema);
+      mainDbUser = await MainUser.findById(userId);
+      user = mainDbUser;
+      
+      // If updating a school_owner (but not changing role), special rules apply
+      if (user && user.role === 'school_owner' && (!req.body.role || req.body.role === 'school_owner')) {
+        // Only allow updating name, email, password (not tenant or role)
+        if (req.body.tenantId) {
+          delete req.body.tenantId; // Prevent changing tenant association
+        }
+      }
+    } else if (req.user.role === 'school_owner') {
+      // School owners can only update users in their own tenant
+      // First verify the user belongs to this tenant
+      const MainUser = await getModel('main', 'User', userSchema);
+      mainDbUser = await MainUser.findById(userId);
+      
+      if (!mainDbUser || !mainDbUser.tenantId || 
+          mainDbUser.tenantId.toString() !== req.user.tenantId.toString()) {
+        res.status(403);
+        throw new Error('Not authorized to modify this user');
+      }
+      
+      // School owners cannot change user to another tenant
+      if (req.body.tenantId) {
+        delete req.body.tenantId;
+      }
+      
+      // School owners cannot promote to school_owner or superadmin
+      if (req.body.role === 'school_owner' || req.body.role === 'superadmin') {
+        res.status(403);
+        throw new Error('Not authorized to assign this role');
+      }
+      
+      // Get user from tenant database
+      const TenantUser = await getModel(req.tenantId, 'User', userSchema);
+      user = await TenantUser.findById(userId);
+      
+      if (!user) {
+        // If not found in tenant DB but exists in main DB, create it
+        user = await TenantUser.create({
+          _id: mainDbUser._id, // Keep the same ID
+          name: mainDbUser.name,
+          email: mainDbUser.email,
+          password: mainDbUser.password,
+          role: mainDbUser.role,
+          tenantId: mainDbUser.tenantId
+        });
+      }
+    } else if (req.user.role === 'admin') {
+      // Admin can only update users in their own tenant
+      const MainUser = await getModel('main', 'User', userSchema);
+      mainDbUser = await MainUser.findById(userId);
+      
+      if (!mainDbUser || !mainDbUser.tenantId || 
+          mainDbUser.tenantId.toString() !== req.user.tenantId.toString()) {
+        res.status(403);
+        throw new Error('Not authorized to modify this user');
+      }
+      
+      // Admins cannot change user to another tenant
+      if (req.body.tenantId) {
+        delete req.body.tenantId;
+      }
+      
+      // Admins cannot promote to admin, school_owner or superadmin
+      if (req.body.role === 'admin' || req.body.role === 'school_owner' || req.body.role === 'superadmin') {
+        res.status(403);
+        throw new Error('Not authorized to assign this role');
+      }
+      
+      // Get user from tenant database
+      const TenantUser = await getModel(req.tenantId, 'User', userSchema);
+      user = await TenantUser.findById(userId);
+    } else {
+      // Regular users cannot update other users
+      res.status(403);
+      throw new Error('Not authorized to update user data');
+    }
+
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    // Update fields based on request body
     user.name = req.body.name || user.name;
     user.email = req.body.email || user.email;
-    user.role = req.body.role || user.role;
+    
+    // Update role only if provided and authorized
+    if (req.body.role) {
+      user.role = req.body.role;
+    }
     
     // Handle password update if provided
     if (req.body.password) {
@@ -239,57 +617,75 @@ const updateUser = asyncHandler(async (req, res) => {
       }
     }
 
-    // Save the user first
+    // Save the user in the tenant database
     await user.save();
     
-    // For populated fields, we need to handle them differently based on whether they're arrays or single values
-    let updatedUser = await User.findById(user._id).select('-password');
-    
-    // Custom population logic to handle both single items and arrays
-    if (user.role === 'teacher') {
-      // For teachers who can have multiple schools
-      if (Array.isArray(updatedUser.school)) {
-        // Populate an array of schools
-        const School = mongoose.model('School');
-        const populatedSchools = await School.find({ '_id': { $in: updatedUser.school } }).select('name');
-        updatedUser.school = populatedSchools;
-      } else if (updatedUser.school) {
-        // Populate a single school
-        updatedUser = await updatedUser.populate('school', 'name');
+    // If there's a user in the main DB (for authentication), update it too
+    if (mainDbUser && mainDbUser !== user) {
+      // Only update authentication-relevant fields in main DB
+      mainDbUser.name = user.name;
+      mainDbUser.email = user.email;
+      
+      if (req.body.password) {
+        mainDbUser.password = user.password;
       }
       
-      // Same for directions
-      if (Array.isArray(updatedUser.direction)) {
-        // Populate an array of directions
-        const Direction = mongoose.model('Direction');
-        const populatedDirections = await Direction.find({ '_id': { $in: updatedUser.direction } }).select('name');
-        updatedUser.direction = populatedDirections;
-      } else if (updatedUser.direction) {
-        // Populate a single direction
-        updatedUser = await updatedUser.populate('direction', 'name');
+      if (req.body.role) {
+        mainDbUser.role = user.role;
       }
-    } else {
-      // For students or admins, we use regular population (single values)
-      updatedUser = await updatedUser
-        .populate('school', 'name')
-        .populate('direction', 'name');
+      
+      // Save to main database
+      await mainDbUser.save();
     }
+    
+    // Then fetch the updated user with populated fields
+    let updatedUser;
+    if (req.tenantId === 'main') {
+      // For superadmin working with main DB users
+      const MainUser = await getModel('main', 'User', userSchema);
+      updatedUser = await MainUser.findById(user._id).select('-password');
+    } else {
+      // For tenant users, populate all reference fields
+      const TenantUser = await getModel(req.tenantId, 'User', userSchema);
+      updatedUser = await TenantUser.findById(user._id)
+        .select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name')
+        .populate('subjects', 'name');
+    }
+    updatedUser = await updatedUser
+      .populate('school', 'name')
+      .populate('direction', 'name');
     
     // Always populate subjects
     updatedUser = await updatedUser.populate('subjects', 'name');
     
     console.log('Updated user after population:', JSON.stringify(updatedUser, null, 2));
 
-    // Prepare base response
+    // Prepare response
     const response = {
       _id: updatedUser._id,
       name: updatedUser.name,
       email: updatedUser.email,
-      role: updatedUser.role,
-      school: updatedUser.school,
-      direction: updatedUser.direction,
-      subjects: updatedUser.subjects,
+      role: updatedUser.role
     };
+    
+    // Add fields based on user type
+    if (updatedUser.tenantId) {
+      response.tenantId = updatedUser.tenantId;
+    }
+    
+    if (updatedUser.school) {
+      response.school = updatedUser.school;
+    }
+    
+    if (updatedUser.direction) {
+      response.direction = updatedUser.direction;
+    }
+    
+    if (updatedUser.subjects) {
+      response.subjects = updatedUser.subjects;
+    }
     
     // Add teacher permission fields if applicable
     if (updatedUser.role === 'teacher') {
@@ -298,9 +694,10 @@ const updateUser = asyncHandler(async (req, res) => {
     }
     
     res.json(response);
-  } else {
-    res.status(404);
-    throw new Error('User not found');
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error updating user');
   }
 });
 

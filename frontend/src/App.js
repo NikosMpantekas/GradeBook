@@ -11,6 +11,7 @@ import Layout from './components/layout/Layout';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import TeacherRoute from './components/TeacherRoute';
+import TenantRoute from './components/TenantRoute';
 
 // Public Pages
 import Login from './pages/Login';
@@ -44,6 +45,10 @@ import EditUser from './pages/admin/EditUser';
 import ManageSchools from './pages/admin/ManageSchools';
 import ManageDirections from './pages/admin/ManageDirections';
 import ManageSubjects from './pages/admin/ManageSubjects';
+
+// Tenant Management Pages
+import TenantDashboard from './components/tenant/TenantDashboard';
+import TenantDetail from './components/tenant/TenantDetail';
 
 // Push notification service
 import { setupPushNotifications } from './services/pushNotificationService';
@@ -248,6 +253,18 @@ function App() {
               <AdminRoute>
                 <ManageSubjects />
               </AdminRoute>
+            } />
+            
+            {/* Tenant Management Routes */}
+            <Route path="/app/tenants" element={
+              <TenantRoute requireSuperAdmin={true}>
+                <TenantDashboard />
+              </TenantRoute>
+            } />
+            <Route path="/app/tenant/profile" element={
+              <TenantRoute requireSuperAdmin={false}>
+                <TenantDetail />
+              </TenantRoute>
             } />
           </Route>
           

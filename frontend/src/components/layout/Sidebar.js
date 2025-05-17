@@ -23,6 +23,8 @@ import {
   LocationCity as SchoolsIcon,
   Folder as DirectionsIcon,
   Subject as SubjectsIcon,
+  Business as TenantIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 
@@ -118,12 +120,26 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle }) => {
         path: '/app/admin/subjects',
         roles: ['admin'],
       },
+      // Tenant management for superadmin
+      {
+        text: 'School Tenants',
+        icon: <TenantIcon />,
+        path: '/app/tenants',
+        roles: ['superadmin'],
+      },
+      // Tenant profile for school owner
+      {
+        text: 'School Settings',
+        icon: <SettingsIcon />,
+        path: '/app/tenant/profile',
+        roles: ['school_owner'],
+      },
       // Profile is available to all users
       {
         text: 'Profile',
         icon: <PersonIcon />,
         path: '/app/profile',
-        roles: ['student', 'teacher', 'admin'],
+        roles: ['student', 'teacher', 'admin', 'superadmin', 'school_owner'],
       },
     ];
 

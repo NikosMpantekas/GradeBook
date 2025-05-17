@@ -1,11 +1,12 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-// API URL from environment or default for development
-const API_URL = '/api/users/';
+// API endpoints
+const USERS_API = `${API_URL}/users/`;
 
 // Register user
 const register = async (userData) => {
-  const response = await axios.post(API_URL, userData);
+  const response = await axios.post(USERS_API, userData);
 
   if (response.data) {
     // If the user wants to save credentials, store in localStorage
@@ -25,7 +26,24 @@ const login = async (userData) => {
   console.log('Login attempt with:', { email: userData.email, saveCredentials: userData.saveCredentials });
   
   try {
-    const response = await axios.post(API_URL + 'login', userData);
+    // Extract tenant from email domain if it exists
+    let tenantContext = null;
+    if (userData.email && userData.email.includes('@')) {
+      const domain = userData.email.split('@')[1];
+      // If this is a specific domain format we use for tenant identification
+      if (domain.includes('.tenant.')) {
+        tenantContext = domain.split('.tenant.')[0];
+        console.log('Detected tenant context from email:', tenantContext);
+      }
+    }
+    
+    // Add tenant context to the login request if detected
+    const loginData = {
+      ...userData,
+      tenantContext
+    };
+    
+    const response = await axios.post(`${USERS_API}login`, loginData);
     console.log('Login successful - received data:', JSON.stringify(response.data));
 
     // Add a console log to check JWT token format
@@ -80,7 +98,7 @@ const getUserData = async (token) => {
     },
   };
 
-  const response = await axios.get(API_URL + 'me', config);
+  const response = await axios.get(`${USERS_API}me`, config);
   
   if (response.data) {
     // Update the stored user data but preserve the token
@@ -113,7 +131,8 @@ const updateProfile = async (userData, token) => {
   };
 
   console.log('Updating profile with data:', userData);
-  const response = await axios.put(API_URL + 'profile', userData, config);
+  // We use PATCH instead of PUT to only update the provided fields
+  const response = await axios.patch(`${USERS_API}profile`, userData, config);
   console.log('Profile update response:', response.data);
 
   if (response.data) {

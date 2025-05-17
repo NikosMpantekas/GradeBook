@@ -16,7 +16,8 @@ const {
   getStudentsBySubject,
   getUsersByRole,
 } = require('../controllers/userController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
+const { adminOrHigher, superadminOnly, schoolOwnerOrHigher, teacherOrHigher } = require('../middleware/tenantMiddleware');
 
 // Public routes
 router.post('/', registerUser);
@@ -29,17 +30,25 @@ router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
 
 // Student-related routes - ORDER IS CRITICAL - specific routes first
-router.get('/students/subject/:subjectId', protect, getStudentsBySubject);
-router.get('/students', protect, getStudents);
+// Teacher or higher can access student lists for their authorized subjects
+router.get('/students/subject/:subjectId', protect, teacherOrHigher, getStudentsBySubject);
+router.get('/students', protect, teacherOrHigher, getStudents);
 
-// Role-based user filtering - for notification functionality
-router.get('/role/:role', protect, getUsersByRole);
+// Role-based user filtering - for admin functionality including notifications
+router.get('/role/:role', protect, adminOrHigher, getUsersByRole);
 
-// Admin routes
-router.get('/', protect, admin, getUsers);
-router.post('/admin/create', protect, admin, createUserByAdmin); // Admin user creation endpoint
-router.get('/:id', protect, admin, getUserById);
-router.put('/:id', protect, admin, updateUser);
-router.delete('/:id', protect, admin, deleteUser);
+// Admin routes with proper role-based access control
+// Get all users - admin or higher in their tenant context
+router.get('/', protect, adminOrHigher, getUsers);
+
+// Create users - admins can create regular users, school owners can create admins too
+router.post('/admin/create', protect, adminOrHigher, createUserByAdmin);
+
+// Get, update and delete users with appropriate access levels
+router.get('/:id', protect, adminOrHigher, getUserById);
+router.put('/:id', protect, adminOrHigher, updateUser);
+
+// Deleting users requires school owner or superadmin permissions
+router.delete('/:id', protect, schoolOwnerOrHigher, deleteUser);
 
 module.exports = router;

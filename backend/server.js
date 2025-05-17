@@ -4,14 +4,20 @@ const dotenv = require('dotenv');
 const colors = require('colors');
 const cors = require('cors');
 const { errorHandler } = require('./middleware/errorMiddleware');
-const connectDB = require('./config/db');
+const { connectMainDB } = require('./config/multiDbManager');
+const { resolveTenant } = require('./middleware/tenantMiddleware');
 const webpush = require('web-push');
 
 // Load environment variables
 dotenv.config();
 
-// Connect to database
-connectDB();
+// Connect to main database - this is used for authentication and tenant management
+connectMainDB().then(() => {
+  console.log('Main database connected for multi-tenant operations'.cyan.underline);
+}).catch(err => {
+  console.error(`Error connecting to main database: ${err.message}`.red.bold);
+  process.exit(1);
+});
 
 // Set up web push
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -28,6 +34,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Apply tenant middleware to determine which database to use for each request
+app.use(resolveTenant);
 
 // EMERGENCY DIAGNOSTIC ROUTE - for debugging deployment issues
 app.get('/emergency-diagnostics', (req, res) => {
@@ -163,12 +172,14 @@ app.get('/emergency-diagnostics', (req, res) => {
 });
 
 // Regular API Routes
+app.use('/api/tenants', require('./routes/tenantRoutes')); // New tenant management routes
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/schools', require('./routes/schoolRoutes'));
+app.use('/api/directions', require('./routes/directionRoutes'));
+app.use('/api/subjects', require('./routes/subjectRoutes'));
 app.use('/api/grades', require('./routes/gradeRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/schools', require('./routes/schoolRoutes'));
-app.use('/api/subjects', require('./routes/subjectRoutes'));
-app.use('/api/directions', require('./routes/directionRoutes'));
+app.use('/api/push', require('./routes/pushRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 
 // Debug middleware to log all requests

@@ -18,8 +18,15 @@ const userSchema = mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'teacher', 'student'],
+      enum: ['superadmin', 'school_owner', 'admin', 'teacher', 'student'],
       default: 'student',
+    },
+    
+    // Reference to tenant (organization/school group)
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tenant',
+      // Not required for superadmin
     },
 
     // For students: single school reference
