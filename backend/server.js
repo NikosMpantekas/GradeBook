@@ -179,7 +179,8 @@ app.use('/api/directions', require('./routes/directionRoutes'));
 app.use('/api/subjects', require('./routes/subjectRoutes'));
 app.use('/api/grades', require('./routes/gradeRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/push', require('./routes/pushRoutes'));
+// Push notifications are now handled by the subscription routes
+// app.use('/api/push', require('./routes/pushRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 
 // Debug middleware to log all requests
