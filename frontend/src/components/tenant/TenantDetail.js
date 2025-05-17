@@ -1,11 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { 
-  Container, Row, Col, Card, Button, Alert, Form,
-  Spinner, ListGroup, Badge
-} from 'react-bootstrap';
 import axios from 'axios';
 import { API_URL } from '../../config/appConfig';
+
+// Material UI imports
+import {
+  Container,
+  Typography,
+  Paper,
+  Button,
+  Box,
+  Grid,
+  TextField,
+  Chip,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Divider,
+  Card,
+  CardContent,
+  CardHeader,
+  Alert,
+  CircularProgress,
+  Switch,
+  FormControlLabel
+} from '@mui/material';
+
+// Icons
+import SchoolIcon from '@mui/icons-material/School';
+import PersonIcon from '@mui/icons-material/Person';
+import EmailIcon from '@mui/icons-material/Email';
+import PhoneIcon from '@mui/icons-material/Phone';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 // TenantDetail component to allow school owners to manage their tenant
 const TenantDetail = () => {
@@ -120,8 +150,8 @@ const TenantDetail = () => {
   // Not authorized if not school owner or admin
   if (user && !(user.role === 'school_owner' || user.role === 'admin')) {
     return (
-      <Container className="mt-4">
-        <Alert variant="danger">
+      <Container sx={{ mt: 4 }}>
+        <Alert severity="error">
           You are not authorized to access this page. Only school owners and admins can manage tenant details.
         </Alert>
       </Container>
@@ -129,185 +159,217 @@ const TenantDetail = () => {
   }
   
   return (
-    <Container className="mt-4">
-      <h1>School Tenant Management</h1>
-      <p className="lead">View and manage your school tenant settings.</p>
+    <Container sx={{ mt: 4 }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          School Tenant Management
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+          View and manage your school tenant settings.
+        </Typography>
+      </Box>
       
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       
       {loading ? (
-        <div className="text-center py-4">
-          <Spinner animation="border" role="status">
-            <span className="sr-only">Loading...</span>
-          </Spinner>
-        </div>
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
       ) : tenant ? (
-        <>
-          <Row>
-            <Col md={8}>
-              <Card className="mb-4">
-                <Card.Header className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">School Information</h5>
-                  {!editing && (
-                    <Button 
-                      variant="primary" 
-                      onClick={() => setEditing(true)}
-                      disabled={user.role !== 'school_owner'}
-                    >
-                      <i className="fas fa-edit"></i> Edit Details
-                    </Button>
-                  )}
-                </Card.Header>
-                <Card.Body>
-                  {editing ? (
-                    <Form onSubmit={handleUpdateTenant}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>School Name</Form.Label>
-                        <Form.Control
-                          type="text"
-                          name="name"
-                          value={formData.name}
-                          onChange={handleInputChange}
-                          required
-                          placeholder="Enter school name"
-                        />
-                      </Form.Group>
-                      
-                      <Form.Group className="mb-3">
-                        <Form.Label>Contact Email</Form.Label>
-                        <Form.Control
-                          type="email"
-                          name="contactEmail"
-                          value={formData.contactEmail}
-                          onChange={handleInputChange}
-                          placeholder="Enter contact email"
-                        />
-                      </Form.Group>
-                      
-                      <Form.Group className="mb-3">
-                        <Form.Label>Contact Phone</Form.Label>
-                        <Form.Control
-                          type="text"
-                          name="contactPhone"
-                          value={formData.contactPhone}
-                          onChange={handleInputChange}
-                          placeholder="Enter contact phone"
-                        />
-                      </Form.Group>
-                      
-                      <Form.Group className="mb-3">
-                        <Form.Label>School Address</Form.Label>
-                        <Form.Control
-                          as="textarea"
-                          rows={3}
-                          name="address"
-                          value={formData.address}
-                          onChange={handleInputChange}
-                          placeholder="Enter school address"
-                        />
-                      </Form.Group>
-                      
-                      <div className="d-flex justify-content-end">
-                        <Button 
-                          variant="secondary" 
-                          onClick={() => setEditing(false)} 
-                          className="me-2"
-                          disabled={loading}
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          variant="success" 
-                          type="submit"
-                          disabled={loading}
-                        >
-                          {loading ? <Spinner size="sm" animation="border" /> : 'Save Changes'}
-                        </Button>
-                      </div>
-                    </Form>
-                  ) : (
-                    <ListGroup variant="flush">
-                      <ListGroup.Item>
-                        <strong>School Name:</strong> {tenant.name}
-                      </ListGroup.Item>
-                      <ListGroup.Item>
-                        <strong>Status:</strong>{' '}
-                        <Badge bg={tenant.status === 'active' ? 'success' : 'danger'}>
-                          {tenant.status}
-                        </Badge>
-                      </ListGroup.Item>
-                      <ListGroup.Item>
-                        <strong>Contact Email:</strong>{' '}
-                        {tenant.contactEmail || 'Not set'}
-                      </ListGroup.Item>
-                      <ListGroup.Item>
-                        <strong>Contact Phone:</strong>{' '}
-                        {tenant.contactPhone || 'Not set'}
-                      </ListGroup.Item>
-                      <ListGroup.Item>
-                        <strong>Address:</strong>{' '}
-                        {tenant.address || 'Not set'}
-                      </ListGroup.Item>
-                      <ListGroup.Item>
-                        <strong>Created:</strong>{' '}
-                        {new Date(tenant.createdAt).toLocaleDateString()}
-                      </ListGroup.Item>
-                    </ListGroup>
-                  )}
-                </Card.Body>
-              </Card>
-            </Col>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={8}>
+            <Paper elevation={3} sx={{ mb: 4, overflow: 'hidden' }}>
+              <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'primary.main', color: 'white' }}>
+                <Typography variant="h6">
+                  School Information
+                </Typography>
+                {!editing && (
+                  <Button 
+                    variant="contained" 
+                    color="secondary"
+                    startIcon={<EditIcon />}
+                    onClick={() => setEditing(true)}
+                    disabled={user.role !== 'school_owner'}
+                  >
+                    Edit Details
+                  </Button>
+                )}
+              </Box>
+              <Box sx={{ p: 3 }}>
+                {editing ? (
+                  <Box component="form" onSubmit={handleUpdateTenant} noValidate>
+                    <TextField
+                      margin="normal"
+                      required
+                      fullWidth
+                      label="School Name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                    />
+                    
+                    <TextField
+                      margin="normal"
+                      required
+                      fullWidth
+                      label="Contact Email"
+                      name="contactEmail"
+                      type="email"
+                      value={formData.contactEmail}
+                      onChange={handleInputChange}
+                    />
+                    
+                    <TextField
+                      margin="normal"
+                      fullWidth
+                      label="Contact Phone"
+                      name="contactPhone"
+                      value={formData.contactPhone}
+                      onChange={handleInputChange}
+                    />
+                    
+                    <TextField
+                      margin="normal"
+                      fullWidth
+                      label="Address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                    />
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                      <Button 
+                        variant="outlined" 
+                        onClick={() => setEditing(false)} 
+                        sx={{ mr: 1 }}
+                        startIcon={<CancelIcon />}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="contained" 
+                        color="primary" 
+                        type="submit" 
+                        disabled={loading}
+                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+                      >
+                        Save Changes
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <List>
+                    <ListItem>
+                      <ListItemIcon><SchoolIcon color="primary" /></ListItemIcon>
+                      <ListItemText primary="School Name" secondary={tenant.name} />
+                    </ListItem>
+                    <Divider component="li" />
+                    
+                    <ListItem>
+                      <ListItemIcon><EmailIcon color="primary" /></ListItemIcon>
+                      <ListItemText primary="Contact Email" secondary={tenant.contactEmail} />
+                    </ListItem>
+                    <Divider component="li" />
+                    
+                    <ListItem>
+                      <ListItemIcon><PhoneIcon color="primary" /></ListItemIcon>
+                      <ListItemText primary="Contact Phone" secondary={tenant.contactPhone || 'Not provided'} />
+                    </ListItem>
+                    <Divider component="li" />
+                    
+                    <ListItem>
+                      <ListItemIcon><LocationOnIcon color="primary" /></ListItemIcon>
+                      <ListItemText primary="Address" secondary={tenant.address || 'Not provided'} />
+                    </ListItem>
+                    <Divider component="li" />
+                    
+                    <ListItem>
+                      <ListItemText 
+                        primary="Status" 
+                        secondary={
+                          <Chip 
+                            label={tenant.status}
+                            color={tenant.status === 'active' ? 'success' : 'error'}
+                            size="small"
+                            sx={{ mt: 0.5 }}
+                          />
+                        } 
+                      />
+                    </ListItem>
+                    <Divider component="li" />
+                    
+                    <ListItem>
+                      <ListItemText primary="Database" secondary={tenant.databaseName} />
+                    </ListItem>
+                    <Divider component="li" />
+                    
+                    <ListItem>
+                      <ListItemText primary="Created On" secondary={new Date(tenant.createdAt).toLocaleDateString()} />
+                    </ListItem>
+                  </List>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <Paper elevation={3} sx={{ mb: 4, overflow: 'hidden' }}>
+              <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white' }}>
+                <Typography variant="h6">Tenant Statistics</Typography>
+              </Box>
+              <Box sx={{ p: 0 }}>
+                <List>
+                  <ListItem>
+                    <ListItemText primary="Total Users" secondary={stats.totalUsers} />
+                  </ListItem>
+                  <Divider component="li" />
+                  
+                  <ListItem>
+                    <ListItemText primary="Students" secondary={stats.totalStudents} />
+                  </ListItem>
+                  <Divider component="li" />
+                  
+                  <ListItem>
+                    <ListItemText primary="Teachers" secondary={stats.totalTeachers} />
+                  </ListItem>
+                  <Divider component="li" />
+                  
+                  <ListItem>
+                    <ListItemText primary="Schools" secondary={stats.totalSchools || 1} />
+                  </ListItem>
+                </List>
+              </Box>
+            </Paper>
             
-            <Col md={4}>
-              <Card className="mb-4">
-                <Card.Header>
-                  <h5 className="mb-0">Statistics</h5>
-                </Card.Header>
-                <Card.Body>
-                  <ListGroup variant="flush">
-                    <ListGroup.Item className="d-flex justify-content-between align-items-center">
-                      Total Users
-                      <Badge bg="primary" pill>{stats.totalUsers}</Badge>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="d-flex justify-content-between align-items-center">
-                      Students
-                      <Badge bg="info" pill>{stats.totalStudents}</Badge>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="d-flex justify-content-between align-items-center">
-                      Teachers
-                      <Badge bg="warning" pill>{stats.totalTeachers}</Badge>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="d-flex justify-content-between align-items-center">
-                      Schools
-                      <Badge bg="success" pill>{stats.totalSchools}</Badge>
-                    </ListGroup.Item>
-                  </ListGroup>
-                </Card.Body>
-              </Card>
-              
-              <Card>
-                <Card.Header>
-                  <h5 className="mb-0">Account Information</h5>
-                </Card.Header>
-                <Card.Body>
-                  <ListGroup variant="flush">
-                    <ListGroup.Item>
-                      <strong>Owner:</strong> {tenant.ownerName || user.name}
-                    </ListGroup.Item>
-                    <ListGroup.Item>
-                      <strong>Email:</strong> {tenant.ownerEmail || user.email}
-                    </ListGroup.Item>
-                    <ListGroup.Item>
-                      <strong>Role:</strong> {user.role}
-                    </ListGroup.Item>
-                  </ListGroup>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-        </>
+            <Paper elevation={3} sx={{ overflow: 'hidden' }}>
+              <Box sx={{ p: 2, bgcolor: 'primary.main', color: 'white' }}>
+                <Typography variant="h6">Account Information</Typography>
+              </Box>
+              <Box sx={{ p: 0 }}>
+                <List>
+                  <ListItem>
+                    <ListItemIcon><PersonIcon color="primary" /></ListItemIcon>
+                    <ListItemText primary="Owner" secondary={tenant.ownerName || user.name} />
+                  </ListItem>
+                  <Divider component="li" />
+                  
+                  <ListItem>
+                    <ListItemIcon><EmailIcon color="primary" /></ListItemIcon>
+                    <ListItemText primary="Email" secondary={tenant.ownerEmail || user.email} />
+                  </ListItem>
+                  <Divider component="li" />
+                  
+                  <ListItem>
+                    <ListItemText primary="Role" secondary={<Chip label={user.role} size="small" color="primary" />} />
+                  </ListItem>
+                </List>
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
       ) : (
-        <Alert variant="warning">
+        <Alert severity="warning">
           No tenant information available. Please contact the system administrator.
         </Alert>
       )}

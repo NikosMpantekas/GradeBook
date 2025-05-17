@@ -1,11 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { 
-  Container, Row, Col, Card, Button, Table, Badge,
-  Modal, Form, Alert, Spinner
-} from 'react-bootstrap';
+import { useSelector } from 'react-redux';
 import axios from 'axios';
 import { API_URL } from '../../config/appConfig';
+
+// Material UI imports
+import {
+  Container,
+  Typography,
+  Paper,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Box,
+  Alert,
+  CircularProgress,
+  IconButton,
+  Divider,
+  Grid
+} from '@mui/material';
+
+// Icons
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SchoolIcon from '@mui/icons-material/School';
+import BlockIcon from '@mui/icons-material/Block';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 // Tenant Dashboard Component - Only accessible to superadmin users
 const TenantDashboard = () => {
@@ -153,8 +187,8 @@ const TenantDashboard = () => {
   // Not authorized if not superadmin
   if (user && user.role !== 'superadmin') {
     return (
-      <Container className="mt-4">
-        <Alert variant="danger">
+      <Container sx={{ mt: 4 }}>
+        <Alert severity="error">
           You are not authorized to access this page. Only superadmins can manage tenants.
         </Alert>
       </Container>
@@ -162,183 +196,210 @@ const TenantDashboard = () => {
   }
   
   return (
-    <Container className="mt-4">
-      <h1>Tenant Management Dashboard</h1>
-      <p className="lead">Manage school owner accounts and their tenant databases.</p>
+    <Container sx={{ mt: 4 }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Tenant Management Dashboard
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+          Manage school owner accounts and their tenant databases.
+        </Typography>
+      </Box>
       
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       
-      <Card className="mb-4">
-        <Card.Header className="d-flex justify-content-between align-items-center">
-          <h5 className="mb-0">School Tenants</h5>
+      <Paper elevation={3} sx={{ mb: 4, overflow: 'hidden' }}>
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'primary.main', color: 'white' }}>
+          <Typography variant="h6">
+            <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+            School Tenants
+          </Typography>
           <Button 
-            variant="success" 
+            variant="contained" 
+            color="secondary" 
+            startIcon={<AddIcon />}
             onClick={() => setShowAddModal(true)}
           >
-            <i className="fas fa-plus"></i> Add New School
+            Add New School
           </Button>
-        </Card.Header>
-        <Card.Body>
+        </Box>
+        <Box sx={{ p: 0 }}>
           {loading ? (
-            <div className="text-center py-4">
-              <Spinner animation="border" role="status">
-                <span className="sr-only">Loading...</span>
-              </Spinner>
-            </div>
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
           ) : tenants.length === 0 ? (
-            <Alert variant="info">
+            <Alert severity="info" sx={{ m: 2 }}>
               No tenants found. Create your first tenant by clicking "Add New School".
             </Alert>
           ) : (
-            <Table striped bordered hover responsive>
-              <thead>
-                <tr>
-                  <th>School Name</th>
-                  <th>Owner Name</th>
-                  <th>Owner Email</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tenants.map(tenant => (
-                  <tr key={tenant._id}>
-                    <td>{tenant.name}</td>
-                    <td>{tenant.ownerName}</td>
-                    <td>{tenant.ownerEmail}</td>
-                    <td>
-                      <Badge bg={tenant.status === 'active' ? 'success' : 'danger'}>
-                        {tenant.status}
-                      </Badge>
-                    </td>
-                    <td>{new Date(tenant.createdAt).toLocaleDateString()}</td>
-                    <td>
-                      <Button
-                        size="sm"
-                        variant={tenant.status === 'active' ? 'warning' : 'success'}
-                        onClick={() => handleToggleStatus(tenant._id, tenant.status)}
-                        className="me-2"
-                      >
-                        {tenant.status === 'active' ? 'Disable' : 'Activate'}
-                      </Button>
-                      
-                      {tenant.status === 'disabled' && (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>School Name</TableCell>
+                    <TableCell>Owner Name</TableCell>
+                    <TableCell>Owner Email</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Created</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {tenants.map(tenant => (
+                    <TableRow key={tenant._id}>
+                      <TableCell>{tenant.name}</TableCell>
+                      <TableCell>{tenant.ownerName}</TableCell>
+                      <TableCell>{tenant.ownerEmail}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          icon={tenant.status === 'active' ? <CheckCircleIcon /> : <BlockIcon />}
+                          label={tenant.status}
+                          color={tenant.status === 'active' ? 'success' : 'error'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{new Date(tenant.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
                         <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => handleDeleteTenant(tenant._id)}
+                          size="small"
+                          variant="contained"
+                          color={tenant.status === 'active' ? 'warning' : 'success'}
+                          onClick={() => handleToggleStatus(tenant._id, tenant.status)}
+                          sx={{ mr: 1 }}
                         >
-                          Delete
+                          {tenant.status === 'active' ? 'Disable' : 'Activate'}
                         </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+                        
+                        {tenant.status === 'disabled' && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => handleDeleteTenant(tenant._id)}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
-        </Card.Body>
-      </Card>
+        </Box>
+      </Paper>
       
-      {/* Modal for adding a new tenant */}
-      <Modal show={showAddModal} onHide={() => setShowAddModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Add New School Tenant</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleCreateTenant}>
-            <Form.Group className="mb-3">
-              <Form.Label>School Name</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={newTenant.name}
-                onChange={handleInputChange}
-                required
-                placeholder="Enter school name"
-              />
-              <Form.Text className="text-muted">
-                This will be used as the tenant name.
-              </Form.Text>
-            </Form.Group>
+      {/* Dialog for adding a new tenant */}
+      <Dialog 
+        open={showAddModal} 
+        onClose={() => setShowAddModal(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
+          <Box display="flex" alignItems="center">
+            <SchoolIcon sx={{ mr: 1 }} />
+            Add New School Tenant
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box component="form" onSubmit={handleCreateTenant} noValidate sx={{ mt: 1 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              label="School Name"
+              name="name"
+              value={newTenant.name}
+              onChange={handleInputChange}
+              placeholder="Enter school name"
+              helperText="This will be used as the tenant name."
+            />
             
-            <Form.Group className="mb-3">
-              <Form.Label>Database URI (Optional)</Form.Label>
-              <Form.Control
-                type="text"
-                name="dbUri"
-                value={newTenant.dbUri}
-                onChange={handleInputChange}
-                placeholder="mongodb://localhost:27017/my-tenant-db"
-              />
-              <Form.Text className="text-muted">
-                If not provided, the system default database will be used.
-              </Form.Text>
-            </Form.Group>
+            <TextField
+              margin="normal"
+              fullWidth
+              label="Database URI (Optional)"
+              name="dbUri"
+              value={newTenant.dbUri}
+              onChange={handleInputChange}
+              placeholder="mongodb://localhost:27017/my-tenant-db"
+              helperText="If not provided, the system default database will be used."
+            />
             
-            <hr />
-            <h5>School Owner Account</h5>
+            <Divider sx={{ mt: 3, mb: 2 }} />
+            <Typography variant="h6" gutterBottom>
+              School Owner Account
+            </Typography>
             
-            <Form.Group className="mb-3">
-              <Form.Label>Owner Name</Form.Label>
-              <Form.Control
-                type="text"
-                name="ownerName"
-                value={newTenant.ownerName}
-                onChange={handleInputChange}
-                required
-                placeholder="Enter owner's full name"
-              />
-            </Form.Group>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              label="Owner Name"
+              name="ownerName"
+              value={newTenant.ownerName}
+              onChange={handleInputChange}
+              placeholder="Enter owner's full name"
+            />
             
-            <Form.Group className="mb-3">
-              <Form.Label>Owner Email</Form.Label>
-              <Form.Control
-                type="email"
-                name="ownerEmail"
-                value={newTenant.ownerEmail}
-                onChange={handleInputChange}
-                required
-                placeholder="Enter owner's email"
-              />
-            </Form.Group>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              label="Owner Email"
+              name="ownerEmail"
+              type="email"
+              value={newTenant.ownerEmail}
+              onChange={handleInputChange}
+              placeholder="Enter owner's email"
+            />
             
-            <Form.Group className="mb-3">
-              <Form.Label>Owner Password</Form.Label>
-              <Form.Control
-                type="password"
-                name="ownerPassword"
-                value={newTenant.ownerPassword}
-                onChange={handleInputChange}
-                required
-                placeholder="Create a strong password"
-              />
-            </Form.Group>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              label="Owner Password"
+              name="ownerPassword"
+              type="password"
+              value={newTenant.ownerPassword}
+              onChange={handleInputChange}
+              placeholder="Create a strong password"
+            />
             
-            <Form.Group className="mb-3">
-              <Form.Label>Status</Form.Label>
-              <Form.Select
+            <FormControl fullWidth margin="normal">
+              <InputLabel id="tenant-status-label">Status</InputLabel>
+              <Select
+                labelId="tenant-status-label"
                 name="status"
                 value={newTenant.status}
                 onChange={handleInputChange}
+                label="Status"
               >
-                <option value="active">Active</option>
-                <option value="disabled">Disabled</option>
-              </Form.Select>
-            </Form.Group>
-            
-            <div className="d-flex justify-content-end">
-              <Button variant="secondary" onClick={() => setShowAddModal(false)} className="me-2">
-                Cancel
-              </Button>
-              <Button variant="primary" type="submit" disabled={loading}>
-                {loading ? <Spinner size="sm" animation="border" /> : 'Create Tenant'}
-              </Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="disabled">Disabled</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setShowAddModal(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={handleCreateTenant} 
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
+          >
+            Create Tenant
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
