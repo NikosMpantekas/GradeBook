@@ -33,6 +33,9 @@ router.get('/:id', protect, schoolOwnerOrHigher, getTenantById);
 
 // Get tenant stats
 router.get('/:id/stats', protect, schoolOwnerOrHigher, getTenantStats);
+
+// Invite users to tenant
+router.post('/:id/invite', protect, schoolOwnerOrHigher, inviteUserToTenant);
 // School owner can update certain aspects of their tenant, superadmin all aspects
 router.put('/:id', protect, schoolOwnerOrHigher, updateTenant);
 

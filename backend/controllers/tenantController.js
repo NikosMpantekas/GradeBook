@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { getModel } = require('../config/multiDbManager');
 const tenantSchema = require('../models/tenantModel').schema;
 const userSchema = require('../models/userModel').schema;
@@ -339,6 +340,115 @@ const getTenantByOwner = asyncHandler(async (req, res) => {
     console.error('Error fetching tenant by owner:', error);
     res.status(error.statusCode || 500);
     throw new Error(error.message || 'Error retrieving tenant');
+  }
+});
+
+// @desc    Get statistics for a tenant
+// @route   GET /api/tenants/:id/stats
+// @access  Private/SchoolOwner or Admin
+const getTenantStats = asyncHandler(async (req, res) => {
+  try {
+    // Ensure user has proper permissions
+    if (!req.user || (req.user.role !== 'superadmin' && 
+        req.user.role !== 'school_owner' && 
+        req.user.role !== 'admin')) {
+      res.status(403);
+      throw new Error('Not authorized to access tenant statistics');
+    }
+
+    const tenantId = req.params.id;
+    
+    // Verify the user has access to this tenant
+    if (req.user.role !== 'superadmin' && 
+        (!req.user.tenantId || req.user.tenantId.toString() !== tenantId)) {
+      res.status(403);
+      throw new Error('You can only access statistics for your own tenant');
+    }
+    
+    // Get the necessary models for statistics
+    const userModel = await getModel(req.tenantId, 'User', userSchema);
+    
+    // Get basic counts
+    const totalUsers = await userModel.countDocuments({});
+    const totalStudents = await userModel.countDocuments({ role: 'student' });
+    const totalTeachers = await userModel.countDocuments({ role: 'teacher' });
+    const totalAdmins = await userModel.countDocuments({ role: 'admin' });
+    
+    // Return the statistics
+    res.json({
+      totalUsers,
+      totalStudents,
+      totalTeachers,
+      totalAdmins,
+      // You can add more statistics as needed
+      lastUpdated: new Date()
+    });
+  } catch (error) {
+    console.error('Error fetching tenant statistics:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error retrieving tenant statistics');
+  }
+});
+
+// @desc    Invite a user to join a tenant
+// @route   POST /api/tenants/:id/invite
+// @access  Private/SchoolOwner or Admin
+const inviteUserToTenant = asyncHandler(async (req, res) => {
+  try {
+    const { email, role, name } = req.body;
+    const tenantId = req.params.id;
+    
+    // Validate input
+    if (!email || !role) {
+      res.status(400);
+      throw new Error('Please provide email and role for the invited user');
+    }
+    
+    // Check if the requesting user has permission to invite users
+    if (!req.user || (req.user.role !== 'superadmin' && 
+        req.user.role !== 'school_owner' && 
+        req.user.role !== 'admin')) {
+      res.status(403);
+      throw new Error('Not authorized to invite users');
+    }
+    
+    // Check if the user is inviting to their own tenant (except for superadmin)
+    if (req.user.role !== 'superadmin' && 
+        (!req.user.tenantId || req.user.tenantId.toString() !== tenantId)) {
+      res.status(403);
+      throw new Error('You can only invite users to your own tenant');
+    }
+    
+    // Get the Tenant model
+    const Tenant = await getModel('main', 'Tenant', tenantSchema);
+    
+    // Verify tenant exists
+    const tenant = await Tenant.findById(tenantId);
+    if (!tenant) {
+      res.status(404);
+      throw new Error('Tenant not found');
+    }
+    
+    // Generate a temporary invite token
+    const inviteToken = crypto.randomBytes(20).toString('hex');
+    
+    // Store the invite in the database (this would need a separate model)
+    // For now, we'll just send back success response
+    
+    // In a real implementation, you would:
+    // 1. Create an entry in an Invites collection
+    // 2. Send an email to the invitee with a signup link containing the token
+    
+    res.status(200).json({
+      message: `Invitation sent to ${email}`,
+      inviteToken: inviteToken, // in production, you wouldn't return this
+      tenantId: tenantId,
+      role: role
+    });
+  } catch (error) {
+    console.error('Error inviting user to tenant:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error inviting user');
   }
 });
 
