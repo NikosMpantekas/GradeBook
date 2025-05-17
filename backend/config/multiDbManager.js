@@ -143,8 +143,22 @@ const getModel = async (dbId, modelName, schema) => {
       await connectMainDB() : 
       await connectTenantDB(dbId);
 
-    // Check if the model exists in this connection
-    const model = connection.models[modelName] || connection.model(modelName, schema);
+    // Check if the model already exists in this connection
+    if (connection.models[modelName]) {
+      // Use existing model if it already exists
+      const model = connection.models[modelName];
+      // Cache the model for future use
+      models[dbId][modelName] = model;
+      return model;
+    }
+    
+    // Validate schema before creating a model
+    if (!schema || !schema.obj) {
+      throw new Error(`Invalid schema provided for model ${modelName}`);
+    }
+
+    // Create a new model with the schema
+    const model = connection.model(modelName, schema);
     
     // Cache the model for future use
     models[dbId][modelName] = model;
