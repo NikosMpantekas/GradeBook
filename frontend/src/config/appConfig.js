@@ -3,7 +3,7 @@
  * Contains global settings and version information
  */
 
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.3.1';
 
 // API URL - adjust for production environment if needed
 export const API_URL = process.env.REACT_APP_API_URL || '/api';
