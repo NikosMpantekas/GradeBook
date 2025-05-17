@@ -691,11 +691,160 @@ const updateUser = asyncHandler(async (req, res) => {
       response.canAddGradeDescriptions = updatedUser.canAddGradeDescriptions;
     }
     
+    // Prepare response
     res.json(response);
   } catch (error) {
     console.error('Error updating user:', error);
     res.status(error.statusCode || 500);
     throw new Error(error.message || 'Error updating user');
+  }
+});
+
+// @desc    Update user permissions
+// @route   PATCH /api/users/:id/permissions
+// @access  Private/Admin or SchoolOwner
+const updateUserPermissions = asyncHandler(async (req, res) => {
+  const startTime = Date.now();
+  console.log(`[${new Date().toISOString()}] updateUserPermissions called:`, {
+    userId: req.params.id,
+    adminUser: req.user?.email,
+    permissions: req.body
+  });
+
+  try {
+    // Validate inputs
+    const userId = req.params.id;
+    const updates = req.body;
+
+    if (!userId) {
+      res.status(400);
+      throw new Error('User ID is required');
+    }
+
+    if (!updates || Object.keys(updates).length === 0) {
+      res.status(400);
+      throw new Error('Please provide permission updates');
+    }
+
+    // Validate permission fields - only allow specific fields to be updated
+    const allowedPermissionFields = ['canSendNotifications', 'canAddGradeDescriptions'];
+    const providedFields = Object.keys(updates);
+    
+    const invalidFields = providedFields.filter(field => !allowedPermissionFields.includes(field));
+    if (invalidFields.length > 0) {
+      res.status(400);
+      throw new Error(`Invalid permission fields: ${invalidFields.join(', ')}`);
+    }
+
+    // Check authorization
+    if (!req.user || !['superadmin', 'school_owner', 'admin'].includes(req.user.role)) {
+      res.status(403);
+      throw new Error('Not authorized to update user permissions');
+    }
+
+    let user;
+    let mainDbUser;
+
+    // Find the user according to the admin level
+    if (req.user.role === 'superadmin') {
+      // Superadmin can update any user
+      const MainUser = await getModel('main', 'User', userSchema);
+      mainDbUser = await MainUser.findById(userId);
+      user = mainDbUser;
+      
+      if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+      }
+
+      // If this is a tenant user, also update in tenant database
+      if (user.tenantId) {
+        const TenantUser = await getModel(user.tenantId.toString(), 'User', userSchema);
+        const tenantUser = await TenantUser.findById(userId);
+        
+        if (tenantUser) {
+          // Update permissions in tenant database
+          if (updates.canSendNotifications !== undefined) {
+            tenantUser.canSendNotifications = updates.canSendNotifications;
+          }
+          if (updates.canAddGradeDescriptions !== undefined) {
+            tenantUser.canAddGradeDescriptions = updates.canAddGradeDescriptions;
+          }
+          await tenantUser.save();
+        }
+      }
+    } else {
+      // School owner or admin - can only update users in their tenant
+      if (!req.tenantId) {
+        res.status(400);
+        throw new Error('Tenant ID is required');
+      }
+
+      // Verify the user belongs to this admin's tenant
+      const MainUser = await getModel('main', 'User', userSchema);
+      mainDbUser = await MainUser.findById(userId);
+      
+      if (!mainDbUser || !mainDbUser.tenantId || 
+          mainDbUser.tenantId.toString() !== req.user.tenantId.toString()) {
+        res.status(403);
+        throw new Error('Not authorized to update this user');
+      }
+      
+      // Get and update the user in the tenant database
+      const TenantUser = await getModel(req.tenantId, 'User', userSchema);
+      user = await TenantUser.findById(userId);
+      
+      if (!user) {
+        res.status(404);
+        throw new Error('User not found in tenant database');
+      }
+    }
+
+    // Only allow updating permissions for teacher accounts
+    if (user.role !== 'teacher') {
+      res.status(400);
+      throw new Error('Permission updates are only applicable to teacher accounts');
+    }
+
+    // Update the permissions fields
+    if (updates.canSendNotifications !== undefined) {
+      user.canSendNotifications = updates.canSendNotifications;
+      // Also update in main DB if this is a tenant user
+      if (mainDbUser && mainDbUser !== user) {
+        mainDbUser.canSendNotifications = updates.canSendNotifications;
+      }
+    }
+
+    if (updates.canAddGradeDescriptions !== undefined) {
+      user.canAddGradeDescriptions = updates.canAddGradeDescriptions;
+      // Also update in main DB if this is a tenant user
+      if (mainDbUser && mainDbUser !== user) {
+        mainDbUser.canAddGradeDescriptions = updates.canAddGradeDescriptions;
+      }
+    }
+
+    // Save the changes to both databases if needed
+    await user.save();
+    if (mainDbUser && mainDbUser !== user) {
+      await mainDbUser.save();
+    }
+
+    // Log timing and success
+    const elapsed = Date.now() - startTime;
+    console.log(`[${new Date().toISOString()}] User permissions updated in ${elapsed}ms for ${user.email}:`, {
+      canSendNotifications: user.canSendNotifications,
+      canAddGradeDescriptions: user.canAddGradeDescriptions
+    });
+
+    // Return only the updated user with sensitive fields removed
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.status(200).json(userResponse);
+  } catch (error) {
+    console.error('[ERROR] Updating user permissions:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error updating user permissions');
   }
 });
 

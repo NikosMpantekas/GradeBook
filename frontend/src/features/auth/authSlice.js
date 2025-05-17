@@ -166,10 +166,31 @@ export const authSlice = createSlice({
     updatePermissions: (state, action) => {
       // Only update if this is the current user
       if (state.user && state.user._id === action.payload.userId) {
-        state.user = {
+        // Create updated user object with new permissions
+        const updatedUser = {
           ...state.user,
           ...action.payload.permissions
         };
+        
+        // Update state
+        state.user = updatedUser;
+        
+        // Also update localStorage/sessionStorage to persist changes
+        try {
+          // Check which storage has the user data and update it
+          if (localStorage.getItem('user')) {
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            console.log('Updated user permissions in localStorage');
+          }
+          if (sessionStorage.getItem('user')) {
+            sessionStorage.setItem('user', JSON.stringify(updatedUser));
+            console.log('Updated user permissions in sessionStorage');
+          }
+        } catch (error) {
+          console.error('Error updating user storage:', error);
+        }
+        
+        console.log('User permissions updated:', action.payload.permissions);
       }
     },
   },
@@ -241,5 +262,5 @@ export const authSlice = createSlice({
   },
 });
 
-export const { reset } = authSlice.actions;
+export const { reset, updatePermissions } = authSlice.actions;
 export default authSlice.reducer;

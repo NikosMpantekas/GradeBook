@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import axios from 'axios';
-import { API_URL } from '../../config/appConfig';
+import { useSelector, useDispatch } from 'react-redux';
+import apiClient from '../../config/apiClient';
+import { updateUser } from '../../features/auth/authSlice';
 
 // Material UI imports
 import {
@@ -45,6 +45,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import SchoolIcon from '@mui/icons-material/School';
 import PersonIcon from '@mui/icons-material/Person';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 const ManageUsers = () => {
   const navigate = useNavigate();
@@ -62,75 +63,82 @@ const ManageUsers = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   
+  // Initialize dispatch for Redux actions
+  const dispatch = useDispatch();
+  
   // Fetch users on component mount
   useEffect(() => {
+    // Track if component is mounted to prevent state updates after unmount
+    let isMounted = true;
+    // For tracking request timeouts
+    let timeoutId = null;
+    
     // Define the fetch function
     const fetchUsers = async () => {
-      if (!user?.token) {
-        console.error('No authentication token found');
-        setError('Authentication information missing');
-        setLoading(false);
-        return;
-      }
-
       try {
-        setLoading(true);
-        setError(null);
+        if (isMounted) {
+          setLoading(true);
+          setError(null);
+        }
 
-        // Pre-fetch log to ensure the request is actually happening
-        console.log(`[${new Date().toISOString()}] Initiating users fetch request with token`);
+        console.log(`[${new Date().toISOString()}] Initiating users fetch request`);
         
-        const config = {
-          headers: { Authorization: `Bearer ${user.token}` },
-          // Add timeout to prevent infinite loading
-          timeout: 15000
-        };
-
-        // Fetch users for this tenant
-        const response = await axios.get(`${API_URL}/users/tenant`, config);
+        // Use our centralized apiClient which already handles auth tokens and timeout
+        const response = await apiClient.get('/users/tenant');
         console.log(`[${new Date().toISOString()}] Users fetched successfully:`, response.data.length);
         
-        // Update state with fetched data
-        setUsers(response.data || []);
-        setFilteredUsers(response.data || []);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setUsers(response.data || []);
+          setFilteredUsers(response.data || []);
+        }
       } catch (err) {
         console.error(`[${new Date().toISOString()}] Error fetching users:`, err);
         
-        // Specific error handling with user-friendly messages
-        if (err.response) {
-          // The request was made and the server responded with an error status code
-          const status = err.response.status;
-          const message = err.response.data?.message || err.response.statusText || 'Unknown server error';
-          console.error(`Server responded with ${status}: ${message}`);
+        // Only update error state if component is still mounted
+        if (isMounted) {
+          // Get user-friendly message from error response
+          const message = err.response?.data?.message || err.message || 'Failed to fetch users';
+          setError(message);
           
-          if (status === 401 || status === 403) {
-            setError(`Access denied: ${message}. Please check your permissions.`);
-          } else {
-            setError(`Server error (${status}): ${message}`);
-          }
-        } else if (err.request) {
-          // The request was made but no response was received (network error)
-          console.error('No response received from server');
-          setError('Network error: Could not connect to server. Please check your internet connection and try again.');
-        } else {
-          // Something else happened while setting up the request
-          console.error('Request setup error:', err.message);
-          setError(`Error preparing request: ${err.message || 'Unknown error'}`);
+          // Even on error, provide empty arrays to prevent rendering issues
+          setUsers([]);
+          setFilteredUsers([]);
         }
       } finally {
-        setLoading(false);
+        // Only update loading state if component is still mounted
+        if (isMounted) {
+          setLoading(false);
+          clearTimeout(timeoutId);
+        }
       }
     };
 
-    // Execute the fetch
-    fetchUsers();
+    // Set a timeout to prevent infinite loading states
+    timeoutId = setTimeout(() => {
+      if (isMounted && loading) {
+        console.log('User fetch timeout triggered');
+        setLoading(false);
+        setError('Request timed out. Please try again.');
+      }
+    }, 20000); // 20 second timeout as a failsafe beyond the apiClient timeout
+
+    // Execute the fetch if user is logged in
+    if (user?.token) {
+      fetchUsers();
+    } else {
+      console.error('No authentication token found');
+      setError('Authentication information missing');
+      setLoading(false);
+    }
     
-    // Cleanup function to handle component unmounting during fetch
+    // Cleanup function to prevent memory leaks
     return () => {
-      // This helps prevent state updates on unmounted components
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
       console.log('Cleaning up users fetch');
     };
-  }, [user]);
+  }, [user, loading]);
 
   // Apply filters when search query or role filter changes
   useEffect(() => {
@@ -189,53 +197,129 @@ const ManageUsers = () => {
     try {
       setLoading(true);
       
-      const config = {
-        headers: { Authorization: `Bearer ${user.token}` }
-      };
-
-      await axios.delete(`${API_URL}/users/${userToDelete._id}`, config);
+      await apiClient.delete(`/users/${userToDelete._id}`);
 
       // Remove the deleted user from state
       setUsers(prevUsers => prevUsers.filter(u => u._id !== userToDelete._id));
+      setFilteredUsers(prevUsers => prevUsers.filter(u => u._id !== userToDelete._id));
       
       // Close the dialog
-      setDeleteDialogOpen(false);
-      setUserToDelete(null);
+      handleDeleteDialogClose();
+      
+      toast.success(`${userToDelete.name} has been removed`);
     } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete user');
       console.error('Error deleting user:', err);
-      setError(err.response?.data?.message || 'Failed to delete user');
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper to get role chip color
-  const getRoleColor = (role) => {
-    switch (role) {
-      case 'admin': return 'primary';
-      case 'teacher': return 'secondary';
-      case 'student': return 'success';
-      default: return 'default';
-    }
-  };
-
-  // Helper to get role icon
+  // Function to get role icon component
   const getRoleIcon = (role) => {
     switch (role) {
-      case 'admin': return <AdminPanelSettingsIcon fontSize="small" />;
-      case 'teacher': return <SchoolIcon fontSize="small" />;
-      case 'student': return <PersonIcon fontSize="small" />;
-      default: return null;
+      case 'admin':
+        return <AdminPanelSettingsIcon />;
+      case 'teacher':
+        return <PersonIcon />;
+      case 'student':
+        return <SchoolIcon />;
+      default:
+        return <PersonIcon />;
     }
   };
 
-  if (loading && users.length === 0) {
+  // Function to get role color
+  const getRoleColor = (role) => {
+    switch (role) {
+      case 'admin':
+        return 'secondary';
+      case 'teacher':
+        return 'primary';
+      case 'student':
+        return 'info';
+      default:
+        return 'default';
+    }
+  };
+
+  // Function to update user permissions that immediately applies changes
+  // This ensures that permission changes take effect without requiring logout/login
+  const updateUserPermissions = useCallback(async (userId, permissions) => {
+    try {
+      setLoading(true);
+      
+      // Update the permissions via API
+      const response = await apiClient.patch(`/users/${userId}/permissions`, permissions);
+      
+      // If successful, update the local user list
+      if (response.status === 200) {
+        // Update the user in the users array
+        setUsers(prevUsers => prevUsers.map(u => 
+          u._id === userId ? { ...u, ...permissions } : u
+        ));
+        
+        // Also update filtered users to reflect changes immediately
+        setFilteredUsers(prevUsers => prevUsers.map(u => 
+          u._id === userId ? { ...u, ...permissions } : u
+        ));
+        
+        // If the updated user is the current logged-in user, also update Redux store
+        // This makes permission changes take effect immediately
+        if (user._id === userId) {
+          console.log('Updating current user permissions in Redux store');
+          dispatch(updatePermissions({
+            userId,
+            permissions
+          }));
+        }
+        
+        toast.success('User permissions updated successfully');
+      }
+    } catch (err) {
+      console.error('Error updating user permissions:', err);
+      toast.error(err.response?.data?.message || 'Failed to update user permissions');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, dispatch]);
+
+  if (loading) {
     return (
-      <Container sx={{ textAlign: 'center', mt: 4 }}>
-        <CircularProgress />
-        <Typography variant="body1" sx={{ mt: 2 }}>
-          Loading users...
+      <Container sx={{ mt: 4, textAlign: 'center' }}>
+        <CircularProgress size={60} thickness={4} />
+        <Typography variant="h6" sx={{ mt: 2 }}>
+          Loading user data...
         </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          This may take a few moments
+        </Typography>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container sx={{ mt: 4 }}>
+        <Paper sx={{ p: 3, borderRadius: 2, bgcolor: '#fff8f8', border: '1px solid #ffcdd2' }}>
+          <Typography variant="h5" color="error" gutterBottom>
+            Error Loading Users
+          </Typography>
+          <Typography variant="body1" paragraph>
+            {error}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Try refreshing the page or contact system administrator.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => window.location.reload()}
+            startIcon={<RefreshIcon />}
+          >
+            Refresh Page
+          </Button>
+        </Paper>
       </Container>
     );
   }

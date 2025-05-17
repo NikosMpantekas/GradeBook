@@ -33,6 +33,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SubjectIcon from '@mui/icons-material/Subject';
 import BusinessIcon from '@mui/icons-material/Business';
+import RefreshIcon from '@mui/icons-material/Refresh';
 // Removed unused icons: MenuBookIcon, DashboardIcon, AddCircleOutlineIcon
 
 const SchoolOwnerDashboard = () => {
@@ -187,21 +188,45 @@ const SchoolOwnerDashboard = () => {
     navigate(path);
   };
   
+  // Always show something on the screen, even when loading or error
+  // This prevents white screens and provides good UX
   if (loading) {
     return (
-      <Container sx={{ mt: 4, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography variant="body1" sx={{ mt: 2 }}>
-          Loading school information...
+      <Container sx={{ textAlign: 'center', mt: 4 }}>
+        <CircularProgress size={60} thickness={4} />
+        <Typography variant="h6" sx={{ mt: 2 }}>
+          Loading School Owner Dashboard...
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          This may take a few moments
         </Typography>
       </Container>
     );
   }
   
+  // Show friendly error message instead of white screen
   if (error) {
     return (
       <Container sx={{ mt: 4 }}>
-        <Alert severity="error">{error}</Alert>
+        <Paper sx={{ p: 3, borderRadius: 2, bgcolor: '#fff8f8', border: '1px solid #ffcdd2' }}>
+          <Typography variant="h5" color="error" gutterBottom>
+            Dashboard Error
+          </Typography>
+          <Typography variant="body1" paragraph>
+            {error}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Try refreshing the page or contact system administrator.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => window.location.reload()}
+            startIcon={<RefreshIcon />}
+          >
+            Refresh Page
+          </Button>
+        </Paper>
       </Container>
     );
   }

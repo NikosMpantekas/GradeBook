@@ -45,6 +45,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import SubjectIcon from '@mui/icons-material/Subject';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import CategoryIcon from '@mui/icons-material/Category';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 const ManageSubjects = () => {
   // const navigate = useNavigate(); // Commented out as it's not currently used
@@ -372,18 +373,44 @@ const ManageSubjects = () => {
   };
 
   // Helper function removed as it's not currently used
-  // const getDirectionName = (directionId) => {
-  //   const direction = directions.find(d => d._id === directionId);
-  //   return direction ? direction.name : 'N/A';
-  // };
-
-  if (loading && subjects.length === 0) {
+  
+  // Loading and error states
+  if (loading) {
     return (
-      <Container sx={{ textAlign: 'center', mt: 4 }}>
-        <CircularProgress />
-        <Typography variant="body1" sx={{ mt: 2 }}>
+      <Container sx={{ mt: 4, textAlign: 'center' }}>
+        <CircularProgress size={60} thickness={4} />
+        <Typography variant="h6" sx={{ mt: 2 }}>
           Loading subjects...
         </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          This may take a few moments
+        </Typography>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container sx={{ mt: 4 }}>
+        <Paper sx={{ p: 3, borderRadius: 2, bgcolor: '#fff8f8', border: '1px solid #ffcdd2' }}>
+          <Typography variant="h5" color="error" gutterBottom>
+            Error Loading Subjects
+          </Typography>
+          <Typography variant="body1" paragraph>
+            {error}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Try refreshing the page or contact system administrator.
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => window.location.reload()}
+            startIcon={<RefreshIcon />}
+          >
+            Refresh Page
+          </Button>
+        </Paper>
       </Container>
     );
   }

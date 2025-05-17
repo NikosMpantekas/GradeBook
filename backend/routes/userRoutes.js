@@ -8,6 +8,7 @@ const {
   getUsers,
   getUserById,
   updateUser,
+  updateUserPermissions,
   deleteUser,
   createAdminAccount,
   createUserByAdmin,
@@ -49,10 +50,12 @@ router.get('/', protect, adminOrHigher, getUsers);
 router.post('/admin/create', protect, adminOrHigher, createUserByAdmin);
 
 // Get, update and delete users with appropriate access levels
-router.get('/:id', protect, adminOrHigher, getUserById);
-router.put('/:id', protect, adminOrHigher, updateUser);
+router.route('/:id')
+  .get(protect, adminOrHigher, getUserById)
+  .put(protect, adminOrHigher, updateUser)
+  .delete(protect, schoolOwnerOrHigher, deleteUser);
 
-// Deleting users requires school owner or superadmin permissions
-router.delete('/:id', protect, schoolOwnerOrHigher, deleteUser);
+// Update user permissions - dedicated endpoint for better performance
+router.patch('/:id/permissions', protect, adminOrHigher, updateUserPermissions);
 
 module.exports = router;
