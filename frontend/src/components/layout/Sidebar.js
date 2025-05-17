@@ -15,6 +15,7 @@ import {
   Dashboard as DashboardIcon,
   School as SchoolIcon,
   MenuBook as GradesIcon,
+  MenuBook as MenuBookIcon,
   Notifications as NotificationsIcon,
   Person as PersonIcon,
   SupervisorAccount as AdminIcon,
