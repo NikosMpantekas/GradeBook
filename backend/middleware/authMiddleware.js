@@ -32,11 +32,20 @@ const protect = asyncHandler(async (req, res, next) => {
 
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
+      
       // Get user from main database first - we use main DB for authentication
       // The tenantResolver middleware will then set up the correct tenant DB connection
       const MainUser = await getModel('main', 'User', userSchema);
       const user = await MainUser.findById(decoded.id).select('-password');
+      
+      // If token has role and tenantId info, use it as a backup in case the DB record is missing it
+      if (decoded.role && !user.role) {
+        user.role = decoded.role;
+      }
+      
+      if (decoded.tenantId && !user.tenantId) {
+        user.tenantId = decoded.tenantId;
+      }
 
       if (!user) {
         res.status(401);

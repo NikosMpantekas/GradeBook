@@ -89,7 +89,7 @@ const registerUser = asyncHandler(async (req, res) => {
         email: user.email,
         role: user.role,
         tenantId: user.tenantId,
-        token: generateToken(user._id),
+        token: generateToken(user._id, user.role, user.tenantId),
       });
     } else {
       res.status(400);
@@ -161,13 +161,10 @@ const loginUser = asyncHandler(async (req, res) => {
         role: user.role,
         darkMode: user.darkMode || false,
         saveCredentials: user.saveCredentials || false,
-        token: generateToken(user._id)
+        token: generateToken(user._id, user.role, user.tenantId),
+        // Always include tenantId in the response
+        tenantId: user.tenantId || null
       };
-      
-      // Add tenantId for non-superadmin users
-      if (user.role !== 'superadmin' && user.tenantId) {
-        responseData.tenantId = user.tenantId;
-      }
       
       res.json(responseData);
     } else {
@@ -289,7 +286,7 @@ const updateProfile = asyncHandler(async (req, res) => {
       darkMode: updatedUser.darkMode,
       saveCredentials: updatedUser.saveCredentials,
       avatar: updatedUser.avatar,
-      token: generateToken(updatedUser._id),
+      token: generateToken(updatedUser._id, updatedUser.role, updatedUser.tenantId),
     });
   } else {
     res.status(404);
@@ -424,7 +421,8 @@ const getUserById = asyncHandler(async (req, res) => {
       const MainUser = await getModel('main', 'User', userSchema);
       const checkUser = await MainUser.findById(userId).select('tenantId');
       
-      if (!checkUser || !checkUser.tenantId || checkUser.tenantId.toString() !== req.user.tenantId.toString()) {
+      if (!checkUser || !checkUser.tenantId || 
+          checkUser.tenantId.toString() !== req.user.tenantId.toString()) {
         res.status(403);
         throw new Error('Not authorized to access this user');
       }
@@ -716,11 +714,19 @@ const deleteUser = asyncHandler(async (req, res) => {
   }
 });
 
-// Generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
-  });
+// Generate JWT with more user information
+const generateToken = (id, role, tenantId) => {
+  return jwt.sign(
+    { 
+      id,
+      role: role || null,
+      tenantId: tenantId || null 
+    }, 
+    process.env.JWT_SECRET, 
+    {
+      expiresIn: '30d',
+    }
+  );
 };
 
 // @desc    Create a first admin account (temporary endpoint for setup)
@@ -760,7 +766,7 @@ const createAdminAccount = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.role, user.tenantId),
     });
   } else {
     res.status(400);

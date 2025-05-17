@@ -312,11 +312,45 @@ const generateToken = (id) => {
   });
 };
 
+// @desc    Get a tenant by owner (for school_owner users)
+// @route   GET /api/tenants/owner
+// @access  Private/SchoolOwner
+const getTenantByOwner = asyncHandler(async (req, res) => {
+  try {
+    // Check if user is a school owner
+    if (!req.user || req.user.role !== 'school_owner') {
+      res.status(403);
+      throw new Error('Not authorized. Only school owners can access this endpoint');
+    }
+
+    // Get the Tenant model from the main database
+    const Tenant = await getModel('main', 'Tenant', tenantSchema);
+    
+    // Find a tenant where the owner is the current user
+    const tenant = await Tenant.findOne({ owner: req.user._id });
+    
+    if (!tenant) {
+      res.status(404);
+      throw new Error('No tenant found linked to your account');
+    }
+    
+    res.json(tenant);
+  } catch (error) {
+    console.error('Error fetching tenant by owner:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error retrieving tenant');
+  }
+});
+
 module.exports = {
-  createTenant,
   getTenants,
+  createTenant,
   getTenantById,
   updateTenant,
   deleteTenant,
-  createSuperAdmin
+  getTenantStats,
+  inviteUserToTenant,
+  createSuperAdmin,
+  getTenantByOwner,
+  generateToken
 };

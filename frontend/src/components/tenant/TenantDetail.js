@@ -64,12 +64,15 @@ const TenantDetail = () => {
     const fetchTenantDetails = async () => {
       try {
         setLoading(true);
+        setError(null);
         
         if (!user || !user.tenantId) {
-          setError('No tenant information available');
-          setLoading(false);
+          console.error('No tenant ID available in user object:', user);
+          setError('No tenant information available. Please contact the system administrator.');
           return;
         }
+        
+        console.log('Fetching tenant details for:', user.tenantId);
         
         const config = {
           headers: {
@@ -77,37 +80,84 @@ const TenantDetail = () => {
           }
         };
         
-        const response = await axios.get(`${API_URL}/tenants/${user.tenantId}`, config);
-        setTenant(response.data);
+        // Try primary method - fetch tenant by ID
+        let tenantData = null;
+        let fetchSuccess = false;
         
-        // Initialize form data with tenant details
-        setFormData({
-          name: response.data.name || '',
-          contactEmail: response.data.contactEmail || '',
-          contactPhone: response.data.contactPhone || '',
-          address: response.data.address || ''
-        });
-        
-        // Also fetch statistics
-        if (user.role === 'school_owner' || user.role === 'admin') {
-          const statsResponse = await axios.get(`${API_URL}/tenants/${user.tenantId}/stats`, config);
-          setStats(statsResponse.data);
+        try {
+          const response = await axios.get(`${API_URL}/tenants/${user.tenantId}`, config);
+          console.log('Tenant data retrieved by ID:', response.data);
+          tenantData = response.data;
+          fetchSuccess = true;
+        } catch (primaryErr) {
+          console.log('Primary tenant fetch failed, trying fallback', primaryErr);
+          
+          // Fallback for school owners - try to get tenant where they are the owner
+          if (user.role === 'school_owner') {
+            try {
+              console.log('Attempting fallback fetch for school owner');
+              const ownerResponse = await axios.get(`${API_URL}/tenants/owner`, config);
+              if (ownerResponse.data) {
+                console.log('Tenant data retrieved via owner endpoint:', ownerResponse.data);
+                tenantData = ownerResponse.data;
+                fetchSuccess = true;
+              }
+            } catch (fallbackErr) {
+              console.error('Both primary and fallback tenant fetch failed:', fallbackErr);
+            }
+          }
         }
         
-        setError(null);
+        // Process the tenant data if we got it from either method
+        if (fetchSuccess && tenantData) {
+          setTenant(tenantData);
+          
+          // Initialize form data with tenant details
+          setFormData({
+            name: tenantData.name || '',
+            contactEmail: tenantData.contactEmail || '',
+            contactPhone: tenantData.contactPhone || '',
+            address: tenantData.address || ''
+          });
+          
+          // Try to fetch statistics (non-critical)
+          try {
+            if (user.role === 'school_owner' || user.role === 'admin') {
+              const statsResponse = await axios.get(`${API_URL}/tenants/${tenantData._id}/stats`, config);
+              setStats(statsResponse.data);
+            }
+          } catch (statsErr) {
+            console.error('Error fetching tenant stats:', statsErr);
+            // Don't fail the whole component if just stats fail
+          }
+        } else {
+          setError('Could not find tenant information for your account');
+          setFormData({
+            name: '',
+            contactEmail: '',
+            contactPhone: '',
+            address: ''
+          });
+        }
       } catch (err) {
-        setError(err.response?.data?.message || 'Error fetching tenant details');
-        console.error('Error fetching tenant details:', err);
+        console.error('Unexpected error in tenant details:', err);
+        setError('An unexpected error occurred. Please try again later.');
+        setFormData({
+          name: '',
+          contactEmail: '',
+          contactPhone: '',
+          address: ''
+        });
       } finally {
         setLoading(false);
       }
     };
     
     // Only fetch if user is school owner or admin
-    if (user && (user.role === 'school_owner' || user.role === 'admin')) {
+    if (user && (user.role === 'school_owner' || user.role === 'admin' || user.role === 'superadmin')) {
       fetchTenantDetails();
     } else {
-      setError('Unauthorized: Only school owners and admins can access this page');
+      setError('Unauthorized: Only school owners, admins, and superadmins can access this page');
       setLoading(false);
     }
   }, [user]);
@@ -148,11 +198,12 @@ const TenantDetail = () => {
   };
   
   // Not authorized if not school owner or admin
-  if (user && !(user.role === 'school_owner' || user.role === 'admin')) {
+  // Check if user has appropriate role
+  if (user && !(user.role === 'school_owner' || user.role === 'admin' || user.role === 'superadmin')) {
     return (
       <Container sx={{ mt: 4 }}>
         <Alert severity="error">
-          You are not authorized to access this page. Only school owners and admins can manage tenant details.
+          You are not authorized to access this page. Only school owners, admins, and superadmins can manage tenant details.
         </Alert>
       </Container>
     );

@@ -6,7 +6,10 @@ const {
   getTenantById,
   updateTenant,
   deleteTenant,
-  createSuperAdmin
+  getTenantStats,
+  inviteUserToTenant,
+  createSuperAdmin,
+  getTenantByOwner
 } = require('../controllers/tenantController');
 
 const { protect } = require('../middleware/authMiddleware');
@@ -22,8 +25,14 @@ router.post('/', protect, superadminOnly, createTenant);
 router.get('/', protect, superadminOnly, getTenants);
 router.delete('/:id', protect, superadminOnly, deleteTenant);
 
+// Special route for school owners to get their tenant information by owner status
+router.get('/owner', protect, schoolOwnerOrHigher, getTenantByOwner);
+
 // School owner can view their own tenant or superadmin can view any
 router.get('/:id', protect, schoolOwnerOrHigher, getTenantById);
+
+// Get tenant stats
+router.get('/:id/stats', protect, schoolOwnerOrHigher, getTenantStats);
 // School owner can update certain aspects of their tenant, superadmin all aspects
 router.put('/:id', protect, schoolOwnerOrHigher, updateTenant);
 
