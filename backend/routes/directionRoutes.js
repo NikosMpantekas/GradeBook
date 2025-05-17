@@ -7,7 +7,8 @@ const {
   updateDirection,
   deleteDirection,
 } = require('../controllers/directionController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
+const { admin } = require('../middleware/tenantMiddleware');
 
 // Public routes
 router.get('/', getDirections);

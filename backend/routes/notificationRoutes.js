@@ -10,7 +10,8 @@ const {
   deleteNotification,
   markNotificationAsRead,
 } = require('../controllers/notificationController');
-const { protect, admin, teacher } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
+const { admin, teacher } = require('../middleware/tenantMiddleware');
 
 // Protected routes
 router.get('/me', protect, getMyNotifications);

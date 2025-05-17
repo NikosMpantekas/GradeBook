@@ -10,7 +10,8 @@ const {
   updateGrade,
   deleteGrade,
 } = require('../controllers/gradeController');
-const { protect, admin, teacher } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
+const { admin, teacher } = require('../middleware/tenantMiddleware');
 
 // Protected routes
 router.get('/student/:id', protect, getStudentGrades);

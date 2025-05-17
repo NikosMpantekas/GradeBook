@@ -7,7 +7,8 @@ const {
   updateSchool,
   deleteSchool,
 } = require('../controllers/schoolController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
+const { admin } = require('../middleware/tenantMiddleware');
 
 // Public routes
 router.get('/', getSchools);
