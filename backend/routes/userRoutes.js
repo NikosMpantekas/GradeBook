@@ -37,6 +37,9 @@ router.get('/students', protect, teacherOrHigher, getStudents);
 // Role-based user filtering - for admin functionality including notifications
 router.get('/role/:role', protect, adminOrHigher, getUsersByRole);
 
+// Get users for the current tenant - for school owner dashboard
+router.get('/tenant', protect, schoolOwnerOrHigher, getUsersByTenant);
+
 // Admin routes with proper role-based access control
 // Get all users - admin or higher in their tenant context
 router.get('/', protect, adminOrHigher, getUsers);

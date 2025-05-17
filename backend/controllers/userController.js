@@ -1118,6 +1118,40 @@ const getUsersByRole = asyncHandler(async (req, res) => {
   res.json(users);
 });
 
+// @desc    Get users for the current tenant
+// @route   GET /api/users/tenant
+// @access  Private/SchoolOwner or Admin
+const getUsersByTenant = asyncHandler(async (req, res) => {
+  try {
+    // Ensure user has proper permissions
+    if (!req.user || (req.user.role !== 'superadmin' && 
+        req.user.role !== 'school_owner' && 
+        req.user.role !== 'admin')) {
+      res.status(403);
+      throw new Error('Not authorized to access user list');
+    }
+
+    if (!req.tenantId) {
+      res.status(400);
+      throw new Error('Tenant ID not found');
+    }
+    
+    // Get the User model for this tenant
+    const UserModel = await getModel(req.tenantId, 'User', userSchema);
+    
+    // Find all users in this tenant
+    const users = await UserModel.find({})
+      .select('-password')
+      .populate('school', 'name');
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users by tenant:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error retrieving users');
+  }
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -1133,4 +1167,5 @@ module.exports = {
   getStudents,
   getStudentsBySubject,
   getUsersByRole,
+  getUsersByTenant,
 };

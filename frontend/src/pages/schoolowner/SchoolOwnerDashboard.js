@@ -58,8 +58,8 @@ const SchoolOwnerDashboard = () => {
         setLoading(true);
         setError(null);
         
-        if (!user?.token || !user?.tenantId) {
-          setError('User information is missing');
+        if (!user?.token) {
+          setError('Authentication information missing');
           setLoading(false);
           return;
         }
@@ -68,30 +68,54 @@ const SchoolOwnerDashboard = () => {
           headers: { Authorization: `Bearer ${user.token}` }
         };
         
+        console.log('Fetching tenant information for school owner dashboard...');
+        
         // First, fetch tenant information
         const tenantResponse = await axios.get(
           `${API_URL}/tenants/owner`, 
           config
         );
         
+        console.log('Tenant information fetched successfully');
+        
         if (tenantResponse.data) {
           setTenantInfo(tenantResponse.data);
           
           // Then fetch tenant stats
           try {
+            console.log('Fetching tenant statistics...');
             const statsResponse = await axios.get(
               `${API_URL}/tenants/${tenantResponse.data._id}/stats`, 
               config
             );
+            console.log('Tenant statistics fetched successfully');
             setStats(statsResponse.data);
           } catch (statsErr) {
             console.error('Error fetching stats:', statsErr);
+            // More detailed error handling for stats
+            if (statsErr.response) {
+              console.warn(`Stats API responded with error: ${statsErr.response.status} - ${statsErr.response.data?.message || 'Unknown error'}`);
+            } else if (statsErr.request) {
+              console.warn('No response received when fetching stats');
+            } else {
+              console.warn(`Stats error: ${statsErr.message}`);
+            }
             // Don't fail entire component if just stats fail
           }
         }
       } catch (err) {
         console.error('Error fetching tenant info:', err);
-        setError(err.response?.data?.message || 'Failed to load tenant information');
+        // More detailed error handling
+        if (err.response) {
+          // Server responded with an error
+          setError(`Server error: ${err.response.data?.message || err.response.statusText || 'Unknown error'}`);
+        } else if (err.request) {
+          // Request was made but no response
+          setError('Network error: Could not connect to server. Please try again later.');
+        } else {
+          // Error in setting up the request
+          setError(`Error: ${err.message || 'Unknown error'}`);
+        }
       } finally {
         setLoading(false);
       }

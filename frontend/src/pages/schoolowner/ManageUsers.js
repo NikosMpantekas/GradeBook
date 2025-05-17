@@ -69,7 +69,7 @@ const ManageUsers = () => {
         setLoading(true);
         setError(null);
 
-        if (!user?.token || !user?.tenantId) {
+        if (!user?.token) {
           setError('Authentication information missing');
           setLoading(false);
           return;
@@ -80,12 +80,24 @@ const ManageUsers = () => {
         };
 
         // Fetch users for this tenant
+        console.log('Fetching users for tenant...');
         const response = await axios.get(`${API_URL}/users/tenant`, config);
+        console.log('Users fetched successfully:', response.data.length);
         setUsers(response.data);
         setFilteredUsers(response.data);
       } catch (err) {
         console.error('Error fetching users:', err);
-        setError(err.response?.data?.message || 'Failed to load users');
+        // More detailed error handling
+        if (err.response) {
+          // Server responded with an error
+          setError(`Server error: ${err.response.data?.message || err.response.statusText || 'Unknown error'}`);
+        } else if (err.request) {
+          // Request was made but no response
+          setError('Network error: Could not connect to server. Please try again later.');
+        } else {
+          // Error in setting up the request
+          setError(`Error: ${err.message || 'Unknown error'}`);
+        }
       } finally {
         setLoading(false);
       }

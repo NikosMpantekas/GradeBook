@@ -142,13 +142,13 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle }) => {
       },
       {
         text: 'Manage Schools',
-        icon: <SchoolsIcon />,
+        icon: <SchoolIcon />,
         path: '/app/school-owner/schools',
         roles: ['school_owner'],
       },
       {
         text: 'Manage Subjects',
-        icon: <SubjectsIcon />,
+        icon: <MenuBookIcon />,
         path: '/app/school-owner/subjects',
         roles: ['school_owner'],
       },

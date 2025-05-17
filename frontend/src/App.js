@@ -50,6 +50,8 @@ import ManageSubjects from './pages/admin/ManageSubjects';
 // School Owner Pages
 import SchoolOwnerDashboard from './pages/schoolowner/SchoolOwnerDashboard';
 import SchoolOwnerManageUsers from './pages/schoolowner/ManageUsers';
+import SchoolOwnerManageSchools from './pages/schoolowner/ManageSchools';
+import SchoolOwnerManageSubjects from './pages/schoolowner/ManageSubjects';
 
 // Tenant Management Pages
 import TenantDashboard from './components/tenant/TenantDashboard';
@@ -283,12 +285,12 @@ function App() {
             } />
             <Route path="/app/school-owner/schools" element={
               <SchoolOwnerRoute>
-                <ManageSchools />
+                <SchoolOwnerManageSchools />
               </SchoolOwnerRoute>
             } />
             <Route path="/app/school-owner/subjects" element={
               <SchoolOwnerRoute>
-                <ManageSubjects />
+                <SchoolOwnerManageSubjects />
               </SchoolOwnerRoute>
             } />
             <Route path="/app/school-owner/notifications" element={
