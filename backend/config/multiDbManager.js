@@ -128,8 +128,12 @@ const connectTenantDB = async (tenantId, dbName = null) => {
  */
 const getModel = async (dbId, modelName, schema) => {
   try {
+    // Enhanced logging to troubleshoot schema issues
+    console.log(`Attempting to get model ${modelName} for database ${dbId}`);
+    
     // Cache check - if we already have this model for this tenant
     if (models[dbId] && models[dbId][modelName]) {
+      console.log(`Using cached model ${modelName} for ${dbId}`);
       return models[dbId][modelName];
     }
     
@@ -139,30 +143,64 @@ const getModel = async (dbId, modelName, schema) => {
     }
 
     // Get the right connection
-    const connection = dbId === 'main' ? 
-      await connectMainDB() : 
-      await connectTenantDB(dbId);
+    let connection;
+    try {
+      connection = dbId === 'main' ? 
+        await connectMainDB() : 
+        await connectTenantDB(dbId);
+        
+      console.log(`Successfully connected to database for ${dbId}`);
+    } catch (connErr) {
+      console.error(`Connection error for ${dbId}:`, connErr);
+      throw connErr;
+    }
 
     // Check if the model already exists in this connection
     if (connection.models[modelName]) {
       // Use existing model if it already exists
       const model = connection.models[modelName];
+      console.log(`Using existing model ${modelName} from connection`);
+      
       // Cache the model for future use
       models[dbId][modelName] = model;
       return model;
     }
     
     // Validate schema before creating a model
-    if (!schema || !schema.obj) {
-      throw new Error(`Invalid schema provided for model ${modelName}`);
+    if (!schema) {
+      console.error(`No schema provided for model ${modelName}`);
+      throw new Error(`No schema provided for model ${modelName}`);
+    }
+    
+    // More robust schema validation
+    if (typeof schema !== 'object' || (!schema.obj && !schema.paths)) {
+      console.error(`Invalid schema structure for ${modelName}:`, typeof schema);
+      
+      // Try to load schema directly from models directory if available
+      try {
+        console.log(`Attempting to load ${modelName} schema from models directory`);
+        const loadedSchema = require(`../models/${modelName.toLowerCase()}Model`);
+        
+        if (loadedSchema && (loadedSchema.obj || loadedSchema.paths)) {
+          console.log(`Successfully loaded schema for ${modelName} from models directory`);
+          schema = loadedSchema;
+        } else {
+          throw new Error(`Loaded schema for ${modelName} is invalid`);
+        }
+      } catch (schemaLoadErr) {
+        console.error(`Failed to load schema for ${modelName} from models:`, schemaLoadErr.message);
+        throw new Error(`Invalid schema provided for model ${modelName}`);
+      }
     }
 
     // Create a new model with the schema
+    console.log(`Creating new model ${modelName} for ${dbId}`);
     const model = connection.model(modelName, schema);
     
     // Cache the model for future use
     models[dbId][modelName] = model;
     
+    console.log(`Successfully created and cached model ${modelName} for ${dbId}`);
     return model;
   } catch (error) {
     console.error(

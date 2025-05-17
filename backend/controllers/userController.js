@@ -1122,34 +1122,87 @@ const getUsersByRole = asyncHandler(async (req, res) => {
 // @route   GET /api/users/tenant
 // @access  Private/SchoolOwner or Admin
 const getUsersByTenant = asyncHandler(async (req, res) => {
-  // Console log for debugging
-  console.log('getUsersByTenant called, user:', req.user?.email, 'role:', req.user?.role, 'tenantId:', req.tenantId);
-  
-  // Ensure user has proper permissions
-  if (!req.user || (req.user.role !== 'superadmin' && 
-      req.user.role !== 'school_owner' && 
-      req.user.role !== 'admin')) {
-    res.status(403);
-    throw new Error('Not authorized to access user list');
-  }
+  try {
+    const startTime = Date.now();
+    console.log(`[${new Date().toISOString()}] getUsersByTenant called:`, {
+      user: req.user?.email,
+      role: req.user?.role,
+      tenantId: req.tenantId
+    });
+    
+    // Ensure user has proper permissions
+    if (!req.user) {
+      console.error('No user found in request');
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    if (req.user.role !== 'superadmin' && 
+        req.user.role !== 'school_owner' && 
+        req.user.role !== 'admin') {
+      console.error(`User ${req.user.email} with role ${req.user.role} not authorized to access user list`);
+      return res.status(403).json({ message: 'Not authorized to access user list' });
+    }
 
-  if (!req.tenantId) {
-    res.status(400);
-    throw new Error('Tenant ID not found');
+    // Determine which tenantId to use
+    let tenantId;
+    if (req.user.role === 'superadmin' && req.query.tenantId) {
+      // Superadmin can specify a tenant ID in query
+      tenantId = req.query.tenantId;
+      console.log(`Superadmin accessing tenant ${tenantId}`);
+    } else if (req.user.role === 'school_owner' || req.user.role === 'admin') {
+      // School owner or admin uses their assigned tenant
+      tenantId = req.user.tenantId?.toString();
+      console.log(`School owner/admin using their tenant ${tenantId}`);
+    } else if (req.tenantId) {
+      // Fallback to req.tenantId from middleware
+      tenantId = req.tenantId;
+      console.log(`Using tenantId from middleware: ${tenantId}`);
+    }
+    
+    if (!tenantId) {
+      console.error('No tenant ID could be determined');
+      return res.status(400).json({ 
+        message: 'Tenant ID not found. Please ensure you are associated with a tenant.' 
+      });
+    }
+    
+    // Get the User model for this tenant with additional error handling
+    let UserModel;
+    try {
+      UserModel = await getModel(tenantId, 'User', userSchema);
+      console.log(`Successfully got User model for tenant ${tenantId}`);
+    } catch (modelError) {
+      console.error(`Error getting User model for tenant ${tenantId}:`, modelError);
+      return res.status(500).json({ 
+        message: `Database error: Could not access user records for tenant ${tenantId}` 
+      });
+    }
+    
+    // Find all users in this tenant with lean() for better performance
+    // And with a timeout to prevent long-running queries
+    try {
+      const users = await UserModel.find({})
+        .select('-password')
+        .populate('school', 'name')
+        .lean()
+        .exec();
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`Found ${users.length} users for tenant ${tenantId} in ${elapsed}ms`);
+      
+      return res.status(200).json(users);
+    } catch (queryError) {
+      console.error(`Error querying users for tenant ${tenantId}:`, queryError);
+      return res.status(500).json({ 
+        message: 'Database error while retrieving users. Please try again later.' 
+      });
+    }
+  } catch (error) {
+    console.error(`Unexpected error in getUsersByTenant:`, error);
+    return res.status(500).json({ 
+      message: 'An unexpected error occurred while retrieving users' 
+    });
   }
-  
-  // Get the User model for this tenant
-  const UserModel = await getModel(req.tenantId, 'User', userSchema);
-  
-  // Find all users in this tenant with lean() for better performance
-  const users = await UserModel.find({})
-    .select('-password')
-    .populate('school', 'name')
-    .lean();
-  
-  console.log(`Found ${users.length} users for tenant ${req.tenantId}`);
-  
-  return res.status(200).json(users);
 });
 
 module.exports = {
