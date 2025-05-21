@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const registerSchemaModels = require('./registerSchemaModels');
 
 // Store database connections for each school
 const schoolConnections = new Map();
@@ -99,6 +100,12 @@ const connectToSchoolDb = async (school) => {
           family: 4,                       // Force IPv4
           maxPoolSize: 10                  // Increase connection pool
         });
+        
+        // Register all required schema models in this connection
+        // This is critical for populate() to work properly with references
+        registerSchemaModels(connection);
+        
+        console.log(`Connection to school database ${school.name} successful!`);
         
         // CRITICAL FIX: Test connection without relying on database features
         // First, verify the connection object exists

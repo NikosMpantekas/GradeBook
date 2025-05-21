@@ -119,8 +119,11 @@ const logout = () => {
   });
   
   // Force reload to clear React component state and Redux store
-  // Using replace instead of href to prevent back navigation
-  window.location.replace('/login');
+  // Using location.replace prevents back-button navigation to the post-login state
+  // Use a random cache busting parameter to prevent browser cache issues
+  console.log('Redirecting to login page and forcing a complete page reload');
+  const cacheBuster = new Date().getTime();
+  window.location.replace(`/login?cache=${cacheBuster}`);
 };
 
 // Get current user data with populated fields
