@@ -5,7 +5,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.3.46'; // Fixed critical bug with student school/direction data not being properly stored and populated in the database
+const APP_VERSION = '1.3.47'; // Fixed critical MongoDB reference bug for school/direction data with improved data population mechanism
 
 // Store version in localStorage to detect updates across refreshes
 const storeAppVersion = () => {

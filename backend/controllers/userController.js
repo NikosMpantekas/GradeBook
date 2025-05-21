@@ -386,47 +386,100 @@ const getUsers = asyncHandler(async (req, res) => {
         console.warn('Not all required models are registered, references may not populate correctly');
       }
       
-      // Get users from the school's database with proper population of references
-      // CRITICAL FIX: ensure nested fields are fully populated with explicit path specification
-      users = await SchoolUser.find({}).select('-password')
-        .populate({
-          path: 'school',
-          select: 'name _id',
-          model: models.School
-        })
-        .populate({
-          path: 'direction',
-          select: 'name _id',
-          model: models.Direction
-        })
-        .populate({
-          path: 'schools',
-          select: 'name _id',
-          model: models.School
-        })
-        .populate({
-          path: 'directions',
-          select: 'name _id',
-          model: models.Direction
-        })
-        .populate({
-          path: 'subjects',
-          select: 'name _id',
-          model: models.Subject
-        });
+      // COMPLETE REWRITE OF POPULATION MECHANISM:
+      // First get all users without population
+      const rawUsers = await SchoolUser.find({}).select('-password').lean();
+      console.log(`Found ${rawUsers.length} raw users in school database`);
       
-      // Verify population worked properly
+      // Get all schools, directions, and subjects in a single query for manual linking
+      const schools = await models.School.find({}).select('name _id').lean();
+      const directions = await models.Direction.find({}).select('name _id').lean();
+      const subjects = await models.Subject.find({}).select('name _id').lean();
+      
+      console.log(`Loaded references: ${schools.length} schools, ${directions.length} directions, ${subjects.length} subjects`);
+      
+      // Create lookup maps for faster access
+      const schoolMap = new Map(schools.map(s => [s._id.toString(), s]));
+      const directionMap = new Map(directions.map(d => [d._id.toString(), d]));
+      const subjectMap = new Map(subjects.map(s => [s._id.toString(), s]));
+      
+      // Manually link references for each user
+      users = rawUsers.map(user => {
+        // Create a new user object to avoid modifying the original
+        const populatedUser = { ...user };
+        
+        // Manually populate school for students
+        if (user.school && user.role === 'student') {
+          const schoolId = user.school.toString();
+          if (schoolMap.has(schoolId)) {
+            populatedUser.school = schoolMap.get(schoolId);
+            console.log(`Manually populated school ${schoolId} for student ${user._id}`);
+          } else {
+            console.log(`School ${schoolId} not found for student ${user._id}`);
+          }
+        }
+        
+        // Manually populate direction for students
+        if (user.direction && user.role === 'student') {
+          const directionId = user.direction.toString();
+          if (directionMap.has(directionId)) {
+            populatedUser.direction = directionMap.get(directionId);
+            console.log(`Manually populated direction ${directionId} for student ${user._id}`);
+          } else {
+            console.log(`Direction ${directionId} not found for student ${user._id}`);
+          }
+        }
+        
+        // Handle array fields (schools, directions, subjects)
+        if (Array.isArray(user.schools)) {
+          populatedUser.schools = user.schools
+            .map(id => {
+              const schoolId = id.toString();
+              return schoolMap.get(schoolId) || null;
+            })
+            .filter(Boolean);
+        } else {
+          populatedUser.schools = [];
+        }
+        
+        if (Array.isArray(user.directions)) {
+          populatedUser.directions = user.directions
+            .map(id => {
+              const directionId = id.toString();
+              return directionMap.get(directionId) || null;
+            })
+            .filter(Boolean);
+        } else {
+          populatedUser.directions = [];
+        }
+        
+        if (Array.isArray(user.subjects)) {
+          populatedUser.subjects = user.subjects
+            .map(id => {
+              const subjectId = id.toString();
+              return subjectMap.get(subjectId) || null;
+            })
+            .filter(Boolean);
+        } else {
+          populatedUser.subjects = [];
+        }
+        
+        return populatedUser;
+      });
+      
+      // Log population status for debugging
       const populationCheck = users.map(user => ({
         id: user._id,
-        school: user.school ? 'Populated' : 'Missing',
-        direction: user.direction ? 'Populated' : 'Missing',
-        schools: user.schools ? `Array(${user.schools.length})` : 'Missing',
-        directions: user.directions ? `Array(${user.directions.length})` : 'Missing',
-        subjects: user.subjects ? `Array(${user.subjects.length})` : 'Missing'
+        role: user.role,
+        school: user.school && typeof user.school === 'object' ? 'Populated' : 'Missing',
+        direction: user.direction && typeof user.direction === 'object' ? 'Populated' : 'Missing',
+        schools: Array.isArray(user.schools) ? `Array(${user.schools.length})` : 'Missing',
+        directions: Array.isArray(user.directions) ? `Array(${user.directions.length})` : 'Missing',
+        subjects: Array.isArray(user.subjects) ? `Array(${user.subjects.length})` : 'Missing'
       }));
       
-      console.log('Population check results:', populationCheck);
-      console.log(`Retrieved ${users.length} users with populated data`);
+      console.log('Manual population results:', populationCheck);
+      console.log(`Processed ${users.length} users with manual population`);
     } else {
       // This is a superadmin or a user in the main database
       console.log('Fetching users from main database');
@@ -448,49 +501,85 @@ const getUsers = asyncHandler(async (req, res) => {
       userData.mobilePhone = userData.mobilePhone || '';
       userData.personalEmail = userData.personalEmail || '';
       
-      // CRITICAL: Ensure proper handling of school/direction fields based on role
+      // COMPLETE REDESIGN: Enhanced data handling for all user roles
+      // 1. Basic fields all users need
+      userData.mobilePhone = userData.mobilePhone || '';
+      userData.personalEmail = userData.personalEmail || '';
+      
+      // 2. Role-specific field handling
       if (userData.role === 'student') {
-        // FIXED: Better handling of populated vs unpopulated school/direction fields
+        // STUDENT: Handle school references
         if (!userData.school) {
           console.log(`Warning: Student ${userData._id} has no school assigned`);
+          userData.school = { _id: null, name: 'Unassigned' };
+          userData.schoolDisplay = 'Unassigned';
+        } else if (typeof userData.school === 'object' && userData.school.name) {
+          // School is already a populated object with name
+          userData.schoolDisplay = userData.school.name;
+          console.log(`Student ${userData.name} school: ${userData.schoolDisplay}`);
         } else {
-          // School might be a populated object or just an ID reference
-          console.log(`Student ${userData._id} school:`, {
-            type: typeof userData.school,
-            id: typeof userData.school === 'object' ? userData.school._id : userData.school,
-            name: typeof userData.school === 'object' ? userData.school.name : 'ID only'
-          });
+          // School is just an ID reference or incomplete object
+          const schoolId = typeof userData.school === 'object' ? userData.school._id : userData.school;
+          userData.schoolDisplay = `School ID: ${schoolId}`;
+          console.log(`Student ${userData.name} has unpopulated school: ${schoolId}`);
         }
         
+        // STUDENT: Handle direction references
         if (!userData.direction) {
           console.log(`Warning: Student ${userData._id} has no direction assigned`);
+          userData.direction = { _id: null, name: 'Unassigned' };
+          userData.directionDisplay = 'Unassigned';
+        } else if (typeof userData.direction === 'object' && userData.direction.name) {
+          // Direction is already a populated object with name
+          userData.directionDisplay = userData.direction.name;
+          console.log(`Student ${userData.name} direction: ${userData.directionDisplay}`);
         } else {
-          // Direction might be a populated object or just an ID reference
-          console.log(`Student ${userData._id} direction:`, {
-            type: typeof userData.direction,
-            id: typeof userData.direction === 'object' ? userData.direction._id : userData.direction,
-            name: typeof userData.direction === 'object' ? userData.direction.name : 'ID only'
-          });
+          // Direction is just an ID reference or incomplete object
+          const directionId = typeof userData.direction === 'object' ? userData.direction._id : userData.direction;
+          userData.directionDisplay = `Direction ID: ${directionId}`;
+          console.log(`Student ${userData.name} has unpopulated direction: ${directionId}`);
         }
         
-        // Add array versions for frontend compatibility and ensure proper format
-        userData.schools = userData.school ? (Array.isArray(userData.school) ? userData.school : [userData.school]) : [];
-        userData.directions = userData.direction ? (Array.isArray(userData.direction) ? userData.direction : [userData.direction]) : [];
-        userData.subjects = userData.subjects || [];
+        // Ensure arrays exist for consistent frontend handling
+        userData.schools = userData.school ? [userData.school] : [];
+        userData.directions = userData.direction ? [userData.direction] : [];
+        userData.subjects = Array.isArray(userData.subjects) ? userData.subjects : [];
         
-        // Make sure the original school/direction fields are preserved
-        // Don't modify them if already populated correctly
+        // Log what we're sending to the frontend
+        console.log(`User ${userData.name} (${userData._id}) data:`, {
+          'mobilePhone': userData.mobilePhone || 'Not set',
+          'personalEmail': userData.personalEmail || 'Not set',
+          'school': userData.schoolDisplay || 'Not set',
+          'direction': userData.directionDisplay || 'Not set',
+          'subjects': userData.subjects ? userData.subjects.length : 0
+        });
       } 
-      // For teachers and secretaries, ensure they have array fields
+      // TEACHER/SECRETARY: Handle multiple schools and directions
       else if (userData.role === 'teacher' || userData.role === 'secretary') {
-        // Ensure required arrays are initialized
-        userData.schools = userData.schools || [];
-        userData.directions = userData.directions || [];
-        userData.subjects = userData.subjects || [];
+        // Ensure all array fields exist
+        userData.schools = Array.isArray(userData.schools) ? userData.schools : [];
+        userData.directions = Array.isArray(userData.directions) ? userData.directions : [];
+        userData.subjects = Array.isArray(userData.subjects) ? userData.subjects : [];
         
-        // Add singular fields for backward compatibility
-        userData.school = userData.schools && userData.schools.length > 0 ? userData.schools[0] : null;
-        userData.direction = userData.directions && userData.directions.length > 0 ? userData.directions[0] : null;
+        // Process schools for display
+        userData.schoolsDisplay = userData.schools
+          .map(school => typeof school === 'object' && school.name ? school.name : 'Unknown School')
+          .join(', ') || 'None';
+          
+        // Process directions for display
+        userData.directionsDisplay = userData.directions
+          .map(direction => typeof direction === 'object' && direction.name ? direction.name : 'Unknown Direction')
+          .join(', ') || 'None';
+          
+        // For backward compatibility
+        userData.school = userData.schools.length > 0 ? userData.schools[0] : null;
+        userData.direction = userData.directions.length > 0 ? userData.directions[0] : null;
+        
+        console.log(`${userData.role} ${userData.name} references:`, {
+          schools: userData.schoolsDisplay,
+          directions: userData.directionsDisplay,
+          'subjects count': userData.subjects.length
+        });
       }
       
       // For secretaries, ensure permissions are present
@@ -742,13 +831,16 @@ const updateUser = asyncHandler(async (req, res) => {
         const schoolsArray = Array.isArray(schoolsInput) ? schoolsInput : [schoolsInput].filter(Boolean);
         console.log(`Processing ${schoolsArray.length} schools for teacher update`);
         
-        // Convert to proper ObjectIds
+        // Convert to proper ObjectIds with robust handling
         user.schools = schoolsArray.map(id => {
-          if (mongoose.Types.ObjectId.isValid(id)) {
-            return new mongoose.Types.ObjectId(id);
+          // Handle case where ID might be in an object or directly as a string
+          const rawId = typeof id === 'object' && id._id ? id._id : id;
+          if (mongoose.Types.ObjectId.isValid(rawId)) {
+            return new mongoose.Types.ObjectId(rawId);
           }
-          return id; // Let validation catch any invalid IDs
-        });
+          console.warn('Invalid school ID format:', id);
+          return null; // Skip invalid IDs
+        }).filter(Boolean); // Remove nulls
         
         // Clear the singular school field for teachers
         user.school = null;
@@ -765,13 +857,16 @@ const updateUser = asyncHandler(async (req, res) => {
         const directionsArray = Array.isArray(directionsInput) ? directionsInput : [directionsInput].filter(Boolean);
         console.log(`Processing ${directionsArray.length} directions for teacher update`);
         
-        // Convert to proper ObjectIds
+        // Convert to proper ObjectIds with robust handling
         user.directions = directionsArray.map(id => {
-          if (mongoose.Types.ObjectId.isValid(id)) {
-            return new mongoose.Types.ObjectId(id);
+          // Handle case where ID might be in an object or directly as a string
+          const rawId = typeof id === 'object' && id._id ? id._id : id;
+          if (mongoose.Types.ObjectId.isValid(rawId)) {
+            return new mongoose.Types.ObjectId(rawId);
           }
-          return id; // Let validation catch any invalid IDs
-        });
+          console.warn('Invalid direction ID format:', id);
+          return null; // Skip invalid IDs
+        }).filter(Boolean); // Remove nulls
         
         // Clear the singular direction field for teachers
         user.direction = null;
@@ -782,38 +877,52 @@ const updateUser = asyncHandler(async (req, res) => {
       // FOR STUDENTS: Use singular school and direction fields
       console.log('UPDATING STUDENT ACCOUNT - USING SINGULAR FIELDS');
       
-      // Process singular school field for students
+      // CRITICAL FIX: Improved processing of school field for students
       if (req.body.school !== undefined) {
         // Extract single value (if array is mistakenly provided)
-        const schoolValue = Array.isArray(req.body.school) ? req.body.school[0] : req.body.school;
+        let schoolValue = Array.isArray(req.body.school) ? req.body.school[0] : req.body.school;
+        
+        // Handle case where school might be an object with _id property
+        if (typeof schoolValue === 'object' && schoolValue !== null) {
+          schoolValue = schoolValue._id || schoolValue.id || schoolValue;
+        }
         
         if (schoolValue === null || schoolValue === undefined || schoolValue === '') {
           user.school = null;
+          console.log('Cleared student school');
         } else if (mongoose.Types.ObjectId.isValid(schoolValue)) {
           user.school = new mongoose.Types.ObjectId(schoolValue);
+          console.log('Updated student school:', user.school);
+        } else {
+          console.error('Invalid school ID format:', schoolValue);
         }
         
         // Clear the schools array for students
         user.schools = [];
-        
-        console.log('Updated student school:', user.school);
       }
       
-      // Process singular direction field for students
+      // CRITICAL FIX: Improved processing of direction field for students
       if (req.body.direction !== undefined) {
         // Extract single value (if array is mistakenly provided)
-        const directionValue = Array.isArray(req.body.direction) ? req.body.direction[0] : req.body.direction;
+        let directionValue = Array.isArray(req.body.direction) ? req.body.direction[0] : req.body.direction;
+        
+        // Handle case where direction might be an object with _id property
+        if (typeof directionValue === 'object' && directionValue !== null) {
+          directionValue = directionValue._id || directionValue.id || directionValue;
+        }
         
         if (directionValue === null || directionValue === undefined || directionValue === '') {
           user.direction = null;
+          console.log('Cleared student direction');
         } else if (mongoose.Types.ObjectId.isValid(directionValue)) {
           user.direction = new mongoose.Types.ObjectId(directionValue);
+          console.log('Updated student direction:', user.direction);
+        } else {
+          console.error('Invalid direction ID format:', directionValue);
         }
         
         // Clear the directions array for students
         user.directions = [];
-        
-        console.log('Updated student direction:', user.direction);
       }
     }
     
