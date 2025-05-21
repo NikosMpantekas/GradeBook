@@ -101,11 +101,21 @@ const connectToSchoolDb = async (school) => {
           maxPoolSize: 10                  // Increase connection pool
         });
         
-        // Register all required schema models in this connection
-        // This is critical for populate() to work properly with references
-        registerSchemaModels(connection);
-        
         console.log(`Connection to school database ${school.name} successful!`);
+        
+        // Wait for connection to be fully established before registering models
+        if (connection.readyState === 1) {
+          // Register all required schema models in this connection
+          // This is critical for populate() to work properly with references
+          try {
+            registerSchemaModels(connection);
+            console.log(`Models successfully registered for ${school.name} database`);
+          } catch (schemaError) {
+            console.error(`Error registering models for ${school.name}:`, schemaError);
+          }
+        } else {
+          console.warn(`Connection not ready for ${school.name}, skipping schema registration`);
+        }
         
         // CRITICAL FIX: Test connection without relying on database features
         // First, verify the connection object exists
