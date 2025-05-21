@@ -5,6 +5,7 @@
  */
 
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // Pre-define all schemas that will be needed in school databases
 const SchoolSchema = new mongoose.Schema({
@@ -146,6 +147,122 @@ const NotificationSchema = new mongoose.Schema({
   timestamps: true,
 });
 
+// Define User Schema for school-specific databases
+const UserSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, 'Please add a name'],
+    },
+    email: {
+      type: String,
+      required: [true, 'Please add an email'],
+      unique: true,
+    },
+    mobilePhone: {
+      type: String,
+      required: false,
+    },
+    personalEmail: {
+      type: String,
+      required: false,
+    },
+    password: {
+      type: String,
+      required: [true, 'Please add a password'],
+    },
+    role: {
+      type: String,
+      enum: ['superadmin', 'admin', 'secretary', 'teacher', 'student'],
+      default: 'student',
+    },
+    active: {
+      type: Boolean,
+      default: true,
+    },
+    schoolDomain: {
+      type: String,
+      default: '',
+    },
+    secretaryPermissions: {
+      canManageGrades: {
+        type: Boolean,
+        default: false,
+      },
+      canSendNotifications: {
+        type: Boolean,
+        default: false,
+      },
+      canManageUsers: {
+        type: Boolean,
+        default: false,
+      },
+      canManageSchools: {
+        type: Boolean,
+        default: false,
+      },
+      canManageDirections: {
+        type: Boolean,
+        default: false,
+      },
+      canManageSubjects: {
+        type: Boolean,
+        default: false,
+      },
+      canAccessStudentProgress: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    school: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+    },
+    direction: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Direction',
+    },
+    schools: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'School',
+      },
+    ],
+    directions: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Direction',
+      },
+    ],
+    subjects: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subject',
+      },
+    ],
+    profilePhoto: {
+      type: String,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Add password hashing methods for User schema
+UserSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+UserSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) {
+    next();
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
 /**
  * Register all schema models in a database connection
  * @param {mongoose.Connection} connection - Mongoose connection instance
@@ -183,6 +300,11 @@ const registerSchoolModels = (connection) => {
       connection.model('Notification', NotificationSchema);
     console.log('✅ Notification model registered or already exists');
     
+    // 5. Register User model
+    const UserModel = connection.models.User || 
+      connection.model('User', UserSchema);
+    console.log('✅ User model registered or already exists');
+    
     console.log('✅ All models registered successfully');
     
     return {
@@ -190,6 +312,7 @@ const registerSchoolModels = (connection) => {
       Direction: DirectionModel,
       Subject: SubjectModel,
       Notification: NotificationModel,
+      User: UserModel,
     };
   } catch (error) {
     console.error('❌ Error registering schema models:', error);
@@ -202,5 +325,6 @@ module.exports = {
   SchoolSchema,
   DirectionSchema,
   SubjectSchema,
-  NotificationSchema
+  NotificationSchema,
+  UserSchema,
 };
