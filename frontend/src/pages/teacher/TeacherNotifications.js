@@ -167,15 +167,23 @@ const TeacherNotifications = () => {
       // Apply direction filter if selected
       if (directionFilter && directionFilter !== 'all') {
         filtered = filtered.filter(notification => {
-          // Filter by notification.directions if available
-          if (notification.directions && Array.isArray(notification.directions) && notification.directions.length > 0) {
-            return notification.directions.some(dir => {
-              // Handle both string IDs and object references
-              const dirId = typeof dir === 'object' ? dir._id : dir;
-              return dirId === directionFilter;
-            });
+          try {
+            // Filter by notification.directions if available
+            if (notification.directions && Array.isArray(notification.directions) && notification.directions.length > 0) {
+              return notification.directions.some(dir => {
+                // Make sure dir is defined
+                if (!dir) return false;
+                
+                // Handle both string IDs and object references
+                const dirId = typeof dir === 'object' ? dir._id : dir;
+                return dirId === directionFilter;
+              });
+            }
+            return false;
+          } catch (error) {
+            console.error('Error filtering by direction:', error);
+            return false;
           }
-          return false;
         });
         console.log(`After direction filter (${directionFilter}): ${filtered.length} notifications`);
       }

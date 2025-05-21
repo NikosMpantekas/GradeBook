@@ -220,15 +220,15 @@ export const authSlice = createSlice({
         state.user = null;
       })
       .addCase(logout.fulfilled, (state) => {
+        // Full state reset on logout
         state.user = null;
+        state.isError = false;
+        state.isSuccess = false;
+        state.isLoading = false;
+        state.message = '';
       })
       .addCase(updateProfile.pending, (state) => {
         state.isLoading = true;
-      })
-      .addCase(updateProfile.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.isSuccess = true;
-        state.user = action.payload;
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.isLoading = false;

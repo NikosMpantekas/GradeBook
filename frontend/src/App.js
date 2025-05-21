@@ -290,15 +290,27 @@ function App() {
             } />
           </Route>
 
-          {/* SuperAdmin Routes - CRITICAL FIX: Ensuring Layout wrapper for all superadmin routes */}
+          {/* SuperAdmin Routes - Using PrivateRoute + Layout + SuperAdminRoute pattern */}
           <Route element={
-            <SuperAdminRoute>
+            <PrivateRoute>
               <Layout />
-            </SuperAdminRoute>
+            </PrivateRoute>
           }>
-            <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
-            <Route path="/superadmin/new-school-owner" element={<CreateSchoolOwner />} />
-            <Route path="/superadmin/contact" element={<ContactMessages />} />
+            <Route path="/superadmin/dashboard" element={
+              <SuperAdminRoute>
+                <SuperAdminDashboard />
+              </SuperAdminRoute>
+            } />
+            <Route path="/superadmin/new-school-owner" element={
+              <SuperAdminRoute>
+                <CreateSchoolOwner />
+              </SuperAdminRoute>
+            } />
+            <Route path="/superadmin/contact" element={
+              <SuperAdminRoute>
+                <ContactMessages />
+              </SuperAdminRoute>
+            } />
           </Route>
           
           {/* 404 Page */}

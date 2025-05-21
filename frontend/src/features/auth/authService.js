@@ -82,8 +82,20 @@ const login = async (userData) => {
 
 // Logout user
 const logout = () => {
+  // Clear auth data
   localStorage.removeItem('user');
   sessionStorage.removeItem('user');
+  
+  // Clear sidebar state
+  localStorage.removeItem('sidebarOpen');
+  localStorage.removeItem('currentSection');
+  
+  // Clear any other app state that might persist between sessions
+  sessionStorage.clear();
+  
+  // Force a reload to ensure all React components are freshly mounted
+  // This is commented out because it will disrupt navigation in some cases
+  // window.location.reload();
 };
 
 // Get current user data with populated fields

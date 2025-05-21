@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import LoadingState from './common/LoadingState';
 
 // Protected route component for superadmin-only access
-const SuperAdminRoute = () => {
+const SuperAdminRoute = ({ children }) => {
   const { user, isLoading } = useSelector((state) => state.auth);
 
   if (isLoading) {
@@ -16,7 +16,8 @@ const SuperAdminRoute = () => {
     return <Navigate to="/" />;
   }
 
-  return <Outlet />;
+  // Return children if they exist, otherwise return the Outlet
+  return children || <Outlet />;
 };
 
 export default SuperAdminRoute;

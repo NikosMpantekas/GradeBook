@@ -43,11 +43,14 @@ const ContactMessages = () => {
   const [replyText, setReplyText] = useState('');
   const { user } = useSelector((state) => state.auth);
 
-  // Check if user is admin
+  // Check if user has proper permission (admin or superadmin)
   useEffect(() => {
-    if (user?.role !== 'admin') {
+    if (user?.role !== 'admin' && user?.role !== 'superadmin') {
       setError('You do not have permission to access this page.');
       setLoading(false);
+    } else {
+      // Load messages on component mount
+      fetchMessages();
     }
   }, [user]);
 

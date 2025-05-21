@@ -32,14 +32,27 @@ const Profile = () => {
   );
   const { darkMode } = useSelector((state) => state.ui);
   
+  // Initialize with empty data, will be updated when user data is available
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: '',
+    email: '',
     password: '',
     password2: '',
     darkMode: darkMode,
-    saveCredentials: user?.saveCredentials || false,
+    saveCredentials: false,
   });
+  
+  // Set form data when user data becomes available
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || '',
+        email: user.email || '',
+        saveCredentials: user.saveCredentials || false
+      }));
+    }
+  }, [user]);
 
   const { name, email, password, password2, saveCredentials } = formData;
 

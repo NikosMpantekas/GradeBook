@@ -59,7 +59,8 @@ function CreateSchoolOwner() {
       return;
     }
 
-    if (isSuccess || user) {
+    // Only redirect if form was successfully submitted
+    if (isSuccess) {
       console.log('School owner created successfully, redirecting to dashboard...');
       // Use setTimeout to ensure all state updates have completed before navigation
       setTimeout(() => {
