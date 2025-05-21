@@ -387,13 +387,45 @@ const getUsers = asyncHandler(async (req, res) => {
       }
       
       // Get users from the school's database with proper population of references
+      // CRITICAL FIX: ensure nested fields are fully populated with explicit path specification
       users = await SchoolUser.find({}).select('-password')
-        .populate('school', 'name')
-        .populate('direction', 'name')
-        .populate('schools', 'name')
-        .populate('directions', 'name')
-        .populate('subjects', 'name');
+        .populate({
+          path: 'school',
+          select: 'name _id',
+          model: models.School
+        })
+        .populate({
+          path: 'direction',
+          select: 'name _id',
+          model: models.Direction
+        })
+        .populate({
+          path: 'schools',
+          select: 'name _id',
+          model: models.School
+        })
+        .populate({
+          path: 'directions',
+          select: 'name _id',
+          model: models.Direction
+        })
+        .populate({
+          path: 'subjects',
+          select: 'name _id',
+          model: models.Subject
+        });
       
+      // Verify population worked properly
+      const populationCheck = users.map(user => ({
+        id: user._id,
+        school: user.school ? 'Populated' : 'Missing',
+        direction: user.direction ? 'Populated' : 'Missing',
+        schools: user.schools ? `Array(${user.schools.length})` : 'Missing',
+        directions: user.directions ? `Array(${user.directions.length})` : 'Missing',
+        subjects: user.subjects ? `Array(${user.subjects.length})` : 'Missing'
+      }));
+      
+      console.log('Population check results:', populationCheck);
       console.log(`Retrieved ${users.length} users with populated data`);
     } else {
       // This is a superadmin or a user in the main database
@@ -418,19 +450,36 @@ const getUsers = asyncHandler(async (req, res) => {
       
       // CRITICAL: Ensure proper handling of school/direction fields based on role
       if (userData.role === 'student') {
-        // Ensure student-specific fields are properly set
+        // FIXED: Better handling of populated vs unpopulated school/direction fields
         if (!userData.school) {
           console.log(`Warning: Student ${userData._id} has no school assigned`);
+        } else {
+          // School might be a populated object or just an ID reference
+          console.log(`Student ${userData._id} school:`, {
+            type: typeof userData.school,
+            id: typeof userData.school === 'object' ? userData.school._id : userData.school,
+            name: typeof userData.school === 'object' ? userData.school.name : 'ID only'
+          });
         }
         
         if (!userData.direction) {
           console.log(`Warning: Student ${userData._id} has no direction assigned`);
+        } else {
+          // Direction might be a populated object or just an ID reference
+          console.log(`Student ${userData._id} direction:`, {
+            type: typeof userData.direction,
+            id: typeof userData.direction === 'object' ? userData.direction._id : userData.direction,
+            name: typeof userData.direction === 'object' ? userData.direction.name : 'ID only'
+          });
         }
         
-        // Add array versions for frontend compatibility
-        userData.schools = userData.school ? [userData.school] : [];
-        userData.directions = userData.direction ? [userData.direction] : [];
+        // Add array versions for frontend compatibility and ensure proper format
+        userData.schools = userData.school ? (Array.isArray(userData.school) ? userData.school : [userData.school]) : [];
+        userData.directions = userData.direction ? (Array.isArray(userData.direction) ? userData.direction : [userData.direction]) : [];
         userData.subjects = userData.subjects || [];
+        
+        // Make sure the original school/direction fields are preserved
+        // Don't modify them if already populated correctly
       } 
       // For teachers and secretaries, ensure they have array fields
       else if (userData.role === 'teacher' || userData.role === 'secretary') {
@@ -440,8 +489,8 @@ const getUsers = asyncHandler(async (req, res) => {
         userData.subjects = userData.subjects || [];
         
         // Add singular fields for backward compatibility
-        userData.school = userData.schools[0] || null;
-        userData.direction = userData.directions[0] || null;
+        userData.school = userData.schools && userData.schools.length > 0 ? userData.schools[0] : null;
+        userData.direction = userData.directions && userData.directions.length > 0 ? userData.directions[0] : null;
       }
       
       // For secretaries, ensure permissions are present
@@ -1366,26 +1415,48 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
         // FOR STUDENTS: Use singular school and direction fields
         console.log('CREATING STUDENT ACCOUNT - PROCESSING SINGLE FIELDS');
         
-        // Process single school for student
+        // CRITICAL FIX: Ensure school field is properly set as ObjectId
         if (school) {
           // If an array is mistakenly provided, use the first item
-          const schoolValue = Array.isArray(school) ? school[0] : school;
+          let schoolValue = Array.isArray(school) ? school[0] : school;
+          
+          // Handle case where it might be a string or object
+          if (typeof schoolValue === 'object' && schoolValue._id) {
+            schoolValue = schoolValue._id;
+          }
           
           if (mongoose.Types.ObjectId.isValid(schoolValue)) {
             userData.school = new mongoose.Types.ObjectId(schoolValue);
             console.log('Set student school to:', userData.school);
+          } else {
+            console.error('Invalid school ID format:', schoolValue);
+            throw new Error('Invalid school ID format');
           }
+        } else {
+          console.error('No school provided for student account');
+          throw new Error('School is required for student accounts');
         }
         
-        // Process single direction for student
+        // CRITICAL FIX: Ensure direction field is properly set as ObjectId
         if (direction) {
           // If an array is mistakenly provided, use the first item
-          const directionValue = Array.isArray(direction) ? direction[0] : direction;
+          let directionValue = Array.isArray(direction) ? direction[0] : direction;
+          
+          // Handle case where it might be a string or object
+          if (typeof directionValue === 'object' && directionValue._id) {
+            directionValue = directionValue._id;
+          }
           
           if (mongoose.Types.ObjectId.isValid(directionValue)) {
             userData.direction = new mongoose.Types.ObjectId(directionValue);
             console.log('Set student direction to:', userData.direction);
+          } else {
+            console.error('Invalid direction ID format:', directionValue);
+            throw new Error('Invalid direction ID format');
           }
+        } else {
+          console.error('No direction provided for student account');
+          throw new Error('Direction is required for student accounts');
         }
         
         // Students don't use the plural schools/directions arrays
