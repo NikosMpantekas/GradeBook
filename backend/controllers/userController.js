@@ -1026,8 +1026,18 @@ const deleteUser = asyncHandler(async (req, res) => {
 
   if (user) {
     try {
-      // Delete the user with the appropriate model
-      await user.remove(); // Using remove() instead of deleteOne() for better compatibility
+      // Delete the user with modern Mongoose methods
+      // .remove() is deprecated in newer versions of Mongoose
+      if (inSchoolDb) {
+        // Delete user from school database
+        const result = await userModel.deleteOne({ _id: req.params.id });
+        console.log(`User ${req.params.id} deleted from school database using deleteOne. Result:`, result);
+      } else {
+        // Delete user from main database
+        const result = await User.deleteOne({ _id: req.params.id });
+        console.log(`User ${req.params.id} deleted from main database using deleteOne. Result:`, result);
+      }
+      
       console.log(`User ${req.params.id} successfully deleted from ${inSchoolDb ? 'school' : 'main'} database`);
       return res.status(200).json({ message: 'User removed successfully' });
     } catch (error) {
@@ -1036,12 +1046,14 @@ const deleteUser = asyncHandler(async (req, res) => {
       // Try alternative deletion method if first attempt fails
       try {
         if (inSchoolDb && connection) {
-          await connection.collection('users').deleteOne({ _id: mongoose.Types.ObjectId(req.params.id) });
-          console.log(`User ${req.params.id} deleted using direct collection access`);
+          // Use proper ObjectId construction
+          const objectId = new mongoose.Types.ObjectId(req.params.id);
+          const result = await connection.collection('users').deleteOne({ _id: objectId });
+          console.log(`User ${req.params.id} deleted using direct collection access. Result:`, result);
           return res.status(200).json({ message: 'User removed successfully' });
         } else {
-          await User.deleteOne({ _id: req.params.id });
-          console.log(`User ${req.params.id} deleted using User.deleteOne`);
+          const result = await User.findByIdAndDelete(req.params.id);
+          console.log(`User ${req.params.id} deleted using findByIdAndDelete. Result:`, result ? 'Success' : 'Not found');
           return res.status(200).json({ message: 'User removed successfully' });
         }
       } catch (fallbackError) {

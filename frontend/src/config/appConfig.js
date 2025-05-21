@@ -5,7 +5,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.3.41'; // Fixed critical database connection issue affecting login and application performance
+const APP_VERSION = '1.3.42'; // Fixed user deletion functionality and optimized database connection handling
 
 // Store version in localStorage to detect updates across refreshes
 const storeAppVersion = () => {
