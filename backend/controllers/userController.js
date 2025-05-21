@@ -409,7 +409,40 @@ const getUsers = asyncHandler(async (req, res) => {
     
     // Process users to ensure proper structure based on role
     const processedUsers = users.map(user => {
+      // Convert to plain object or use as is
       const userData = user.toObject ? user.toObject() : user;
+      
+      // CRITICAL: Ensure all contact fields are present and have at least empty string values
+      userData.mobilePhone = userData.mobilePhone || '';
+      userData.personalEmail = userData.personalEmail || '';
+      
+      // CRITICAL: Ensure proper handling of school/direction fields based on role
+      if (userData.role === 'student') {
+        // Ensure student-specific fields are properly set
+        if (!userData.school) {
+          console.log(`Warning: Student ${userData._id} has no school assigned`);
+        }
+        
+        if (!userData.direction) {
+          console.log(`Warning: Student ${userData._id} has no direction assigned`);
+        }
+        
+        // Add array versions for frontend compatibility
+        userData.schools = userData.school ? [userData.school] : [];
+        userData.directions = userData.direction ? [userData.direction] : [];
+        userData.subjects = userData.subjects || [];
+      } 
+      // For teachers and secretaries, ensure they have array fields
+      else if (userData.role === 'teacher' || userData.role === 'secretary') {
+        // Ensure required arrays are initialized
+        userData.schools = userData.schools || [];
+        userData.directions = userData.directions || [];
+        userData.subjects = userData.subjects || [];
+        
+        // Add singular fields for backward compatibility
+        userData.school = userData.schools[0] || null;
+        userData.direction = userData.directions[0] || null;
+      }
       
       // For secretaries, ensure permissions are present
       if (userData.role === 'secretary' && !userData.secretaryPermissions) {
@@ -424,11 +457,15 @@ const getUsers = asyncHandler(async (req, res) => {
         };
       }
       
-      // Ensure teachers and secretaries have arrays
-      if (userData.role === 'teacher' || userData.role === 'secretary') {
-        if (!userData.schools) userData.schools = [];
-        if (!userData.directions) userData.directions = [];
-        if (!userData.subjects) userData.subjects = [];
+      // For debugging - log critical fields
+      if (userData.role === 'student') {
+        console.log(`User ${userData.name} (${userData._id}) data:`, {
+          'mobilePhone': userData.mobilePhone || 'Not set',
+          'personalEmail': userData.personalEmail || 'Not set',
+          'school': userData.school ? (userData.school.name || userData.school) : 'Not set',
+          'direction': userData.direction ? (userData.direction.name || userData.direction) : 'Not set',
+          'subjects': userData.subjects ? userData.subjects.length : 0
+        });
       }
       
       return userData;
@@ -1399,20 +1436,45 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       throw new Error('Failed to create user in school database');
     }
     
-    // Return without password but include all student fields
+    // Create a comprehensive response with ALL necessary fields for the frontend
+    // Different roles need different field structures for the frontend to display correctly
     const response = {
       _id: result._id,
       name: result.name,
       email: result.email,
-      mobilePhone: result.mobilePhone,
-      personalEmail: result.personalEmail,
+      // Ensure these critical fields are always present with at least empty strings
+      mobilePhone: result.mobilePhone || '',
+      personalEmail: result.personalEmail || '',
       role: result.role,
-      // Include the complete student data
-      school: result.school || req.school._id,
-      schoolName: req.school.name,
-      direction: result.direction,
-      subjects: result.subjects || [],
     };
+    
+    // Role-specific fields structured to match what the frontend expects
+    if (result.role === 'student') {
+      // Students use singular fields
+      response.school = result.school || req.school._id;
+      response.direction = result.direction;
+      response.subjects = result.subjects || [];
+      // Also include array versions for frontend compatibility
+      response.schools = result.school ? [result.school] : [];
+      response.directions = result.direction ? [result.direction] : [];
+      // Include school name for display purposes
+      response.schoolName = req.school.name;
+    } else if (result.role === 'teacher' || result.role === 'secretary') {
+      // Teachers and secretaries use array fields
+      response.schools = result.schools || [];
+      response.directions = result.directions || [];
+      response.subjects = result.subjects || [];
+      // Also include singular versions for backward compatibility
+      response.school = result.schools && result.schools.length > 0 ? result.schools[0] : null;
+      response.direction = result.directions && result.directions.length > 0 ? result.directions[0] : null;
+      // Include school name for display purposes
+      response.schoolName = req.school.name;
+      // Include teacher-specific permissions
+      if (result.role === 'teacher') {
+        response.canSendNotifications = result.canSendNotifications;
+        response.canAddGradeDescriptions = result.canAddGradeDescriptions;
+      }
+    }
     
     // Debug log of the response and saved data
     console.log('Response data:', {

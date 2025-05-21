@@ -5,7 +5,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.3.44'; // Fixed critical user data fields (mobile phone, personal email, school, direction, subjects) not saving or displaying correctly
+const APP_VERSION = '1.3.45'; // Fixed critical issue with user data not displaying after creation, ensuring all fields appear correctly in the UI
 
 // Store version in localStorage to detect updates across refreshes
 const storeAppVersion = () => {
