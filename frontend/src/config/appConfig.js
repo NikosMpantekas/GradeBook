@@ -5,7 +5,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.3.34'; // Fixed User model registration in school-specific databases
+const APP_VERSION = '1.3.35'; // Fixed User model registration in school-specific databases
 
 // Store version in localStorage to detect updates across refreshes
 const storeAppVersion = () => {

@@ -191,6 +191,8 @@ const EditUser = () => {
             ...formData,
             name: response.name || '',
             email: response.email || '',
+            mobilePhone: response.mobilePhone || '', // Added mobile phone field
+            personalEmail: response.personalEmail || '', // Added personal email field
             role: response.role || '',
             changePassword: false,
             password: '',
@@ -457,12 +459,14 @@ const EditUser = () => {
     }
     
     // Create user data object with all necessary properties
-    const userData = {
-      name: formData.name,
-      email: formData.email,
-      role: formData.role,
-      _id: id, // Explicitly include the ID in case it's needed by the backend
-    };
+    let userData = {};
+    
+    // Always include these basic fields
+    userData.name = formData.name;
+    userData.email = formData.email;
+    userData.mobilePhone = formData.mobilePhone || ''; // Added mobile phone
+    userData.personalEmail = formData.personalEmail || ''; // Added personal email
+    userData.role = formData.role;
     
     // Only include password if changing it
     if (formData.changePassword && formData.password) {
@@ -782,6 +786,34 @@ const EditUser = () => {
                 onChange={handleChange}
                 error={!!formErrors.email}
                 helperText={formErrors.email}
+                disabled={isLoading}
+              />
+            </Grid>
+            
+            {/* Added mobile phone field */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Mobile Phone (Optional)"
+                name="mobilePhone"
+                type="tel"
+                value={formData.mobilePhone || ''}
+                onChange={handleChange}
+                helperText="Optional contact number"
+                disabled={isLoading}
+              />
+            </Grid>
+            
+            {/* Added personal email field */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Personal Email (Optional)"
+                name="personalEmail"
+                type="email"
+                value={formData.personalEmail || ''}
+                onChange={handleChange}
+                helperText="Optional personal email address"
                 disabled={isLoading}
               />
             </Grid>

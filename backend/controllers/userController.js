@@ -584,6 +584,15 @@ const updateUser = asyncHandler(async (req, res) => {
     user.email = req.body.email || user.email;
     user.role = req.body.role || user.role;
     
+    // Add support for optional contact fields
+    if (req.body.mobilePhone !== undefined) {
+      user.mobilePhone = req.body.mobilePhone;
+    }
+    
+    if (req.body.personalEmail !== undefined) {
+      user.personalEmail = req.body.personalEmail;
+    }
+    
     // Handle secretary permissions if provided
     if (user.role === 'secretary' && req.body.secretaryPermissions) {
       console.log('Updating secretary permissions:', req.body.secretaryPermissions);
