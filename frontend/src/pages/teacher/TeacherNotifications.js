@@ -23,7 +23,6 @@ import {
   DialogContentText,
   DialogTitle,
   CircularProgress,
-  Grid,
   FormControlLabel,
   Switch,
 } from '@mui/material';
@@ -43,7 +42,6 @@ import {
   deleteNotification,
   markNotificationAsRead,
   updateNotification,
-  reset,
 } from '../../features/notifications/notificationSlice';
 import { getDirections } from '../../features/directions/directionSlice';
 
@@ -123,26 +121,18 @@ const TeacherNotifications = () => {
       console.log(`Setting up ${notifications.length} notifications`);
       
       // Extract unique senders for the filter dropdown
-      const uniqueSenders = notifications.reduce((acc, notification) => {
-        if (notification.sender && notification.sender._id && notification.sender.name) {
-          // Only add sender if not already in the list
-          if (!acc.some(s => s.id === notification.sender._id)) {
-            acc.push({
-              id: notification.sender._id,
-              name: notification.sender.name,
-              role: notification.sender.role || 'Unknown'
-            });
-          }
+      const uniqueSenders = new Set();
+      notifications.forEach(notification => {
+        if (notification.sender && notification.sender.name) {
+          uniqueSenders.add(notification.sender.name);
         }
-        return acc;
-      }, []);
-      
-      console.log('Unique senders extracted:', uniqueSenders.length);
+      });
       setSenders(uniqueSenders);
       
       // Apply search, sender, and direction filters
       applyFilters(notifications);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifications, isError, isSuccess, message, searchTerm, senderFilter, directionFilter]);
 
   const applyFilters = useCallback((teacherNotifications) => {

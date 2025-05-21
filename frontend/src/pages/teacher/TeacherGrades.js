@@ -54,6 +54,7 @@ const TeacherGrades = () => {
     if (grades && grades.length > 0) {
       calculateStats();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grades, subjects]);
 
   const calculateStats = () => {

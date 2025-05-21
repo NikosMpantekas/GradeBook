@@ -174,7 +174,8 @@ const ManageGrades = () => {
     // This ensures the UI updates properly with empty state
     applyFilters();
     
-  }, [grades, isError, isSuccess, message, searchTerm, subjectFilter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grades, isError, isSuccess, message, searchTerm, subjectFilter, alertState]);
 
   const applyFilters = () => {
     // Safety check that grades exists and is an array

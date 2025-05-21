@@ -5,10 +5,10 @@ const {
   getAllNotifications,
   getMyNotifications,
   getSentNotifications,
-  getNotificationById,
   updateNotification,
   deleteNotification,
-  markNotificationAsRead,
+  markNotificationRead,
+  getNotificationById,
 } = require('../controllers/notificationController');
 const { protect, admin, teacher, canSendNotifications } = require('../middleware/authMiddleware');
 
@@ -16,7 +16,7 @@ const { protect, admin, teacher, canSendNotifications } = require('../middleware
 router.get('/me', protect, getMyNotifications);
 router.get('/sent', protect, getSentNotifications);
 router.get('/:id', protect, getNotificationById);
-router.put('/:id/read', protect, markNotificationAsRead);
+router.put('/:id/read', protect, markNotificationRead);
 
 // Teacher & Admin routes (with secretary support where appropriate)
 router.post('/', protect, (req, res, next) => {

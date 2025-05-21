@@ -230,7 +230,7 @@ export const unsubscribeFromPushNotifications = async () => {
         const endpoint = subscription.endpoint;
         // Use axiosInstance which automatically handles token inclusion
         console.log('Unsubscribing from push notifications');
-        const response = await axiosInstance.post('/api/subscriptions/delete', { endpoint });
+        await axiosInstance.post('/api/subscriptions/delete', { endpoint });
         
         console.log('Successfully unsubscribed from push notifications');
         return true;

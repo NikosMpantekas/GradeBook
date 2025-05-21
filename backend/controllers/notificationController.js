@@ -754,6 +754,65 @@ const saveSubscription = asyncHandler(async (req, res) => {
   res.status(201).json(newSubscription);
 });
 
+// @desc    Get notification by ID
+// @route   GET /api/notifications/:id
+// @access  Private
+const getNotificationById = asyncHandler(async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    console.log(`Fetching notification by ID: ${notificationId}`);
+    
+    let notification = null;
+    
+    // Check if this is a school-specific user
+    if (req.school) {
+      try {
+        // Connect to the school-specific database
+        const { connection, models } = await connectToSchoolDb(req.school);
+        
+        if (!connection) {
+          throw new Error('Failed to connect to school database');
+        }
+        
+        let NotificationModel;
+        
+        // Use registered model or create one
+        if (models && models.Notification) {
+          NotificationModel = models.Notification;
+        } else if (connection.models.Notification) {
+          NotificationModel = connection.models.Notification;
+        } else {
+          NotificationModel = connection.model('Notification', NotificationSchema);
+        }
+        
+        // Find the notification by ID
+        notification = await NotificationModel.findById(notificationId)
+          .populate('sender', 'name email role');
+          
+        console.log(`Notification search result in school db: ${notification ? 'Found' : 'Not found'}`);
+      } catch (error) {
+        console.error('Error finding notification in school database:', error.message);
+        // Fallback to main database
+        notification = await Notification.findById(notificationId)
+          .populate('sender', 'name email role');
+      }
+    } else {
+      // This is a user in the main database
+      notification = await Notification.findById(notificationId)
+        .populate('sender', 'name email role');
+    }
+    
+    if (notification) {
+      return res.status(200).json(notification);
+    } else {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+  } catch (error) {
+    console.error('Error in getNotificationById:', error.message);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 module.exports = {
   createNotification,
   getAllNotifications,
@@ -762,5 +821,6 @@ module.exports = {
   updateNotification,
   markNotificationRead,
   deleteNotification,
-  saveSubscription
+  saveSubscription,
+  getNotificationById
 };
