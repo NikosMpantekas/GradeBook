@@ -137,6 +137,22 @@ const CreateUser = () => {
       }
       
       setFormData(newState);
+    } else if (name === 'direction') {
+      // When direction changes for a student, fetch subjects for that direction
+      setFormData({
+        ...formData,
+        [name]: value,
+        // Reset subjects when direction changes
+        subjects: []
+      });
+      
+      // Fetch subjects for this direction if a valid direction is selected
+      if (value && value !== '') {
+        fetchSubjects(value);
+      } else {
+        // If no direction is selected, fetch all subjects
+        fetchSubjects();
+      }
     } else if (name === 'subjects') {
       // Handle multi-select for subjects
       setFormData({
@@ -220,13 +236,36 @@ const CreateUser = () => {
     }
   };
   
-  const fetchSubjects = async () => {
+  const fetchSubjects = async (directionId = null) => {
     try {
       setLoadingOptions(prev => ({ ...prev, subjects: true }));
       setOptionsError(prev => ({ ...prev, subjects: null }));
       
-      const response = await axios.get('/api/subjects');
+      // If a direction is selected, fetch subjects for that direction
+      let url = '/api/subjects';
+      if (directionId) {
+        url = `/api/subjects/direction/${directionId}`;
+        console.log(`Fetching subjects for direction: ${directionId}`);
+      }
+      
+      const response = await axios.get(url);
       setOptionsData(prev => ({ ...prev, subjects: response.data }));
+      
+      // If we had subjects selected but changed direction, reset the selection
+      if (directionId && formData.subjects && formData.subjects.length > 0) {
+        // Filter out subjects that are not in the new direction
+        const validSubjectIds = response.data.map(subject => subject._id);
+        const filteredSubjects = formData.subjects.filter(id => validSubjectIds.includes(id));
+        
+        // Update form data with only valid subjects for this direction
+        if (filteredSubjects.length !== formData.subjects.length) {
+          console.log('Resetting subject selection due to direction change');
+          setFormData(prev => ({
+            ...prev,
+            subjects: filteredSubjects
+          }));
+        }
+      }
     } catch (error) {
       console.error('Error fetching subjects:', error);
       setOptionsError(prev => ({

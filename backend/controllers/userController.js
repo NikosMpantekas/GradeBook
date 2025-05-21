@@ -1176,9 +1176,19 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
   }
   
   try {
-    // Connect to the school's database
-    const schoolConnection = await connectToSchoolDb(req.school);
-    const SchoolUser = schoolConnection.model('User');
+    // Connect to the school's database with improved connection system
+    const { connection, models } = await connectToSchoolDb(req.school);
+    
+    if (!connection) {
+      throw new Error('Failed to connect to school database');
+    }
+    
+    // Get the User model from the connection
+    const SchoolUser = models && models.User ? models.User : connection.model('User');
+    
+    if (!SchoolUser) {
+      throw new Error('User model not found in school database');
+    }
   
     // Check if user already exists in this school's database
     const userExists = await SchoolUser.findOne({ email });
@@ -1303,24 +1313,22 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     const result = await SchoolUser.create(userData);
     console.log('User created in school database with ID:', result._id);
     
-    if (result) {
-      // Return without password
-      const response = {
-        _id: result._id,
-        name: result.name,
-        email: result.email,
-        mobilePhone: result.mobilePhone,
-        personalEmail: result.personalEmail,
-        role: result.role,
-        school: req.school._id,
-        schoolName: req.school.name,
-      };
-      
-      res.status(201).json(response);
-    } else {
+    if (!result) {
       res.status(400);
       throw new Error('Failed to create user in school database');
     }
+    
+    // Return without password
+    const response = {
+      _id: result._id,
+      name: result.name,
+      email: result.email,
+      mobilePhone: result.mobilePhone,
+      personalEmail: result.personalEmail,
+      role: result.role,
+      school: req.school._id,
+      schoolName: req.school.name,
+    };
     
     // Log account creation details
     console.log('ACCOUNT CREATED:');
@@ -1329,16 +1337,9 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     console.log('School:', school ? 'Set' : 'Not set');
     console.log('Direction:', direction ? 'Set' : 'Not set');
     console.log('Subjects:', subjects && subjects.length > 0 ? `${subjects.length} assigned` : 'None assigned');
-    console.log('Password verification check:', testVerify ? 'PASSED' : 'FAILED');
-  
-    res.status(201).json({
-      _id: savedUser._id,
-      name: savedUser.name,
-      email: savedUser.email,
-      mobilePhone: savedUser.mobilePhone,
-      personalEmail: savedUser.personalEmail,
-      role: savedUser.role,
-    });
+    
+    // Send the response once
+    res.status(201).json(response);
   } catch (error) {
     console.error('Error creating user:', error);
     res.status(400);

@@ -5,7 +5,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.3.37'; // Fixed user management with robust error handling and added bug report reply functionality
+const APP_VERSION = '1.3.38'; // Fixed user creation in school databases and subject filtering by direction
 
 // Store version in localStorage to detect updates across refreshes
 const storeAppVersion = () => {
