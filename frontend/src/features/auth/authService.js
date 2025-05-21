@@ -80,8 +80,10 @@ const login = async (userData) => {
   }
 };
 
-// Logout user - completely clears all application state
+// Logout user - completely clears ALL application state
 const logout = () => {
+  console.log('PERFORMING COMPLETE LOGOUT AND CACHE PURGE');
+  
   // Clear auth data
   localStorage.removeItem('user');
   sessionStorage.removeItem('user');
@@ -90,14 +92,35 @@ const logout = () => {
   localStorage.removeItem('sidebarOpen');
   localStorage.removeItem('currentSection');
   
-  // Clear all session storage
+  // Clear app version data
+  localStorage.removeItem('app_version');
+  localStorage.removeItem('app_version_updated_at');
+  
+  // Thorough clearing of ALL localStorage items except critical system settings
+  const keysToKeep = ['installPromptDismissed']; // Keep minimal PWA settings for UX
+  
+  // Clear all localStorage
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!keysToKeep.includes(key)) {
+      localStorage.removeItem(key);
+    }
+  }
+  
+  // Clear all sessionStorage
   sessionStorage.clear();
   
-  // Clear Redux and React component state by forcing a complete reload
-  // This is necessary to ensure no state persists between user sessions
-  setTimeout(() => {
-    window.location.href = '/login';
-  }, 100);
+  // Clear any cookies that might be used by the app
+  document.cookie.split(';').forEach(cookie => {
+    const [name] = cookie.trim().split('=');
+    if (name) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    }
+  });
+  
+  // Force reload to clear React component state and Redux store
+  // Using replace instead of href to prevent back navigation
+  window.location.replace('/login');
 };
 
 // Get current user data with populated fields

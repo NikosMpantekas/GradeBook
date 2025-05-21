@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const User = require('../models/userModel');
+const { connectToSchoolDb } = require('../config/multiDbConnect');
 
 // @desc    Register new user
 // @route   POST /api/users
