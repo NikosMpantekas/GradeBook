@@ -134,6 +134,7 @@ const connectToSchoolDb = async (school) => {
     const MAX_RETRIES = 3;
     let retryCount = 0;
     let connection;
+    let registeredModels = {}; // Define models at the correct scope for the entire function
     
     while (retryCount < MAX_RETRIES) {
       try {
@@ -154,17 +155,19 @@ const connectToSchoolDb = async (school) => {
         try {
           // The registerSchoolModels function is designed to be idempotent
           // and will handle cases where models are already registered
-          const models = registerSchoolModels(connection);
+          registeredModels = registerSchoolModels(connection) || {};
           
-          if (models) {
+          if (registeredModels && Object.keys(registeredModels).length > 0) {
             // Store the models for this school for later use
-            schoolModels.set(schoolId, models);
+            schoolModels.set(schoolId, registeredModels);
             console.log(`✅ Models successfully registered for ${school.name} database`);
           } else {
             console.error(`❌ Failed to register models for ${school.name}`);
+            registeredModels = {}; // Ensure we have at least an empty object
           }
         } catch (schemaError) {
           console.error(`❌ Error registering models for ${school.name}:`, schemaError);
+          registeredModels = {}; // Reset to empty object on error
         }
         
         // CRITICAL FIX: Test connection without relying on database features
@@ -208,13 +211,13 @@ const connectToSchoolDb = async (school) => {
         schoolConnections.set(schoolId, {
           connection,
           timestamp: Date.now(),
-          models
+          models: registeredModels
         });
         
         // Return both connection and models
         return {
           connection,
-          models
+          models: registeredModels
         };
       } catch (error) {
         retryCount++;
