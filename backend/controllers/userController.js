@@ -562,9 +562,15 @@ const updateUser = asyncHandler(async (req, res) => {
   if (!user && req.school) {
     console.log(`User not found in main DB, checking school database: ${req.school.name}`);
     try {
-      // Connect to the school's database
-      const schoolConnection = await connectToSchoolDb(req.school);
-      const SchoolUser = schoolConnection.model('User');
+      // Connect to the school's database with improved connection system
+      const { connection, models } = await connectToSchoolDb(req.school);
+      
+      if (!connection) {
+        throw new Error('Failed to connect to school database');
+      }
+      
+      // Get the User model from the connection
+      const SchoolUser = models && models.User ? models.User : connection.model('User');
       
       // Try to find user in school database
       user = await SchoolUser.findById(req.params.id);
@@ -576,6 +582,7 @@ const updateUser = asyncHandler(async (req, res) => {
       }
     } catch (error) {
       console.error(`Error connecting to school database: ${error.message}`);
+      return res.status(500).json({ message: `Error connecting to school database: ${error.message}` });
     }
   }
 
@@ -731,43 +738,100 @@ const updateUser = asyncHandler(async (req, res) => {
       }
     }
 
-    // Save the user first
-    await user.save();
+    // Save the user with better error handling
+    try {
+      console.log('Attempting to save user changes...');
+      await user.save();
+      console.log(`User ${user._id} saved successfully`);
+    } catch (saveError) {
+      console.error('Error saving user:', saveError.message);
+      return res.status(500).json({ 
+        message: `Failed to save user: ${saveError.message}`,
+        error: saveError.message,
+        details: saveError.toString()
+      });
+    }
     
     // Find the updated user but don't return the password
-    let updatedUser = await User.findById(user._id).select('-password');
+    let updatedUser;
+    try {
+      if (inSchoolDb) {
+        updatedUser = await userModel.findById(user._id).select('-password');
+      } else {
+        updatedUser = await User.findById(user._id).select('-password');
+      }
+      
+      if (!updatedUser) {
+        console.error('User was saved but could not be retrieved after saving');
+        return res.status(500).json({ message: 'User saved but could not be retrieved' });
+      }
+    } catch (findError) {
+      console.error('Error retrieving saved user:', findError.message);
+      return res.status(500).json({ message: `User saved but error retrieving updated data: ${findError.message}` });
+    }
     
     // Population logic for separate school/schools and direction/directions fields
-    if (user.role === 'teacher' || user.role === 'secretary') {
-      console.log(`Populating ${user.role}-specific fields with arrays...`);
-      
-      // For teachers/secretaries: use the dedicated plural fields (schools & directions arrays)
-      // This exactly matches how subjects are handled
-      updatedUser = await User.findById(user._id)
-        .select('-password')
-        .populate('schools', 'name _id') // Use schools array for teachers/secretaries
-        .populate('directions', 'name _id') // Use directions array for teachers/secretaries
-        .populate('subjects', 'name _id')
-        .lean();
-      
-      // Ensure populated arrays exist to prevent frontend errors
-      if (!updatedUser.schools) updatedUser.schools = [];
-      if (!updatedUser.directions) updatedUser.directions = [];
-      if (!updatedUser.subjects) updatedUser.subjects = [];
-      
-      console.log(`${user.role.charAt(0).toUpperCase() + user.role.slice(1)} populated with:`, {
-        'schools count': updatedUser.schools.length,
-        'directions count': updatedUser.directions.length,
-        'subjects count': updatedUser.subjects.length
-      });
-    } else {
-      // For students or admins, use the singular fields
-      updatedUser = await User.findById(user._id)
-        .select('-password')
-        .populate('school', 'name') // Single school for students
-        .populate('direction', 'name') // Single direction for students
-        .populate('subjects', 'name') // Multiple subjects still supported
-        .lean();
+    try {
+      if (user.role === 'teacher' || user.role === 'secretary') {
+        console.log(`Populating ${user.role}-specific fields with arrays...`);
+        
+        // For teachers/secretaries: use the dedicated plural fields (schools & directions arrays)
+        if (inSchoolDb) {
+          // Use the correct model when in school database
+          console.log('Using school database model for population');
+          updatedUser = await userModel.findById(user._id)
+            .select('-password')
+            .populate('schools', 'name _id') 
+            .populate('directions', 'name _id')
+            .populate('subjects', 'name _id')
+            .lean();
+        } else {
+          // Use main database model
+          console.log('Using main database model for population');
+          updatedUser = await User.findById(user._id)
+            .select('-password')
+            .populate('schools', 'name _id')
+            .populate('directions', 'name _id')
+            .populate('subjects', 'name _id')
+            .lean();
+        }
+        
+        // Ensure populated arrays exist to prevent frontend errors
+        if (!updatedUser.schools) updatedUser.schools = [];
+        if (!updatedUser.directions) updatedUser.directions = [];
+        if (!updatedUser.subjects) updatedUser.subjects = [];
+        
+        console.log(`${user.role.charAt(0).toUpperCase() + user.role.slice(1)} populated with:`, {
+          'schools count': updatedUser.schools?.length || 0,
+          'directions count': updatedUser.directions?.length || 0,
+          'subjects count': updatedUser.subjects?.length || 0
+        });
+      } else {
+        // For students or admins, use the singular fields
+        if (inSchoolDb) {
+          // Use the correct model when in school database
+          console.log('Using school database model for population');
+          updatedUser = await userModel.findById(user._id)
+            .select('-password')
+            .populate('school', 'name')
+            .populate('direction', 'name')
+            .populate('subjects', 'name')
+            .lean();
+        } else {
+          // Use main database model
+          console.log('Using main database model for population');
+          updatedUser = await User.findById(user._id)
+            .select('-password')
+            .populate('school', 'name')
+            .populate('direction', 'name')
+            .populate('subjects', 'name')
+            .lean();
+        }
+      }
+    } catch (populateError) {
+      console.error('Error populating user data:', populateError.message);
+      // Don't throw an error here, just continue with unpopulated data
+      console.log('Continuing with unpopulated user data');
     }
     
     // Create a simple response object with essential fields
@@ -865,14 +929,54 @@ const updateUser = asyncHandler(async (req, res) => {
 // @route   DELETE /api/users/:id
 // @access  Private/Admin
 const deleteUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
+  console.log(`Attempting to delete user with ID: ${req.params.id}`);
+  
+  // First try to find the user in the main database
+  let user = await User.findById(req.params.id);
+  let userModel = User;
+  let inSchoolDb = false;
+  
+  // If not in main DB, check school DB if applicable
+  if (!user && req.school) {
+    console.log(`User not found in main DB, checking school database: ${req.school.name}`);
+    try {
+      // Connect to the school's database with improved connection system
+      const { connection, models } = await connectToSchoolDb(req.school);
+      
+      if (!connection) {
+        throw new Error('Failed to connect to school database');
+      }
+      
+      // Get the User model from the connection
+      const SchoolUser = models && models.User ? models.User : connection.model('User');
+      
+      // Try to find user in school database
+      user = await SchoolUser.findById(req.params.id);
+      
+      if (user) {
+        console.log(`User found in school database: ${req.school.name}`);
+        userModel = SchoolUser;
+        inSchoolDb = true;
+      }
+    } catch (error) {
+      console.error(`Error connecting to school database: ${error.message}`);
+      return res.status(500).json({ message: `Error connecting to school database: ${error.message}` });
+    }
+  }
 
   if (user) {
-    await user.deleteOne();
-    res.json({ message: 'User removed' });
+    try {
+      // Delete the user with the appropriate model
+      await user.deleteOne();
+      console.log(`User ${req.params.id} successfully deleted from ${inSchoolDb ? 'school' : 'main'} database`);
+      return res.json({ message: 'User removed successfully' });
+    } catch (error) {
+      console.error(`Error deleting user: ${error.message}`);
+      return res.status(500).json({ message: `Failed to delete user: ${error.message}` });
+    }
   } else {
-    res.status(404);
-    throw new Error('User not found');
+    console.log(`User with ID ${req.params.id} not found in any database`);
+    return res.status(404).json({ message: 'User not found in any database' });
   }
 });
 
