@@ -1,8 +1,11 @@
 const asyncHandler = require('express-async-handler');
 const webpush = require('web-push');
+const mongoose = require('mongoose');
 const Notification = require('../models/notificationModel');
 const User = require('../models/userModel');
 const Subscription = require('../models/subscriptionModel');
+const { connectToSchoolDb } = require('../config/multiDbConnect');
+const { NotificationSchema } = require('../config/schoolModelRegistration');
 
 // @desc    Create a new notification
 // @route   POST /api/notifications
@@ -60,128 +63,91 @@ const createNotification = asyncHandler(async (req, res) => {
     // Advanced filtering by school, direction, subject
     console.log('Using advanced filtering');
     
-    // Track which filters are being applied
-    let appliedFilters = [];
-    
-    // Create arrays to store filter collections
-    let schoolIds = [];
-    let directionIds = [];
-    let subjectIds = [];
-
-    // Apply school filters
+    // If schools are specified, add them to both the notification and query
     if (schools && schools.length > 0) {
-      schoolIds = schools;
-      appliedFilters.push(`${schools.length} schools`);
+      userQuery.school = { $in: schools };
       notification.schools = schools;
     }
     
-    // Apply direction filters
+    // If directions are specified, add them to both the notification and query
     if (directions && directions.length > 0) {
-      directionIds = directions;
-      appliedFilters.push(`${directions.length} directions`);
+      userQuery.direction = { $in: directions };
       notification.directions = directions;
     }
     
-    // Apply subject filters
+    // If subjects are specified, add them to both the notification and query
     if (subjects && subjects.length > 0) {
-      subjectIds = subjects;
-      appliedFilters.push(`${subjects.length} subjects`);
+      userQuery.subjects = { $in: subjects };
       notification.subjects = subjects;
     }
-
-    console.log(`Applied filters: ${appliedFilters.join(', ')}`);
-
-    // Build the query with OR conditions for each filter type
-    const filterConditions = [];
     
-    if (schoolIds.length > 0) {
-      filterConditions.push({ school: { $in: schoolIds } });
-    }
-    
-    if (directionIds.length > 0) {
-      filterConditions.push({ direction: { $in: directionIds } });
-    }
-    
-    if (subjectIds.length > 0) {
-      filterConditions.push({ subjects: { $in: subjectIds } });
-    }
-    
-    // Only add the $or condition if we have filters
-    if (filterConditions.length > 0) {
-      userQuery.$or = filterConditions;
-    }
-    
-    // Apply role filter if specified
+    // If a specific role is specified, filter users by that role
     if (targetRole && targetRole !== 'all') {
       userQuery.role = targetRole;
     }
   }
-
-  // Apply role-based restrictions for teachers (can only send to students)
-  if (req.user.role === 'teacher') {
-    userQuery.role = 'student'; // Restrict teachers to only send to students
-    console.log('Teacher sending notification - restricted to student recipients only');
-  }
-
-  // Find all matching users
-  const users = await User.find(userQuery).select('_id name');
-  console.log(`Found ${users.length} matching recipients`);
   
-  // Get the user IDs
-  const userIds = users.map(user => user._id);
-
-  // Only find subscriptions with associated user accounts
-  const subscriptions = await Subscription.find({
-    user: { $in: userIds }
-  });
+  // Save the updated notification with all filtering criteria
+  await notification.save();
   
-  console.log(`Found ${subscriptions.length} push subscriptions for recipients`);
-
-  // Create push notification payload
-  const notificationPayload = JSON.stringify({
-    title,
-    message,
-    url: '/app/notifications',
-    senderId: req.user.id,
-    senderName: req.user.name,
-    timestamp: new Date(),
-    isImportant: isImportant || false,
-  });
-
-  // Send push notifications to all subscriptions asynchronously
+  // Find matching subscriptions to send push notifications
+  const subscriptions = await Subscription.find({});
+  console.log(`Found ${subscriptions.length} push subscriptions`);
+  
   if (subscriptions.length > 0) {
     const pushPromises = subscriptions.map(subscription => {
       // Verify the subscription has all required fields
       if (!subscription.endpoint || !subscription.keys || !subscription.keys.auth || !subscription.keys.p256dh) {
         console.error('Invalid subscription format:', subscription.endpoint);
-        return Promise.resolve(); // Skip this invalid subscription
+        return Promise.resolve();
       }
       
-      const pushConfig = {
+      const pushSubscription = {
         endpoint: subscription.endpoint,
         keys: {
-          auth: subscription.keys.auth,
           p256dh: subscription.keys.p256dh,
-        },
+          auth: subscription.keys.auth
+        }
       };
-
-      return webpush.sendNotification(pushConfig, notificationPayload)
-        .catch(err => {
-          console.error(`Error sending notification to ${subscription.endpoint}:`, err.message);
-          // Don't throw to prevent Promise.all from failing
+      
+      const pushPayload = JSON.stringify({
+        title: notification.title,
+        body: notification.message,
+        tag: notification._id.toString(),
+        data: {
+          url: `/notifications/${notification._id}`
+        }
+      });
+      
+      const pushOptions = {
+        vapidDetails: {
+          subject: 'mailto:support@gradebook.edu',
+          publicKey: process.env.VAPID_PUBLIC_KEY,
+          privateKey: process.env.VAPID_PRIVATE_KEY
+        },
+        TTL: 60 * 60 // 1 hour
+      };
+      
+      return webpush.sendNotification(pushSubscription, pushPayload, pushOptions)
+        .catch(error => {
+          if (error.statusCode === 410) {
+            // Subscription has expired or is no longer valid
+            console.log('Deleting invalid subscription:', subscription._id);
+            return Subscription.findByIdAndDelete(subscription._id);
+          } else {
+            console.error('Push notification error:', error);
+          }
         });
     });
-
-    // Don't wait for push results for the API response
-    Promise.all(pushPromises).catch(err => {
-      console.error('Error sending push notifications', err.message);
-    });
+    
+    try {
+      await Promise.all(pushPromises);
+      console.log('Push notifications sent successfully');
+    } catch (error) {
+      console.error('Error sending push notifications:', error);
+    }
   }
-
-  // Update notification with actual recipients
-  notification.recipients = userIds;
-  await notification.save();
-
+  
   res.status(201).json(notification);
 });
 
@@ -189,57 +155,79 @@ const createNotification = asyncHandler(async (req, res) => {
 // @route   GET /api/notifications
 // @access  Private/Admin
 const getAllNotifications = asyncHandler(async (req, res) => {
-  console.log('getAllNotifications endpoint called');
-  
   try {
+    console.log('getAllNotifications endpoint called');
+    
+    // Check which database to fetch from
     let notifications = [];
     
-    // Check if this is a request from a school-specific user
     if (req.school) {
       console.log(`Fetching notifications for school: ${req.school.name}`);
-      // Connect to the school-specific database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const schoolConnection = await connectToSchoolDb(req.school);
       
-      // Check if Notification model exists in this school's database
       try {
-        const SchoolNotification = schoolConnection.model('Notification');
+        // Connect to school database using improved connection system
+        const { connection, models } = await connectToSchoolDb(req.school);
         
-        // Try to fetch notifications with populated fields if models exist
-        try {
-          notifications = await SchoolNotification.find({});
-          
-          // Check if we can populate related fields
-          const SchoolUser = schoolConnection.model('User');
-          
-          if (SchoolUser) {
-            notifications = await SchoolNotification.find({})
-              .populate('sender', 'name email role')
-              .sort({ createdAt: -1 });
+        if (!connection) {
+          throw new Error('Failed to connect to school database');
+        }
+        
+        let NotificationModel;
+        
+        // Check if we have the models registered properly
+        if (models && models.Notification) {
+          console.log('Using registered Notification model from school database');
+          NotificationModel = models.Notification;
+        } else {
+          console.log('Creating Notification model in school database');
+          // Create the notification model manually if needed
+          try {
+            // Try to get existing model first
+            if (connection.models.Notification) {
+              NotificationModel = connection.models.Notification;
+              console.log('Found existing Notification model in connection');
+            } else {
+              // Create new model if it doesn't exist
+              NotificationModel = connection.model('Notification', NotificationSchema);
+              console.log('✅ Successfully created Notification model in school database');
+            }
+          } catch (modelError) {
+            console.error('Error creating/getting Notification model:', modelError.message);
+            throw modelError; // Rethrow to be caught by the outer catch
           }
-          
+        }
+        
+        // Try to fetch notifications with populated fields
+        try {
+          notifications = await NotificationModel.find()
+            .sort({ createdAt: -1 })
+            .populate('sender', 'name');
+            
           console.log(`Found ${notifications.length} notifications in school database`);
         } catch (queryError) {
           console.error('Error fetching notifications with populate:', queryError.message);
-          // Fallback to simple query without populate
-          notifications = await SchoolNotification.find({}).sort({ createdAt: -1 });
+          // Try a simpler query without populate if that fails
+          try {
+            notifications = await NotificationModel.find().sort({ createdAt: -1 });
+            console.log(`Found ${notifications.length} notifications (without populate)`);
+          } catch (simpleQueryError) {
+            console.error('Simple query also failed:', simpleQueryError.message);
+            throw simpleQueryError; // Rethrow to be caught by the outer catch
+          }
         }
-      } catch (modelError) {
-        // If model doesn't exist, create a basic one
-        console.log('Notification model not found in school database, using default model');
-        const notificationSchema = new schoolConnection.Schema({
-          title: String,
-          message: String,
-          sender: { type: schoolConnection.Schema.Types.ObjectId, ref: 'User' },
-          recipients: [{ type: schoolConnection.Schema.Types.ObjectId, ref: 'User' }],
-          isImportant: Boolean,
-          targetRole: String,
-          createdAt: Date,
-          updatedAt: Date
-        }, { timestamps: true });
-        
-        const SchoolNotification = schoolConnection.model('Notification', notificationSchema);
-        notifications = await SchoolNotification.find({}).sort({ createdAt: -1 });
+      } catch (error) {
+        console.error('Error with school database operations:', error.message);
+        // Fallback to main database
+        console.log('Falling back to main database for notifications');
+        try {
+          notifications = await Notification.find()
+            .populate('sender', 'name email role')
+            .sort({ createdAt: -1 });
+          console.log(`Found ${notifications.length} notifications in main database`);
+        } catch (mainDbError) {
+          console.error('Error with main database fallback:', mainDbError.message);
+          throw mainDbError;
+        }
       }
     } else {
       // This is a superadmin or legacy request
@@ -250,6 +238,8 @@ const getAllNotifications = asyncHandler(async (req, res) => {
         .populate('direction', 'name')
         .populate('subject', 'name')
         .sort({ createdAt: -1 });
+      
+      console.log(`Found ${notifications.length} notifications in main database`);
     }
     
     res.status(200).json(notifications);
@@ -270,231 +260,215 @@ const getMyNotifications = asyncHandler(async (req, res) => {
     console.log(`Getting notifications for user ${user.name} (${user._id}) with role: ${user.role}`);
     
     let notifications = [];
-    let NotificationModel = Notification; // Default to main database model
     
     // Check if this is a school-specific user
     if (req.school) {
       console.log(`Fetching notifications for school user in: ${req.school.name}`);
       
       try {
-        // Connect to the school-specific database
-        const { connectToSchoolDb } = require('../config/multiDbConnect');
-        const schoolConnection = await connectToSchoolDb(req.school);
+        // Connect to the school-specific database with improved connection handler
+        const { connection, models } = await connectToSchoolDb(req.school);
         
-        // Get the Notification model from school database
-        try {
-          NotificationModel = schoolConnection.model('Notification');
-        } catch (modelError) {
-          // Create model if it doesn't exist
+        if (!connection) {
+          throw new Error('Failed to connect to school database');
+        }
+        
+        let NotificationModel;
+        
+        // Check if we have the models registered properly
+        if (models && models.Notification) {
+          console.log('Using registered Notification model for user notifications');
+          NotificationModel = models.Notification;
+        } else {
           console.log('Creating Notification model in school database');
-          const notificationSchema = new schoolConnection.Schema({
-            title: String,
-            message: String,
-            sender: { type: schoolConnection.Schema.Types.ObjectId, ref: 'User' },
-            recipients: [{ type: schoolConnection.Schema.Types.ObjectId, ref: 'User' }],
-            isImportant: Boolean,
-            targetRole: String,
-            sendToAll: Boolean,
-            createdAt: Date,
-            updatedAt: Date
-          }, { timestamps: true });
-          
-          NotificationModel = schoolConnection.model('Notification', notificationSchema);
+          try {
+            // Try to get existing model first
+            if (connection.models.Notification) {
+              NotificationModel = connection.models.Notification;
+              console.log('Found existing Notification model in connection');
+            } else {
+              // Create new model if it doesn't exist
+              NotificationModel = connection.model('Notification', NotificationSchema);
+              console.log('✅ Successfully created Notification model for user notifications');
+            }
+          } catch (modelError) {
+            console.error('Error creating/getting Notification model:', modelError.message);
+            throw modelError;
+          }
         }
-      } catch (dbError) {
-        console.error('Error connecting to school database:', dbError.message);
-        // Fallback to main database if school connection fails
+        
+        // Based on user role, apply different filters to notifications
+        if (user.role === 'student') {
+          console.log('Student notifications - using strict privacy rules');
+          // Students only see notifications that:
+          // 1. Are sent to all users (global notifications)
+          // 2. Match their school
+          // 3. Match their direction
+          // 4. Match their subjects
+          // 5. Are specifically addressed to them
+          
+          const query = {
+            $or: [
+              // Global notifications for students or all users
+              { sendToAll: true, $or: [{ targetRole: 'student' }, { targetRole: 'all' }] },
+              // School-specific notifications
+              { schools: { $in: [user.school] } },
+              // Direction-specific notifications
+              { directions: { $in: [user.direction] } },
+              // Subject-specific notifications
+              { subjects: { $in: user.subjects || [] } },
+              // Specifically addressed to this student
+              { recipients: { $in: [user._id] } }
+            ]
+          };
+          
+          notifications = await NotificationModel.find(query)
+            .populate('sender', 'name email role')
+            .sort({ createdAt: -1 });
+            
+          console.log(`Found ${notifications.length} notifications for student`);
+        } else if (user.role === 'teacher') {
+          console.log('Teacher notifications - using balanced privacy rules');
+          // Teachers see:
+          // 1. Global notifications
+          // 2. Notifications for their schools
+          // 3. Notifications for their directions
+          // 4. Notifications for their subjects
+          // 5. Notifications specifically addressed to them
+          
+          const query = {
+            $or: [
+              // Global notifications for teachers or all users
+              { sendToAll: true, $or: [{ targetRole: 'teacher' }, { targetRole: 'all' }] },
+              // School-specific notifications
+              { schools: { $in: user.schools || [] } },
+              // Direction-specific notifications 
+              { directions: { $in: user.directions || [] } },
+              // Subject-specific notifications
+              { subjects: { $in: user.subjects || [] } },
+              // Specifically addressed to this teacher
+              { recipients: { $in: [user._id] } }
+            ]
+          };
+          
+          notifications = await NotificationModel.find(query)
+            .populate('sender', 'name email role')
+            .sort({ createdAt: -1 });
+            
+          console.log(`Found ${notifications.length} notifications for teacher`);
+        } else if (user.role === 'admin') {
+          console.log('Admin fetching all notifications with enhanced visibility');
+          // Admins see all notifications for their school
+          notifications = await NotificationModel.find({})
+            .populate('sender', 'name email role')
+            .sort({ createdAt: -1 });
+            
+          console.log(`Found ${notifications.length} notifications for admin`);
+        } else if (user.role === 'superadmin') {
+          console.log('Superadmin fetching all notifications');
+          // Superadmins can see everything
+          notifications = await Notification.find({})
+            .populate('sender', 'name email role')
+            .sort({ createdAt: -1 });
+        }
+      } catch (error) {
+        console.error('Error fetching notifications from school database:', error.message);
+        // Fall back to main database in case of any errors
         console.log('Falling back to main database for notifications');
-      }
-    }
-    
-    // Apply role-specific filtering for notifications
-    if (user.role === 'student') {
-      // For students, we use a simple, direct, and foolproof approach:
-      // A student can ONLY see notifications where either:
-      // 1. They are explicitly listed as a recipient (their ID is in the recipients array) OR
-      // 2. It's a true global notification (sendToAll: true)
-      
-      // We're not using any other conditions - this is the most restrictive and secure approach
-      const strictPrivacyQuery = {
-        $or: [
-          // Direct recipient - their ID must be in the recipients array
-          { recipients: user._id },
-          // Global notifications only - must have sendToAll flag set to true
-          { sendToAll: true }
-        ]
-      };
-      
-      // Add additional role restriction for extra security
-      // A student should only see notifications targeted to students or all users
-      strictPrivacyQuery.$and = [
-        { targetRole: { $in: ['student', 'all'] } }
-      ];
-      
-      console.log('STRICT PRIVACY: Student notification query:', JSON.stringify(strictPrivacyQuery, null, 2));
-      
-      try {
-        notifications = await NotificationModel.find(strictPrivacyQuery)
-          .sort({ createdAt: -1 });
         
-        // Try to populate related fields if possible
         try {
-          if (notifications.length > 0) {
-            notifications = await NotificationModel.find(strictPrivacyQuery)
+          // Apply the same filters but on the main database
+          if (user.role === 'student') {
+            const query = {
+              $or: [
+                { sendToAll: true, $or: [{ targetRole: 'student' }, { targetRole: 'all' }] },
+                { schools: { $in: [user.school] } },
+                { directions: { $in: [user.direction] } },
+                { subjects: { $in: user.subjects || [] } },
+                { recipients: { $in: [user._id] } }
+              ]
+            };
+            
+            notifications = await Notification.find(query)
+              .populate('sender', 'name email role')
+              .sort({ createdAt: -1 });
+          } else if (user.role === 'teacher') {
+            const query = {
+              $or: [
+                { sendToAll: true, $or: [{ targetRole: 'teacher' }, { targetRole: 'all' }] },
+                { schools: { $in: user.schools || [] } },
+                { directions: { $in: user.directions || [] } },
+                { subjects: { $in: user.subjects || [] } },
+                { recipients: { $in: [user._id] } }
+              ]
+            };
+            
+            notifications = await Notification.find(query)
+              .populate('sender', 'name email role')
+              .sort({ createdAt: -1 });
+          } else {
+            // Admin or superadmin
+            notifications = await Notification.find({})
               .populate('sender', 'name email role')
               .sort({ createdAt: -1 });
           }
-        } catch (populateError) {
-          console.log('Could not populate sender field:', populateError.message);
-          // Continue with unpopulated notifications
-        }
-        
-        console.log(`Found ${notifications.length} notifications for student ${user._id}`);
-        
-        // Double-check that each notification has this student's ID in recipients or sendToAll=true
-        const verifiedNotifications = notifications.filter(notification => {
-          const isDirectRecipient = notification.recipients && notification.recipients.some(r => 
-            r.toString && r.toString() === user._id.toString());
-          const isGlobal = notification.sendToAll === true;
           
-          if (!isDirectRecipient && !isGlobal) {
-            console.error(`PRIVACY ERROR: Notification ${notification._id} leaked to student ${user._id} despite not being a recipient`);
-            return false;
-          }
-          
-          return true;
-        });
-        
-        if (verifiedNotifications.length < notifications.length) {
-          console.warn(`PRIVACY PROTECTION: Filtered out ${notifications.length - verifiedNotifications.length} notifications that weren't meant for student ${user._id}`);
+          console.log(`Found ${notifications.length} notifications in main database`);
+        } catch (fallbackError) {
+          console.error('Error with fallback notification fetching:', fallbackError.message);
+          throw fallbackError;
         }
-        
-        return res.status(200).json(verifiedNotifications);
-      } catch (queryError) {
-        console.error('Error querying notifications for student:', queryError.message);
-        return res.status(500).json({ message: 'Error retrieving notifications' });
-      }
-    } else if (user.role === 'teacher') {
-      // Apply the same strict privacy approach for teachers
-      // Teachers can only see notifications where either:
-      // 1. They are explicitly listed as a recipient (their ID is in the recipients array) OR
-      // 2. It's a true global notification (sendToAll: true)
-      
-      const strictPrivacyQuery = {
-        $or: [
-          // Direct recipient - their ID must be in the recipients array
-          { recipients: user._id },
-          // Global notifications only - must have sendToAll flag set to true
-          { sendToAll: true }
-        ]
-      };
-      
-      // Add additional role restriction for extra security
-      // A teacher should only see notifications targeted to teachers or all users
-      strictPrivacyQuery.$and = [
-        { targetRole: { $in: ['teacher', 'all'] } }
-      ];
-      
-      console.log('STRICT PRIVACY: Teacher notification query:', JSON.stringify(strictPrivacyQuery, null, 2));
-      
-      try {
-        notifications = await NotificationModel.find(strictPrivacyQuery)
-          .sort({ createdAt: -1 });
-        
-        // Try to populate related fields if possible
-        try {
-          if (notifications.length > 0) {
-            notifications = await NotificationModel.find(strictPrivacyQuery)
-              .populate('sender', 'name email role')
-              .sort({ createdAt: -1 });
-          }
-        } catch (populateError) {
-          console.log('Could not populate sender field:', populateError.message);
-          // Continue with unpopulated notifications
-        }
-      
-        console.log(`Found ${notifications.length} notifications for teacher ${user._id}`);
-        
-        // Double-check that each notification has this teacher's ID in recipients or sendToAll=true
-        const verifiedNotifications = notifications.filter(notification => {
-          const isDirectRecipient = notification.recipients && notification.recipients.some(r => 
-            r.toString && r.toString() === user._id.toString());
-          const isGlobal = notification.sendToAll === true;
-          
-          if (!isDirectRecipient && !isGlobal) {
-            console.error(`PRIVACY ERROR: Notification ${notification._id} leaked to teacher ${user._id} despite not being a recipient`);
-            return false;
-          }
-          
-          return true;
-        });
-        
-        if (verifiedNotifications.length < notifications.length) {
-          console.warn(`PRIVACY PROTECTION: Filtered out ${notifications.length - verifiedNotifications.length} notifications that weren't meant for teacher ${user._id}`);
-        }
-        
-        return res.status(200).json(verifiedNotifications);
-      } catch (queryError) {
-        console.error('Error querying notifications for teacher:', queryError.message);
-        return res.status(500).json({ message: 'Error retrieving notifications' });
-      }
-    } else if (user.role === 'admin') {
-      // Enhanced admin view - admins can see all notifications, with special emphasis on teacher notifications
-      console.log('Admin fetching all notifications with enhanced visibility');
-      
-      try {
-        // Get all notifications from the appropriate database
-        notifications = await NotificationModel.find({})
-          .sort({ isImportant: -1, createdAt: -1 }); // Important first, then newest
-        
-        // Try to populate fields if possible
-        try {
-          if (notifications.length > 0) {
-            notifications = await NotificationModel.find({})
-              .populate('sender', 'name email role')
-              .sort({ isImportant: -1, createdAt: -1 }); // Important first, then newest
-          }
-        } catch (populateError) {
-          console.log('Could not populate fields for admin:', populateError.message);
-          // Continue with unpopulated notifications
-        }
-        
-        console.log(`Found ${notifications.length} notifications for admin ${user._id}`);
-        
-        return res.status(200).json(notifications);
-      } catch (queryError) {
-        console.error('Error querying notifications for admin:', queryError.message);
-        return res.status(500).json({ message: 'Error retrieving notifications' });
       }
     } else {
-      // Superadmin sees everything
-      console.log('Superadmin fetching all notifications');
+      // This is a superadmin or user in the main database
+      console.log('User in main database - fetching notifications');
       
-      try {
-        // For superadmin, always use the main database
+      if (user.role === 'superadmin') {
+        console.log('Superadmin fetching all notifications');
+        // Superadmins can see everything
         notifications = await Notification.find({})
           .populate('sender', 'name email role')
-          .populate('schools', 'name')
-          .populate('directions', 'name')
-          .populate('subjects', 'name')
           .sort({ createdAt: -1 });
+      } else {
+        // Apply standard filters for main database users
+        const query = {
+          $or: [
+            { sendToAll: true },
+            { recipients: { $in: [user._id] } }
+          ]
+        };
         
-        console.log(`Found ${notifications.length} notifications for superadmin ${user._id}`);
+        if (user.role === 'student' && user.school) {
+          query.$or.push({ schools: { $in: [user.school] } });
+          query.$or.push({ directions: { $in: [user.direction] } });
+          if (user.subjects && user.subjects.length > 0) {
+            query.$or.push({ subjects: { $in: user.subjects } });
+          }
+        } else if ((user.role === 'teacher' || user.role === 'admin') && user.schools) {
+          if (user.schools && user.schools.length > 0) {
+            query.$or.push({ schools: { $in: user.schools } });
+          }
+          if (user.directions && user.directions.length > 0) {
+            query.$or.push({ directions: { $in: user.directions } });
+          }
+          if (user.subjects && user.subjects.length > 0) {
+            query.$or.push({ subjects: { $in: user.subjects } });
+          }
+        }
         
-        return res.status(200).json(notifications);
-      } catch (queryError) {
-        console.error('Error querying notifications for superadmin:', queryError.message);
-        return res.status(500).json({ message: 'Error retrieving notifications' });
+        notifications = await Notification.find(query)
+          .populate('sender', 'name email role')
+          .sort({ createdAt: -1 });
       }
+      
+      console.log(`Found ${notifications.length} notifications in main database`);
     }
+    
+    return res.status(200).json(notifications);
   } catch (error) {
     console.error('Unexpected error in getMyNotifications:', error.message);
     return res.status(500).json({ message: 'Internal server error' });
   }
-
-  // If we reach this point, there's an unhandled user role
-  console.error(`Unhandled user role: ${user.role} - No notifications will be returned`);
-  return res.json([]);
 });
 
 // @desc    Get notifications sent by a user
@@ -502,117 +476,58 @@ const getMyNotifications = asyncHandler(async (req, res) => {
 // @access  Private/Teacher Admin
 const getSentNotifications = asyncHandler(async (req, res) => {
   try {
-    console.log(`Getting sent notifications for user ${req.user.name} (${req.user.id})`);
+    const user = req.user;
+    
+    console.log(`Getting sent notifications for user ${user.name} (${user._id})`);
     
     let notifications = [];
     
-    // Check if this is a request from a school-specific user
+    // Check if this is a school-specific user
     if (req.school) {
-      console.log(`Fetching sent notifications for school user in: ${req.school.name}`);
-      
       try {
         // Connect to the school-specific database
-        const { connectToSchoolDb } = require('../config/multiDbConnect');
-        const schoolConnection = await connectToSchoolDb(req.school);
+        const { connection, models } = await connectToSchoolDb(req.school);
         
-        // Get the Notification model from school database
-        try {
-          const SchoolNotification = schoolConnection.model('Notification');
-          
-          // Try to fetch notifications with populated fields if models exist
-          try {
-            notifications = await SchoolNotification.find({ sender: req.user.id })
-              .sort({ createdAt: -1 });
-            
-            // Try to populate related fields if possible
-            try {
-              if (notifications.length > 0) {
-                notifications = await SchoolNotification.find({ sender: req.user.id })
-                  .populate('sender', 'name email role')
-                  .sort({ createdAt: -1 });
-              }
-            } catch (populateError) {
-              console.log('Could not populate sender field:', populateError.message);
-              // Continue with unpopulated notifications
-            }
-          } catch (queryError) {
-            console.error('Error fetching sent notifications:', queryError.message);
-            // Return empty array if query fails
-            notifications = [];
-          }
-        } catch (modelError) {
-          // Model doesn't exist in this database
-          console.log('Notification model not found in school database, using default model');
-          // Return empty array since there are no notifications in this database
-          notifications = [];
+        if (!connection) {
+          throw new Error('Failed to connect to school database');
         }
-      } catch (dbError) {
-        console.error('Error connecting to school database:', dbError.message);
-        // Fallback to main database if school connection fails
-        notifications = await Notification.find({ sender: req.user.id })
+        
+        let NotificationModel;
+        
+        // Use registered model or create one
+        if (models && models.Notification) {
+          NotificationModel = models.Notification;
+        } else if (connection.models.Notification) {
+          NotificationModel = connection.models.Notification;
+        } else {
+          NotificationModel = connection.model('Notification', NotificationSchema);
+        }
+        
+        // Find notifications sent by this user
+        notifications = await NotificationModel.find({ sender: user._id })
           .populate('sender', 'name email role')
-          .populate('schools', 'name')
-          .populate('directions', 'name')
-          .populate('subjects', 'name')
+          .sort({ createdAt: -1 });
+          
+        console.log(`Found ${notifications.length} sent notifications in school database`);
+      } catch (error) {
+        console.error('Error fetching sent notifications from school database:', error.message);
+        // Fall back to main database
+        notifications = await Notification.find({ sender: user._id })
+          .populate('sender', 'name email role')
           .sort({ createdAt: -1 });
       }
     } else {
-      // This is a superadmin or legacy request
-      console.log('Fetching sent notifications from main database');
-      notifications = await Notification.find({ sender: req.user.id })
+      // This is a superadmin or user in the main database
+      notifications = await Notification.find({ sender: user._id })
         .populate('sender', 'name email role')
-        .populate('schools', 'name')
-        .populate('directions', 'name')
-        .populate('subjects', 'name')
         .sort({ createdAt: -1 });
     }
     
-    console.log(`Found ${notifications.length} notifications sent by user ${req.user.id}`);
-    
-    res.status(200).json(notifications);
+    return res.status(200).json(notifications);
   } catch (error) {
     console.error('Error in getSentNotifications:', error.message);
-    res.status(500).json({ message: 'Error retrieving sent notifications' });
+    return res.status(500).json({ message: 'Internal server error' });
   }
-});
-
-// @desc    Get notification by ID
-// @route   GET /api/notifications/:id
-// @access  Private
-const getNotificationById = asyncHandler(async (req, res) => {
-  const notification = await Notification.findById(req.params.id)
-    .populate('sender', 'name email role')
-    .populate('recipients', 'name email')
-    .populate('school', 'name')
-    .populate('direction', 'name')
-    .populate('subject', 'name');
-
-  if (!notification) {
-    res.status(404);
-    throw new Error('Notification not found');
-  }
-
-  // Check if user is allowed to view this notification
-  const user = req.user;
-  
-  const isRecipient = notification.recipients.some(
-    recipient => recipient._id.toString() === user.id
-  );
-  
-  const isTargetedByRole = notification.targetRole === 'all' || notification.targetRole === user.role;
-  const isTargetedBySchool = user.school && notification.school && user.school.toString() === notification.school._id.toString();
-  const isTargetedByDirection = user.direction && notification.direction && user.direction.toString() === notification.direction._id.toString();
-  const isTargetedBySubject = user.subjects && notification.subject && user.subjects.includes(notification.subject._id);
-  
-  const isSender = notification.sender._id.toString() === user.id;
-  const isAdmin = user.role === 'admin';
-
-  if (!isRecipient && !isTargetedByRole && !isTargetedBySchool && !isTargetedByDirection && !isTargetedBySubject && !isSender && !isAdmin) {
-    res.status(403);
-    throw new Error('Not authorized to view this notification');
-  }
-
-  res.json(notification);
 });
 
 // @desc    Update notification
@@ -620,87 +535,223 @@ const getNotificationById = asyncHandler(async (req, res) => {
 // @access  Private/Teacher Admin
 const updateNotification = asyncHandler(async (req, res) => {
   const { title, message, recipients, school, direction, subject, targetRole, isImportant } = req.body;
-
-  const notification = await Notification.findById(req.params.id);
-
+  
+  // Find the notification
+  let notification;
+  
+  if (req.school) {
+    try {
+      // Connect to the school-specific database
+      const { connection, models } = await connectToSchoolDb(req.school);
+      
+      if (!connection) {
+        throw new Error('Failed to connect to school database');
+      }
+      
+      let NotificationModel;
+      
+      // Use registered model or create one
+      if (models && models.Notification) {
+        NotificationModel = models.Notification;
+      } else if (connection.models.Notification) {
+        NotificationModel = connection.models.Notification;
+      } else {
+        NotificationModel = connection.model('Notification', NotificationSchema);
+      }
+      
+      notification = await NotificationModel.findById(req.params.id);
+    } catch (error) {
+      console.error('Error finding notification in school database:', error.message);
+      // Fall back to main database
+      notification = await Notification.findById(req.params.id);
+    }
+  } else {
+    notification = await Notification.findById(req.params.id);
+  }
+  
   if (!notification) {
     res.status(404);
     throw new Error('Notification not found');
   }
-
-  // Check if user is allowed to update this notification
-  if (notification.sender.toString() !== req.user.id && req.user.role !== 'admin') {
-    res.status(403);
+  
+  // Check ownership - only the sender or an admin can update
+  if (notification.sender.toString() !== req.user.id && 
+      req.user.role !== 'admin' && 
+      req.user.role !== 'superadmin') {
+    res.status(401);
     throw new Error('Not authorized to update this notification');
   }
-
+  
+  // Update the notification
   notification.title = title || notification.title;
   notification.message = message || notification.message;
+  notification.recipients = recipients || notification.recipients;
   
-  if (recipients) {
-    notification.recipients = recipients;
-  }
+  if (school) notification.school = school;
+  if (direction) notification.direction = direction;
+  if (subject) notification.subject = subject;
+  if (targetRole) notification.targetRole = targetRole;
+  if (isImportant !== undefined) notification.isImportant = isImportant;
   
-  if (school !== undefined) {
-    notification.school = school;
-  }
-  
-  if (direction !== undefined) {
-    notification.direction = direction;
-  }
-  
-  if (subject !== undefined) {
-    notification.subject = subject;
-  }
-  
-  if (targetRole) {
-    notification.targetRole = targetRole;
-  }
-  
-  if (isImportant !== undefined) {
-    notification.isImportant = isImportant;
-  }
-
   const updatedNotification = await notification.save();
-  res.json(updatedNotification);
+  
+  res.status(200).json(updatedNotification);
+});
+
+// @desc    Mark notification as read
+// @route   PUT /api/notifications/:id/read
+// @access  Private
+const markNotificationRead = asyncHandler(async (req, res) => {
+  // Find the notification
+  let notification;
+  
+  if (req.school) {
+    try {
+      // Connect to the school-specific database
+      const { connection, models } = await connectToSchoolDb(req.school);
+      
+      if (!connection) {
+        throw new Error('Failed to connect to school database');
+      }
+      
+      let NotificationModel;
+      
+      // Use registered model or create one
+      if (models && models.Notification) {
+        NotificationModel = models.Notification;
+      } else if (connection.models.Notification) {
+        NotificationModel = connection.models.Notification;
+      } else {
+        NotificationModel = connection.model('Notification', NotificationSchema);
+      }
+      
+      notification = await NotificationModel.findById(req.params.id);
+    } catch (error) {
+      console.error('Error finding notification in school database:', error.message);
+      // Fall back to main database
+      notification = await Notification.findById(req.params.id);
+    }
+  } else {
+    notification = await Notification.findById(req.params.id);
+  }
+  
+  if (!notification) {
+    res.status(404);
+    throw new Error('Notification not found');
+  }
+  
+  // Mark as read
+  notification.read = true;
+  await notification.save();
+  
+  res.status(200).json({ success: true });
 });
 
 // @desc    Delete notification
 // @route   DELETE /api/notifications/:id
 // @access  Private/Teacher Admin
 const deleteNotification = asyncHandler(async (req, res) => {
-  const notification = await Notification.findById(req.params.id);
-
-  if (!notification) {
+  // Find the notification
+  let notification;
+  let deleted = false;
+  
+  if (req.school) {
+    try {
+      // Connect to the school-specific database
+      const { connection, models } = await connectToSchoolDb(req.school);
+      
+      if (!connection) {
+        throw new Error('Failed to connect to school database');
+      }
+      
+      let NotificationModel;
+      
+      // Use registered model or create one
+      if (models && models.Notification) {
+        NotificationModel = models.Notification;
+      } else if (connection.models.Notification) {
+        NotificationModel = connection.models.Notification;
+      } else {
+        NotificationModel = connection.model('Notification', NotificationSchema);
+      }
+      
+      notification = await NotificationModel.findById(req.params.id);
+      
+      if (notification) {
+        // Check ownership - only the sender or an admin can delete
+        if (notification.sender.toString() !== req.user.id && 
+            req.user.role !== 'admin' && 
+            req.user.role !== 'superadmin') {
+          res.status(401);
+          throw new Error('Not authorized to delete this notification');
+        }
+        
+        await NotificationModel.findByIdAndDelete(req.params.id);
+        deleted = true;
+      }
+    } catch (error) {
+      console.error('Error finding/deleting notification in school database:', error.message);
+      // Fall back to main database only for finding
+      notification = await Notification.findById(req.params.id);
+    }
+  } else {
+    notification = await Notification.findById(req.params.id);
+  }
+  
+  // If we didn't already delete and we found the notification
+  if (!deleted && notification) {
+    // Check ownership - only the sender or an admin can delete
+    if (notification.sender.toString() !== req.user.id && 
+        req.user.role !== 'admin' && 
+        req.user.role !== 'superadmin') {
+      res.status(401);
+      throw new Error('Not authorized to delete this notification');
+    }
+    
+    await Notification.findByIdAndDelete(req.params.id);
+  } else if (!deleted && !notification) {
     res.status(404);
     throw new Error('Notification not found');
   }
-
-  // Check if user is allowed to delete this notification
-  if (notification.sender.toString() !== req.user.id && req.user.role !== 'admin') {
-    res.status(403);
-    throw new Error('Not authorized to delete this notification');
-  }
-
-  await notification.deleteOne();
-  res.json({ message: 'Notification removed' });
+  
+  res.status(200).json({ success: true });
 });
 
-// @desc    Mark notification as read
-// @route   PUT /api/notifications/:id/read
+// @desc    Save a web push subscription
+// @route   POST /api/subscriptions
 // @access  Private
-const markNotificationAsRead = asyncHandler(async (req, res) => {
-  const notification = await Notification.findById(req.params.id);
-
-  if (!notification) {
-    res.status(404);
-    throw new Error('Notification not found');
-  }
-
-  notification.isRead = true;
-  await notification.save();
+const saveSubscription = asyncHandler(async (req, res) => {
+  const { endpoint, keys } = req.body;
   
-  res.json({ message: 'Notification marked as read' });
+  if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
+    res.status(400);
+    throw new Error('Invalid subscription data');
+  }
+  
+  // Check if subscription already exists
+  const existingSubscription = await Subscription.findOne({ 
+    endpoint,
+    'keys.p256dh': keys.p256dh,
+    'keys.auth': keys.auth
+  });
+  
+  if (existingSubscription) {
+    // Update the user ID if it's a different user
+    if (existingSubscription.user.toString() !== req.user.id) {
+      existingSubscription.user = req.user.id;
+      await existingSubscription.save();
+    }
+    return res.status(200).json(existingSubscription);
+  }
+  
+  // Create new subscription
+  const newSubscription = await Subscription.create({
+    endpoint,
+    keys,
+    user: req.user.id
+  });
+  
+  res.status(201).json(newSubscription);
 });
 
 module.exports = {
@@ -708,8 +759,8 @@ module.exports = {
   getAllNotifications,
   getMyNotifications,
   getSentNotifications,
-  getNotificationById,
   updateNotification,
+  markNotificationRead,
   deleteNotification,
-  markNotificationAsRead,
+  saveSubscription
 };

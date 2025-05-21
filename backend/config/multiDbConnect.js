@@ -1,8 +1,11 @@
 const mongoose = require('mongoose');
-const registerSchemaModels = require('./registerSchemaModels');
+const { registerSchoolModels } = require('./schoolModelRegistration');
 
 // Store database connections for each school
 const schoolConnections = new Map();
+
+// Store registered models for each school
+const schoolModels = new Map();
 
 // Connect to a school-specific database with reliability improvements
 const connectToSchoolDb = async (school) => {
@@ -25,14 +28,33 @@ const connectToSchoolDb = async (school) => {
         // Verify connection by executing a simple command
         await existingConnection.db.admin().ping();
         console.log(`✅ Connection verified for school: ${school.name}`);
-        return existingConnection;
+        
+        // Get the registered models for this school
+        const models = schoolModels.get(schoolId) || {};
+        
+        // If models aren't already registered, register them now
+        if (!models.School) {
+          console.log(`Models not registered for ${school.name}, registering now...`);
+          const registeredModels = registerSchoolModels(existingConnection);
+          if (registeredModels) {
+            schoolModels.set(schoolId, registeredModels);
+          }
+        }
+        
+        // Return both connection and models
+        return {
+          connection: existingConnection,
+          models: schoolModels.get(schoolId) || {}
+        };
       } catch (pingError) {
         console.warn(`⚠️ Connection test failed for school: ${school.name}, creating a new one. Error: ${pingError.message}`);
         schoolConnections.delete(schoolId); // Remove unhealthy connection
+        schoolModels.delete(schoolId); // Also remove cached models
       }
     } else {
       console.warn(`⚠️ Stale connection found for school: ${school.name}, creating a new one`);
       schoolConnections.delete(schoolId); // Remove stale connection
+      schoolModels.delete(schoolId); // Also remove cached models
     }
   }
 
@@ -103,18 +125,21 @@ const connectToSchoolDb = async (school) => {
         
         console.log(`Connection to school database ${school.name} successful!`);
         
-        // Wait for connection to be fully established before registering models
-        if (connection.readyState === 1) {
-          // Register all required schema models in this connection
-          // This is critical for populate() to work properly with references
-          try {
-            registerSchemaModels(connection);
-            console.log(`Models successfully registered for ${school.name} database`);
-          } catch (schemaError) {
-            console.error(`Error registering models for ${school.name}:`, schemaError);
+        // Register all required schema models after establishing connection
+        try {
+          // The registerSchoolModels function is designed to be idempotent
+          // and will handle cases where models are already registered
+          const models = registerSchoolModels(connection);
+          
+          if (models) {
+            // Store the models for this school for later use
+            schoolModels.set(schoolId, models);
+            console.log(`✅ Models successfully registered for ${school.name} database`);
+          } else {
+            console.error(`❌ Failed to register models for ${school.name}`);
           }
-        } else {
-          console.warn(`Connection not ready for ${school.name}, skipping schema registration`);
+        } catch (schemaError) {
+          console.error(`❌ Error registering models for ${school.name}:`, schemaError);
         }
         
         // CRITICAL FIX: Test connection without relying on database features
@@ -152,11 +177,20 @@ const connectToSchoolDb = async (school) => {
           connection.once('error', () => clearTimeout(timeout));
         });
         
-        console.log(`\u2705 Successfully connected to school database: ${school.name} (attempt ${retryCount + 1})`);
-        
-        // Cache the connection
+        console.log(`✅ Successfully connected to school database: ${school.name} (attempt ${retryCount + 1})`);
         schoolConnections.set(schoolId, connection);
-        return connection;
+        
+        // Register models and store them for future use
+        const models = registerSchoolModels(connection);
+        if (models) {
+          schoolModels.set(schoolId, models);
+        }
+        
+        // Return both connection and models
+        return {
+          connection,
+          models: models || {}
+        };
       } catch (error) {
         retryCount++;
         console.error(`⚠️ Database connection attempt ${retryCount} failed for school: ${school.name}. Error: ${error.message}`);
@@ -179,25 +213,33 @@ const connectToSchoolDb = async (school) => {
 };
 
 // Get a school-specific connection if it already exists
+// Returns both the connection and registered models
 const getSchoolConnection = (schoolId) => {
-  if (!schoolId) return null;
+  if (!schoolId) {
+    console.error('Invalid schoolId provided to getSchoolConnection');
+    return { connection: null, models: {} };
+  }
   
   const connectionId = typeof schoolId === 'object' ? schoolId.toString() : schoolId.toString();
   
   if (schoolConnections.has(connectionId)) {
+    console.log(`Using cached school connection for ID: ${connectionId}`);
     const connection = schoolConnections.get(connectionId);
     
-    // Check if the connection is still alive before returning it
+    // Check if connection is still alive
     if (connection.readyState === 1) {
-      return connection;
+      const models = schoolModels.get(connectionId) || {};
+      return { connection, models };
     } else {
       console.log(`Found stale connection for school ID: ${connectionId}, removing it`);
       schoolConnections.delete(connectionId);
-      return null;
+      schoolModels.delete(connectionId);
+      return { connection: null, models: {} };
     }
   }
   
-  return null;
+  console.log(`No cached connection found for school ID: ${connectionId}`);
+  return { connection: null, models: {} };
 };
 
 // Get all active school connections

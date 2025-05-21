@@ -374,10 +374,17 @@ const getUsers = asyncHandler(async (req, res) => {
     // Check if this is a request from a school-specific user
     if (req.school) {
       console.log(`Fetching users from school database: ${req.school.name}`);
-      // Connect to the school-specific database
+      // Connect to the school-specific database with improved connection
       const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const schoolConnection = await connectToSchoolDb(req.school);
-      const SchoolUser = schoolConnection.model('User');
+      const { connection, models } = await connectToSchoolDb(req.school);
+      
+      // Get the User model from the connection
+      const SchoolUser = connection.model('User');
+      
+      // Check if all required models are registered for proper population
+      if (!models.School || !models.Direction || !models.Subject) {
+        console.warn('Not all required models are registered, references may not populate correctly');
+      }
       
       // Get users from the school's database with proper population of references
       users = await SchoolUser.find({}).select('-password')
@@ -479,9 +486,16 @@ const getUserById = asyncHandler(async (req, res) => {
       // If not found in main DB, check the school-specific database
       console.log(`User not found in main DB, checking school database: ${req.school.name}`);
       
-      // Connect to the school's database
-      const schoolConnection = await connectToSchoolDb(req.school);
-      const SchoolUser = schoolConnection.model('User');
+      // Connect to the school's database with improved connection handling
+      const { connection, models } = await connectToSchoolDb(req.school);
+      
+      // Get the User model from the connection
+      const SchoolUser = connection.model('User');
+      
+      // Check if all required models are registered for proper population
+      if (!models.School || !models.Direction || !models.Subject) {
+        console.warn('Not all required models are registered, references may not populate correctly');
+      }
       
       // Try to find the user in the school database
       const schoolUser = await SchoolUser.findById(req.params.id)
