@@ -267,9 +267,10 @@ function App() {
                 <EditUser />
               </AdminRoute>
             } />
+            {/* Contact Messages moved to superadmin - route left here for backward compatibility */}
             <Route path="/app/admin/contact" element={
               <AdminRoute>
-                <ContactMessages />
+                <Navigate to="/superadmin/contact" replace />
               </AdminRoute>
             } />
             <Route path="/app/admin/schools" element={
@@ -297,6 +298,7 @@ function App() {
           }>
             <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
             <Route path="/superadmin/new-school-owner" element={<CreateSchoolOwner />} />
+            <Route path="/superadmin/contact" element={<ContactMessages />} />
           </Route>
           
           {/* 404 Page */}

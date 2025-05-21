@@ -180,8 +180,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'Contact Messages',
         icon: <EmailIcon />,
-        path: '/app/admin/contact',
-        roles: ['admin'],
+        path: '/superadmin/contact',
+        roles: ['superadmin'],
       },
       // Profile is available to all users
       {
@@ -243,21 +243,36 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     // Exact match
     if (location.pathname === itemPath) return true;
     
-    // Handle dashboard paths that should stay highlighted when navigating subpages
+    // Special case for superadmin dashboard
     if (itemPath === '/superadmin/dashboard' && location.pathname.startsWith('/superadmin') && 
-        !location.pathname.includes('/new-school-owner')) {
+        !location.pathname.includes('/new-school-owner') && 
+        !location.pathname.includes('/contact')) {
       return true;
     }
     
-    if (itemPath === '/app/admin' && location.pathname.startsWith('/app/admin') && 
-        location.pathname === '/app/admin') {
+    // Special case for admin dashboard
+    if (itemPath === '/app/admin' && location.pathname === '/app/admin') {
       return true;
     }
     
-    // Regular subpath highlighting for menu items with children
-    if (itemPath !== '/' && itemPath !== '/app/dashboard' && 
-        location.pathname.startsWith(itemPath + '/')) {
-      return true;
+    // For nested paths, only highlight the most specific matching path
+    if (itemPath !== '/' && 
+        itemPath !== '/app/dashboard' && 
+        itemPath !== '/superadmin/dashboard' && 
+        itemPath !== '/app/admin' && 
+        location.pathname.startsWith(itemPath)) {
+      
+      // Get all menu items
+      const allMenuItems = getMenuItems();
+      // Find if there's a more specific path that matches
+      const moreSpecificPathExists = allMenuItems.some(item => 
+        item.path !== itemPath && 
+        item.path.startsWith(itemPath) && 
+        location.pathname.startsWith(item.path)
+      );
+      
+      // Only return true if this is the most specific path
+      return !moreSpecificPathExists;
     }
     
     return false;

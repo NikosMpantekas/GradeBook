@@ -57,14 +57,29 @@ const Layout = () => {
     }
   }, [isSuperAdminRoute, isAdminRoute]);
 
-  // FIXED: Ensure sidebar always remains open for superadmin/admin users
+  // Always ensure sidebar remains open for superadmin/admin users
   useEffect(() => {
     if ((isSuperAdmin || isAdmin) && !mobileOpen) {
       console.log('FIXING SIDEBAR: Ensuring sidebar stays open for admin/superadmin');
       setMobileOpen(true);
       localStorage.setItem('sidebarOpen', 'true');
     }
-  }, [isSuperAdmin, isAdmin, mobileOpen]);
+  }, [isSuperAdmin, isAdmin, mobileOpen, location.pathname]);
+  
+  // Force sidebar open when navigating between admin and superadmin sections
+  useEffect(() => {
+    const currentSection = localStorage.getItem('currentSection');
+    
+    // When switching between admin/superadmin sections, ensure sidebar stays open
+    if (
+      (isSuperAdminRoute && currentSection !== 'superadmin') ||
+      (isAdminRoute && !isSuperAdminRoute && currentSection !== 'admin')
+    ) {
+      console.log('Section changed, ensuring sidebar remains open');
+      setMobileOpen(true);
+      localStorage.setItem('sidebarOpen', 'true');
+    }
+  }, [location.pathname, isSuperAdminRoute, isAdminRoute]);
 
   // This ensures we have persistent sidebar state regardless of navigation
   useEffect(() => {
