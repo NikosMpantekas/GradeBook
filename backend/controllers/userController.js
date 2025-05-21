@@ -379,11 +379,15 @@ const getUsers = asyncHandler(async (req, res) => {
       const schoolConnection = await connectToSchoolDb(req.school);
       const SchoolUser = schoolConnection.model('User');
       
-      // Get users from the school's database
-      users = await SchoolUser.find({}).select('-password');
+      // Get users from the school's database with proper population of references
+      users = await SchoolUser.find({}).select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name')
+        .populate('schools', 'name')
+        .populate('directions', 'name')
+        .populate('subjects', 'name');
       
-      // If the school database has references that need populating, do it here
-      // (Note: in a separate database, references might work differently)
+      console.log(`Retrieved ${users.length} users with populated data`);
     } else {
       // This is a superadmin or a user in the main database
       console.log('Fetching users from main database');
@@ -436,58 +440,96 @@ const getUsers = asyncHandler(async (req, res) => {
 // @route   GET /api/users/:id
 // @access  Private/Admin
 const getUserById = asyncHandler(async (req, res) => {
-  let user;
+  console.log(`Fetching user by ID: ${req.params.id}`);
+  let user = null;
   
-  // Handle different types of users
-  if (await User.findById(req.params.id).then(u => u && (u.role === 'teacher' || u.role === 'secretary'))) {
-    // For teachers and secretaries, use array fields (schools, directions)
-    console.log(`Getting ${req.params.id} as teacher or secretary with array fields`);
-    user = await User.findById(req.params.id)
-      .select('-password')
-      .populate('schools', 'name _id')
-      .populate('directions', 'name _id')
-      .populate('subjects', 'name _id')
-      .lean();
+  try {
+    // First, try to find user in the main database
+    const mainDbUser = await User.findById(req.params.id).select('-password');
+    
+    if (mainDbUser) {
+      console.log(`User found in main database with role: ${mainDbUser.role}`);
       
-    // Ensure arrays exist
-    if (!user.schools) user.schools = [];
-    if (!user.directions) user.directions = [];
-    if (!user.subjects) user.subjects = [];
-    
-  } else {
-    // For students and admins, use singular fields
-    console.log(`Getting ${req.params.id} as student or admin with singular fields`);
-    user = await User.findById(req.params.id)
-      .select('-password')
-      .populate('school', 'name')
-      .populate('direction', 'name')
-      .populate('subjects', 'name')
-      .lean();
-  }
-
-  if (user) {
-    // For secretary, ensure permissions are included
-    if (user.role === 'secretary' && !user.secretaryPermissions) {
-      user.secretaryPermissions = {
-        canManageGrades: false,
-        canSendNotifications: false,
-        canManageUsers: false,
-        canManageSchools: false,
-        canManageDirections: false,
-        canManageSubjects: false,
-        canAccessStudentProgress: false
-      };
+      // Handle different types of users in the main database
+      if (mainDbUser.role === 'teacher' || mainDbUser.role === 'secretary') {
+        // For teachers and secretaries, use array fields (schools, directions)
+        console.log(`Getting ${req.params.id} as teacher or secretary with array fields`);
+        user = await User.findById(req.params.id)
+          .select('-password')
+          .populate('schools', 'name _id')
+          .populate('directions', 'name _id')
+          .populate('subjects', 'name _id')
+          .lean();
+          
+        // Ensure arrays exist
+        if (!user.schools) user.schools = [];
+        if (!user.directions) user.directions = [];
+        if (!user.subjects) user.subjects = [];
+      } else {
+        // For students and admins, use singular fields
+        console.log(`Getting ${req.params.id} as student or admin with singular fields`);
+        user = await User.findById(req.params.id)
+          .select('-password')
+          .populate('school', 'name')
+          .populate('direction', 'name')
+          .populate('subjects', 'name')
+          .lean();
+      }
+    } else if (req.school) {
+      // If not found in main DB, check the school-specific database
+      console.log(`User not found in main DB, checking school database: ${req.school.name}`);
+      
+      // Connect to the school's database
+      const schoolConnection = await connectToSchoolDb(req.school);
+      const SchoolUser = schoolConnection.model('User');
+      
+      // Try to find the user in the school database
+      const schoolUser = await SchoolUser.findById(req.params.id)
+        .select('-password')
+        .populate('school', 'name _id')
+        .populate('direction', 'name _id')
+        .populate('schools', 'name _id')
+        .populate('directions', 'name _id')
+        .populate('subjects', 'name _id');
+      
+      if (schoolUser) {
+        console.log(`User found in school database with role: ${schoolUser.role}`);
+        user = schoolUser.toObject ? schoolUser.toObject() : schoolUser;
+        
+        // Ensure arrays exist for teacher/secretary
+        if (user.role === 'teacher' || user.role === 'secretary') {
+          if (!user.schools) user.schools = [];
+          if (!user.directions) user.directions = [];
+          if (!user.subjects) user.subjects = [];
+        }
+      }
     }
     
-    console.log(`User ${req.params.id} fetched with role: ${user.role}`);
-    if (user.role === 'secretary') {
-      console.log('Secretary permissions:', user.secretaryPermissions);
+    if (user) {
+      // For secretary, ensure permissions are included
+      if (user.role === 'secretary' && !user.secretaryPermissions) {
+        user.secretaryPermissions = {
+          canManageGrades: false,
+          canSendNotifications: false,
+          canManageUsers: false,
+          canManageSchools: false,
+          canManageDirections: false,
+          canManageSubjects: false,
+          canAccessStudentProgress: false
+        };
+      }
+      
+      console.log(`Successfully retrieved user ${req.params.id} with role: ${user.role}`);
+      res.json(user);
+    } else {
+      console.log(`User not found in any database: ${req.params.id}`);
+      res.status(404);
+      throw new Error('User not found');
     }
-    
-    res.json(user);
-  } else {
-    res.status(404);
-    throw new Error('User not found');
+  } catch (error) {
+    console.error(`Error finding user ${req.params.id}:`, error);
+    res.status(500);
+    throw new Error(`Error retrieving user: ${error.message}`);
   }
 });
 
@@ -495,7 +537,33 @@ const getUserById = asyncHandler(async (req, res) => {
 // @route   PUT /api/users/:id
 // @access  Private/Admin
 const updateUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
+  console.log(`Attempting to update user with ID: ${req.params.id}`);
+  
+  // First try to find the user in the main database
+  let user = await User.findById(req.params.id);
+  let userModel = User;
+  let inSchoolDb = false;
+  
+  // If not in main DB, check school DB if applicable
+  if (!user && req.school) {
+    console.log(`User not found in main DB, checking school database: ${req.school.name}`);
+    try {
+      // Connect to the school's database
+      const schoolConnection = await connectToSchoolDb(req.school);
+      const SchoolUser = schoolConnection.model('User');
+      
+      // Try to find user in school database
+      user = await SchoolUser.findById(req.params.id);
+      
+      if (user) {
+        console.log(`User found in school database: ${req.school.name}`);
+        userModel = SchoolUser;
+        inSchoolDb = true;
+      }
+    } catch (error) {
+      console.error(`Error connecting to school database: ${error.message}`);
+    }
+  }
 
   if (user) {
     user.name = req.body.name || user.name;
@@ -679,40 +747,92 @@ const updateUser = asyncHandler(async (req, res) => {
         .lean();
     }
     
-    console.log('Updated user after population:', JSON.stringify(updatedUser, null, 2));
-
-    // Prepare base response
+    // Create a simple response object with essential fields
     const response = {
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      subjects: updatedUser.subjects,
-    };
-    
-    // Role-specific fields
-    if (updatedUser.role === 'student') {
+    _id: updatedUser._id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    role: updatedUser.role,
+    mobilePhone: updatedUser.mobilePhone,
+    personalEmail: updatedUser.personalEmail,
+    darkMode: updatedUser.darkMode,
+    saveCredentials: updatedUser.saveCredentials,
+  };
+  
+  // Add role-specific fields to response
+  if (updatedUser.role === 'teacher' || updatedUser.role === 'secretary') {
+    // For teachers/secretaries, populate schools/directions fields if the database allows
+    try {
+      if (inSchoolDb) {
+        // When in school DB, we need to specially populate these fields
+        const populatedUser = await userModel.findById(updatedUser._id)
+          .populate('schools', 'name _id')
+          .populate('directions', 'name _id')
+          .populate('subjects', 'name _id');
+          
+        response.schools = populatedUser.schools || [];
+        response.directions = populatedUser.directions || [];
+        response.subjects = populatedUser.subjects || [];
+      } else {
+        // Regular population in main DB
+        const populatedUser = await User.findById(updatedUser._id)
+          .populate('schools', 'name _id')
+          .populate('directions', 'name _id')
+          .populate('subjects', 'name _id');
+          
+        response.schools = populatedUser.schools || [];
+        response.directions = populatedUser.directions || [];
+        response.subjects = populatedUser.subjects || [];
+      }
+    } catch (populateError) {
+      console.error('Error populating fields:', populateError);
+      // Fallback to unpopulated data
+      response.schools = updatedUser.schools || [];
+      response.directions = updatedUser.directions || [];
+      response.subjects = updatedUser.subjects || [];
+    }
+  } else if (updatedUser.role === 'student') {
+    // For students, populate school/direction fields
+    try {
+      if (inSchoolDb) {
+        // When in school DB, we need to specially populate these fields
+        const populatedUser = await userModel.findById(updatedUser._id)
+          .populate('school', 'name _id')
+          .populate('direction', 'name _id')
+          .populate('subjects', 'name _id');
+          
+        response.school = populatedUser.school;
+        response.direction = populatedUser.direction;
+        response.subjects = populatedUser.subjects || [];
+      } else {
+        // Regular population in main DB
+        const populatedUser = await User.findById(updatedUser._id)
+          .populate('school', 'name _id')
+          .populate('direction', 'name _id')
+          .populate('subjects', 'name _id');
+          
+        response.school = populatedUser.school;
+        response.direction = populatedUser.direction;
+        response.subjects = populatedUser.subjects || [];
+      }
+    } catch (populateError) {
+      console.error('Error populating fields:', populateError);
+      // Fallback to unpopulated data
       response.school = updatedUser.school;
       response.direction = updatedUser.direction;
-    } else if (updatedUser.role === 'teacher' || updatedUser.role === 'secretary') {
-      response.schools = updatedUser.schools;
-      response.directions = updatedUser.directions;
+      response.subjects = updatedUser.subjects || [];
     }
-    
-    // Add teacher permission fields if applicable
-    if (updatedUser.role === 'teacher') {
-      response.canSendNotifications = updatedUser.canSendNotifications;
-      response.canAddGradeDescriptions = updatedUser.canAddGradeDescriptions;
-    }
-    
-    // Add secretary permission fields if applicable
-    if (updatedUser.role === 'secretary') {
-      response.secretaryPermissions = updatedUser.secretaryPermissions;
-      console.log('Secretary permissions included in response:', response.secretaryPermissions);
-    }
-    
-    res.json(response);
-  } else {
+  }
+  
+  // Add secretary permissions to response if applicable
+  if (updatedUser.role === 'secretary') {
+    response.secretaryPermissions = updatedUser.secretaryPermissions;
+    console.log('Secretary permissions included in response:', response.secretaryPermissions);
+  }
+  
+  // Return the final response
+  res.json(response);
+} else {
     res.status(404);
     throw new Error('User not found');
   }
