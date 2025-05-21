@@ -618,7 +618,7 @@ const EditUser = () => {
     
     // Update user
     setIsLoading(true);
-    dispatch(updateUser({ userId: id, userData }))
+    dispatch(updateUser({ id, userData }))
       .unwrap()
       .then((updatedUser) => {
         toast.success('User updated successfully');

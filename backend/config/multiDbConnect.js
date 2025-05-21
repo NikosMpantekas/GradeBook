@@ -18,44 +18,69 @@ const connectToSchoolDb = async (school) => {
   const schoolId = school._id.toString();
   console.log(`Attempting connection to school database [ID: ${schoolId}] for ${school.name || 'Unknown School'}`);
   
-  // If already connected, return the existing connection but verify it's working properly
+  // OPTIMIZATION: Use a timestamp-based cache expiration system
+  // Get the current time to check connection age
+  const now = Date.now();
+  const CONNECTION_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+  
+  // Check if we have a cached connection that's still valid
   if (schoolConnections.has(schoolId)) {
-    const existingConnection = schoolConnections.get(schoolId);
+    const { connection: existingConnection, timestamp, models: cachedModels } = schoolConnections.get(schoolId);
+    const connectionAge = now - timestamp;
     
-    // Check if connection is still alive and healthy
-    if (existingConnection.readyState === 1) {
+    // Skip ping check if connection is fresh (under 30 seconds old)
+    if (connectionAge < 30000 && existingConnection.readyState === 1) {
+      console.log(`✅ Using recent connection for school: ${school.name} (${Math.round(connectionAge/1000)}s old)`);
+      return {
+        connection: existingConnection,
+        models: cachedModels || {}
+      };
+    }
+    
+    // For older connections, check if still alive but not too old
+    if (connectionAge < CONNECTION_MAX_AGE_MS && existingConnection.readyState === 1) {
       try {
-        // Verify connection by executing a simple command
-        await existingConnection.db.admin().ping();
-        console.log(`✅ Connection verified for school: ${school.name}`);
-        
-        // Get the registered models for this school
-        const models = schoolModels.get(schoolId) || {};
-        
-        // If models aren't already registered, register them now
-        if (!models.School) {
-          console.log(`Models not registered for ${school.name}, registering now...`);
-          const registeredModels = registerSchoolModels(existingConnection);
-          if (registeredModels) {
-            schoolModels.set(schoolId, registeredModels);
-          }
+        // Fast check if connection is still usable
+        if (existingConnection.db) {
+          // Update timestamp to extend the connection life
+          schoolConnections.set(schoolId, { 
+            connection: existingConnection, 
+            timestamp: now,
+            models: cachedModels
+          });
+          
+          console.log(`✅ Reusing existing connection for school: ${school.name} (${Math.round(connectionAge/1000)}s old)`);
+          return {
+            connection: existingConnection,
+            models: cachedModels || {}
+          };
         }
-        
-        // Return both connection and models
-        return {
-          connection: existingConnection,
-          models: schoolModels.get(schoolId) || {}
-        };
-      } catch (pingError) {
-        console.warn(`⚠️ Connection test failed for school: ${school.name}, creating a new one. Error: ${pingError.message}`);
-        schoolConnections.delete(schoolId); // Remove unhealthy connection
-        schoolModels.delete(schoolId); // Also remove cached models
+      } catch (err) {
+        // Connection is broken, will create a new one
+        console.log(`⚠️ Connection test failed for school: ${school.name}, creating new one`);
       }
     } else {
-      console.warn(`⚠️ Stale connection found for school: ${school.name}, creating a new one`);
-      schoolConnections.delete(schoolId); // Remove stale connection
-      schoolModels.delete(schoolId); // Also remove cached models
+      // Connection too old or not in ready state
+      if (connectionAge >= CONNECTION_MAX_AGE_MS) {
+        console.log(`⚠️ Connection expired for school: ${school.name} (${Math.round(connectionAge/1000)}s old)`);
+      } else {
+        console.log(`⚠️ Connection not ready for school: ${school.name}, state: ${existingConnection.readyState}`);
+      }
     }
+    
+    // Close the existing connection gracefully before creating a new one
+    try {
+      if (existingConnection && existingConnection.close) {
+        await existingConnection.close();
+        console.log(`Closed stale connection for school: ${school.name}`);
+      }
+    } catch (closeError) {
+      console.warn(`Unable to close connection for ${school.name}:`, closeError.message);
+    }
+    
+    // Remove references to stale connection and models
+    schoolConnections.delete(schoolId);
+    schoolModels.delete(schoolId);
   }
 
   try {
@@ -178,18 +203,18 @@ const connectToSchoolDb = async (school) => {
         });
         
         console.log(`✅ Successfully connected to school database: ${school.name} (attempt ${retryCount + 1})`);
-        schoolConnections.set(schoolId, connection);
         
-        // Register models and store them for future use
-        const models = registerSchoolModels(connection);
-        if (models) {
-          schoolModels.set(schoolId, models);
-        }
+        // Store the connection with a timestamp for efficient reuse
+        schoolConnections.set(schoolId, {
+          connection,
+          timestamp: Date.now(),
+          models
+        });
         
         // Return both connection and models
         return {
           connection,
-          models: models || {}
+          models
         };
       } catch (error) {
         retryCount++;
@@ -223,19 +248,28 @@ const getSchoolConnection = (schoolId) => {
   const connectionId = typeof schoolId === 'object' ? schoolId.toString() : schoolId.toString();
   
   if (schoolConnections.has(connectionId)) {
-    console.log(`Using cached school connection for ID: ${connectionId}`);
-    const connection = schoolConnections.get(connectionId);
+    // Get the cached connection data with timestamp and models
+    const { connection, models, timestamp } = schoolConnections.get(connectionId);
     
-    // Check if connection is still alive
-    if (connection.readyState === 1) {
-      const models = schoolModels.get(connectionId) || {};
-      return { connection, models };
-    } else {
-      console.log(`Found stale connection for school ID: ${connectionId}, removing it`);
-      schoolConnections.delete(connectionId);
-      schoolModels.delete(connectionId);
-      return { connection: null, models: {} };
+    // Check if connection is still valid
+    if (connection && connection.readyState === 1) {
+      // Update the timestamp to extend connection life
+      schoolConnections.set(connectionId, {
+        connection,
+        timestamp: Date.now(),
+        models
+      });
+      
+      // Return both connection and models
+      return {
+        connection,
+        models: models || {}
+      };
     }
+    
+    // Connection is stale or invalid
+    console.log(`Found invalid connection for ${connectionId}, readyState: ${connection ? connection.readyState : 'null'}`);
+    schoolConnections.delete(connectionId);
   }
   
   console.log(`No cached connection found for school ID: ${connectionId}`);
