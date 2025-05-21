@@ -132,8 +132,16 @@ const deleteUser = async (userId, token) => {
     },
   };
 
-  const response = await axios.delete(API_URL + userId, config);
-  return response.data;
+  console.log('[userService] Deleting user with ID:', userId);
+  
+  try {
+    const response = await axios.delete(API_URL + userId, config);
+    // Ensure we return the userId so Redux can update the state properly
+    return { ...response.data, id: userId };
+  } catch (error) {
+    console.error('[userService] Delete user error:', error);
+    throw error;
+  }
 };
 
 // Get users by role (for notification recipient selection)

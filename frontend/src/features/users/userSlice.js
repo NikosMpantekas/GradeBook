@@ -251,9 +251,21 @@ export const userSlice = createSlice({
       .addCase(updateUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.users = state.users.map((user) =>
-          user._id === action.payload._id ? action.payload : user
-        );
+        // Handle the case where action.payload might be null or undefined
+        if (action.payload && action.payload._id) {
+          // Update the user in the users array
+          if (state.users && state.users.length > 0) {
+            state.users = state.users.map((user) =>
+              user._id === action.payload._id ? action.payload : user
+            );
+          }
+          // Also update the single user if it matches
+          if (state.user && state.user._id === action.payload._id) {
+            state.user = action.payload;
+          }
+        } else {
+          console.warn('Received invalid payload in updateUser.fulfilled', action.payload);
+        }
       })
       .addCase(updateUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -266,9 +278,30 @@ export const userSlice = createSlice({
       .addCase(deleteUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.users = state.users.filter(
-          (user) => user._id !== action.payload.id
-        );
+        
+        // Log what we received from the backend
+        console.log('DELETE USER SUCCESS - payload:', action.payload);
+        
+        // Check for the expected id in the payload
+        const userId = action.payload?.id;
+        
+        if (userId) {
+          // Remove the user from the users array
+          if (state.users && state.users.length > 0) {
+            const prevCount = state.users.length;
+            state.users = state.users.filter(user => user._id !== userId);
+            
+            // Log whether any user was actually removed
+            console.log(`Removed user from state: ${prevCount > state.users.length ? 'YES' : 'NO'}`);
+          }
+          
+          // If the currently selected user was deleted, clear it
+          if (state.user && state.user._id === userId) {
+            state.user = null;
+          }
+        } else {
+          console.warn('Missing id in deleteUser.fulfilled payload', action.payload);
+        }
       })
       .addCase(deleteUser.rejected, (state, action) => {
         state.isLoading = false;
