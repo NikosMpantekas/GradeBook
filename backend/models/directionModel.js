@@ -9,6 +9,7 @@ const directionSchema = mongoose.Schema(
     },
     description: {
       type: String,
+      required: false,
       // Description is now optional
     }
   },

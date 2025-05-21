@@ -75,7 +75,9 @@ const CreateUser = () => {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
+    email: '', // This is now the User ID / login email
+    mobilePhone: '', // New optional field for mobile phone
+    personalEmail: '', // New optional field for personal email
     password: '',
     confirmPassword: '',
     role: '',
@@ -610,13 +612,55 @@ const CreateUser = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Email Address *"
+                label="User ID (Login Email) *"
                 name="email"
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
                 error={!!formErrors.email}
-                helperText={formErrors.email || 'Enter a valid email address'}
+                helperText={formErrors.email || 'This will be the username used to log in'}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      {formData.school && optionsData.schools && formData.role === 'student' ? 
+                        (() => {
+                          const school = optionsData.schools.find(s => s._id === formData.school);
+                          return school?.emailDomain ? `@${school.emailDomain}` : '';
+                        })() : 
+                        formData.schools && formData.schools.length > 0 && optionsData.schools && (formData.role === 'teacher' || formData.role === 'secretary') ?
+                        (() => {
+                          const school = optionsData.schools.find(s => s._id === formData.schools[0]);
+                          return school?.emailDomain ? `@${school.emailDomain}` : '';
+                        })() : ''
+                      }
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            
+            {/* New optional fields for mobile phone and personal email */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Mobile Phone (Optional)"
+                name="mobilePhone"
+                type="tel"
+                value={formData.mobilePhone || ''}
+                onChange={handleChange}
+                helperText="Optional contact number"
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Personal Email (Optional)"
+                name="personalEmail"
+                type="email"
+                value={formData.personalEmail || ''}
+                onChange={handleChange}
+                helperText="Optional personal email address"
               />
             </Grid>
             

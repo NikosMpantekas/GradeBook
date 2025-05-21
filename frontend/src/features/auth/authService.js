@@ -80,7 +80,7 @@ const login = async (userData) => {
   }
 };
 
-// Logout user
+// Logout user - completely clears all application state
 const logout = () => {
   // Clear auth data
   localStorage.removeItem('user');
@@ -90,12 +90,14 @@ const logout = () => {
   localStorage.removeItem('sidebarOpen');
   localStorage.removeItem('currentSection');
   
-  // Clear any other app state that might persist between sessions
+  // Clear all session storage
   sessionStorage.clear();
   
-  // Force a reload to ensure all React components are freshly mounted
-  // This is commented out because it will disrupt navigation in some cases
-  // window.location.reload();
+  // Clear Redux and React component state by forcing a complete reload
+  // This is necessary to ensure no state persists between user sessions
+  setTimeout(() => {
+    window.location.href = '/login';
+  }, 100);
 };
 
 // Get current user data with populated fields

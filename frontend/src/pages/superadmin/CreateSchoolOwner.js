@@ -59,17 +59,20 @@ function CreateSchoolOwner() {
       return;
     }
 
-    // Only redirect if form was successfully submitted
+    // Only display success message on successful submission
     if (isSuccess) {
-      console.log('School owner created successfully, redirecting to dashboard...');
-      // Use setTimeout to ensure all state updates have completed before navigation
+      toast.success('School owner created successfully!');
+      // Clear success state
       setTimeout(() => {
-        navigate('/superadmin/dashboard');
+        dispatch(reset());
       }, 100);
     }
 
     return () => {
-      dispatch(reset());
+      // Only reset error states on unmount, not success
+      if (isError) {
+        dispatch(reset());
+      }
     };
   }, [user, isError, isSuccess, message, navigate, dispatch]);
 

@@ -811,7 +811,19 @@ const createAdminAccount = asyncHandler(async (req, res) => {
 // @route   POST /api/users/admin/create
 // @access  Private/Admin
 const createUserByAdmin = asyncHandler(async (req, res) => {
-  const { name, email, password, role, school, direction, subjects, canSendNotifications, canAddGradeDescriptions } = req.body;
+  const { 
+    name, 
+    email, 
+    mobilePhone, // New optional field
+    personalEmail, // New optional field
+    password, 
+    role, 
+    school, 
+    direction, 
+    subjects, 
+    canSendNotifications, 
+    canAddGradeDescriptions 
+  } = req.body;
   
   // For teachers, school and direction could be arrays
   const schoolInfo = role === 'teacher' && Array.isArray(school) ? `Array with ${school.length} schools` : (school || null);
@@ -855,20 +867,15 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
     console.log('Generated hashed password length:', hashedPassword.length);
     
-    // Prepare user document with all fields from the request
-    const userDocument = {
+    // Create the base user data
+    const userData = {
       name,
       email,
-      password: hashedPassword, // Already properly hashed
+      mobilePhone: mobilePhone || null, // Include new optional fields
+      personalEmail: personalEmail || null,
+      password: hashedPassword,
       role,
-      createdAt: new Date(),
-      updatedAt: new Date()
     };
-    
-    // STRICT LOGGING FOR DIAGNOSTICS
-    console.log('CREATING USER WITH ROLE:', role);
-    console.log('SCHOOL DATA TYPE:', Array.isArray(school) ? 'ARRAY' : typeof school);
-    console.log('DIRECTION DATA TYPE:', Array.isArray(direction) ? 'ARRAY' : typeof direction);
     
     // Add additional fields if they're provided (for teachers and students)
     if (role === 'teacher' || role === 'student') {
@@ -886,14 +893,14 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
           console.log(`Processing ${schoolsArray.length} schools for teacher`);
           
           // Convert to ObjectIds
-          userDocument.schools = schoolsArray.map(id => {
+          userData.schools = schoolsArray.map(id => {
             if (mongoose.Types.ObjectId.isValid(id)) {
               return new mongoose.Types.ObjectId(id);
             }
             return id; // Let validation catch any invalid IDs
           });
         } else {
-          userDocument.schools = [];
+          userData.schools = [];
         }
         
         // Process directions array for teachers (same approach as subjects)
@@ -903,19 +910,19 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
           console.log(`Processing ${directionsArray.length} directions for teacher`);
           
           // Convert to ObjectIds
-          userDocument.directions = directionsArray.map(id => {
+          userData.directions = directionsArray.map(id => {
             if (mongoose.Types.ObjectId.isValid(id)) {
               return new mongoose.Types.ObjectId(id);
             }
             return id; // Let validation catch any invalid IDs
           });
         } else {
-          userDocument.directions = [];
+          userData.directions = [];
         }
         
         // Teachers don't use the singular school/direction fields
-        userDocument.school = null;
-        userDocument.direction = null;
+        userData.school = null;
+        userData.direction = null;
         
       } else {
         // FOR STUDENTS: Use singular school and direction fields
@@ -927,8 +934,8 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
           const schoolValue = Array.isArray(school) ? school[0] : school;
           
           if (mongoose.Types.ObjectId.isValid(schoolValue)) {
-            userDocument.school = new mongoose.Types.ObjectId(schoolValue);
-            console.log('Set student school to:', userDocument.school);
+            userData.school = new mongoose.Types.ObjectId(schoolValue);
+            console.log('Set student school to:', userData.school);
           }
         }
         
@@ -938,36 +945,36 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
           const directionValue = Array.isArray(direction) ? direction[0] : direction;
           
           if (mongoose.Types.ObjectId.isValid(directionValue)) {
-            userDocument.direction = new mongoose.Types.ObjectId(directionValue);
-            console.log('Set student direction to:', userDocument.direction);
+            userData.direction = new mongoose.Types.ObjectId(directionValue);
+            console.log('Set student direction to:', userData.direction);
           }
         }
         
         // Students don't use the plural schools/directions arrays
-        userDocument.schools = [];
-        userDocument.directions = [];
+        userData.schools = [];
+        userData.directions = [];
       }
       
       // Handle subjects assignment
       if (subjects && Array.isArray(subjects) && subjects.length > 0) {
-        userDocument.subjects = subjects;
+        userData.subjects = subjects;
       }
       
       // Add teacher-specific permission fields
       if (role === 'teacher') {
         // Set permission flags with default true if not specified
-        userDocument.canSendNotifications = typeof canSendNotifications === 'boolean' 
+        userData.canSendNotifications = typeof canSendNotifications === 'boolean' 
           ? canSendNotifications 
           : true;
         
-        userDocument.canAddGradeDescriptions = typeof canAddGradeDescriptions === 'boolean' 
+        userData.canAddGradeDescriptions = typeof canAddGradeDescriptions === 'boolean' 
           ? canAddGradeDescriptions 
           : true;
       }
     }
     
     // Create user in the school-specific database
-    const result = await SchoolUser.create(userDocument);
+    const result = await SchoolUser.create(userData);
     console.log('User created in school database with ID:', result._id);
     
     if (result) {
@@ -976,6 +983,8 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
         _id: result._id,
         name: result.name,
         email: result.email,
+        mobilePhone: result.mobilePhone,
+        personalEmail: result.personalEmail,
         role: result.role,
         school: req.school._id,
         schoolName: req.school.name,
@@ -1000,11 +1009,9 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       _id: savedUser._id,
       name: savedUser.name,
       email: savedUser.email,
+      mobilePhone: savedUser.mobilePhone,
+      personalEmail: savedUser.personalEmail,
       role: savedUser.role,
-      school: savedUser.school,
-      direction: savedUser.direction,
-      subjects: savedUser.subjects,
-      token: generateToken(savedUser._id),
     });
   } catch (error) {
     console.error('Error creating user:', error);
