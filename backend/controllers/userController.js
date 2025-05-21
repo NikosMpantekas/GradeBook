@@ -1203,15 +1203,22 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
     console.log('Generated hashed password length:', hashedPassword.length);
     
-    // Create the base user data
+    // Create the base user data with all fields
     const userData = {
       name,
       email,
-      mobilePhone: mobilePhone || null, // Include new optional fields
+      // IMPORTANT: Make sure optional contact fields are explicitly included
+      mobilePhone: mobilePhone || null, 
       personalEmail: personalEmail || null,
       password: hashedPassword,
       role,
     };
+    
+    // Debug log for contact fields
+    console.log('Contact fields in request:', {
+      mobilePhone,
+      personalEmail
+    });
     
     // Add additional fields if they're provided (for teachers and students)
     if (role === 'teacher' || role === 'student') {
@@ -1292,8 +1299,24 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       }
       
       // Handle subjects assignment
-      if (subjects && Array.isArray(subjects) && subjects.length > 0) {
-        userData.subjects = subjects;
+      if (subjects) {
+        // Ensure subjects is always an array
+        const subjectsArray = Array.isArray(subjects) ? subjects : [subjects].filter(Boolean);
+        
+        if (subjectsArray.length > 0) {
+          // Convert to ObjectIds if they're not already
+          userData.subjects = subjectsArray.map(id => {
+            if (mongoose.Types.ObjectId.isValid(id)) {
+              return new mongoose.Types.ObjectId(id);
+            }
+            return id; // Let validation catch any invalid IDs
+          });
+          console.log(`Set user subjects to: ${userData.subjects.length} subjects`);
+        } else {
+          userData.subjects = [];
+        }
+      } else {
+        userData.subjects = [];
       }
       
       // Add teacher-specific permission fields
@@ -1318,7 +1341,7 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       throw new Error('Failed to create user in school database');
     }
     
-    // Return without password
+    // Return without password but include all student fields
     const response = {
       _id: result._id,
       name: result.name,
@@ -1326,9 +1349,22 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       mobilePhone: result.mobilePhone,
       personalEmail: result.personalEmail,
       role: result.role,
-      school: req.school._id,
+      // Include the complete student data
+      school: result.school || req.school._id,
       schoolName: req.school.name,
+      direction: result.direction,
+      subjects: result.subjects || [],
     };
+    
+    // Debug log of the response and saved data
+    console.log('Response data:', {
+      ...response,
+      savedSchool: result.school,
+      savedDirection: result.direction,
+      savedSubjects: result.subjects,
+      savedMobilePhone: result.mobilePhone,
+      savedPersonalEmail: result.personalEmail
+    });
     
     // Log account creation details
     console.log('ACCOUNT CREATED:');
