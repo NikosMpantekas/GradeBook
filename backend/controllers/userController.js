@@ -885,17 +885,27 @@ const updateUser = asyncHandler(async (req, res) => {
       console.log('Continuing with unpopulated user data');
     }
     
-    // Create a simple response object with essential fields
+    // Create a comprehensive response object with ALL user fields
+    // This ensures the frontend receives everything it needs
     const response = {
-    _id: updatedUser._id,
-    name: updatedUser.name,
-    email: updatedUser.email,
-    role: updatedUser.role,
-    mobilePhone: updatedUser.mobilePhone,
-    personalEmail: updatedUser.personalEmail,
-    darkMode: updatedUser.darkMode,
-    saveCredentials: updatedUser.saveCredentials,
-  };
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      
+      // Critical fields that were missing or not consistently included
+      mobilePhone: updatedUser.mobilePhone || '',
+      personalEmail: updatedUser.personalEmail || '',
+      
+      // Other user preferences
+      darkMode: updatedUser.darkMode,
+      saveCredentials: updatedUser.saveCredentials,
+    };
+    
+    console.log('DEBUG - Including contact fields in response:', {
+      mobilePhone: updatedUser.mobilePhone,
+      personalEmail: updatedUser.personalEmail
+    });
   
   // Add role-specific fields to response
   if (updatedUser.role === 'teacher' || updatedUser.role === 'secretary') {
@@ -908,9 +918,14 @@ const updateUser = asyncHandler(async (req, res) => {
           .populate('directions', 'name _id')
           .populate('subjects', 'name _id');
           
+        // Always include both populated and raw ID versions of the fields
         response.schools = populatedUser.schools || [];
         response.directions = populatedUser.directions || [];
         response.subjects = populatedUser.subjects || [];
+        
+        // Also include singular fields for maximum compatibility
+        response.school = populatedUser.schools?.[0] || null;
+        response.direction = populatedUser.directions?.[0] || null;
       } else {
         // Regular population in main DB
         const populatedUser = await User.findById(updatedUser._id)
@@ -918,16 +933,29 @@ const updateUser = asyncHandler(async (req, res) => {
           .populate('directions', 'name _id')
           .populate('subjects', 'name _id');
           
+        // Always include both populated and raw ID versions of the fields
         response.schools = populatedUser.schools || [];
         response.directions = populatedUser.directions || [];
         response.subjects = populatedUser.subjects || [];
+        
+        // Also include singular fields for maximum compatibility
+        response.school = populatedUser.schools?.[0] || null;
+        response.direction = populatedUser.directions?.[0] || null;
       }
+      
+      console.log('TEACHER/SECRETARY DATA POPULATED:', {
+        'schools count': response.schools?.length || 0,
+        'directions count': response.directions?.length || 0,
+        'subjects count': response.subjects?.length || 0
+      });
     } catch (populateError) {
       console.error('Error populating fields:', populateError);
       // Fallback to unpopulated data
       response.schools = updatedUser.schools || [];
       response.directions = updatedUser.directions || [];
       response.subjects = updatedUser.subjects || [];
+      response.school = updatedUser.schools?.[0] || null;
+      response.direction = updatedUser.directions?.[0] || null;
     }
   } else if (updatedUser.role === 'student') {
     // For students, populate school/direction fields
@@ -939,9 +967,14 @@ const updateUser = asyncHandler(async (req, res) => {
           .populate('direction', 'name _id')
           .populate('subjects', 'name _id');
           
+        // Ensure proper handling of ObjectId references
         response.school = populatedUser.school;
         response.direction = populatedUser.direction;
         response.subjects = populatedUser.subjects || [];
+        
+        // Also include arrays for maximum compatibility with the frontend
+        response.schools = populatedUser.school ? [populatedUser.school] : [];
+        response.directions = populatedUser.direction ? [populatedUser.direction] : [];
       } else {
         // Regular population in main DB
         const populatedUser = await User.findById(updatedUser._id)
@@ -949,16 +982,29 @@ const updateUser = asyncHandler(async (req, res) => {
           .populate('direction', 'name _id')
           .populate('subjects', 'name _id');
           
+        // Ensure proper handling of ObjectId references
         response.school = populatedUser.school;
         response.direction = populatedUser.direction;
         response.subjects = populatedUser.subjects || [];
+        
+        // Also include arrays for maximum compatibility with the frontend
+        response.schools = populatedUser.school ? [populatedUser.school] : [];
+        response.directions = populatedUser.direction ? [populatedUser.direction] : [];
       }
+      
+      console.log('STUDENT DATA POPULATED:', {
+        'school': response.school ? (response.school.name || response.school) : 'None',
+        'direction': response.direction ? (response.direction.name || response.direction) : 'None',
+        'subjects count': response.subjects?.length || 0
+      });
     } catch (populateError) {
       console.error('Error populating fields:', populateError);
       // Fallback to unpopulated data
       response.school = updatedUser.school;
       response.direction = updatedUser.direction;
       response.subjects = updatedUser.subjects || [];
+      response.schools = updatedUser.school ? [updatedUser.school] : [];
+      response.directions = updatedUser.direction ? [updatedUser.direction] : [];
     }
   }
   
