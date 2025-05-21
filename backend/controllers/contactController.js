@@ -6,7 +6,7 @@ const Contact = require('../models/contactModel');
 // @route   POST /api/contact
 // @access  Private (requires authentication)
 const sendContactMessage = asyncHandler(async (req, res) => {
-  const { subject, message } = req.body;
+  const { subject, message, isBugReport = false } = req.body;
   
   // Validate input
   if (!subject || !message) {
@@ -27,7 +27,11 @@ const sendContactMessage = asyncHandler(async (req, res) => {
       userEmail: user.email,
       userRole: user.role,
       status: 'new',
-      read: false
+      read: false,
+      isBugReport: isBugReport, // Flag to identify bug reports specifically
+      adminReply: '',
+      adminReplyDate: null,
+      replyRead: false
     });
     
     if (!contactMessage) {
@@ -36,7 +40,7 @@ const sendContactMessage = asyncHandler(async (req, res) => {
     }
     
     // Log for server-side debugging
-    console.log('Contact message saved to database:', {
+    console.log(`${isBugReport ? 'Bug report' : 'Contact message'} saved to database:`, {
       id: contactMessage._id,
       from: {
         id: user._id,
@@ -46,12 +50,15 @@ const sendContactMessage = asyncHandler(async (req, res) => {
       },
       subject,
       message,
+      isBugReport,
       timestamp: contactMessage.createdAt
     });
     
     res.status(201).json({ 
       success: true, 
-      message: 'Your message has been saved. We will review it as soon as possible.'
+      message: isBugReport 
+        ? 'Your bug report has been saved. We will investigate the issue as soon as possible.' 
+        : 'Your message has been saved. We will review it as soon as possible.'
     });
   } catch (error) {
     console.error('Error saving contact message:', error);
@@ -89,19 +96,33 @@ const getContactMessages = asyncHandler(async (req, res) => {
 // @access  Private (admin only)
 const updateContactMessage = asyncHandler(async (req, res) => {
   // Check if user is admin
-  if (req.user.role !== 'admin') {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     res.status(403);
     throw new Error('Not authorized to update contact messages');
   }
 
   try {
     const { id } = req.params;
-    const { status, read } = req.body;
+    const { status, read, adminReply } = req.body;
+
+    // Build update object
+    const updateData = {};
+    if (status !== undefined) updateData.status = status;
+    if (read !== undefined) updateData.read = read;
+    
+    // If admin is replying, add the reply details
+    if (adminReply !== undefined && adminReply.trim() !== '') {
+      updateData.adminReply = adminReply;
+      updateData.adminReplyDate = new Date();
+      updateData.status = 'replied';
+      updateData.read = true;
+      updateData.replyRead = false; // Reset replyRead since there's a new reply
+    }
 
     // Find and update the message
     const message = await Contact.findByIdAndUpdate(
       id,
-      { status, read },
+      updateData,
       { new: true }
     );
 
@@ -109,6 +130,12 @@ const updateContactMessage = asyncHandler(async (req, res) => {
       res.status(404);
       throw new Error('Message not found');
     }
+
+    console.log(`Message ${id} updated:`, {
+      status: message.status,
+      hasReply: message.adminReply ? true : false,
+      replyDate: message.adminReplyDate
+    });
 
     res.status(200).json(message);
   } catch (error) {
@@ -118,8 +145,71 @@ const updateContactMessage = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get user's own contact messages including those with admin replies
+// @route   GET /api/contact/user
+// @access  Private (any authenticated user)
+const getUserMessages = asyncHandler(async (req, res) => {
+  try {
+    // Get all messages for this user, newest first
+    const messages = await Contact.find({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    console.log(`Retrieved ${messages.length} messages for user ${req.user._id}`);
+    
+    // Mark any unread replies as read
+    const unreadReplies = messages.filter(msg => 
+      msg.adminReply && msg.adminReply.trim() !== '' && !msg.replyRead
+    );
+    
+    if (unreadReplies.length > 0) {
+      console.log(`Marking ${unreadReplies.length} replies as read`);
+      
+      // Update all unread messages to be read
+      await Promise.all(unreadReplies.map(msg => 
+        Contact.findByIdAndUpdate(msg._id, { replyRead: true })
+      ));
+    }
+    
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error('Error retrieving user messages:', error);
+    res.status(500);
+    throw new Error('Failed to retrieve your messages: ' + error.message);
+  }
+});
+
+// @desc    Mark a message reply as read by the user
+// @route   PUT /api/contact/user/:id/read
+// @access  Private (message owner only)
+const markReplyAsRead = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find the message and ensure it belongs to this user
+    const message = await Contact.findOne({ _id: id, user: req.user._id });
+    
+    if (!message) {
+      res.status(404);
+      throw new Error('Message not found or you do not have permission to access it');
+    }
+    
+    // Mark the reply as read
+    message.replyRead = true;
+    await message.save();
+    
+    res.status(200).json({ success: true, message: 'Reply marked as read' });
+  } catch (error) {
+    console.error('Error marking reply as read:', error);
+    res.status(500);
+    throw new Error('Failed to update message: ' + error.message);
+  }
+});
+
 module.exports = {
   sendContactMessage,
   getContactMessages,
-  updateContactMessage
+  updateContactMessage,
+  getUserMessages,
+  markReplyAsRead
 };

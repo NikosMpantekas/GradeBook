@@ -21,10 +21,17 @@ import {
   Email as EmailIcon,
   Security as SecurityIcon,
   Help as HelpIcon,
-  BugReport as BugReportIcon
+  BugReport as BugReportIcon,
+  ReportProblem as ReportProblemIcon,
+  Person as PersonIcon,
+  Phone as PhoneIcon,
+  School as SchoolIcon,
+  Close as CloseIcon,
+  SaveAlt as SaveAltIcon
 } from '@mui/icons-material';
 import { updateProfile, reset } from '../features/auth/authSlice';
 import ContactDeveloper from '../components/ContactDeveloper';
+import BugReportsPanel from '../components/BugReportsPanel';
 
 const Profile = () => {
   const { user, isLoading, isError, isSuccess, message } = useSelector(
@@ -257,6 +264,9 @@ const Profile = () => {
                   </Button>
                 </CardContent>
               </Card>
+              
+              {/* Bug Reports Panel */}
+              <BugReportsPanel openContactForm={handleOpenContact} />
               
               <Button
                 type="submit"

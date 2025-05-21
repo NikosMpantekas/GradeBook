@@ -36,6 +36,23 @@ const contactSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    // Add fields for admin replies
+    adminReply: {
+      type: String,
+      default: '',
+    },
+    adminReplyDate: {
+      type: Date,
+      default: null,
+    },
+    replyRead: {
+      type: Boolean,
+      default: false,
+    },
+    isBugReport: {
+      type: Boolean,
+      default: false,
+    }
   },
   {
     timestamps: true,

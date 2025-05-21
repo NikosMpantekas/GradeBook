@@ -11,15 +11,18 @@ import {
   Alert,
   IconButton,
   Typography,
-  Box
+  Box,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
-import { Close as CloseIcon, Send as SendIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Send as SendIcon, BugReport as BugReportIcon } from '@mui/icons-material';
 import axios from 'axios';
 
 const ContactDeveloper = ({ open, onClose }) => {
   const [formData, setFormData] = useState({
     subject: '',
     message: '',
+    isBugReport: false,
   });
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState(null);
@@ -59,11 +62,11 @@ const ContactDeveloper = ({ open, onClose }) => {
 
       setStatus({
         type: 'success',
-        message: response.data.message || 'Your message has been sent. We will respond as soon as possible.'
+        message: response.data.message || 'Your message has been sent. We will review it as soon as possible.'
       });
 
       // Reset form after successful submission
-      setFormData({ subject: '', message: '' });
+      setFormData({ subject: '', message: '', isBugReport: false });
       
       // Close the dialog after 3 seconds on success
       setTimeout(() => {
@@ -82,9 +85,10 @@ const ContactDeveloper = ({ open, onClose }) => {
   };
 
   const handleChange = (e) => {
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: value
     });
   };
 
@@ -147,6 +151,26 @@ const ContactDeveloper = ({ open, onClose }) => {
                 disabled={sending}
                 required
               />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    icon={<BugReportIcon color="disabled" />}
+                    checkedIcon={<BugReportIcon color="secondary" />}
+                    checked={formData.isBugReport}
+                    onChange={handleChange}
+                    name="isBugReport"
+                    disabled={sending}
+                  />
+                }
+                label="Mark as bug report"
+              />
+              {formData.isBugReport && (
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 4, mt: -0.5 }}>
+                  Marking this as a bug report will help us prioritize fixing the issue.
+                </Typography>
+              )}
             </Grid>
           </Grid>
         </DialogContent>

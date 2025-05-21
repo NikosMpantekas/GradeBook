@@ -563,14 +563,22 @@ const updateUser = asyncHandler(async (req, res) => {
     console.log(`User not found in main DB, checking school database: ${req.school.name}`);
     try {
       // Connect to the school's database with improved connection system
-      const { connection, models } = await connectToSchoolDb(req.school);
+      const schoolDbInfo = await connectToSchoolDb(req.school);
       
-      if (!connection) {
+      if (!schoolDbInfo || !schoolDbInfo.connection) {
         throw new Error('Failed to connect to school database');
       }
       
+      const connection = schoolDbInfo.connection;
+      
       // Get the User model from the connection
-      const SchoolUser = models && models.User ? models.User : connection.model('User');
+      const SchoolUser = schoolDbInfo.models && schoolDbInfo.models.User
+        ? schoolDbInfo.models.User
+        : connection.model('User');
+      
+      if (!SchoolUser) {
+        throw new Error('User model not found in school database');
+      }
       
       // Try to find user in school database
       user = await SchoolUser.findById(req.params.id);
@@ -741,15 +749,58 @@ const updateUser = asyncHandler(async (req, res) => {
     // Save the user with better error handling
     try {
       console.log('Attempting to save user changes...');
+      // Pre-validate fields before saving
+      if (user.email === undefined || user.email === null || user.email === '') {
+        throw new Error('Email is required and cannot be empty');
+      }
+      
+      // Handle MongoDB-specific validation for ObjectIds
+      if (user.school && !mongoose.Types.ObjectId.isValid(user.school)) {
+        console.warn('Invalid school ObjectId, setting to null');
+        user.school = null;
+      }
+      
+      if (user.direction && !mongoose.Types.ObjectId.isValid(user.direction)) {
+        console.warn('Invalid direction ObjectId, setting to null');
+        user.direction = null;
+      }
+      
+      // Make sure arrays are properly defined
+      if (!Array.isArray(user.schools)) user.schools = [];
+      if (!Array.isArray(user.directions)) user.directions = [];
+      if (!Array.isArray(user.subjects)) user.subjects = [];
+      
+      // Ensure all array items are valid ObjectIds
+      user.schools = user.schools.filter(id => mongoose.Types.ObjectId.isValid(id));
+      user.directions = user.directions.filter(id => mongoose.Types.ObjectId.isValid(id));
+      user.subjects = user.subjects.filter(id => mongoose.Types.ObjectId.isValid(id));
+      
+      // Try to save with Mongoose save method first
       await user.save();
-      console.log(`User ${user._id} saved successfully`);
+      console.log(`User ${user._id} saved successfully with Mongoose save()`);
     } catch (saveError) {
-      console.error('Error saving user:', saveError.message);
-      return res.status(500).json({ 
-        message: `Failed to save user: ${saveError.message}`,
-        error: saveError.message,
-        details: saveError.toString()
-      });
+      console.error('Error saving user with Mongoose save():', saveError.message);
+      try {
+        // Fallback: Try alternative method using findByIdAndUpdate
+        const updateResult = inSchoolDb
+          ? await userModel.findByIdAndUpdate(user._id, { $set: user.toObject() }, { new: true })
+          : await User.findByIdAndUpdate(user._id, { $set: user.toObject() }, { new: true });
+        
+        if (!updateResult) {
+          throw new Error('Could not update user record');
+        }
+        
+        console.log(`User ${user._id} saved using findByIdAndUpdate fallback method`);
+        // Update our user reference to the updated version
+        user = updateResult;
+      } catch (fallbackError) {
+        console.error('Both save methods failed:', fallbackError.message);
+        return res.status(500).json({ 
+          message: `Failed to save user: ${saveError.message}`,
+          error: saveError.message,
+          details: `Primary error: ${saveError.toString()}. Fallback error: ${fallbackError.toString()}`
+        });
+      }
     }
     
     // Find the updated user but don't return the password
@@ -935,20 +986,29 @@ const deleteUser = asyncHandler(async (req, res) => {
   let user = await User.findById(req.params.id);
   let userModel = User;
   let inSchoolDb = false;
+  let connection = null;
   
   // If not in main DB, check school DB if applicable
   if (!user && req.school) {
     console.log(`User not found in main DB, checking school database: ${req.school.name}`);
     try {
       // Connect to the school's database with improved connection system
-      const { connection, models } = await connectToSchoolDb(req.school);
+      const schoolDbInfo = await connectToSchoolDb(req.school);
       
-      if (!connection) {
+      if (!schoolDbInfo || !schoolDbInfo.connection) {
         throw new Error('Failed to connect to school database');
       }
       
+      connection = schoolDbInfo.connection;
+      
       // Get the User model from the connection
-      const SchoolUser = models && models.User ? models.User : connection.model('User');
+      const SchoolUser = schoolDbInfo.models && schoolDbInfo.models.User
+        ? schoolDbInfo.models.User
+        : connection.model('User');
+      
+      if (!SchoolUser) {
+        throw new Error('User model not found in school database');
+      }
       
       // Try to find user in school database
       user = await SchoolUser.findById(req.params.id);
@@ -967,12 +1027,30 @@ const deleteUser = asyncHandler(async (req, res) => {
   if (user) {
     try {
       // Delete the user with the appropriate model
-      await user.deleteOne();
+      await user.remove(); // Using remove() instead of deleteOne() for better compatibility
       console.log(`User ${req.params.id} successfully deleted from ${inSchoolDb ? 'school' : 'main'} database`);
-      return res.json({ message: 'User removed successfully' });
+      return res.status(200).json({ message: 'User removed successfully' });
     } catch (error) {
       console.error(`Error deleting user: ${error.message}`);
-      return res.status(500).json({ message: `Failed to delete user: ${error.message}` });
+      
+      // Try alternative deletion method if first attempt fails
+      try {
+        if (inSchoolDb && connection) {
+          await connection.collection('users').deleteOne({ _id: mongoose.Types.ObjectId(req.params.id) });
+          console.log(`User ${req.params.id} deleted using direct collection access`);
+          return res.status(200).json({ message: 'User removed successfully' });
+        } else {
+          await User.deleteOne({ _id: req.params.id });
+          console.log(`User ${req.params.id} deleted using User.deleteOne`);
+          return res.status(200).json({ message: 'User removed successfully' });
+        }
+      } catch (fallbackError) {
+        console.error(`Fallback deletion also failed: ${fallbackError.message}`);
+        return res.status(500).json({ 
+          message: `Failed to delete user: ${error.message}`, 
+          details: fallbackError.message 
+        });
+      }
     }
   } else {
     console.log(`User with ID ${req.params.id} not found in any database`);
