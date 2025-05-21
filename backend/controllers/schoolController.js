@@ -61,9 +61,16 @@ const getSchools = asyncHandler(async (req, res) => {
     // Fallback to main database for backward compatibility
     else {
       console.log('Fetching schools from main database');
-      schools = await School.find({});
+      schools = await School.find({}).sort({ name: 1 });
+      
+      // Enhanced logging to help debug the missing schools issue
+      console.log(`Found ${schools.length} schools in main database:`);
+      schools.forEach(school => {
+        console.log(`- School: ${school.name} (ID: ${school._id})`);
+      });
     }
     
+    console.log('Returning schools to client');
     res.status(200).json(schools);
   } catch (error) {
     console.error('Error fetching schools:', error.message);

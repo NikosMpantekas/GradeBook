@@ -68,9 +68,16 @@ const getDirections = asyncHandler(async (req, res) => {
     } else {
       // This is a superadmin or legacy request
       console.log('Fetching directions from main database');
-      directions = await Direction.find({});
+      directions = await Direction.find({}).sort({ name: 1 });
+      
+      // Enhanced logging for debugging
+      console.log(`Found ${directions.length} directions in main database:`);
+      directions.forEach(direction => {
+        console.log(`- Direction: ${direction.name} (ID: ${direction._id})`);
+      });
     }
     
+    console.log('Returning directions to client');
     res.status(200).json(directions);
   } catch (error) {
     console.error('Error fetching directions:', error.message);

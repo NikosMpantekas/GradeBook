@@ -91,11 +91,31 @@ const getSubjects = asyncHandler(async (req, res) => {
     } else {
       // This is a superadmin or legacy request
       console.log('Fetching subjects from main database');
-      subjects = await Subject.find({})
+      subjects = await Subject.find({}).sort({ name: 1 })
         .populate('teachers', 'name email')
         .populate('directions', 'name');
+      
+      // Enhanced logging for debugging
+      console.log(`Found ${subjects.length} subjects in main database:`);
+      
+      if (subjects.length > 0) {
+        subjects.forEach(subject => {
+          console.log(`- Subject: ${subject.name} (ID: ${subject._id})`);
+          
+          // Log direction associations
+          if (subject.directions && subject.directions.length > 0) {
+            const directionInfo = subject.directions.map(dir => 
+              typeof dir === 'object' ? `${dir.name} (${dir._id})` : `ID: ${dir}`
+            ).join(', ');
+            console.log(`  Directions: ${directionInfo}`);
+          } else {
+            console.log('  No directions associated');
+          }
+        });
+      }
     }
     
+    console.log('Returning subjects to client');
     res.status(200).json(subjects);
   } catch (error) {
     console.error('Error fetching subjects:', error.message);

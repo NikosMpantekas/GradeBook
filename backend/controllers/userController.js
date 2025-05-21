@@ -391,12 +391,65 @@ const getUsers = asyncHandler(async (req, res) => {
       const rawUsers = await SchoolUser.find({}).select('-password').lean();
       console.log(`Found ${rawUsers.length} raw users in school database`);
       
-      // Get all schools, directions, and subjects in a single query for manual linking
-      const schools = await models.School.find({}).select('name _id').lean();
-      const directions = await models.Direction.find({}).select('name _id').lean();
-      const subjects = await models.Subject.find({}).select('name _id').lean();
+      // COMPLETELY REBUILT: Simplified approach to fetch reference data
+      console.log('Loading reference data from main database...');
       
-      console.log(`Loaded references: ${schools.length} schools, ${directions.length} directions, ${subjects.length} subjects`);
+      // Initialize empty arrays for reference data
+      let schools = [], directions = [], subjects = [];
+      
+      try {
+        // Attempt to load schools using the main database connection
+        try {
+          // First try to get School from main database
+          const School = mongoose.model('School');
+          schools = await School.find({}).select('name _id').lean();
+          console.log(`Successfully loaded ${schools.length} schools from main database`);
+          
+          if (schools.length > 0) {
+            schools.slice(0, 3).forEach(school => {
+              console.log(`School example: ${school.name} (${school._id})`);
+            });
+          }
+        } catch (schoolErr) {
+          console.error('Error loading schools:', schoolErr.message);
+        }
+        
+        // Attempt to load directions
+        try {
+          const Direction = mongoose.model('Direction');
+          directions = await Direction.find({}).select('name _id').lean();
+          console.log(`Successfully loaded ${directions.length} directions from main database`);
+          
+          if (directions.length > 0) {
+            directions.slice(0, 3).forEach(direction => {
+              console.log(`Direction example: ${direction.name} (${direction._id})`);
+            });
+          }
+        } catch (directionErr) {
+          console.error('Error loading directions:', directionErr.message);
+        }
+        
+        // Attempt to load subjects
+        try {
+          const Subject = mongoose.model('Subject');
+          subjects = await Subject.find({}).select('name _id').lean();
+          console.log(`Successfully loaded ${subjects.length} subjects from main database`);
+        } catch (subjectErr) {
+          console.error('Error loading subjects:', subjectErr.message);
+        }
+      } catch (error) {
+        console.error('General error during reference loading:', error.message);
+      }
+      
+      console.log(`Final reference data summary: ${schools.length} schools, ${directions.length} directions, ${subjects.length} subjects`);
+      
+      if (schools.length === 0) {
+        console.warn('WARNING: No schools were found! This will cause display issues.');
+      }
+      
+      if (directions.length === 0) {
+        console.warn('WARNING: No directions were found! This will cause display issues.');
+      }
       
       // Create lookup maps for faster access
       const schoolMap = new Map(schools.map(s => [s._id.toString(), s]));
@@ -408,25 +461,43 @@ const getUsers = asyncHandler(async (req, res) => {
         // Create a new user object to avoid modifying the original
         const populatedUser = { ...user };
         
-        // Manually populate school for students
-        if (user.school && user.role === 'student') {
-          const schoolId = user.school.toString();
-          if (schoolMap.has(schoolId)) {
-            populatedUser.school = schoolMap.get(schoolId);
-            console.log(`Manually populated school ${schoolId} for student ${user._id}`);
+        // Manually populate school for students with fallback to preserve display
+        if (user.role === 'student') {
+          if (user.school) {
+            const schoolId = user.school.toString();
+            if (schoolMap.has(schoolId)) {
+              populatedUser.school = schoolMap.get(schoolId);
+              console.log(`Manually populated school ${schoolId} for student ${user._id}: ${populatedUser.school.name}`);
+            } else {
+              // CRITICAL: Create placeholder object to prevent showing raw ID
+              populatedUser.school = {
+                _id: schoolId,
+                name: `School (ID: ${schoolId})`,
+                placeholder: true
+              };
+              console.log(`School ${schoolId} not found - created placeholder for student ${user._id}`);
+            }
           } else {
-            console.log(`School ${schoolId} not found for student ${user._id}`);
+            populatedUser.school = { _id: null, name: 'Not Assigned', placeholder: true };
           }
-        }
-        
-        // Manually populate direction for students
-        if (user.direction && user.role === 'student') {
-          const directionId = user.direction.toString();
-          if (directionMap.has(directionId)) {
-            populatedUser.direction = directionMap.get(directionId);
-            console.log(`Manually populated direction ${directionId} for student ${user._id}`);
+
+          // Manually populate direction for students with fallback
+          if (user.direction) {
+            const directionId = user.direction.toString();
+            if (directionMap.has(directionId)) {
+              populatedUser.direction = directionMap.get(directionId);
+              console.log(`Manually populated direction ${directionId} for student ${user._id}: ${populatedUser.direction.name}`);
+            } else {
+              // CRITICAL: Create placeholder object to prevent showing raw ID
+              populatedUser.direction = {
+                _id: directionId,
+                name: `Direction (ID: ${directionId})`,
+                placeholder: true
+              };
+              console.log(`Direction ${directionId} not found - created placeholder for student ${user._id}`);
+            }
           } else {
-            console.log(`Direction ${directionId} not found for student ${user._id}`);
+            populatedUser.direction = { _id: null, name: 'Not Assigned', placeholder: true };
           }
         }
         
