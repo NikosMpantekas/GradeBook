@@ -105,10 +105,14 @@ const protect = asyncHandler(async (req, res, next) => {
         }
       }
       
+      // Initialize userRef variable at a higher scope
+      let userRef = null;
+      
       // If school not found by token ID, try looking up user reference in main DB
       if (!req.targetSchool) {
         // Not a superadmin - find user reference in main DB to determine school
-        const userRef = await User.findById(decoded.id).select('email schoolDomain school');
+        userRef = await User.findById(decoded.id).select('email schoolDomain school');
+        console.log(`Looking up user reference in main DB: ${userRef ? 'Found' : 'Not found'}`);
         
         if (!userRef) {
           // Legacy case - check if user exists directly in main database
@@ -238,9 +242,10 @@ const protect = asyncHandler(async (req, res, next) => {
         let SchoolUser;
         try {
           // Check if model already exists on this connection
-          if (schoolConnection.models && schoolConnection.models.User) {
+          // CRITICAL FIX: Use the correct variable name 'connection' instead of 'schoolConnection'
+          if (connection.models && connection.models.User) {
             console.log('User model already exists in this connection');
-            SchoolUser = schoolConnection.models.User;
+            SchoolUser = connection.models.User;
           } else {
             // Create a new model with the standard User schema
             console.log('Creating new User model in school database');
@@ -249,7 +254,7 @@ const protect = asyncHandler(async (req, res, next) => {
               User.schema.obj,
               { timestamps: true }
             );
-            SchoolUser = schoolConnection.model('User', userSchema);
+            SchoolUser = connection.model('User', userSchema);
           }
         } catch (modelError) {
           console.error('Error creating or accessing User model:', modelError);
