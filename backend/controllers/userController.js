@@ -2075,41 +2075,69 @@ const getStudentsBySubject = asyncHandler(async (req, res) => {
     // First, try to find students directly linked to this subject in the current database
     try {
       console.log(`Looking for students with subject ID: ${subjectId}`);
-      const studentsWithSubject = await UserModel.find({
+      
+      // First, find all student IDs that have this subject
+      const studentIds = await UserModel.find({
         ...query,
         $or: [
           { subjects: subjectId },
           { 'subjects._id': subjectId }
         ]
-      })
-      .select('-password')
-      .populate('school', 'name')
-      .populate('direction', 'name')
-      .populate('subjects', 'name _id')
-      .lean();
+      }).distinct('_id');
       
-      if (studentsWithSubject && studentsWithSubject.length > 0) {
-        console.log(`Found ${studentsWithSubject.length} students directly linked to subject`);
+      console.log(`Found ${studentIds.length} student IDs with subject ${subjectId}`);
+      
+      if (studentIds.length > 0) {
+        // Now fetch these students with full population
+        const studentsWithSubject = await UserModel.find({
+          _id: { $in: studentIds }
+        })
+        .select('-password')
+        .populate('school', 'name _id')
+        .populate('direction', 'name _id')
+        .populate({
+          path: 'subjects',
+          select: 'name _id',
+          options: { lean: true }
+        })
+        .lean();
+        
+        console.log(`Successfully populated ${studentsWithSubject.length} students with their data`);
+        
         // Ensure consistent data structure
-        students = studentsWithSubject.map(student => ({
-          ...student,
-          // Ensure subjects is always an array of objects with _id and name
-          subjects: Array.isArray(student.subjects) 
+        students = studentsWithSubject.map(student => {
+          // Ensure direction is properly formatted
+          const direction = student.direction ? {
+            _id: student.direction._id || student.direction,
+            name: student.direction.name || 'Unknown Direction'
+          } : { _id: null, name: 'No Direction' };
+          
+          // Ensure subjects is properly formatted
+          const subjects = Array.isArray(student.subjects) 
             ? student.subjects.map(s => ({
-                _id: s._id || s,
-                name: s.name || `Subject ${s._id || s}`
+                _id: s?._id || s,
+                name: s?.name || `Subject ${s?._id || s || 'Unknown'}`
               }))
-            : []
-        }));
+            : [];
+            
+          return {
+            ...student,
+            direction,
+            subjects
+          };
+        });
         
         // Log first student for debugging
         if (students.length > 0) {
-          console.log('First student data:', {
+          console.log('First student data (after processing):', {
             id: students[0]._id,
             name: students[0].name,
-            subjects: students[0].subjects,
-            direction: students[0].direction
+            direction: students[0].direction,
+            subjectCount: students[0].subjects?.length || 0,
+            subjects: students[0].subjects
           });
+        } else {
+          console.warn('No students found after processing, even though we had student IDs');
         }
       }
     } catch (error) {
@@ -2119,45 +2147,76 @@ const getStudentsBySubject = asyncHandler(async (req, res) => {
     // If no direct links, try to find students through directions
     if (students.length === 0 && subject.directions && subject.directions.length > 0) {
       console.log('No direct student-subject links found, trying via direction...');
-      const directionIds = subject.directions.map(d => d._id || d);
+      const directionIds = subject.directions.map(d => d._id?.toString() || d);
       
       try {
         console.log(`Looking for students in directions:`, directionIds);
-        const studentsInDirections = await UserModel.find({
+        
+        // First find all student IDs in these directions
+        const studentIds = await UserModel.find({
           ...query,
           $or: [
             { direction: { $in: directionIds } },
             { 'direction._id': { $in: directionIds } }
           ]
-        })
-        .select('-password')
-        .populate('school', 'name')
-        .populate('direction', 'name _id')
-        .populate('subjects', 'name _id')
-        .lean();
+        }).distinct('_id');
         
-        if (studentsInDirections && studentsInDirections.length > 0) {
-          console.log(`Found ${studentsInDirections.length} students via directions`);
-          // Ensure consistent data structure
-          students = studentsInDirections.map(student => ({
-            ...student,
-            // Ensure subjects is always an array of objects with _id and name
-            subjects: Array.isArray(student.subjects) 
-              ? student.subjects.map(s => ({
-                  _id: s._id || s,
-                  name: s.name || `Subject ${s._id || s}`
-                }))
-              : []
-          }));
+        console.log(`Found ${studentIds.length} student IDs in the specified directions`);
+        
+        if (studentIds.length > 0) {
+          // Now fetch these students with full population
+          const studentsInDirections = await UserModel.find({
+            _id: { $in: studentIds }
+          })
+          .select('-password')
+          .populate('school', 'name _id')
+          .populate('direction', 'name _id')
+          .populate({
+            path: 'subjects',
+            select: 'name _id',
+            options: { lean: true }
+          })
+          .lean();
           
-          // Log first student for debugging
-          if (students.length > 0) {
-            console.log('First student found via directions:', {
+          console.log(`Successfully populated ${studentsInDirections.length} students from directions`);
+          
+          // Process the students to ensure consistent data structure
+          const directionStudents = studentsInDirections.map(student => {
+            // Ensure direction is properly formatted
+            const direction = student.direction ? {
+              _id: student.direction._id || student.direction,
+              name: student.direction.name || 'Unknown Direction'
+            } : { _id: null, name: 'No Direction' };
+            
+            // Ensure subjects is properly formatted
+            const subjects = Array.isArray(student.subjects) 
+              ? student.subjects.map(s => ({
+                  _id: s?._id || s,
+                  name: s?.name || `Subject ${s?._id || s || 'Unknown'}`
+                }))
+              : [];
+              
+            return {
+              ...student,
+              direction,
+              subjects
+            };
+          });
+          
+          if (directionStudents.length > 0) {
+            console.log(`Found ${directionStudents.length} students via directions`);
+            students = directionStudents;
+            
+            // Log first student for debugging
+            console.log('First student found via directions (after processing):', {
               id: students[0]._id,
               name: students[0].name,
-              subjects: students[0].subjects,
-              direction: students[0].direction
+              direction: students[0].direction,
+              subjectCount: students[0].subjects?.length || 0,
+              subjects: students[0].subjects
             });
+          } else {
+            console.warn('No students found after processing direction-based query');
           }
         }
       } catch (error) {
