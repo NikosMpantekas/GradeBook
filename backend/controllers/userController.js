@@ -2074,18 +2074,43 @@ const getStudentsBySubject = asyncHandler(async (req, res) => {
     
     // First, try to find students directly linked to this subject in the current database
     try {
+      console.log(`Looking for students with subject ID: ${subjectId}`);
       const studentsWithSubject = await UserModel.find({
         ...query,
-        subjects: subjectId
+        $or: [
+          { subjects: subjectId },
+          { 'subjects._id': subjectId }
+        ]
       })
       .select('-password')
       .populate('school', 'name')
       .populate('direction', 'name')
+      .populate('subjects', 'name _id')
       .lean();
       
       if (studentsWithSubject && studentsWithSubject.length > 0) {
         console.log(`Found ${studentsWithSubject.length} students directly linked to subject`);
-        students = studentsWithSubject;
+        // Ensure consistent data structure
+        students = studentsWithSubject.map(student => ({
+          ...student,
+          // Ensure subjects is always an array of objects with _id and name
+          subjects: Array.isArray(student.subjects) 
+            ? student.subjects.map(s => ({
+                _id: s._id || s,
+                name: s.name || `Subject ${s._id || s}`
+              }))
+            : []
+        }));
+        
+        // Log first student for debugging
+        if (students.length > 0) {
+          console.log('First student data:', {
+            id: students[0]._id,
+            name: students[0].name,
+            subjects: students[0].subjects,
+            direction: students[0].direction
+          });
+        }
       }
     } catch (error) {
       console.error('Error finding students by subject:', error);
@@ -2094,21 +2119,46 @@ const getStudentsBySubject = asyncHandler(async (req, res) => {
     // If no direct links, try to find students through directions
     if (students.length === 0 && subject.directions && subject.directions.length > 0) {
       console.log('No direct student-subject links found, trying via direction...');
-      const directionIds = subject.directions.map(d => d._id);
+      const directionIds = subject.directions.map(d => d._id || d);
       
       try {
+        console.log(`Looking for students in directions:`, directionIds);
         const studentsInDirections = await UserModel.find({
           ...query,
-          direction: { $in: directionIds }
+          $or: [
+            { direction: { $in: directionIds } },
+            { 'direction._id': { $in: directionIds } }
+          ]
         })
         .select('-password')
         .populate('school', 'name')
-        .populate('direction', 'name')
+        .populate('direction', 'name _id')
+        .populate('subjects', 'name _id')
         .lean();
         
         if (studentsInDirections && studentsInDirections.length > 0) {
           console.log(`Found ${studentsInDirections.length} students via directions`);
-          students = studentsInDirections;
+          // Ensure consistent data structure
+          students = studentsInDirections.map(student => ({
+            ...student,
+            // Ensure subjects is always an array of objects with _id and name
+            subjects: Array.isArray(student.subjects) 
+              ? student.subjects.map(s => ({
+                  _id: s._id || s,
+                  name: s.name || `Subject ${s._id || s}`
+                }))
+              : []
+          }));
+          
+          // Log first student for debugging
+          if (students.length > 0) {
+            console.log('First student found via directions:', {
+              id: students[0]._id,
+              name: students[0].name,
+              subjects: students[0].subjects,
+              direction: students[0].direction
+            });
+          }
         }
       } catch (error) {
         console.error('Error finding students by directions:', error);

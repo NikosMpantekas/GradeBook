@@ -131,12 +131,8 @@ const CreateGrade = () => {
     let validStudents = students
       .filter(student => {
         try {
-          const isValid = student && 
-                       student._id && 
-                       student.name && 
-                       typeof student.name === 'string';
-          
-          if (!isValid) {
+          // Basic validation
+          if (!student || !student._id || !student.name || typeof student.name !== 'string') {
             console.warn('[CreateGrade] Found invalid student data:', student);
             return false;
           }
@@ -144,7 +140,6 @@ const CreateGrade = () => {
           console.log(`[CreateGrade] Processing student: ${student.name} (${student._id})`, {
             direction: student.direction,
             subjectCount: student.subjects?.length || 0,
-            hasSubjects: !!student.subjects && student.subjects.length > 0,
             rawStudent: student // Log raw student data for debugging
           });
           
@@ -157,43 +152,49 @@ const CreateGrade = () => {
       })
       .map(student => {
         try {
-          // Normalize the student object with proper defaults
+          // Normalize direction (handle both populated and unpopulated)
+          let direction = { _id: '', name: 'No Direction' };
+          if (student.direction) {
+            if (typeof student.direction === 'object') {
+              direction = {
+                _id: student.direction._id?.toString() || '',
+                name: student.direction.name || 'Unknown Direction'
+              };
+            } else {
+              direction = {
+                _id: student.direction.toString(),
+                name: 'Unknown Direction'
+              };
+            }
+          }
+          
+          // Normalize subjects array (handle both populated and unpopulated)
+          let subjects = [];
+          if (Array.isArray(student.subjects)) {
+            subjects = student.subjects
+              .filter(subj => subj !== null && subj !== undefined)
+              .map(subj => ({
+                _id: (subj?._id || subj)?.toString() || '',
+                name: subj?.name || `Subject ${subj?._id || subj || 'Unknown'}`
+              }));
+          }
+          
+          // Build normalized student object
           const normalizedStudent = {
             _id: student._id,
             name: student.name,
             email: student.email || '',
             mobilePhone: student.mobilePhone || student.savedMobilePhone || '',
             personalEmail: student.personalEmail || student.savedPersonalEmail || '',
-            // Ensure direction is properly set (handle both populated and unpopulated)
-            direction: student.direction 
-              ? (typeof student.direction === 'object' 
-                  ? {
-                      _id: student.direction._id || '',
-                      name: student.direction.name || 'Unknown Direction'
-                    }
-                  : {
-                      _id: student.direction || '',
-                      name: 'Unknown Direction'
-                    })
-              : { _id: '', name: 'No Direction' },
-            // Normalize subjects array
-            subjects: Array.isArray(student.subjects) 
-              ? student.subjects
-                  .filter(subj => subj !== null && subj !== undefined)
-                  .map(subj => ({
-                    _id: (subj && (subj._id || subj)) || '',
-                    name: (subj && subj.name) || (typeof subj === 'string' ? 'Subject ' + subj : 'Unknown Subject')
-                  }))
-              : []
+            direction,
+            subjects
           };
           
           console.log(`[CreateGrade] Normalized student ${normalizedStudent.name}:`, {
             id: normalizedStudent._id,
             direction: normalizedStudent.direction,
-            subjectCount: normalizedStudent.subjects?.length || 0,
-            hasMobilePhone: !!normalizedStudent.mobilePhone,
-            hasPersonalEmail: !!normalizedStudent.personalEmail,
-            subjects: normalizedStudent.subjects // Include subjects in log
+            subjectCount: normalizedStudent.subjects.length,
+            subjects: normalizedStudent.subjects
           });
           
           return normalizedStudent;
@@ -218,7 +219,7 @@ const CreateGrade = () => {
       validStudents = validStudents.filter(student => {
         const directionMatch = student.direction && (
           student.direction._id === selectedDirection || 
-          student.direction === selectedDirection ||
+          student.direction._id === selectedDirection._id ||
           (typeof student.direction === 'object' && student.direction._id === selectedDirection)
         );
         
@@ -239,10 +240,12 @@ const CreateGrade = () => {
         // Check if student has the selected subject
         const hasSubject = student.subjects?.some(subj => {
           const subjectId = subj?._id || subj;
-          const match = subjectId === formData.subject;
+          const match = subjectId === formData.subject || 
+                      subjectId === formData.subject._id ||
+                      (typeof formData.subject === 'object' && subjectId === formData.subject._id);
           
           console.log(`[CreateGrade] Checking subject match for student ${student.name}:`, {
-            studentSubject: subjectId,
+            studentSubjectId: subjectId,
             selectedSubject: formData.subject,
             match: match
           });
