@@ -133,31 +133,41 @@ const CreateGrade = () => {
         const isValid = student && student._id && student.name && typeof student.name === 'string';
         if (!isValid) {
           console.warn('[CreateGrade] Found invalid student data:', student);
+        } else {
+          console.log(`[CreateGrade] Processing student: ${student.name} (${student._id})`, {
+            direction: student.direction,
+            subjectCount: student.subjects?.length || 0,
+            hasSubjects: !!student.subjects && student.subjects.length > 0
+          });
         }
         return isValid;
       })
       .map(student => {
-        // Normalize the student object
+        // Normalize the student object with proper defaults
         const normalizedStudent = {
-          ...student,
-          // Ensure contact fields exist
+          _id: student._id,
+          name: student.name,
+          email: student.email || '',
           mobilePhone: student.mobilePhone || student.savedMobilePhone || '',
           personalEmail: student.personalEmail || student.savedPersonalEmail || '',
-          // Ensure direction is properly set
-          direction: student.direction || {},
-          // Ensure subjects is an array and normalize subject references
+          // Ensure direction is properly set (handle both populated and unpopulated)
+          direction: student.direction ? {
+            _id: student.direction._id || student.direction,
+            name: student.direction.name || 'Unknown Direction'
+          } : { _id: '', name: 'No Direction' },
+          // Normalize subjects array
           subjects: Array.isArray(student.subjects) 
             ? student.subjects.map(subj => ({
                 _id: subj._id || (typeof subj === 'string' ? subj : null),
-                name: subj.name || (typeof subj === 'string' ? subj : 'Unknown Subject')
+                name: subj.name || (typeof subj === 'string' ? 'Subject ' + subj : 'Unknown Subject')
               }))
             : []
         };
         
-        console.log(`[CreateGrade] Normalized student ${student.name}:`, {
+        console.log(`[CreateGrade] Normalized student ${normalizedStudent.name}:`, {
           id: normalizedStudent._id,
           direction: normalizedStudent.direction,
-          subjectCount: normalizedStudent.subjects?.length,
+          subjectCount: normalizedStudent.subjects?.length || 0,
           hasMobilePhone: !!normalizedStudent.mobilePhone,
           hasPersonalEmail: !!normalizedStudent.personalEmail
         });
@@ -188,10 +198,18 @@ const CreateGrade = () => {
     // Filter by subject if selected
     if (formData.subject) {
       validStudents = validStudents.filter(student => {
-        const hasSubject = student.subjects?.some(subj => 
-          (typeof subj === 'string' && subj === formData.subject) ||
-          (subj._id === formData.subject)
-        );
+        const hasSubject = student.subjects?.some(subj => {
+          const subjId = subj?._id || subj;
+          const match = subjId === formData.subject;
+          if (!match) {
+            console.log(`[CreateGrade] Subject mismatch for student ${student.name}:`, {
+              studentSubjectId: subjId,
+              selectedSubject: formData.subject,
+              subjectObj: subj
+            });
+          }
+          return match;
+        });
         
         if (!hasSubject) {
           console.log(`[CreateGrade] Student ${student.name} filtered out by subject filter`, {
@@ -206,20 +224,22 @@ const CreateGrade = () => {
     
     console.log(`[CreateGrade] Found ${validStudents.length} valid students after filtering`);
     
-    // If we have valid students, update the list
+    // Always update the students list, even if empty
+    setStudentsToSelect(validStudents);
+    
+    // Log details of the first student for debugging
     if (validStudents.length > 0) {
+      const firstStudent = validStudents[0];
       console.log('[CreateGrade] First valid student:', {
-        id: validStudents[0]._id,
-        name: validStudents[0].name,
-        direction: validStudents[0].direction,
-        subjects: validStudents[0].subjects,
-        hasMobilePhone: !!validStudents[0].mobilePhone,
-        hasPersonalEmail: !!validStudents[0].personalEmail
+        id: firstStudent._id,
+        name: firstStudent.name,
+        direction: firstStudent.direction,
+        subjects: firstStudent.subjects,
+        hasMobilePhone: !!firstStudent.mobilePhone,
+        hasPersonalEmail: !!firstStudent.personalEmail
       });
-      setStudentsToSelect(validStudents);
     } else {
       console.log('[CreateGrade] No valid students found after filtering');
-      setStudentsToSelect([]);
     }
   }, [students, selectedDirection, formData.subject]);
   

@@ -44,30 +44,58 @@ const getStudentsBySubject = async (subjectId, token) => {
       return [];
     }
     
+    // Add a timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    const endpointUrl = `/api/users/students/subject/${subjectId}?_t=${timestamp}`;
+    
+    console.log(`[studentService] Making API request to: ${endpointUrl}`);
+    
     const config = {
       headers: {
         Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'
       },
-      params: { _t: Date.now() } // Prevent caching
+      params: { _t: timestamp } // Prevent caching
     };
 
-    const url = `/api/users/students/subject/${subjectId}`;
-    console.log(`[studentService] Making API request to: ${url}`);
-    
-    const response = await axios.get(url, config);
-    
-    // Log response data for debugging
-    console.log(`[studentService] Received response for subject ${subjectId}:`, {
-      status: response.status,
-      dataLength: response.data?.length || 0,
-      dataSample: response.data?.[0] || 'No data'
-    });
-    
-    // Ensure we have an array, even if empty
-    if (!response.data || !Array.isArray(response.data)) {
+    try {
+      const response = await axios.get(endpointUrl, config);
+      
+      if (!response.data || !Array.isArray(response.data)) {
+        console.error('[studentService] Invalid response format - expected array:', response.data);
+        return [];
+      }
+      
+      console.log(`[studentService] Successfully received ${response.data.length} students for subject ${subjectId}`);
+      
+      // Log first student details for debugging
+      if (response.data.length > 0) {
+        const firstStudent = response.data[0];
+        console.log('[studentService] First student details:', {
+          id: firstStudent._id,
+          name: firstStudent.name,
+          direction: firstStudent.direction,
+          subjectCount: firstStudent.subjects?.length || 0
+        });
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('[studentService] Error fetching students by subject:', {
+        message: error.message,
+        status: error.response?.status,
+        url: endpointUrl,
+        response: error.response?.data
+      });
+      
+      // If we get a 404, try the fallback endpoint
+      if (error.response?.status === 404) {
+        console.log('[studentService] 404 received, trying fallback endpoint...');
+        return getStudents(token); // Fall back to getting all students
+      }
+      
       console.warn('[studentService] API returned non-array data for students, defaulting to empty array');
       return [];
     }

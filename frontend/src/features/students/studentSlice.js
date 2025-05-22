@@ -49,40 +49,75 @@ export const getStudentsBySubject = createAsyncThunk(
       // Try to get students by subject first
       let response = await studentService.getStudentsBySubject(subjectId, token);
       
-      // If no students found for subject, try to get all students as fallback
+      // Log the raw response for debugging
+      console.log('[studentSlice] Raw response from API:', {
+        responseType: Array.isArray(response) ? 'array' : typeof response,
+        responseLength: Array.isArray(response) ? response.length : 'N/A',
+        firstItem: Array.isArray(response) && response[0] ? {
+          id: response[0]._id,
+          name: response[0].name,
+          direction: response[0].direction,
+          subjects: response[0].subjects
+        } : 'N/A'
+      });
+      
+      // If no students found or invalid response, try to get all students as fallback
       if (!response || !Array.isArray(response) || response.length === 0) {
         console.log('[studentSlice] No students found for subject, trying to get all students');
-        response = await studentService.getStudents(token);
+        const allStudents = await studentService.getStudents(token);
         
-        if (Array.isArray(response) && response.length > 0) {
-          console.log(`[studentSlice] Fallback returned ${response.length} total students`);
+        if (Array.isArray(allStudents) && allStudents.length > 0) {
+          console.log(`[studentSlice] Fallback returned ${allStudents.length} total students`);
           // Filter students who have the selected subject
-          response = response.filter(student => 
-            student.subjects?.some(subj => 
-              (typeof subj === 'string' && subj === subjectId) || 
-              (subj._id === subjectId)
-            )
-          );
+          response = allStudents.filter(student => {
+            const hasSubject = student.subjects?.some(subj => {
+              const subjId = typeof subj === 'string' ? subj : subj?._id;
+              return subjId === subjectId;
+            });
+            
+            if (hasSubject) {
+              console.log(`[studentSlice] Student ${student.name} has subject ${subjectId}`);
+            }
+            
+            return hasSubject;
+          });
+          
           console.log(`[studentSlice] ${response.length} students found with matching subject`);
         }
       }
       
       // Validate and process the response
       if (Array.isArray(response) && response.length > 0) {
-        console.log(`[studentSlice] Returning ${response.length} students for subject ${subjectId}`);
+        // Ensure each student has required fields
+        const processedStudents = response.map(student => ({
+          _id: student._id,
+          name: student.name,
+          email: student.email || '',
+          mobilePhone: student.mobilePhone || '',
+          personalEmail: student.personalEmail || '',
+          direction: student.direction || {},
+          subjects: Array.isArray(student.subjects) 
+            ? student.subjects.map(s => ({
+                _id: s._id || s,
+                name: s.name || 'Unknown Subject'
+              }))
+            : []
+        }));
+        
+        console.log(`[studentSlice] Returning ${processedStudents.length} students for subject ${subjectId}`);
         
         // Log first student details (without sensitive data)
-        const firstStudent = response[0];
+        const firstStudent = processedStudents[0];
         console.log('[studentSlice] First student details:', {
           id: firstStudent._id,
           name: firstStudent.name,
           direction: firstStudent.direction,
-          subjects: firstStudent.subjects,
+          subjectCount: firstStudent.subjects?.length || 0,
           hasMobilePhone: !!firstStudent.mobilePhone,
           hasPersonalEmail: !!firstStudent.personalEmail
         });
         
-        return response;
+        return processedStudents;
       }
       
       console.log('[studentSlice] No students found after all attempts');
@@ -95,7 +130,7 @@ export const getStudentsBySubject = createAsyncThunk(
         subjectId,
         status: error.response?.status,
         data: error.response?.data,
-        stack: error.stack
+        stack: process.env.NODE_ENV === 'development' ? error.stack : 'Stack trace hidden in production'
       });
       
       // Try to get all students as a last resort
@@ -104,7 +139,22 @@ export const getStudentsBySubject = createAsyncThunk(
         if (token) {
           const allStudents = await studentService.getStudents(token);
           console.log(`[studentSlice] Fallback to all students returned ${allStudents?.length || 0} students`);
-          return Array.isArray(allStudents) ? allStudents : [];
+          
+          if (Array.isArray(allStudents)) {
+            // Filter by subject if possible
+            const filteredStudents = allStudents.filter(student => {
+              if (!student.subjects) return false;
+              return student.subjects.some(subj => {
+                const subjId = typeof subj === 'string' ? subj : subj?._id;
+                return subjId === subjectId;
+              });
+            });
+            
+            console.log(`[studentSlice] Found ${filteredStudents.length} students with subject ${subjectId} in fallback`);
+            return filteredStudents;
+          }
+          
+          return [];
         }
       } catch (fallbackError) {
         console.error('[studentSlice] Fallback failed:', fallbackError);
