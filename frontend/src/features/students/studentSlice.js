@@ -47,19 +47,37 @@ export const getStudentsBySubject = createAsyncThunk(
       console.log(`[studentSlice] Fetching students for subject: ${subjectId}`);
       
       // Try to get students by subject first
-      const response = await studentService.getStudentsBySubject(subjectId, token);
+      let response = await studentService.getStudentsBySubject(subjectId, token);
+      
+      // If no students found for subject, try to get all students as fallback
+      if (!response || !Array.isArray(response) || response.length === 0) {
+        console.log('[studentSlice] No students found for subject, trying to get all students');
+        response = await studentService.getStudents(token);
+        
+        if (Array.isArray(response) && response.length > 0) {
+          console.log(`[studentSlice] Fallback returned ${response.length} total students`);
+          // Filter students who have the selected subject
+          response = response.filter(student => 
+            student.subjects?.some(subj => 
+              (typeof subj === 'string' && subj === subjectId) || 
+              (subj._id === subjectId)
+            )
+          );
+          console.log(`[studentSlice] ${response.length} students found with matching subject`);
+        }
+      }
       
       // Validate and process the response
       if (Array.isArray(response) && response.length > 0) {
-        console.log(`[studentSlice] Found ${response.length} students for subject ${subjectId}`);
+        console.log(`[studentSlice] Returning ${response.length} students for subject ${subjectId}`);
         
         // Log first student details (without sensitive data)
         const firstStudent = response[0];
         console.log('[studentSlice] First student details:', {
           id: firstStudent._id,
           name: firstStudent.name,
-          hasDirection: !!firstStudent.direction,
-          subjectCount: firstStudent.subjects?.length || 0,
+          direction: firstStudent.direction,
+          subjects: firstStudent.subjects,
           hasMobilePhone: !!firstStudent.mobilePhone,
           hasPersonalEmail: !!firstStudent.personalEmail
         });
@@ -67,16 +85,7 @@ export const getStudentsBySubject = createAsyncThunk(
         return response;
       }
       
-      // Fallback: Try to get all students if no students found for subject
-      console.log('[studentSlice] No students found for subject, trying to get all students');
-      const allStudents = await studentService.getStudents(token);
-      
-      if (Array.isArray(allStudents) && allStudents.length > 0) {
-        console.log(`[studentSlice] Fallback returned ${allStudents.length} total students`);
-        return allStudents;
-      }
-      
-      console.log('[studentSlice] No students found in fallback');
+      console.log('[studentSlice] No students found after all attempts');
       return [];
       
     } catch (error) {
@@ -85,10 +94,22 @@ export const getStudentsBySubject = createAsyncThunk(
         message: errorMessage,
         subjectId,
         status: error.response?.status,
-        data: error.response?.data
+        data: error.response?.data,
+        stack: error.stack
       });
       
-      // Return empty array to prevent UI crashes
+      // Try to get all students as a last resort
+      try {
+        const token = getState().auth.user?.token;
+        if (token) {
+          const allStudents = await studentService.getStudents(token);
+          console.log(`[studentSlice] Fallback to all students returned ${allStudents?.length || 0} students`);
+          return Array.isArray(allStudents) ? allStudents : [];
+        }
+      } catch (fallbackError) {
+        console.error('[studentSlice] Fallback failed:', fallbackError);
+      }
+      
       return [];
     }
   }

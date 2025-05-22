@@ -117,7 +117,8 @@ const CreateGrade = () => {
     console.log('[CreateGrade] Students data updated:', {
       studentsCount: students?.length || 0,
       selectedDirection,
-      currentSubject: formData.subject
+      currentSubject: formData.subject,
+      studentsData: students
     });
     
     if (!students || !Array.isArray(students)) {
@@ -135,24 +136,43 @@ const CreateGrade = () => {
         }
         return isValid;
       })
-      .map(student => ({
-        ...student,
-        // Ensure contact fields exist
-        mobilePhone: student.mobilePhone || student.savedMobilePhone || '',
-        personalEmail: student.personalEmail || student.savedPersonalEmail || '',
-        // Ensure direction is properly set
-        direction: student.direction || {},
-        // Ensure subjects is an array
-        subjects: Array.isArray(student.subjects) ? student.subjects : []
-      }));
+      .map(student => {
+        // Normalize the student object
+        const normalizedStudent = {
+          ...student,
+          // Ensure contact fields exist
+          mobilePhone: student.mobilePhone || student.savedMobilePhone || '',
+          personalEmail: student.personalEmail || student.savedPersonalEmail || '',
+          // Ensure direction is properly set
+          direction: student.direction || {},
+          // Ensure subjects is an array and normalize subject references
+          subjects: Array.isArray(student.subjects) 
+            ? student.subjects.map(subj => ({
+                _id: subj._id || (typeof subj === 'string' ? subj : null),
+                name: subj.name || (typeof subj === 'string' ? subj : 'Unknown Subject')
+              }))
+            : []
+        };
+        
+        console.log(`[CreateGrade] Normalized student ${student.name}:`, {
+          id: normalizedStudent._id,
+          direction: normalizedStudent.direction,
+          subjectCount: normalizedStudent.subjects?.length,
+          hasMobilePhone: !!normalizedStudent.mobilePhone,
+          hasPersonalEmail: !!normalizedStudent.personalEmail
+        });
+        
+        return normalizedStudent;
+      });
     
     // Apply direction filter if selected
     if (selectedDirection) {
       validStudents = validStudents.filter(student => {
-        const directionMatch = student.direction && 
-          (student.direction._id === selectedDirection || 
-           student.direction === selectedDirection ||
-           (typeof student.direction === 'object' && student.direction._id === selectedDirection));
+        const directionMatch = student.direction && (
+          student.direction._id === selectedDirection || 
+          student.direction === selectedDirection ||
+          (typeof student.direction === 'object' && student.direction._id === selectedDirection)
+        );
         
         if (!directionMatch) {
           console.log(`[CreateGrade] Student ${student.name} filtered out by direction filter`, {
@@ -162,6 +182,25 @@ const CreateGrade = () => {
         }
         
         return directionMatch;
+      });
+    }
+    
+    // Filter by subject if selected
+    if (formData.subject) {
+      validStudents = validStudents.filter(student => {
+        const hasSubject = student.subjects?.some(subj => 
+          (typeof subj === 'string' && subj === formData.subject) ||
+          (subj._id === formData.subject)
+        );
+        
+        if (!hasSubject) {
+          console.log(`[CreateGrade] Student ${student.name} filtered out by subject filter`, {
+            studentSubjects: student.subjects,
+            selectedSubject: formData.subject
+          });
+        }
+        
+        return hasSubject;
       });
     }
     
