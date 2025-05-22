@@ -784,23 +784,65 @@ const getUserById = asyncHandler(async (req, res) => {
         console.warn('Not all required models are registered, references may not populate correctly');
       }
       
-      // Try to find the user in the school database with all possible fields populated
-      const schoolUser = await SchoolUser.findById(req.params.id)
-        .select('-password')
-        .populate('school', 'name _id')
-        .populate('direction', 'name _id')
-        .populate('schools', 'name _id')
-        .populate('directions', 'name _id')
-        .populate('subjects', 'name _id');
+      // Get references to all models we need for manual population
+      const School = connection.model('School');
+      const Direction = connection.model('Direction');
+      const Subject = connection.model('Subject');
+      
+      // First get the user with minimal population
+      let schoolUser = await SchoolUser.findById(req.params.id).select('-password').lean();
       
       if (schoolUser) {
         console.log(`User found in school database with role: ${schoolUser.role}`);
-        user = schoolUser.toObject ? schoolUser.toObject() : schoolUser;
+        user = schoolUser;
         
-        // Ensure arrays exist for all roles
+        // Initialize arrays if they don't exist
         if (!user.schools) user.schools = [];
         if (!user.directions) user.directions = [];
         if (!user.subjects) user.subjects = [];
+        
+        // Manually populate school if it's an ID
+        if (user.school && typeof user.school === 'string') {
+          try {
+            const school = await School.findById(user.school).select('name _id').lean();
+            if (school) {
+              user.school = school;
+              // Also add to schools array if not already present
+              if (!user.schools.some(s => s._id.toString() === school._id.toString())) {
+                user.schools.push(school);
+              }
+            }
+          } catch (err) {
+            console.error('Error populating school:', err);
+          }
+        }
+        
+        // Manually populate direction if it's an ID
+        if (user.direction && typeof user.direction === 'string') {
+          try {
+            const direction = await Direction.findById(user.direction).select('name _id').lean();
+            if (direction) {
+              user.direction = direction;
+              // Also add to directions array if not already present
+              if (!user.directions.some(d => d._id.toString() === direction._id.toString())) {
+                user.directions.push(direction);
+              }
+            }
+          } catch (err) {
+            console.error('Error populating direction:', err);
+          }
+        }
+        
+        // Manually populate subjects if they're IDs
+        if (user.subjects && user.subjects.length > 0 && typeof user.subjects[0] === 'string') {
+          try {
+            const subjectIds = user.subjects;
+            const subjects = await Subject.find({ _id: { $in: subjectIds } }).select('name _id').lean();
+            user.subjects = subjects;
+          } catch (err) {
+            console.error('Error populating subjects:', err);
+          }
+        }
         
         // For backward compatibility, ensure school/direction fields are set for students
         if (user.role === 'student') {
