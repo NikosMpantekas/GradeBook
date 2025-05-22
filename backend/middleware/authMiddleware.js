@@ -421,6 +421,8 @@ const adminOrSecretary = (permissionKey) => {
   return asyncHandler(async (req, res, next) => {
     if (
       req.user && (
+        // CRITICAL FIX: Allow superadmins to access all functionality
+        req.user.role === 'superadmin' ||
         req.user.role === 'admin' || 
         (req.user.role === 'secretary' && 
          req.user.secretaryPermissions && 
@@ -434,6 +436,8 @@ const adminOrSecretary = (permissionKey) => {
     }
   });
 };
+
+// REMOVED DUPLICATE canManageUsers MIDDLEWARE
 
 // Middleware to check if user is teacher or admin
 const teacher = asyncHandler(async (req, res, next) => {

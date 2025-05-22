@@ -7,7 +7,7 @@ const {
   getUserMessages,
   markReplyAsRead
 } = require('../controllers/contactController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, admin, superadmin, adminOrSecretary } = require('../middleware/authMiddleware');
 
 // Send message - all authenticated users
 router.post('/', protect, sendContactMessage);
@@ -18,10 +18,10 @@ router.get('/user', protect, getUserMessages);
 // Mark a reply as read by the user
 router.put('/user/:id/read', protect, markReplyAsRead);
 
-// Admin-only routes - get all messages
-router.get('/', protect, admin, getContactMessages);
+// Admin and superadmin routes - get all messages
+router.get('/', protect, adminOrSecretary('canSendNotifications'), getContactMessages);
 
-// Admin-only routes - update message status and send replies
-router.put('/:id', protect, admin, updateContactMessage);
+// Admin and superadmin routes - update message status and send replies
+router.put('/:id', protect, adminOrSecretary('canSendNotifications'), updateContactMessage);
 
 module.exports = router;

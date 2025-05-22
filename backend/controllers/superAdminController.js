@@ -39,12 +39,16 @@ const createSchoolOwner = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Convert school name to valid database name (lowercase, no spaces, etc.)
-    const dbName = schoolName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    // CRITICAL FIX: Extract database name from email domain (schoolclustername.com -> schoolclustername)
+    // This ensures users with @schoolclustername.com emails connect to the correct database
+    const domainParts = emailDomain.split('.');
+    const dbName = domainParts[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
     
-    // Create database configuration using the schoolName as the database name
+    console.log(`Creating database with name derived from domain: ${emailDomain} -> ${dbName}`);
+    
+    // Create database configuration using the domain name as the database name
     const dbConfig = {
-      // Use the school name as the database name
+      // Use the domain prefix as the database name
       dbName: dbName
     };
     
@@ -259,10 +263,57 @@ const generateToken = (id) => {
   });
 };
 
+// @desc    Delete a school owner (admin)
+// @route   DELETE /api/superadmin/school-owners/:id
+// @access  Private/SuperAdmin
+const deleteSchoolOwner = asyncHandler(async (req, res) => {
+  try {
+    // Find the school owner by ID
+    const schoolOwner = await User.findById(req.params.id);
+
+    if (!schoolOwner) {
+      res.status(404);
+      throw new Error('School owner not found');
+    }
+
+    // Verify that the user is an admin (school owner)
+    if (schoolOwner.role !== 'admin') {
+      res.status(400);
+      throw new Error('User is not a school owner');
+    }
+
+    // Find the associated school
+    const school = await School.findById(schoolOwner.school);
+    
+    if (!school) {
+      console.log('Warning: School not found for this owner, proceeding with deletion anyway');
+    } else {
+      console.log(`Found associated school: ${school.name}`);
+      
+      // We could optionally disable the school here but we'll keep it 
+      // in case there are other admins or it needs to be reassigned
+      console.log(`School ${school.name} will remain in the system`);
+    }
+
+    // Delete the school owner
+    await User.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({ 
+      message: 'School owner deleted successfully',
+      id: req.params.id
+    });
+  } catch (error) {
+    console.error('Error deleting school owner:', error.message);
+    res.status(500);
+    throw new Error('Failed to delete school owner: ' + error.message);
+  }
+});
+
 module.exports = {
   createSchoolOwner,
   getSchoolOwners,
   getSchoolOwnerById,
   updateSchoolOwnerStatus,
+  deleteSchoolOwner,
   createFirstSuperAdmin,
 };
