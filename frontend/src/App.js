@@ -52,6 +52,7 @@ import ContactMessages from './pages/admin/ContactMessages';
 // SuperAdmin Pages
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import CreateSchoolOwner from './pages/superadmin/CreateSchoolOwner';
+import SchoolOwnerDetails from './pages/superadmin/SchoolOwnerDetails';
 
 // Push notification service
 import { setupPushNotifications } from './services/pushNotificationService';
@@ -304,6 +305,11 @@ function App() {
             <Route path="/superadmin/new-school-owner" element={
               <SuperAdminRoute>
                 <CreateSchoolOwner />
+              </SuperAdminRoute>
+            } />
+            <Route path="/superadmin/school-owner/:id" element={
+              <SuperAdminRoute>
+                <SchoolOwnerDetails />
               </SuperAdminRoute>
             } />
             <Route path="/superadmin/contact" element={

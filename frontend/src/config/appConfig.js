@@ -5,7 +5,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.3.69'; // Fixed critical authentication middleware bug and database connection issues for school clusters
+const APP_VERSION = '1.3.70'; // Fixed critical authentication middleware bug and database connection issues for school clusters
 
 // Store version in localStorage to detect updates across refreshes
 const storeAppVersion = () => {
