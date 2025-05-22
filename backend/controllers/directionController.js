@@ -121,9 +121,13 @@ const getDirections = asyncHandler(async (req, res) => {
         try {
           const token = req.headers.authorization.split(' ')[1];
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
-          if (decoded.schoolId) {
-            console.log(`HIGHEST PRIORITY: Token contains schoolId ${decoded.schoolId}`);
-            schoolId = decoded.schoolId;
+          // CRITICAL FIX: Safely check if decoded exists and has schoolId
+          if (decoded && decoded.schoolId) {
+            const extractedSchoolId = decoded.schoolId;
+            console.log(`HIGHEST PRIORITY: Token contains schoolId ${extractedSchoolId}`);
+            schoolId = extractedSchoolId;
+          } else {
+            console.log('Token decoded successfully but does not contain schoolId');
           }
         } catch (err) {
           console.error('Error extracting schoolId from token:', err.message);
@@ -341,8 +345,9 @@ const getDirections = asyncHandler(async (req, res) => {
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           
           // If token has schoolId, definitely use school database
-          if (decoded.schoolId) {
-            console.log(`EMERGENCY OVERRIDE: Token has schoolId ${decoded.schoolId}! Using school database!`);
+          if (decoded && decoded.schoolId) {
+            const extractedSchoolId = decoded.schoolId;
+            console.log(`EMERGENCY OVERRIDE: Token has schoolId ${extractedSchoolId}! Using school database!`);
             
             // Fetch school and redirect to school database
             const School = mongoose.model('School');

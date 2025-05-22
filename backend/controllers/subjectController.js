@@ -121,9 +121,12 @@ const getSubjects = asyncHandler(async (req, res) => {
       try {
         const token = req.headers.authorization.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.schoolId) {
-          console.log(`Token contains schoolId ${decoded.schoolId} - using school database`);
-          schoolId = decoded.schoolId;
+        if (decoded && decoded.schoolId) {
+          const extractedSchoolId = decoded.schoolId;
+          console.log(`Token contains schoolId ${extractedSchoolId} - using school database`);
+          schoolId = extractedSchoolId;
+        } else {
+          console.log('Token decoded successfully but does not contain schoolId');
         }
       } catch (err) {
         console.error('Error extracting schoolId from token:', err.message);
@@ -253,8 +256,9 @@ const getSubjects = asyncHandler(async (req, res) => {
           const token = req.headers.authorization.split(' ')[1];
           const decoded = jwt.verify(token, process.env.JWT_SECRET);
           
-          if (decoded.schoolId) {
-            console.log(`EMERGENCY OVERRIDE: Token has schoolId ${decoded.schoolId}! Using school database!`);
+          if (decoded && decoded.schoolId) {
+            const extractedSchoolId = decoded.schoolId;
+            console.log(`EMERGENCY OVERRIDE: Token has schoolId ${extractedSchoolId}! Using school database!`);
             
             // Fetch school and redirect to school database
             const School = mongoose.model('School');
