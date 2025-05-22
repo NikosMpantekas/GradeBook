@@ -76,8 +76,8 @@ const CreateUser = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '', // This is now the User ID / login email
-    mobilePhone: '', // New optional field for mobile phone
-    personalEmail: '', // New optional field for personal email
+    mobilePhone: '', // Optional field for mobile phone
+    personalEmail: '', // Optional field for personal email
     password: '',
     confirmPassword: '',
     role: '',
@@ -102,7 +102,20 @@ const CreateUser = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
+  const [formErrors, setFormErrors] = useState({
+    name: '',
+    email: '',
+    mobilePhone: '',
+    personalEmail: '',
+    password: '',
+    confirmPassword: '',
+    role: '',
+    school: '',
+    schools: '',
+    direction: '',
+    directions: '',
+    subjects: '',
+  });
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -277,113 +290,107 @@ const CreateUser = () => {
     }
   };
   
-  const validate = () => {
+  const validateForm = () => {
     const errors = {};
-    
+    let isValid = true;
+
     if (!formData.name.trim()) {
       errors.name = 'Name is required';
+      isValid = false;
     }
-    
-    if (!formData.email.trim()) {
+
+    if (!formData.email) {
       errors.email = 'Email is required';
+      isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Email is invalid';
+      isValid = false;
     }
-    
+
+    // Validate personal email if provided
+    if (formData.personalEmail && !/\S+@\S+\.\S+/.test(formData.personalEmail)) {
+      errors.personalEmail = 'Personal email is invalid';
+      isValid = false;
+    }
+
+    // Validate mobile phone if provided
+    if (formData.mobilePhone && !/^[\d\s\-+()]+$/.test(formData.mobilePhone)) {
+      errors.mobilePhone = 'Invalid phone number format';
+      isValid = false;
+    }
+
+    if (formData.role === 'student' && !formData.school) {
+      errors.school = 'School is required for students';
+      isValid = false;
+    }
+
+    if ((formData.role === 'teacher' || formData.role === 'secretary') && formData.schools.length === 0) {
+      errors.schools = 'At least one school is required';
+      isValid = false;
+    }
+
+    if (formData.role === 'student' && !formData.direction) {
+      errors.direction = 'Direction is required for students';
+      isValid = false;
+    }
+
+    if ((formData.role === 'teacher' || formData.role === 'secretary') && formData.directions.length === 0) {
+      errors.directions = 'At least one direction is required';
+      isValid = false;
+    }
+
+    if ((formData.role === 'teacher' || formData.role === 'secretary') && formData.subjects.length === 0) {
+      errors.subjects = 'At least one subject is required';
+      isValid = false;
+    }
+
     if (!formData.password) {
       errors.password = 'Password is required';
+      isValid = false;
     } else if (formData.password.length < 6) {
       errors.password = 'Password must be at least 6 characters';
+      isValid = false;
     }
-    
-    if (!formData.confirmPassword) {
-      errors.confirmPassword = 'Confirm password is required';
-    } else if (formData.password !== formData.confirmPassword) {
+
+    if (formData.password !== formData.confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
+      isValid = false;
     }
-    
-    if (!formData.role) {
-      errors.role = 'Role is required';
-    } else if (formData.role === 'secretary' && restrictSecretary) {
-      errors.role = 'Only administrators can create secretary accounts';
-    }
-    
-    // Only validate school and direction fields if role is student or teacher
-    if (formData.role === 'student') {
-      // For students: single school and direction
-      if (!formData.school) {
-        errors.school = 'Please select a school for the student';
-      } else if (!optionsData.schools.some(school => school._id === formData.school)) {
-        errors.school = 'Please select a valid school';
-      }
-      
-      if (!formData.direction) {
-        errors.direction = 'Please select a direction for the student';
-      } else if (!optionsData.directions.some(direction => direction._id === formData.direction)) {
-        errors.direction = 'Please select a valid direction';
-      }
-    } else if (formData.role === 'teacher') {
-      // For teachers: can have multiple schools and directions
-      if (formData.schools && formData.schools.length > 0) {
-        // Validate each selected school
-        const validSchoolIds = optionsData.schools.map(school => school._id);
-        const hasInvalidSchool = formData.schools.some(schoolId => !validSchoolIds.includes(schoolId));
-        
-        if (hasInvalidSchool) {
-          errors.schools = 'One or more selected schools are invalid';
-        }
-      } else {
-        errors.schools = 'Please select at least one school for the teacher';
-      }
-      
-      if (formData.directions && formData.directions.length > 0) {
-        // Validate each selected direction
-        const validDirectionIds = optionsData.directions.map(direction => direction._id);
-        const hasInvalidDirection = formData.directions.some(directionId => !validDirectionIds.includes(directionId));
-        
-        if (hasInvalidDirection) {
-          errors.directions = 'One or more selected directions are invalid';
-        }
-      } else {
-        errors.directions = 'Please select at least one direction for the teacher';
-      }
-    }
-    
-    // For subjects, just verify each selection is a valid subject ID if any are selected
-    if ((formData.role === 'teacher' || formData.role === 'student') && formData.subjects && formData.subjects.length > 0) {
-        const validSubjectIds = optionsData.subjects.map(subject => subject._id);
-        const hasInvalidSubject = formData.subjects.some(subjectId => !validSubjectIds.includes(subjectId));
-        
-        if (hasInvalidSubject) {
-          errors.subjects = 'One or more selected subjects are invalid';
-        }
-    }
-    
-    return errors;
+
+    setFormErrors(errors);
+    return isValid;
   };
-  
-  // Main form submission function - called when form is submitted
-  const validateAndSubmitForm = (e) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const errors = validate();
-    setFormErrors(errors);
-    
-    if (Object.keys(errors).length === 0) {
-      setSubmitting(true);
-      // Mark that we've intentionally submitted the form
-      hasSubmitted.current = true;
-      console.log('CreateUser: Form submitted, setting hasSubmitted=true');
-      
-      // Base user data
+    if (!validateForm()) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // Prepare user data based on role
       const userData = {
-        name: formData.name,
-        email: formData.email,
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
         role: formData.role,
+        mobilePhone: formData.mobilePhone?.trim() || '',
+        personalEmail: formData.personalEmail?.trim().toLowerCase() || '',
+        // Include saved versions for backup
+        savedMobilePhone: formData.mobilePhone?.trim() || null,
+        savedPersonalEmail: formData.personalEmail?.trim().toLowerCase() || null
       };
       
-      // Add school, direction, and subjects for teachers and students
+      console.log('Submitting user with contact info:', {
+        mobilePhone: userData.mobilePhone,
+        personalEmail: userData.personalEmail,
+        savedMobilePhone: userData.savedMobilePhone,
+        savedPersonalEmail: userData.savedPersonalEmail
+      });
+
       if (formData.role === 'student') {
         // For students: Include single school and direction
         userData.school = formData.school || null;
@@ -465,9 +472,12 @@ const CreateUser = () => {
           );
           setSubmitting(false);
         });
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setSubmitting(false);
     }
   };
-  
+
   // Create refs to track component state
   const initialMount = useRef(true);
   const hasSubmitted = useRef(false);
@@ -573,9 +583,6 @@ const CreateUser = () => {
     };
   }, [isError, isSuccess, message, navigate, dispatch]);
 
-  // The handleSubmit function was removed to fix the duplicate function lint error
-  // The functionality is now contained in validateAndSubmitForm defined earlier
-  
   const handleBack = () => {
     navigate('/app/admin/users');
   };
@@ -634,7 +641,7 @@ const CreateUser = () => {
         
         <Divider sx={{ mb: 3 }} />
         
-        <Box component="form" onSubmit={validateAndSubmitForm}>
+        <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <TextField
@@ -678,28 +685,34 @@ const CreateUser = () => {
               />
             </Grid>
             
-            {/* New optional fields for mobile phone and personal email */}
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Mobile Phone (Optional)"
+                label="Mobile Phone"
                 name="mobilePhone"
-                type="tel"
-                value={formData.mobilePhone || ''}
+                value={formData.mobilePhone}
                 onChange={handleChange}
-                helperText="Optional contact number"
+                helperText="Optional"
+                inputProps={{
+                  maxLength: 20,
+                  pattern: '[\d\s\-+()]+'
+                }}
               />
             </Grid>
             
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Personal Email (Optional)"
+                label="Personal Email"
                 name="personalEmail"
                 type="email"
-                value={formData.personalEmail || ''}
+                value={formData.personalEmail}
                 onChange={handleChange}
-                helperText="Optional personal email address"
+                helperText="Optional"
+                inputProps={{
+                  autoComplete: 'email',
+                  inputMode: 'email'
+                }}
               />
             </Grid>
             

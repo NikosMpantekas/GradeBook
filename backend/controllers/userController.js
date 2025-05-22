@@ -1815,9 +1815,33 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       }
     }
     
+    // Ensure contact fields are properly set
+    const contactFields = {
+      mobilePhone: mobilePhone || '',
+      personalEmail: personalEmail || ''
+    };
+
+    // Add contact fields to user data
+    const userWithContacts = {
+      ...userData,
+      ...contactFields,
+      savedMobilePhone: mobilePhone || null,
+      savedPersonalEmail: personalEmail || null
+    };
+
     // Create user in the school-specific database
-    const result = await SchoolUser.create(userData);
+    const result = await SchoolUser.create(userWithContacts);
     console.log('User created in school database with ID:', result._id);
+    
+    // Log the created user data for verification
+    console.log('Created user data:', {
+      _id: result._id,
+      name: result.name,
+      email: result.email,
+      mobilePhone: result.mobilePhone,
+      personalEmail: result.personalEmail,
+      role: result.role
+    });
     
     if (!result) {
       res.status(400);

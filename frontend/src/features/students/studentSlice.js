@@ -28,44 +28,64 @@ export const getStudents = createAsyncThunk(
   }
 );
 
-// Get students by subject
+// Get students by subject with enhanced error handling and logging
 export const getStudentsBySubject = createAsyncThunk(
   'students/getBySubject',
-  async (subjectId, thunkAPI) => {
+  async (subjectId, { getState, rejectWithValue }) => {
     try {
-      console.log(`[studentSlice] Dispatching getStudentsBySubject for subject: ${subjectId}`);
-      const token = thunkAPI.getState().auth.user.token;
-      
-      // First try to get students by subject
-      const response = await studentService.getStudentsBySubject(subjectId, token);
-      console.log(`[studentSlice] Received ${response?.length || 0} students for subject ${subjectId}`);
-      
-      // Log the first student for debugging
-      if (response?.length > 0) {
-        console.log('[studentSlice] First student data:', {
-          id: response[0]._id,
-          name: response[0].name,
-          direction: response[0].direction,
-          subjects: response[0].subjects
-        });
+      const token = getState().auth.user?.token;
+      if (!token) {
+        console.warn('[studentSlice] No auth token available');
+        return [];
       }
       
-      // Ensure we have a valid array before returning
+      if (!subjectId) {
+        console.warn('[studentSlice] No subjectId provided');
+        return [];
+      }
+      
+      console.log(`[studentSlice] Fetching students for subject: ${subjectId}`);
+      
+      // Try to get students by subject first
+      const response = await studentService.getStudentsBySubject(subjectId, token);
+      
+      // Validate and process the response
       if (Array.isArray(response) && response.length > 0) {
+        console.log(`[studentSlice] Found ${response.length} students for subject ${subjectId}`);
+        
+        // Log first student details (without sensitive data)
+        const firstStudent = response[0];
+        console.log('[studentSlice] First student details:', {
+          id: firstStudent._id,
+          name: firstStudent.name,
+          hasDirection: !!firstStudent.direction,
+          subjectCount: firstStudent.subjects?.length || 0,
+          hasMobilePhone: !!firstStudent.mobilePhone,
+          hasPersonalEmail: !!firstStudent.personalEmail
+        });
+        
         return response;
       }
       
-      // If no students found for subject, try to get all students
+      // Fallback: Try to get all students if no students found for subject
       console.log('[studentSlice] No students found for subject, trying to get all students');
       const allStudents = await studentService.getStudents(token);
-      console.log(`[studentSlice] Fallback returned ${allStudents?.length || 0} total students`);
       
-      return allStudents || [];
+      if (Array.isArray(allStudents) && allStudents.length > 0) {
+        console.log(`[studentSlice] Fallback returned ${allStudents.length} total students`);
+        return allStudents;
+      }
+      
+      console.log('[studentSlice] No students found in fallback');
+      return [];
       
     } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch students';
       console.error('[studentSlice] Error in getStudentsBySubject:', {
-        error: error.message,
-        response: error.response?.data
+        message: errorMessage,
+        subjectId,
+        status: error.response?.status,
+        data: error.response?.data
       });
       
       // Return empty array to prevent UI crashes

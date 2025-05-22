@@ -12,15 +12,47 @@ const userSchema = mongoose.Schema(
       required: [true, 'Please add an email'],
       unique: true,
     },
-    // Optional mobile phone for contact purposes
+    // Mobile phone for contact purposes
     mobilePhone: {
       type: String,
       required: false,
+      default: '',
+      trim: true,
+      validate: {
+        validator: function(v) {
+          // Basic phone number validation (optional)
+          if (!v) return true;
+          return /^[\d\s\-+()]+$/.test(v);
+        },
+        message: props => `${props.value} is not a valid phone number!`
+      }
     },
-    // Optional personal email (different from login email)
+    // Personal email (different from login email)
     personalEmail: {
       type: String,
       required: false,
+      default: '',
+      trim: true,
+      lowercase: true,
+      validate: {
+        validator: function(v) {
+          // Basic email validation (optional)
+          if (!v) return true;
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+        },
+        message: props => `${props.value} is not a valid email address!`
+      }
+    },
+    // Saved contact info for backup/reference
+    savedMobilePhone: {
+      type: String,
+      required: false,
+      default: null
+    },
+    savedPersonalEmail: {
+      type: String,
+      required: false,
+      default: null
     },
     password: {
       type: String,

@@ -90,7 +90,7 @@ const getStudentsBySubject = async (subjectId, token) => {
       status: error.response?.status
     });
     
-    // Return empty array to prevent UI crashes
+    // Don't throw error to prevent UI crashes, return empty array instead
     return [];
   }
 };

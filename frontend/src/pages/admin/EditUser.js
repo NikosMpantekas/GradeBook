@@ -69,6 +69,8 @@ const EditUser = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    mobilePhone: '',
+    personalEmail: '',
     role: '',
     school: '', // For students
     schools: [], // For teachers (multiple schools)
@@ -94,7 +96,20 @@ const EditUser = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
+  const [formErrors, setFormErrors] = useState({
+    name: '',
+    email: '',
+    mobilePhone: '',
+    personalEmail: '',
+    role: '',
+    school: '',
+    schools: '',
+    direction: '',
+    directions: '',
+    subjects: '',
+    password: '',
+    confirmPassword: '',
+  });
   
   // Fetch schools, directions, and subjects data
   useEffect(() => {
@@ -191,8 +206,8 @@ const EditUser = () => {
             ...formData,
             name: response.name || '',
             email: response.email || '',
-            mobilePhone: response.mobilePhone || '', // Added mobile phone field
-            personalEmail: response.personalEmail || '', // Added personal email field
+            mobilePhone: response.mobilePhone || response.savedMobilePhone || '',
+            personalEmail: response.personalEmail || response.savedPersonalEmail || '',
             role: response.role || '',
             changePassword: false,
             password: '',
@@ -429,46 +444,80 @@ const EditUser = () => {
     hasSubmitted.current = true;
     setIsError(false);
     
-    // Validate form
-    const errors = {};
-    if (!formData.name) errors.name = 'Name is required';
-    if (!formData.email) errors.email = 'Email is required';
-    if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
-    }
-    if (!formData.role) errors.role = 'Role is required';
-    
-    // Role-specific validation
-    if (formData.role === 'student') {
-      if (!formData.school) errors.school = 'School is required for students';
-      if (!formData.direction) errors.direction = 'Direction is required for students';
-    } else if (formData.role === 'teacher') {
-      if (!formData.schools || formData.schools.length === 0) {
-        errors.schools = 'At least one school is required for teachers';
+    const validateForm = () => {
+      const errors = {};
+      let isValid = true;
+      
+      if (!formData.name.trim()) {
+        errors.name = 'Name is required';
+        isValid = false;
       }
-      if (!formData.directions || formData.directions.length === 0) {
-        errors.directions = 'At least one direction is required for teachers';
+      
+      if (!formData.email.trim()) {
+        errors.email = 'Email is required';
+        isValid = false;
+      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        errors.email = 'Email is invalid';
+        isValid = false;
       }
-    } else if (formData.role === 'secretary') {
-      if (!formData.schools || formData.schools.length === 0) {
-        errors.schools = 'At least one school is required for secretaries';
+      
+      // Validate personal email if provided
+      if (formData.personalEmail && !/\S+@\S+\.\S+/.test(formData.personalEmail)) {
+        errors.personalEmail = 'Personal email is invalid';
+        isValid = false;
       }
-    }
-    
-    // Password validation if changing password
-    if (formData.changePassword) {
-      if (!formData.password) errors.password = 'Password is required';
-      if (formData.password && formData.password.length < 6) {
-        errors.password = 'Password must be at least 6 characters';
+
+      // Validate mobile phone if provided
+      if (formData.mobilePhone && !/^[\d\s\-+()]+$/.test(formData.mobilePhone)) {
+        errors.mobilePhone = 'Invalid phone number format';
+        isValid = false;
       }
-      if (!formData.confirmPassword) errors.confirmPassword = 'Please confirm your password';
-      if (formData.password !== formData.confirmPassword) {
-        errors.confirmPassword = 'Passwords do not match';
+      
+      if (formData.changePassword) {
+        if (formData.password && formData.password.length < 6) {
+          errors.password = 'Password must be at least 6 characters';
+          isValid = false;
+        }
+        
+        if (formData.password !== formData.confirmPassword) {
+          errors.confirmPassword = 'Passwords do not match';
+          isValid = false;
+        }
       }
-    }
-    
-    if (Object.keys(errors).length > 0) {
+      
+      if (!formData.role) {
+        errors.role = 'Role is required';
+        isValid = false;
+      }
+      
+      // Only validate school and direction fields if role is student or teacher
+      if (formData.role === 'student') {
+        if (!formData.school) {
+          errors.school = 'School is required for students';
+          isValid = false;
+        }
+        
+        if (!formData.direction) {
+          errors.direction = 'Direction is required for students';
+          isValid = false;
+        }
+      } else if (formData.role === 'teacher' || formData.role === 'secretary') {
+        if (!formData.schools || formData.schools.length === 0) {
+          errors.schools = 'At least one school is required';
+          isValid = false;
+        }
+        
+        if (!formData.directions || formData.directions.length === 0) {
+          errors.directions = 'At least one direction is required';
+          isValid = false;
+        }
+      }
+      
       setFormErrors(errors);
+      return isValid;
+    };
+    
+    if (!validateForm()) {
       return;
     }
     
@@ -804,31 +853,38 @@ const EditUser = () => {
               />
             </Grid>
             
-            {/* Added mobile phone field */}
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Mobile Phone (Optional)"
+                label="Mobile Phone"
                 name="mobilePhone"
-                type="tel"
-                value={formData.mobilePhone || ''}
+                value={formData.mobilePhone}
                 onChange={handleChange}
-                helperText="Optional contact number"
-                disabled={isLoading}
+                placeholder="e.g., +30 69 1234 5678"
+                error={!!formErrors.mobilePhone}
+                helperText={formErrors.mobilePhone || 'Optional'}
+                inputProps={{
+                  maxLength: 20,
+                  pattern: '[\d\s\-+()]+'
+                }}
               />
             </Grid>
             
-            {/* Added personal email field */}
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                label="Personal Email (Optional)"
+                label="Personal Email"
                 name="personalEmail"
                 type="email"
-                value={formData.personalEmail || ''}
+                value={formData.personalEmail}
                 onChange={handleChange}
-                helperText="Optional personal email address"
-                disabled={isLoading}
+                placeholder="student@example.com"
+                error={!!formErrors.personalEmail}
+                helperText={formErrors.personalEmail || 'Optional'}
+                inputProps={{
+                  autoComplete: 'email',
+                  inputMode: 'email'
+                }}
               />
             </Grid>
             

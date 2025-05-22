@@ -87,10 +87,17 @@ const CreateGrade = () => {
         .then((data) => {
           console.log(`[CreateGrade] Successfully fetched ${data?.length || 0} students for subject`);
           
-          // If no students found, try to get all students as fallback
+          // If no students found for subject, try to get all students as fallback
           if (!data || data.length === 0) {
             console.log('[CreateGrade] No students found for subject, trying to get all students');
-            dispatch(getStudents());
+            dispatch(getStudents())
+              .unwrap()
+              .then(allStudents => {
+                console.log(`[CreateGrade] Loaded ${allStudents?.length || 0} total students`);
+              })
+              .catch(err => {
+                console.error('[CreateGrade] Error loading all students:', err);
+              });
           }
         })
         .catch((error) => {
@@ -119,21 +126,33 @@ const CreateGrade = () => {
       return;
     }
     
-    // Filter out any invalid student data
-    let validStudents = students.filter(student => {
-      const isValid = student && student._id && student.name && typeof student.name === 'string';
-      if (!isValid) {
-        console.warn('[CreateGrade] Found invalid student data:', student);
-      }
-      return isValid;
-    });
+    // Filter out any invalid student data and enhance with contact info
+    let validStudents = students
+      .filter(student => {
+        const isValid = student && student._id && student.name && typeof student.name === 'string';
+        if (!isValid) {
+          console.warn('[CreateGrade] Found invalid student data:', student);
+        }
+        return isValid;
+      })
+      .map(student => ({
+        ...student,
+        // Ensure contact fields exist
+        mobilePhone: student.mobilePhone || student.savedMobilePhone || '',
+        personalEmail: student.personalEmail || student.savedPersonalEmail || '',
+        // Ensure direction is properly set
+        direction: student.direction || {},
+        // Ensure subjects is an array
+        subjects: Array.isArray(student.subjects) ? student.subjects : []
+      }));
     
     // Apply direction filter if selected
     if (selectedDirection) {
       validStudents = validStudents.filter(student => {
         const directionMatch = student.direction && 
-          (student.direction === selectedDirection || 
-           (student.direction._id && student.direction._id === selectedDirection));
+          (student.direction._id === selectedDirection || 
+           student.direction === selectedDirection ||
+           (typeof student.direction === 'object' && student.direction._id === selectedDirection));
         
         if (!directionMatch) {
           console.log(`[CreateGrade] Student ${student.name} filtered out by direction filter`, {
@@ -154,7 +173,9 @@ const CreateGrade = () => {
         id: validStudents[0]._id,
         name: validStudents[0].name,
         direction: validStudents[0].direction,
-        subjects: validStudents[0].subjects
+        subjects: validStudents[0].subjects,
+        hasMobilePhone: !!validStudents[0].mobilePhone,
+        hasPersonalEmail: !!validStudents[0].personalEmail
       });
       setStudentsToSelect(validStudents);
     } else {
