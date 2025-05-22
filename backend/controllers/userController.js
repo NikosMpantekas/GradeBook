@@ -2113,12 +2113,23 @@ const getStudentsBySubject = asyncHandler(async (req, res) => {
           } : { _id: null, name: 'No Direction' };
           
           // Ensure subjects is properly formatted
-          const subjects = Array.isArray(student.subjects) 
+          let subjects = Array.isArray(student.subjects) 
             ? student.subjects.map(s => ({
                 _id: s?._id || s,
                 name: s?.name || `Subject ${s?._id || s || 'Unknown'}`
               }))
             : [];
+            
+          // CRITICAL FIX: Ensure the current subject is included in the student's subjects
+          // This is crucial because the frontend filters students based on their subjects
+          const hasCurrentSubject = subjects.some(s => s._id.toString() === subjectId.toString());
+          if (!hasCurrentSubject) {
+            console.log(`Adding current subject ${subjectId} to student ${student.name}'s subjects`);
+            subjects.push({
+              _id: subjectId,
+              name: subject.name || `Subject ${subjectId}`
+            });
+          }
             
           return {
             ...student,
@@ -2189,12 +2200,26 @@ const getStudentsBySubject = asyncHandler(async (req, res) => {
             } : { _id: null, name: 'No Direction' };
             
             // Ensure subjects is properly formatted
-            const subjects = Array.isArray(student.subjects) 
+            let subjects = Array.isArray(student.subjects) 
               ? student.subjects.map(s => ({
                   _id: s?._id || s,
                   name: s?.name || `Subject ${s?._id || s || 'Unknown'}`
                 }))
               : [];
+            
+            // CRITICAL FIX: Ensure the current subject is included in the student's subjects
+            // This is crucial because the frontend filters students based on their subjects
+            const hasCurrentSubject = subjects.some(s => 
+              s._id && subjectId && s._id.toString() === subjectId.toString()
+            );
+            
+            if (!hasCurrentSubject) {
+              console.log(`Adding current subject ${subjectId} to direction student ${student.name}'s subjects`);
+              subjects.push({
+                _id: subjectId,
+                name: subject.name || `Subject ${subjectId}`
+              });
+            }
               
             return {
               ...student,

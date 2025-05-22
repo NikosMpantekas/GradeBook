@@ -236,36 +236,38 @@ const CreateGrade = () => {
     
     // Filter by subject if selected
     if (formData.subject) {
+      console.log(`[CreateGrade] Filtering students by subject: ${formData.subject}`);
       validStudents = validStudents.filter(student => {
         // Check if student has the selected subject
         const hasSubject = student.subjects?.some(subj => {
-          const subjectId = subj?._id || subj;
-          const match = subjectId === formData.subject || 
-                      subjectId === formData.subject._id ||
-                      (typeof formData.subject === 'object' && subjectId === formData.subject._id);
+          const subjectId = subj?._id?.toString() || (typeof subj === 'string' ? subj : '');
+          const formSubjectId = typeof formData.subject === 'object' 
+            ? formData.subject._id?.toString() 
+            : formData.subject?.toString();
+          
+          // Check for a match between student subject and selected subject
+          const match = subjectId && formSubjectId && 
+                      (subjectId === formSubjectId);
           
           console.log(`[CreateGrade] Checking subject match for student ${student.name}:`, {
             studentSubjectId: subjectId,
-            selectedSubject: formData.subject,
+            formSubjectId: formSubjectId,
             match: match
           });
-          
-          if (!match) {
-            console.log(`[CreateGrade] Subject mismatch for student ${student.name}:`, {
-              studentSubjectId: subjectId,
-              selectedSubject: formData.subject,
-              subjectObj: subj
-            });
-          }
           
           return match;
         });
         
         if (!hasSubject) {
           console.log(`[CreateGrade] Student ${student.name} filtered out by subject filter`, {
-            studentSubjects: student.subjects,
-            selectedSubject: formData.subject
+            studentSubjects: student.subjects?.map(s => s?._id?.toString() || s),
+            selectedSubject: formData.subject,
+            selectedSubjectId: typeof formData.subject === 'object' 
+              ? formData.subject._id?.toString() 
+              : formData.subject?.toString()
           });
+        } else {
+          console.log(`[CreateGrade] Student ${student.name} MATCHED subject filter`);
         }
         
         return hasSubject;
