@@ -802,13 +802,31 @@ const getUserById = asyncHandler(async (req, res) => {
         if (!user.subjects) user.subjects = [];
         
         // Manually populate school if it's an ID
-        if (user.school && typeof user.school === 'string') {
+        if (user.school) {
           try {
-            const school = await School.findById(user.school).select('name _id').lean();
+            let school;
+            if (typeof user.school === 'string') {
+              school = await School.findById(user.school).select('name _id').lean();
+            } else if (user.school._id) {
+              // If school is already an object but missing name, try to fetch it
+              school = await School.findById(user.school._id).select('name _id').lean() || user.school;
+            }
+            
             if (school) {
+              // Ensure we have the name property
+              if (!school.name && school._id) {
+                const freshSchool = await School.findById(school._id).select('name _id').lean();
+                if (freshSchool) school.name = freshSchool.name;
+              }
+              
               user.school = school;
+              
               // Also add to schools array if not already present
-              if (!user.schools.some(s => s._id.toString() === school._id.toString())) {
+              const schoolExists = user.schools.some(s => 
+                s._id.toString() === school._id.toString()
+              );
+              
+              if (!schoolExists) {
                 user.schools.push(school);
               }
             }
@@ -818,13 +836,31 @@ const getUserById = asyncHandler(async (req, res) => {
         }
         
         // Manually populate direction if it's an ID
-        if (user.direction && typeof user.direction === 'string') {
+        if (user.direction) {
           try {
-            const direction = await Direction.findById(user.direction).select('name _id').lean();
+            let direction;
+            if (typeof user.direction === 'string') {
+              direction = await Direction.findById(user.direction).select('name _id').lean();
+            } else if (user.direction._id) {
+              // If direction is already an object but missing name, try to fetch it
+              direction = await Direction.findById(user.direction._id).select('name _id').lean() || user.direction;
+            }
+            
             if (direction) {
+              // Ensure we have the name property
+              if (!direction.name && direction._id) {
+                const freshDirection = await Direction.findById(direction._id).select('name _id').lean();
+                if (freshDirection) direction.name = freshDirection.name;
+              }
+              
               user.direction = direction;
+              
               // Also add to directions array if not already present
-              if (!user.directions.some(d => d._id.toString() === direction._id.toString())) {
+              const directionExists = user.directions.some(d => 
+                d._id.toString() === direction._id.toString()
+              );
+              
+              if (!directionExists) {
                 user.directions.push(direction);
               }
             }
