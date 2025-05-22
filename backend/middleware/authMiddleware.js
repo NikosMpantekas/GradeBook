@@ -90,6 +90,16 @@ const protect = asyncHandler(async (req, res, next) => {
           console.log(`Found school from token schoolId: ${school.name}`);
           // School found directly from token - continue with processing below
           req.targetSchool = school;
+          
+          // ENHANCED FIX: Check if this school has an email domain (making it a cluster)
+          // This distinguishes between regular schools and school clusters
+          if (school.emailDomain) {
+            console.log(`School ${school.name} is a cluster with domain: ${school.emailDomain}`);
+            req.isSchoolCluster = true;
+          } else {
+            console.log(`School ${school.name} is a regular school (no domain)`);
+            req.isSchoolCluster = false;
+          }
         } else {
           console.log(`School not found for ID in token: ${schoolId}`);
         }

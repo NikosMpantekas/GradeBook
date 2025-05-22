@@ -50,21 +50,51 @@ const getSchools = asyncHandler(async (req, res) => {
     if (req.user && req.user.role === 'superadmin') {
       // Superadmin can see all schools from the main database
       console.log('Fetching all schools for superadmin');
+      // Include school clusters for superadmin view
       schools = await School.find({});
     } 
     // Check if this is a school-specific user
     else if (req.school) {
-      // For school users, just return their own school
-      console.log(`Fetching school info for: ${req.school.name}`);
-      schools = [req.school];
-    } 
-    // Fallback to main database for backward compatibility
-    else {
-      console.log('Fetching schools from main database');
-      schools = await School.find({}).sort({ name: 1 });
+      // CRITICAL FIX: For school-specific users, don't include the school cluster itself
+      // Instead, we want to find schools created within this school cluster's database
+      console.log(`Fetching schools within cluster: ${req.school.name}`);
       
-      // Enhanced logging to help debug the missing schools issue
-      console.log(`Found ${schools.length} schools in main database:`);
+      try {
+        // Connect to the school's database
+        const { connectToSchoolDb } = require('../config/multiDbConnect');
+        const { connection } = await connectToSchoolDb(req.school);
+        
+        // Check if School model exists in this school's database
+        try {
+          const SchoolModel = connection.model('School');
+          const schoolsInCluster = await SchoolModel.find({}).sort({ name: 1 });
+          
+          console.log(`Found ${schoolsInCluster.length} schools in cluster database`);
+          schools = schoolsInCluster;
+        } catch (modelError) {
+          // If model doesn't exist, create it
+          console.log('School model not found in cluster database, using empty array');
+          schools = [];
+        }
+      } catch (dbError) {
+        console.error('Error connecting to school cluster database:', dbError.message);
+        schools = [];
+      }
+    } 
+    // Fallback to main database for backward compatibility, but EXCLUDE school clusters
+    else {
+      console.log('Fetching regular schools from main database (excluding clusters)');
+      
+      // CRITICAL FIX: Only return regular schools, not school clusters
+      // School clusters have emailDomain set
+      schools = await School.find({ 
+        $or: [
+          { emailDomain: { $exists: false } },
+          { emailDomain: '' }
+        ]
+      }).sort({ name: 1 });
+      
+      console.log(`Found ${schools.length} regular schools in main database:`);
       schools.forEach(school => {
         console.log(`- School: ${school.name} (ID: ${school._id})`);
       });

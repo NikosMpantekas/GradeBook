@@ -99,23 +99,31 @@ const getDirections = asyncHandler(async (req, res) => {
       console.log(`Fetching directions for school: ${req.school.name}`);
       // Connect to the school-specific database
       const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const schoolConnection = await connectToSchoolDb(req.school);
+      const { connection } = await connectToSchoolDb(req.school);
       
       // Check if Direction model exists in this school's database
       try {
-        const SchoolDirection = schoolConnection.model('Direction');
-        directions = await SchoolDirection.find({});
+        const SchoolDirection = connection.model('Direction');
+        directions = await SchoolDirection.find({}).sort({ name: 1 });
         console.log(`Found ${directions.length} directions in school database`);
+        
+        // Log direction details for debugging
+        if (directions.length > 0) {
+          directions.forEach(direction => {
+            console.log(`- School DB Direction: ${direction.name} (ID: ${direction._id})`);
+          });
+        }
       } catch (modelError) {
         // If model doesn't exist, create a basic one
-        console.log('Direction model not found in school database, using default model');
-        const directionSchema = new schoolConnection.Schema({
+        console.log('Direction model not found in school database, creating model');
+        const directionSchema = new connection.Schema({
           name: String,
           description: String,
         }, { timestamps: true });
         
-        const SchoolDirection = schoolConnection.model('Direction', directionSchema);
+        const SchoolDirection = connection.model('Direction', directionSchema);
         directions = await SchoolDirection.find({});
+        console.log(`Found ${directions.length} directions after creating model`);
       }
     } else {
       // This is a superadmin or legacy request
@@ -124,9 +132,11 @@ const getDirections = asyncHandler(async (req, res) => {
       
       // Enhanced logging for debugging
       console.log(`Found ${directions.length} directions in main database:`);
-      directions.forEach(direction => {
-        console.log(`- Direction: ${direction.name} (ID: ${direction._id})`);
-      });
+      if (directions.length > 0) {
+        directions.forEach(direction => {
+          console.log(`- Direction: ${direction.name} (ID: ${direction._id})`);
+        });
+      }
     }
     
     console.log('Returning directions to client');
