@@ -1999,73 +1999,161 @@ const getStudentsBySubject = asyncHandler(async (req, res) => {
     const inSchoolContext = !!req.school;
     let UserModel = User;
     let SubjectModel = require('../models/subjectModel');
+    let schoolConnection = null;
     
     if (inSchoolContext) {
       console.log(`Using school-specific database for ${req.school.name}`);
-      const { connection } = await connectToSchoolDb(req.school);
-      UserModel = connection.model('User');
-      SubjectModel = connection.model('Subject');
+      const connection = await connectToSchoolDb(req.school);
+      schoolConnection = connection.connection || connection;
+      UserModel = schoolConnection.model('User');
+      
+      // Try to get Subject model from school DB, but don't fail if it doesn't exist
+      try {
+        SubjectModel = schoolConnection.model('Subject');
+      } catch (error) {
+        console.log('No Subject model in school database, using main database for subjects');
+        SubjectModel = require('../models/subjectModel');
+      }
     }
     
     // Get the subject with populated directions
-    const subject = await SubjectModel.findById(subjectId)
-      .populate('directions', 'name _id');
-    
-    if (!subject) {
-      console.error(`Subject ${subjectId} not found`);
-      return res.status(404).json({ message: 'Subject not found' });
+    let subject = null;
+    try {
+      subject = await SubjectModel.findById(subjectId).populate('directions', 'name _id');
+      
+      // If subject not found in school DB, try main DB
+      if (!subject && inSchoolContext) {
+        console.log('Subject not found in school DB, trying main database...');
+        const MainSubject = require('../models/subjectModel');
+        subject = await MainSubject.findById(subjectId).populate('directions', 'name _id');
+      }
+      
+      if (!subject) {
+        console.error(`Subject ${subjectId} not found in any database`);
+        return res.status(404).json({ message: 'Subject not found' });
+      }
+      
+      console.log(`Subject found: ${subject.name}`);
+    } catch (error) {
+      console.error('Error fetching subject:', error);
+      return res.status(500).json({ 
+        message: 'Error fetching subject',
+        error: error.message 
+      });
     }
     
     console.log(`Subject found: ${subject.name}`);
     
     // Build the base query for students
     const query = { role: 'student' };
+    let students = [];
     
-    // First, try to find students directly linked to this subject
-    const studentsWithSubject = await UserModel.find({
-      ...query,
-      subjects: subjectId
-    })
-    .select('-password')
-    .populate('school', 'name')
-    .populate('direction', 'name')
-    .lean();
-    
-    if (studentsWithSubject && studentsWithSubject.length > 0) {
-      console.log(`Found ${studentsWithSubject.length} students directly linked to subject`);
-      return res.status(200).json(studentsWithSubject);
-    }
-    
-    // If no direct links, try to find students through directions
-    if (subject.directions && subject.directions.length > 0) {
-      console.log('No direct student-subject links found, trying via direction...');
-      const directionIds = subject.directions.map(d => d._id);
-      
-      const studentsInDirections = await UserModel.find({
+    // First, try to find students directly linked to this subject in the current database
+    try {
+      const studentsWithSubject = await UserModel.find({
         ...query,
-        direction: { $in: directionIds }
+        subjects: subjectId
       })
       .select('-password')
       .populate('school', 'name')
       .populate('direction', 'name')
       .lean();
       
-      if (studentsInDirections && studentsInDirections.length > 0) {
-        console.log(`Found ${studentsInDirections.length} students via directions`);
-        return res.status(200).json(studentsInDirections);
+      if (studentsWithSubject && studentsWithSubject.length > 0) {
+        console.log(`Found ${studentsWithSubject.length} students directly linked to subject`);
+        students = studentsWithSubject;
+      }
+    } catch (error) {
+      console.error('Error finding students by subject:', error);
+    }
+    
+    // If no direct links, try to find students through directions
+    if (students.length === 0 && subject.directions && subject.directions.length > 0) {
+      console.log('No direct student-subject links found, trying via direction...');
+      const directionIds = subject.directions.map(d => d._id);
+      
+      try {
+        const studentsInDirections = await UserModel.find({
+          ...query,
+          direction: { $in: directionIds }
+        })
+        .select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name')
+        .lean();
+        
+        if (studentsInDirections && studentsInDirections.length > 0) {
+          console.log(`Found ${studentsInDirections.length} students via directions`);
+          students = studentsInDirections;
+        }
+      } catch (error) {
+        console.error('Error finding students by directions:', error);
       }
     }
     
-    // As a last resort, return all students in the school
-    console.log('No students found via subject or directions, returning all students...');
-    const allStudents = await UserModel.find(query)
-      .select('-password')
-      .populate('school', 'name')
-      .populate('direction', 'name')
-      .lean();
+    // If still no students and we're in a school context, try the main database
+    if (students.length === 0 && inSchoolContext) {
+      console.log('No students found in school database, checking main database...');
+      try {
+        const MainUser = require('../models/userModel');
+        
+        // Try direct subject link in main DB
+        const mainStudentsWithSubject = await MainUser.find({
+          role: 'student',
+          subjects: subjectId
+        })
+        .select('-password')
+        .populate('school', 'name')
+        .populate('direction', 'name')
+        .lean();
+        
+        if (mainStudentsWithSubject && mainStudentsWithSubject.length > 0) {
+          console.log(`Found ${mainStudentsWithSubject.length} students in main database with direct subject link`);
+          students = mainStudentsWithSubject;
+        } 
+        // Try direction-based search in main DB
+        else if (subject.directions && subject.directions.length > 0) {
+          const directionIds = subject.directions.map(d => d._id);
+          const mainStudentsInDirections = await MainUser.find({
+            role: 'student',
+            direction: { $in: directionIds }
+          })
+          .select('-password')
+          .populate('school', 'name')
+          .populate('direction', 'name')
+          .lean();
+          
+          if (mainStudentsInDirections && mainStudentsInDirections.length > 0) {
+            console.log(`Found ${mainStudentsInDirections.length} students in main database via directions`);
+            students = mainStudentsInDirections;
+          }
+        }
+      } catch (error) {
+        console.error('Error searching main database for students:', error);
+      }
+    }
     
-    console.log(`Found ${allStudents.length} total students`);
-    return res.status(200).json(allStudents);
+    // If we still have no students, try to get all students as a last resort
+    if (students.length === 0) {
+      console.log('No students found via subject or directions, returning all students...');
+      try {
+        const allStudents = await UserModel.find(query)
+          .select('-password')
+          .populate('school', 'name')
+          .populate('direction', 'name')
+          .lean();
+        
+        if (allStudents && allStudents.length > 0) {
+          console.log(`Found ${allStudents.length} total students in current database`);
+          students = allStudents;
+        }
+      } catch (error) {
+        console.error('Error fetching all students:', error);
+      }
+    }
+    
+    console.log(`Returning ${students.length} students`);
+    return res.status(200).json(students);
     
   } catch (error) {
     console.error(`Error fetching students for subject ${subjectId}:`, error);
