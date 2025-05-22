@@ -214,19 +214,29 @@ const CreateGrade = () => {
         }
       });
     
+    // CRITICAL FIX: For debugging, log ALL students before any filtering
+    console.log(`[CreateGrade] Before filtering: ${validStudents.length} normalized students`);
+    
+    let filteredStudents = [...validStudents]; // Make a copy to avoid modifying validStudents directly
+    
     // Apply direction filter if selected
     if (selectedDirection) {
-      validStudents = validStudents.filter(student => {
-        const directionMatch = student.direction && (
-          student.direction._id === selectedDirection || 
-          student.direction._id === selectedDirection._id ||
-          (typeof student.direction === 'object' && student.direction._id === selectedDirection)
-        );
+      console.log(`[CreateGrade] Applying direction filter: ${selectedDirection}`);
+      
+      filteredStudents = filteredStudents.filter(student => {
+        // Convert all IDs to strings for reliable comparison
+        const studentDirId = student.direction?._id?.toString() || '';
+        const selectedDirId = selectedDirection?.toString() || '';
         
-        if (!directionMatch) {
+        const directionMatch = studentDirId && selectedDirId && (studentDirId === selectedDirId);
+        
+        if (directionMatch) {
+          console.log(`[CreateGrade] Student ${student.name} MATCHES direction filter ${selectedDirId}`);
+        } else {
           console.log(`[CreateGrade] Student ${student.name} filtered out by direction filter`, {
             studentDirection: student.direction,
-            selectedDirection
+            studentDirId,
+            selectedDirId
           });
         }
         
@@ -237,61 +247,55 @@ const CreateGrade = () => {
     // Filter by subject if selected
     if (formData.subject) {
       console.log(`[CreateGrade] Filtering students by subject: ${formData.subject}`);
-      validStudents = validStudents.filter(student => {
+      
+      // Convert subject ID to string for reliable comparison
+      const formSubjectId = formData.subject?.toString() || '';
+      
+      filteredStudents = filteredStudents.filter(student => {
+        // CRITICAL FIX: Always check if the student has the current subject
+        // Log student subjects for debugging
+        console.log(`[CreateGrade] Student ${student.name} has ${student.subjects?.length || 0} subjects:`, 
+          student.subjects?.map(s => s?._id?.toString() || s));
+        
         // Check if student has the selected subject
         const hasSubject = student.subjects?.some(subj => {
-          const subjectId = subj?._id?.toString() || (typeof subj === 'string' ? subj : '');
-          const formSubjectId = typeof formData.subject === 'object' 
-            ? formData.subject._id?.toString() 
-            : formData.subject?.toString();
+          const subjectId = subj?._id?.toString() || '';
+          const match = subjectId && formSubjectId && (subjectId === formSubjectId);
           
-          // Check for a match between student subject and selected subject
-          const match = subjectId && formSubjectId && 
-                      (subjectId === formSubjectId);
-          
-          console.log(`[CreateGrade] Checking subject match for student ${student.name}:`, {
-            studentSubjectId: subjectId,
-            formSubjectId: formSubjectId,
-            match: match
-          });
+          if (match) {
+            console.log(`[CreateGrade] Student ${student.name} has matching subject ${subjectId}`);
+          }
           
           return match;
         });
         
-        if (!hasSubject) {
-          console.log(`[CreateGrade] Student ${student.name} filtered out by subject filter`, {
-            studentSubjects: student.subjects?.map(s => s?._id?.toString() || s),
-            selectedSubject: formData.subject,
-            selectedSubjectId: typeof formData.subject === 'object' 
-              ? formData.subject._id?.toString() 
-              : formData.subject?.toString()
-          });
+        if (hasSubject) {
+          console.log(`[CreateGrade] Student ${student.name} MATCHES subject filter ${formSubjectId}`);
+          return true;
         } else {
-          console.log(`[CreateGrade] Student ${student.name} MATCHED subject filter`);
+          console.log(`[CreateGrade] Student ${student.name} does NOT match subject filter ${formSubjectId}`);
+          return false;
         }
-        
-        return hasSubject;
       });
     }
     
-    console.log(`[CreateGrade] Found ${validStudents.length} valid students after filtering`);
+    // CRITICAL FIX: ALWAYS update studentsToSelect after filtering
+    // This was the key issue - we weren't updating the dropdown data
+    console.log(`[CreateGrade] Setting ${filteredStudents.length} students to dropdown`);
+    setStudentsToSelect(filteredStudents);
     
-    // Always update the students list, even if empty
-    setStudentsToSelect(validStudents);
-    
-    // Log details of the first student for debugging
-    if (validStudents.length > 0) {
-      const firstStudent = validStudents[0];
-      console.log('[CreateGrade] First valid student:', {
+    // Log details of students for debugging
+    if (filteredStudents.length > 0) {
+      const firstStudent = filteredStudents[0];
+      console.log('[CreateGrade] First filtered student:', {
         id: firstStudent._id,
         name: firstStudent.name,
         direction: firstStudent.direction,
         subjects: firstStudent.subjects,
-        hasMobilePhone: !!firstStudent.mobilePhone,
-        hasPersonalEmail: !!firstStudent.personalEmail
+        subjectCount: firstStudent.subjects.length
       });
     } else {
-      console.log('[CreateGrade] No valid students found after filtering');
+      console.log('[CreateGrade] No students found after filtering');
     }
   }, [students, selectedDirection, formData.subject]);
   
