@@ -76,56 +76,92 @@ const CreateGrade = () => {
   // When a subject is selected, fetch students for that subject
   useEffect(() => {
     if (formData.subject) {
-      console.log(`Subject selected: ${formData.subject}, fetching students...`);
+      console.log(`[CreateGrade] Subject selected: ${formData.subject}, fetching students...`);
+      
+      // Reset student selection
+      setFormData(prev => ({ ...prev, student: '' }));
+      
       // Try to get students for this subject
       dispatch(getStudentsBySubject(formData.subject))
         .unwrap()
         .then((data) => {
-          console.log(`Successful students fetch for subject, got ${data.length} students`);
+          console.log(`[CreateGrade] Successfully fetched ${data?.length || 0} students for subject`);
+          
+          // If no students found, try to get all students as fallback
+          if (!data || data.length === 0) {
+            console.log('[CreateGrade] No students found for subject, trying to get all students');
+            dispatch(getStudents());
+          }
         })
         .catch((error) => {
-          console.error('Error fetching students for subject:', error);
+          console.error('[CreateGrade] Error fetching students for subject:', error);
           // If this fails, load all students as a fallback
           dispatch(getStudents());
         });
     } else {
       // If no subject is selected, load all students so the dropdown is never empty
-      console.log('No subject selected, loading all students as fallback');
+      console.log('[CreateGrade] No subject selected, loading all students as fallback');
       dispatch(getStudents());
     }
   }, [dispatch, formData.subject]);
   
-  // Update students dropdown when students are fetched from API
+  // Update students dropdown when students are fetched from API or direction changes
   useEffect(() => {
-    console.log('Students data updated:', students);
-    if (students && Array.isArray(students)) {
-      // Filter out any invalid student data
-      let validStudents = students.filter(student => 
-        student && student._id && student.name && typeof student.name === 'string'
-      );
-      
-      // Apply direction filter if selected
-      if (selectedDirection) {
-        validStudents = validStudents.filter(student => 
-          student.direction && 
+    console.log('[CreateGrade] Students data updated:', {
+      studentsCount: students?.length || 0,
+      selectedDirection,
+      currentSubject: formData.subject
+    });
+    
+    if (!students || !Array.isArray(students)) {
+      console.warn('[CreateGrade] Students data is not an array:', students);
+      setStudentsToSelect([]);
+      return;
+    }
+    
+    // Filter out any invalid student data
+    let validStudents = students.filter(student => {
+      const isValid = student && student._id && student.name && typeof student.name === 'string';
+      if (!isValid) {
+        console.warn('[CreateGrade] Found invalid student data:', student);
+      }
+      return isValid;
+    });
+    
+    // Apply direction filter if selected
+    if (selectedDirection) {
+      validStudents = validStudents.filter(student => {
+        const directionMatch = student.direction && 
           (student.direction === selectedDirection || 
-           (student.direction._id && student.direction._id === selectedDirection))
-        );
-      }
-      
-      console.log(`Found ${validStudents.length} valid students for the selected subject/direction`); 
-      
-      if (validStudents.length > 0) {
-        setStudentsToSelect(validStudents);
-      } else {
-        // Keep the array empty to show a message rather than loading all students
-        setStudentsToSelect([]);
-      }
+           (student.direction._id && student.direction._id === selectedDirection));
+        
+        if (!directionMatch) {
+          console.log(`[CreateGrade] Student ${student.name} filtered out by direction filter`, {
+            studentDirection: student.direction,
+            selectedDirection
+          });
+        }
+        
+        return directionMatch;
+      });
+    }
+    
+    console.log(`[CreateGrade] Found ${validStudents.length} valid students after filtering`);
+    
+    // If we have valid students, update the list
+    if (validStudents.length > 0) {
+      console.log('[CreateGrade] First valid student:', {
+        id: validStudents[0]._id,
+        name: validStudents[0].name,
+        direction: validStudents[0].direction,
+        subjects: validStudents[0].subjects
+      });
+      setStudentsToSelect(validStudents);
     } else {
-      console.warn('Students data is not an array:', students);
+      console.log('[CreateGrade] No valid students found after filtering');
       setStudentsToSelect([]);
     }
-  }, [students, selectedDirection]);
+  }, [students, selectedDirection, formData.subject]);
   
   useEffect(() => {
     if (isError) {

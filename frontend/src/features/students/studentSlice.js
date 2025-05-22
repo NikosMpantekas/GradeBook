@@ -33,34 +33,43 @@ export const getStudentsBySubject = createAsyncThunk(
   'students/getBySubject',
   async (subjectId, thunkAPI) => {
     try {
-      console.log(`Dispatching getStudentsBySubject action for subject: ${subjectId}`);
+      console.log(`[studentSlice] Dispatching getStudentsBySubject for subject: ${subjectId}`);
       const token = thunkAPI.getState().auth.user.token;
+      
+      // First try to get students by subject
       const response = await studentService.getStudentsBySubject(subjectId, token);
-      console.log(`Successfully received ${response.length} students for subject`); 
+      console.log(`[studentSlice] Received ${response?.length || 0} students for subject ${subjectId}`);
       
-      // If we got an empty array, immediately fall back to getting all students
-      if (Array.isArray(response) && response.length === 0) {
-        console.log('No students found for this subject, falling back to all students');
-        const allStudents = await studentService.getStudents(token);
-        console.log(`Fallback returned ${allStudents.length} students`);
-        return allStudents;
+      // Log the first student for debugging
+      if (response?.length > 0) {
+        console.log('[studentSlice] First student data:', {
+          id: response[0]._id,
+          name: response[0].name,
+          direction: response[0].direction,
+          subjects: response[0].subjects
+        });
       }
       
-      return response;
+      // Ensure we have a valid array before returning
+      if (Array.isArray(response) && response.length > 0) {
+        return response;
+      }
+      
+      // If no students found for subject, try to get all students
+      console.log('[studentSlice] No students found for subject, trying to get all students');
+      const allStudents = await studentService.getStudents(token);
+      console.log(`[studentSlice] Fallback returned ${allStudents?.length || 0} total students`);
+      
+      return allStudents || [];
+      
     } catch (error) {
-      console.error('Failed to get students by subject:', error);
-      // If we hit a 404 or other error, fall back to getting all students
-      try {
-        console.log('Trying fallback to get all students instead');
-        const token = thunkAPI.getState().auth.user.token;
-        const allStudents = await studentService.getStudents(token);
-        console.log(`Successfully received ${allStudents.length} students as fallback`);
-        return allStudents;
-      } catch (fallbackError) {
-        console.error('Fallback to get all students also failed:', fallbackError);
-        // Return empty array instead of rejecting to prevent UI crashes
-        return [];
-      }
+      console.error('[studentSlice] Error in getStudentsBySubject:', {
+        error: error.message,
+        response: error.response?.data
+      });
+      
+      // Return empty array to prevent UI crashes
+      return [];
     }
   }
 );
