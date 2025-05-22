@@ -1,4 +1,6 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 const Direction = require('../models/directionModel');
 
 // @desc    Create a new direction
@@ -94,171 +96,199 @@ const getDirections = asyncHandler(async (req, res) => {
   try {
     let directions = [];
     
-    // CRITICAL FIX: Check for both req.school and req.user?.schoolConnection
-    // This ensures we can access school-specific data even when using a school connection
-    // that was attached to the user object during authentication
-    if (req.school || (req.user && req.user.schoolConnection)) {
-      // CRITICAL FIX: Handle both cases - when school info is in req.school or req.user.schoolDetails
-      const school = req.school || req.user?.schoolDetails;
-      const schoolName = school?.name || 'Unknown school';
-      const schoolId = school?._id || 'Unknown ID';
-      
-      console.log(`Fetching directions for school: ${schoolName} (ID: ${schoolId})`);
-      
-      // CRITICAL FIX: Log user role and email domain for debugging
-      console.log(`User: ${req.user ? req.user.name : 'unknown'}, Role: ${req.user ? req.user.role : 'unknown'}`);
-      if (req.user && req.user.email) {
-        const emailDomain = req.user.email.split('@')[1];
-        console.log(`User email domain: ${emailDomain}`);
-      }
-      
+    // URGENT FIX: Check for BOTH user's token-decoded schoolId AND user-attached schoolConnection
+    // This check has been made MORE AGGRESSIVE to ensure it catches ALL school users
+    let isSchoolUser = req.user?.schoolId || req.user?.schoolConnection || req.school || 
+                      (req.user?.email && req.user.email.includes('@'));
+    
+    // Extra check - if token has schoolId, user is DEFINITELY a school user
+    if (req.user && req.headers?.authorization) {
       try {
-        // CRITICAL FIX: Always ensure we're using the correct database connection
-        // Prioritize the user's schoolConnection over req.schoolConnection
-        let connection;
-        const { connectToSchoolDb } = require('../config/multiDbConnect');
-        
-        // ENHANCED: Improved connection logic for consistent database access
-        // First check for user.schoolConnection (from auth middleware)
-        if (req.user && req.user.schoolConnection && req.user.schoolConnection.readyState === 1) {
-          console.log('CRITICAL FIX: Using schoolConnection from user object');
-          connection = req.user.schoolConnection;
-          
-          if (connection.db) {
-            console.log(`Connected to database via user object: ${connection.db.databaseName}`);
-          }
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.schoolId) {
+          console.log(`CRITICAL: Token contains schoolId ${decoded.schoolId} - User is DEFINITELY a school user`);
+          isSchoolUser = true;
         }
-        // Then check for req.schoolConnection (from middleware)
-        else if (req.schoolConnection && req.schoolConnection.readyState === 1) {
-          console.log('Using existing school connection from middleware');
-          connection = req.schoolConnection;
-          
-          // Verify that the connection is to the correct database
-          if (connection.db) {
-            console.log(`Connected to database: ${connection.db.databaseName}`);
-            
-            // CRITICAL FIX: If email domain exists, check if connected to the right database
-            const schoolToUse = req.school || req.user?.schoolDetails;
-            if (schoolToUse?.emailDomain) {
-              const domainParts = schoolToUse.emailDomain.split('.');
-              const expectedDbName = domainParts[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
-              
-              if (connection.db.databaseName !== expectedDbName) {
-                console.log(`WARNING: Connected to wrong database! Expected ${expectedDbName}, got ${connection.db.databaseName}`);
-                console.log('Creating new connection to correct database...');
-                const result = await connectToSchoolDb(schoolToUse);
-                connection = result.connection;
-              }
-            }
-          }
-        } else {
-          // Create a new connection
-          console.log('Creating new school connection');
-          const schoolToUse = req.school || req.user?.schoolDetails;
-          if (schoolToUse) {
-            const result = await connectToSchoolDb(schoolToUse);
-            connection = result.connection;
-          } else {
-            console.error('CRITICAL ERROR: No school information available to establish connection');
-            throw new Error('No school information available');
-          }
-        }
-        
-        if (!connection) {
-          throw new Error('Failed to get valid database connection');
-        }
-        
-        // ENHANCED: Check if Direction model exists in school database with better error handling
-        let SchoolDirection;
-        
-        try {
-          // Try to get the existing model first
-          if (connection.models && connection.models.Direction) {
-            SchoolDirection = connection.models.Direction;
-            console.log('Found existing Direction model');
-          } else {
-            // Create a new model using the standard schema
-            console.log('Creating new Direction model');
-            const { DirectionSchema } = require('../config/schoolModelRegistration');
-            SchoolDirection = connection.model('Direction', DirectionSchema);
-          }
-          
-          // CRITICAL FIX: Verify collections in database to ensure Direction collection exists
-          const collections = await connection.db.listCollections().toArray();
-          const collectionNames = collections.map(c => c.name);
-          console.log(`Database has ${collections.length} collections: ${collectionNames.join(', ')}`);
-          
-          // If directions collection doesn't exist yet, it will be created on first query
-          if (!collectionNames.includes('directions')) {
-            console.log('Warning: directions collection does not exist yet - will be created on first insert');
-          }
-          
-          // CRITICAL FIX: Query for directions with detailed logging
-          console.log(`Executing query against: ${connection.db ? connection.db.databaseName : 'unknown'} database`);
-          console.log(`Collection name: ${SchoolDirection.collection.name}`);
-          
-          // Get count of directions before querying them
-          const directionCount = await SchoolDirection.countDocuments({});
-          console.log(`Direction count in database: ${directionCount}`);
-          
-          // Query for directions
-          directions = await SchoolDirection.find({}).sort({ name: 1 });
-          console.log(`Found ${directions.length} directions in school database`);
-          
-          // Log direction details for debugging
-          if (directions.length > 0) {
-            directions.forEach(direction => {
-              console.log(`- School DB Direction: ${direction.name} (ID: ${direction._id})`);
-            });
-          } else {
-            console.log('No directions found in school database - this might indicate a problem with the database or collection');
-          }
-        } catch (modelError) {
-          console.error('Error with Direction model:', modelError.message);
-          
-          // Try creating a basic model as fallback
-          try {
-            console.log('Attempting to create basic Direction model');
-            const directionSchema = new connection.Schema({
-              name: String,
-              description: String,
-            }, { timestamps: true });
-            
-            SchoolDirection = connection.model('Direction', directionSchema);
-            directions = await SchoolDirection.find({});
-            console.log(`Found ${directions.length} directions after creating basic model`);
-          } catch (fallbackError) {
-            console.error('Fallback model creation failed:', fallbackError.message);
-            throw fallbackError; // Re-throw to trigger the fallback to main database
-          }
-        }
-      } catch (error) {
-        console.error('Error accessing school database:', error.message);
-        // Fall back to checking the main database
-        console.log('Falling back to main database for directions');
-        directions = await Direction.find({}).sort({ name: 1 });
-        console.log(`Found ${directions.length} directions in main database`);
-      }
-    } else {
-      // This is a superadmin or legacy request
-      console.log('Fetching directions from main database');
-      directions = await Direction.find({}).sort({ name: 1 });
-      
-      // Enhanced logging for debugging
-      console.log(`Found ${directions.length} directions in main database:`);
-      if (directions.length > 0) {
-        directions.forEach(direction => {
-          console.log(`- Direction: ${direction.name} (ID: ${direction._id})`);
-        });
+      } catch (err) {
+        // Just log the error but continue
+        console.error('Error checking token for schoolId:', err.message);
       }
     }
     
-    console.log('Returning directions to client');
+    console.log(`User type determination: ${isSchoolUser ? 'SCHOOL USER' : 'SUPERADMIN'} (${req.user?.role || 'unknown role'})`);
+    
+    if (isSchoolUser) {
+      // CRITICAL FIX: Handle both cases - when school info is in req.school or req.user.schoolDetails
+      const school = req.school || req.user?.schoolDetails;
+      
+      // Determine school details from multiple sources
+      let schoolName = 'Unknown school';
+      let schoolId = 'Unknown ID';
+      let emailDomain = null;
+      
+      if (school) {
+        schoolName = school.name || schoolName;
+        schoolId = school._id || schoolId;
+        emailDomain = school.emailDomain;
+      }
+      
+      // If we have user email but no email domain yet, extract it
+      if (!emailDomain && req.user?.email && req.user.email.includes('@')) {
+        emailDomain = req.user.email.split('@')[1];
+        console.log(`Extracted email domain from user email: ${emailDomain}`);
+      }
+      
+      console.log(`URGENT FIX: Fetching directions for school: ${schoolName} (ID: ${schoolId})`);
+      console.log(`User: ${req.user ? req.user.name : 'unknown'}, Role: ${req.user ? req.user.role : 'unknown'}`);
+      
+      // CRITICAL FIX: School connection determination logic completely rewritten
+      let connection;
+      const { connectToSchoolDb } = require('../config/multiDbConnect');
+      
+      // Try multiple sources for school connection, in order of preference
+      if (req.user?.schoolConnection && req.user.schoolConnection.readyState === 1) {
+        // 1. User object's schoolConnection (from auth middleware)
+        console.log('URGENT FIX: Using schoolConnection from user object');
+        connection = req.user.schoolConnection;
+      } 
+      else if (req.schoolConnection && req.schoolConnection.readyState === 1) {
+        // 2. Request object's schoolConnection (from middleware)
+        console.log('Using existing school connection from middleware');
+        connection = req.schoolConnection;
+      }
+      else {
+        // 3. Create a fresh connection using available school information
+        console.log('No existing connection found - creating new school connection');
+        
+        // First try with school object
+        if (school) {
+          console.log(`Creating connection using school object: ${schoolName}`);
+          const result = await connectToSchoolDb(school);
+          connection = result.connection;
+        }
+        // Then try with just the email domain if available
+        else if (emailDomain) {
+          console.log(`Creating connection using email domain: ${emailDomain}`);
+          // Find school by email domain
+          const School = mongoose.model('School');
+          const foundSchool = await School.findOne({ emailDomain });
+          
+          if (foundSchool) {
+            console.log(`Found school by email domain: ${foundSchool.name}`);
+            const result = await connectToSchoolDb(foundSchool);
+            connection = result.connection;
+          } else {
+            console.error(`No school found for email domain: ${emailDomain}`);
+          }
+        }
+        // Last resort - if user has schoolId but no connection yet
+        else if (req.user?.schoolId) {
+          console.log(`Creating connection using schoolId: ${req.user.schoolId}`);
+          const School = mongoose.model('School');
+          const foundSchool = await School.findById(req.user.schoolId);
+          
+          if (foundSchool) {
+            console.log(`Found school by ID: ${foundSchool.name}`);
+            const result = await connectToSchoolDb(foundSchool);
+            connection = result.connection;
+          } else {
+            console.error(`No school found for ID: ${req.user.schoolId}`);
+          }
+        }
+      }
+      
+      // CRITICAL: Validate the connection
+      if (!connection) {
+        console.error('CRITICAL ERROR: Failed to establish database connection for school user');
+        res.status(500);
+        throw new Error('Failed to connect to school database');
+      }
+      
+      // Verify we're connected to the right database if we have domain info
+      if (connection.db && emailDomain) {
+        const expectedDbName = emailDomain.split('.')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const actualDbName = connection.db.databaseName;
+        
+        console.log(`Database connection check - Expected: ${expectedDbName}, Actual: ${actualDbName}`);
+        
+        if (actualDbName !== expectedDbName) {
+          console.error(`CRITICAL ERROR: Connected to wrong database (${actualDbName} instead of ${expectedDbName})`);
+          // Create a new connection with the right database
+          const School = mongoose.model('School');
+          const foundSchool = await School.findOne({ emailDomain });
+          
+          if (foundSchool) {
+            console.log(`Found school by email domain: ${foundSchool.name}`);
+            const result = await connectToSchoolDb(foundSchool);
+            connection = result.connection;
+            console.log(`New connection established to: ${connection.db?.databaseName || 'unknown'}`);
+          }
+        }
+      }
+      
+      // CRITICAL: Get the Direction model
+      let SchoolDirection;
+      
+      try {
+        // Try to get the existing model first
+        if (connection.models && connection.models.Direction) {
+          SchoolDirection = connection.models.Direction;
+          console.log('Found existing Direction model in connection');
+        } else {
+          // Create a new model with proper schema
+          console.log('Creating new Direction model in school database');
+          const directionSchema = new mongoose.Schema({
+            name: { type: String, required: true },
+            description: { type: String },
+          }, { timestamps: true });
+          
+          SchoolDirection = connection.model('Direction', directionSchema);
+        }
+        
+        // Get all collections for debugging
+        const collections = await connection.db.listCollections().toArray();
+        const collectionNames = collections.map(c => c.name);
+        console.log(`Database has ${collections.length} collections: ${collectionNames.join(', ')}`);
+        
+        // Count directions first for verification
+        const directionCount = await SchoolDirection.countDocuments({});
+        console.log(`VERIFICATION: Direction count in database: ${directionCount}`);
+        
+        // Query for directions
+        directions = await SchoolDirection.find({}).sort({ name: 1 });
+        console.log(`CRITICAL FIX: Found ${directions.length} directions in SCHOOL database`);
+        
+        // Log details of found directions
+        if (directions.length > 0) {
+          directions.forEach(direction => {
+            console.log(`- SCHOOL Direction: ${direction.name} (ID: ${direction._id})`);
+          });
+        } else {
+          // Check if directions collection exists
+          if (!collectionNames.includes('directions')) {
+            console.log('Note: directions collection does not exist yet in this database');
+          }
+        }
+      } catch (error) {
+        console.error(`CRITICAL ERROR accessing directions in school database: ${error.message}`);
+        res.status(500);
+        throw new Error(`Failed to access directions: ${error.message}`);
+      }
+    } else {
+      // This is definitely a superadmin request
+      console.log('Superadmin user - fetching directions from main database');
+      directions = await Direction.find({}).sort({ name: 1 });
+      console.log(`Found ${directions.length} directions in main database`);
+    }
+    
+    // Return the directions
+    console.log(`Returning ${directions.length} directions to client`);
     res.status(200).json(directions);
   } catch (error) {
-    console.error('Error fetching directions:', error.message);
+    console.error(`ERROR in getDirections: ${error.message}`);
     res.status(500);
-    throw new Error('Server error: ' + error.message);
+    throw new Error(`Server error: ${error.message}`);
   }
 });
 
