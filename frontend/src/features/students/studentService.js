@@ -81,7 +81,17 @@ const getStudentsBySubject = async (subjectId, token) => {
         });
       }
       
-      return response.data;
+      // Ensure each student has required fields
+      const validStudents = response.data.filter(student => 
+        student && 
+        student._id && 
+        student.name && 
+        typeof student.name === 'string'
+      );
+      
+      console.log(`[studentService] Returning ${validStudents.length} valid students`);
+      return validStudents;
+      
     } catch (error) {
       console.error('[studentService] Error fetching students by subject:', {
         message: error.message,
@@ -96,20 +106,9 @@ const getStudentsBySubject = async (subjectId, token) => {
         return getStudents(token); // Fall back to getting all students
       }
       
-      console.warn('[studentService] API returned non-array data for students, defaulting to empty array');
+      console.warn('[studentService] Error fetching students, returning empty array');
       return [];
     }
-    
-    // Ensure each student has required fields
-    const validStudents = response.data.filter(student => 
-      student && 
-      student._id && 
-      student.name && 
-      typeof student.name === 'string'
-    );
-    
-    console.log(`[studentService] Returning ${validStudents.length} valid students`);
-    return validStudents;
     
   } catch (error) {
     console.error(`[studentService] Error fetching students for subject ${subjectId}:`, {
