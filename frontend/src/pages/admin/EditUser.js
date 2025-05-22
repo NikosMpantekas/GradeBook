@@ -212,86 +212,78 @@ const EditUser = () => {
             },
           };
           
-          // Handle school field according to role
+          // Enhanced user data processing for all roles
           console.log('Processing user data for role:', response.role);
-          console.log('Raw user data:', JSON.stringify(response, null, 2));
+          console.log('Raw user data from server:', JSON.stringify(response, null, 2));
           
+          // Process schools - handle both array and single value formats
+          const processSchoolData = (schoolData) => {
+            if (!schoolData) return [];
+            if (Array.isArray(schoolData)) {
+              return schoolData.map(s => (s && typeof s === 'object' ? s._id : s)).filter(Boolean);
+            }
+            return [schoolData && typeof schoolData === 'object' ? schoolData._id : schoolData].filter(Boolean);
+          };
+          
+          // Process directions - handle both array and single value formats
+          const processDirectionData = (directionData) => {
+            if (!directionData) return [];
+            if (Array.isArray(directionData)) {
+              return directionData.map(d => (d && typeof d === 'object' ? d._id : d)).filter(Boolean);
+            }
+            return [directionData && typeof directionData === 'object' ? directionData._id : directionData].filter(Boolean);
+          };
+          
+          // Process subjects
+          const processSubjectData = (subjectData) => {
+            if (!subjectData) return [];
+            if (Array.isArray(subjectData)) {
+              return subjectData.map(s => (s && typeof s === 'object' ? s._id : s)).filter(Boolean);
+            }
+            return [subjectData && typeof subjectData === 'object' ? subjectData._id : subjectData].filter(Boolean);
+          };
+          
+          // Process based on role
           if (response.role === 'student') {
-            // For students: single school and direction
-            newFormData.school = response.school?._id || response.school || '';
-            newFormData.direction = response.direction?._id || response.direction || '';
-            console.log('Student school:', newFormData.school, 'direction:', newFormData.direction);
+            // For students: handle both single and array formats, with fallbacks
+            const schools = processSchoolData(response.schools || response.school);
+            const directions = processDirectionData(response.directions || response.direction);
+            
+            newFormData.school = schools[0] || ''; // Use first school if available
+            newFormData.direction = directions[0] || ''; // Use first direction if available
+            newFormData.schools = schools;
+            newFormData.directions = directions;
+            
+            console.log('Student data processed:', {
+              school: newFormData.school,
+              direction: newFormData.direction,
+              schools: newFormData.schools,
+              directions: newFormData.directions
+            });
           } else if (response.role === 'teacher' || response.role === 'secretary') {
-            // For teachers and secretaries: handle schools and directions arrays
-            console.log('Processing teacher/secretary data...');
-            console.log('Raw schools:', response.schools, 'Raw directions:', response.directions);
+            // For teachers/secretaries: always use arrays, with fallbacks
+            newFormData.schools = processSchoolData(response.schools || response.school);
+            newFormData.directions = processDirectionData(response.directions || response.direction);
             
-            // Process schools array
-            const schoolsArray = [];
-            // Check new field first (schools as array)
-            if (Array.isArray(response.schools) && response.schools.length > 0) {
-              response.schools.forEach(school => {
-                if (typeof school === 'object' && school._id) {
-                  schoolsArray.push(school._id);
-                } else if (school) { // Handle case where it's already an ID
-                  schoolsArray.push(school);
-                }
-              });
-              console.log('Processed schools from schools array:', schoolsArray);
-            } 
-            // Fallback to legacy field (school as single value or array)
-            else if (Array.isArray(response.school)) {
-              response.school.forEach(school => {
-                if (typeof school === 'object' && school._id) {
-                  schoolsArray.push(school._id);
-                } else if (school) {
-                  schoolsArray.push(school);
-                }
-              });
-              console.log('Processed schools from legacy school array:', schoolsArray);
-            } 
-            else if (response.school) {
-              // Handle single school (legacy)
-              const schoolId = typeof response.school === 'object' ? response.school._id : response.school;
-              if (schoolId) schoolsArray.push(schoolId);
-              console.log('Processed single school from legacy field:', schoolId);
+            // For backward compatibility, also set single values if not already set
+            if (!newFormData.school && newFormData.schools.length > 0) {
+              newFormData.school = newFormData.schools[0];
             }
-            newFormData.schools = schoolsArray;
-            
-            // Process directions array
-            const directionsArray = [];
-            // Check new field first (directions as array)
-            if (Array.isArray(response.directions) && response.directions.length > 0) {
-              response.directions.forEach(direction => {
-                if (typeof direction === 'object' && direction._id) {
-                  directionsArray.push(direction._id);
-                } else if (direction) { // Handle case where it's already an ID
-                  directionsArray.push(direction);
-                }
-              });
-              console.log('Processed directions from directions array:', directionsArray);
-            } 
-            // Fallback to legacy field (direction as single value or array)
-            else if (Array.isArray(response.direction)) {
-              response.direction.forEach(direction => {
-                if (typeof direction === 'object' && direction._id) {
-                  directionsArray.push(direction._id);
-                } else if (direction) {
-                  directionsArray.push(direction);
-                }
-              });
-              console.log('Processed directions from legacy direction array:', directionsArray);
-            } 
-            else if (response.direction) {
-              // Handle single direction (legacy)
-              const directionId = typeof response.direction === 'object' ? response.direction._id : response.direction;
-              if (directionId) directionsArray.push(directionId);
-              console.log('Processed single direction from legacy field:', directionId);
+            if (!newFormData.direction && newFormData.directions.length > 0) {
+              newFormData.direction = newFormData.directions[0];
             }
-            newFormData.directions = directionsArray;
             
-            console.log('Final schools:', newFormData.schools, 'Final directions:', newFormData.directions);
+            console.log('Teacher/Secretary data processed:', {
+              schools: newFormData.schools,
+              directions: newFormData.directions,
+              school: newFormData.school,
+              direction: newFormData.direction
+            });
           }
+          
+          // Process subjects for all roles
+          newFormData.subjects = processSubjectData(response.subjects);
+          console.log('Processed subjects:', newFormData.subjects);
           
           // Handle subjects (common for both roles)
           newFormData.subjects = response.subjects?.map(subj => typeof subj === 'object' ? subj._id : subj) || [];

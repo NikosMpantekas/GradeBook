@@ -704,28 +704,69 @@ const getUserById = asyncHandler(async (req, res) => {
       console.log(`User found in main database with role: ${mainDbUser.role}`);
       
       // Handle different types of users in the main database
-      if (mainDbUser.role === 'teacher' || mainDbUser.role === 'secretary') {
-        // For teachers and secretaries, use array fields (schools, directions)
-        console.log(`Getting ${req.params.id} as teacher or secretary with array fields`);
+      if (mainDbUser.role === 'teacher' || mainDbUser.role === 'secretary' || mainDbUser.role === 'student') {
+        // For teachers, secretaries, and students, populate all relevant fields
+        console.log(`Getting ${req.params.id} as ${mainDbUser.role} with populated fields`);
+        
+        // First get the user with all possible fields populated
         user = await User.findById(req.params.id)
           .select('-password')
-          .populate('schools', 'name _id')
-          .populate('directions', 'name _id')
-          .populate('subjects', 'name _id')
+          .populate({
+            path: 'schools',
+            select: 'name _id',
+            model: 'School'
+          })
+          .populate({
+            path: 'directions',
+            select: 'name _id',
+            model: 'Direction'
+          })
+          .populate({
+            path: 'subjects',
+            select: 'name _id',
+            model: 'Subject'
+          })
+          .populate({
+            path: 'school',
+            select: 'name _id',
+            model: 'School'
+          })
+          .populate({
+            path: 'direction',
+            select: 'name _id',
+            model: 'Direction'
+          })
           .lean();
           
-        // Ensure arrays exist
+        // Ensure arrays exist and handle legacy fields
         if (!user.schools) user.schools = [];
         if (!user.directions) user.directions = [];
         if (!user.subjects) user.subjects = [];
+        
+        // For backward compatibility, ensure school/direction fields are set for students
+        if (user.role === 'student') {
+          if (user.schools && user.schools.length > 0 && !user.school) {
+            user.school = user.schools[0];
+          }
+          if (user.directions && user.directions.length > 0 && !user.direction) {
+            user.direction = user.directions[0];
+          }
+        }
+        
+        console.log(`Populated user data for ${user.role}:`, {
+          name: user.name,
+          role: user.role,
+          schools: user.schools.map(s => ({ id: s._id, name: s.name })),
+          directions: user.directions.map(d => ({ id: d._id, name: d.name })),
+          subjects: user.subjects.map(s => ({ id: s._id, name: s.name })),
+          school: user.school ? { id: user.school._id, name: user.school.name } : null,
+          direction: user.direction ? { id: user.direction._id, name: user.direction.name } : null
+        });
       } else {
-        // For students and admins, use singular fields
-        console.log(`Getting ${req.params.id} as student or admin with singular fields`);
+        // For admins and other roles with minimal requirements
+        console.log(`Getting ${req.params.id} as admin or other role`);
         user = await User.findById(req.params.id)
           .select('-password')
-          .populate('school', 'name')
-          .populate('direction', 'name')
-          .populate('subjects', 'name')
           .lean();
       }
     } else if (req.school) {
@@ -743,7 +784,7 @@ const getUserById = asyncHandler(async (req, res) => {
         console.warn('Not all required models are registered, references may not populate correctly');
       }
       
-      // Try to find the user in the school database
+      // Try to find the user in the school database with all possible fields populated
       const schoolUser = await SchoolUser.findById(req.params.id)
         .select('-password')
         .populate('school', 'name _id')
@@ -756,12 +797,30 @@ const getUserById = asyncHandler(async (req, res) => {
         console.log(`User found in school database with role: ${schoolUser.role}`);
         user = schoolUser.toObject ? schoolUser.toObject() : schoolUser;
         
-        // Ensure arrays exist for teacher/secretary
-        if (user.role === 'teacher' || user.role === 'secretary') {
-          if (!user.schools) user.schools = [];
-          if (!user.directions) user.directions = [];
-          if (!user.subjects) user.subjects = [];
+        // Ensure arrays exist for all roles
+        if (!user.schools) user.schools = [];
+        if (!user.directions) user.directions = [];
+        if (!user.subjects) user.subjects = [];
+        
+        // For backward compatibility, ensure school/direction fields are set for students
+        if (user.role === 'student') {
+          if (user.schools && user.schools.length > 0 && !user.school) {
+            user.school = user.schools[0];
+          }
+          if (user.directions && user.directions.length > 0 && !user.direction) {
+            user.direction = user.directions[0];
+          }
         }
+        
+        console.log(`Populated school user data for ${user.role}:`, {
+          name: user.name,
+          role: user.role,
+          schools: user.schools.map(s => ({ id: s._id, name: s.name })),
+          directions: user.directions.map(d => ({ id: d._id, name: d.name })),
+          subjects: user.subjects.map(s => ({ id: s._id, name: s.name })),
+          school: user.school ? { id: user.school._id, name: user.school.name } : null,
+          direction: user.direction ? { id: user.direction._id, name: user.direction.name } : null
+        });
       }
     }
     
