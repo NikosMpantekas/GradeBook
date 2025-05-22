@@ -15,24 +15,103 @@ const createDirection = asyncHandler(async (req, res) => {
   }
 
   try {
-    let direction;
+    // COMPLETELY REWRITTEN: Using the same multi-strategy approach as getDirections
+    const mongoose = require('mongoose');
+    const jwt = require('jsonwebtoken');
     
-    // CRITICAL FIX: Check if this is a request from a school-specific user
+    let direction;
+    let isSuperAdmin = false;
+    
+    // STEP 1: Extract token data safely
+    let tokenData = null;
+    if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        tokenData = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('Successfully decoded JWT token for direction creation');
+      } catch (err) {
+        console.log('Error decoding token:', err.message);
+      }
+    }
+    
+    // STEP 2: Try to identify the school using multiple strategies
+    let school = null;
+    
+    // Strategy A: Check if school is already in request (from middleware)
     if (req.school) {
-      console.log(`Creating direction in school database: ${req.school.name}`);
+      school = req.school;
+      console.log(`Strategy A: Found school in request: ${school.name}`);
+    }
+    
+    // Strategy B: Check token for schoolId
+    if (!school && tokenData && tokenData.schoolId) {
+      try {
+        const School = mongoose.model('School');
+        school = await School.findById(tokenData.schoolId);
+        if (school) {
+          console.log(`Strategy B: Found school from token schoolId: ${school.name}`);
+        }
+      } catch (err) {
+        console.log('Error finding school by token schoolId:', err.message);
+      }
+    }
+    
+    // Strategy C: Check user object for schoolId
+    if (!school && req.user && req.user.schoolId) {
+      try {
+        const School = mongoose.model('School');
+        school = await School.findById(req.user.schoolId);
+        if (school) {
+          console.log(`Strategy C: Found school from user.schoolId: ${school.name}`);
+        }
+      } catch (err) {
+        console.log('Error finding school by user.schoolId:', err.message);
+      }
+    }
+    
+    // Strategy D: Check user email domain
+    if (!school && req.user && req.user.email && req.user.email.includes('@')) {
+      try {
+        const emailDomain = req.user.email.split('@')[1];
+        const School = mongoose.model('School');
+        school = await School.findOne({ emailDomain });
+        if (school) {
+          console.log(`Strategy D: Found school from email domain: ${school.name}`);
+        }
+      } catch (err) {
+        console.log('Error finding school by email domain:', err.message);
+      }
+    }
+    
+    // Check if user is a superadmin with no school connections
+    if (!school && req.user && req.user.role === 'superadmin') {
+      isSuperAdmin = true;
+      console.log('User is a superadmin with no school connection');
+    }
+    
+    // STEP 3: If we found a school, create direction in school database
+    if (school) {
+      console.log(`Creating direction in school database: ${school.name}`);
       
       // Connect to the school-specific database
       const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(req.school);
+      const { connection } = await connectToSchoolDb(school);
+      
+      if (!connection) {
+        throw new Error('Failed to connect to school database');
+      }
+      
+      console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
       
       // Get or create the Direction model for this school
       let SchoolDirection;
       try {
         SchoolDirection = connection.model('Direction');
+        console.log('Using existing Direction model');
       } catch (modelError) {
         // If model doesn't exist, create it
         console.log('Creating Direction model in school database');
-        const directionSchema = new connection.Schema({
+        const directionSchema = new mongoose.Schema({
           name: String,
           description: String,
         }, { timestamps: true });
@@ -53,10 +132,10 @@ const createDirection = asyncHandler(async (req, res) => {
         description,
       });
       
-      console.log(`Created direction in school database: ${direction.name} (${direction._id})`);
-    } else {
-      // This is a superadmin request - save to main database
-      console.log('Creating direction in main database');
+      console.log(`SUCCESSFULLY created direction in SCHOOL database: ${direction.name} (${direction._id})`);
+    } else if (isSuperAdmin) {
+      // This is a superadmin request with no school connection - save to main database
+      console.log('Creating direction in MAIN database (superadmin only)');
       
       // Check if direction already exists in main database
       const directionExists = await Direction.findOne({ name });

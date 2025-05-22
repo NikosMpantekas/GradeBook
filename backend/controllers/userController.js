@@ -15,38 +15,136 @@ const registerUser = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error('Please add all fields');
   }
-
-  // Check if user exists
-  const userExists = await User.findOne({ email });
-
-  if (userExists) {
+  
+  // Extract email domain to determine school
+  const emailDomain = email.includes('@') ? email.split('@')[1] : null;
+  if (!emailDomain) {
     res.status(400);
-    throw new Error('User already exists');
+    throw new Error('Invalid email format');
   }
-
-  // Hash password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  // Create user
-  const user = await User.create({
-    name,
-    email,
-    password: hashedPassword,
-    role: role || 'student', // Default role is student
-  });
-
-  if (user) {
-    res.status(201).json({
-      _id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token: generateToken(user._id),
+  
+  console.log(`User registration request for ${email} with domain ${emailDomain}`);
+  
+  // Special case for superadmin registration - always in main database
+  if (role === 'superadmin') {
+    console.log('Superadmin registration detected - using main database');
+    
+    // Check if user exists in main database
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      res.status(400);
+      throw new Error('User already exists');
+    }
+    
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    // Create superadmin in main database
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: 'superadmin',
     });
-  } else {
+    
+    if (user) {
+      console.log(`Created superadmin user in main database: ${user.name}`);
+      return res.status(201).json({
+        _id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        token: generateToken(user._id),
+      });
+    } else {
+      res.status(400);
+      throw new Error('Invalid user data');
+    }
+  }
+  
+  // For regular users, find their school by email domain
+  const school = await mongoose.model('School').findOne({ emailDomain });
+  if (!school) {
+    console.log(`No school found for email domain: ${emailDomain}`);
     res.status(400);
-    throw new Error('Invalid user data');
+    throw new Error(`No school found for email domain: ${emailDomain}. Please use your school email address.`);
+  }
+  
+  console.log(`Found school for registration: ${school.name} (ID: ${school._id})`);
+  
+  // Connect to the school's database
+  let SchoolUser;
+  try {
+    const { connection } = await connectToSchoolDb(school);
+    
+    if (!connection) {
+      throw new Error('Failed to connect to school database');
+    }
+    
+    console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
+    
+    // Get or create User model
+    try {
+      SchoolUser = connection.model('User');
+      console.log('Using existing User model');
+    } catch (modelError) {
+      // Create model with proper schema
+      console.log('Creating new User model in school database');
+      const userSchemaObj = require('../models/userModel').schema.obj;
+      const userSchema = new mongoose.Schema(userSchemaObj, { timestamps: true });
+      
+      // Add password comparison method
+      userSchema.methods.matchPassword = async function(enteredPassword) {
+        return await bcrypt.compare(enteredPassword, this.password);
+      };
+      
+      SchoolUser = connection.model('User', userSchema);
+    }
+    
+    // Check if user already exists in school database
+    const userExists = await SchoolUser.findOne({ email });
+    if (userExists) {
+      res.status(400);
+      throw new Error('User already exists in this school');
+    }
+    
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    // Create user in school database
+    const user = await SchoolUser.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: role || 'student', // Default role is student
+      schoolId: school._id, // Store reference to school
+    });
+    
+    if (user) {
+      console.log(`SUCCESSFULLY created user in SCHOOL database: ${user.name} (${user._id})`);
+      
+      // Generate token with school information
+      const token = generateToken(user._id, school._id.toString());
+      
+      return res.status(201).json({
+        _id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        schoolId: school._id,
+        schoolName: school.name,
+        token,
+      });
+    } else {
+      res.status(400);
+      throw new Error('Invalid user data');
+    }
+  } catch (error) {
+    console.error(`Error registering user in school database: ${error.message}`);
+    res.status(500);
+    throw new Error(`Failed to register user: ${error.message}`);
   }
 });
 
