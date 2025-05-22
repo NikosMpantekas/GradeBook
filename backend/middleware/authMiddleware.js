@@ -317,7 +317,7 @@ const protect = asyncHandler(async (req, res, next) => {
           
           // CRITICAL FIX: Enhance user object with necessary school context
           // Add school reference to user object for use in controllers
-          schoolUser.schoolConnection = schoolConnection;
+          schoolUser.schoolConnection = connection; // Fixed: Use connection instead of undefined schoolConnection
           schoolUser.schoolDetails = school;
           schoolUser.schoolId = school._id;
           

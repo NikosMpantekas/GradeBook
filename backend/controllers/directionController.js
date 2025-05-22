@@ -94,9 +94,16 @@ const getDirections = asyncHandler(async (req, res) => {
   try {
     let directions = [];
     
-    // Check if this is a request from a school-specific user
-    if (req.school) {
-      console.log(`Fetching directions for school: ${req.school.name} (ID: ${req.school._id})`);
+    // CRITICAL FIX: Check for both req.school and req.user?.schoolConnection
+    // This ensures we can access school-specific data even when using a school connection
+    // that was attached to the user object during authentication
+    if (req.school || (req.user && req.user.schoolConnection)) {
+      // CRITICAL FIX: Handle both cases - when school info is in req.school or req.user.schoolDetails
+      const school = req.school || req.user?.schoolDetails;
+      const schoolName = school?.name || 'Unknown school';
+      const schoolId = school?._id || 'Unknown ID';
+      
+      console.log(`Fetching directions for school: ${schoolName} (ID: ${schoolId})`);
       
       // CRITICAL FIX: Log user role and email domain for debugging
       console.log(`User: ${req.user ? req.user.name : 'unknown'}, Role: ${req.user ? req.user.role : 'unknown'}`);
@@ -107,12 +114,22 @@ const getDirections = asyncHandler(async (req, res) => {
       
       try {
         // CRITICAL FIX: Always ensure we're using the correct database connection
-        // based on the email domain of the school
+        // Prioritize the user's schoolConnection over req.schoolConnection
         let connection;
         const { connectToSchoolDb } = require('../config/multiDbConnect');
         
         // ENHANCED: Improved connection logic for consistent database access
-        if (req.schoolConnection && req.schoolConnection.readyState === 1) {
+        // First check for user.schoolConnection (from auth middleware)
+        if (req.user && req.user.schoolConnection && req.user.schoolConnection.readyState === 1) {
+          console.log('CRITICAL FIX: Using schoolConnection from user object');
+          connection = req.user.schoolConnection;
+          
+          if (connection.db) {
+            console.log(`Connected to database via user object: ${connection.db.databaseName}`);
+          }
+        }
+        // Then check for req.schoolConnection (from middleware)
+        else if (req.schoolConnection && req.schoolConnection.readyState === 1) {
           console.log('Using existing school connection from middleware');
           connection = req.schoolConnection;
           
@@ -121,14 +138,15 @@ const getDirections = asyncHandler(async (req, res) => {
             console.log(`Connected to database: ${connection.db.databaseName}`);
             
             // CRITICAL FIX: If email domain exists, check if connected to the right database
-            if (req.school.emailDomain) {
-              const domainParts = req.school.emailDomain.split('.');
+            const schoolToUse = req.school || req.user?.schoolDetails;
+            if (schoolToUse?.emailDomain) {
+              const domainParts = schoolToUse.emailDomain.split('.');
               const expectedDbName = domainParts[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
               
               if (connection.db.databaseName !== expectedDbName) {
                 console.log(`WARNING: Connected to wrong database! Expected ${expectedDbName}, got ${connection.db.databaseName}`);
                 console.log('Creating new connection to correct database...');
-                const result = await connectToSchoolDb(req.school);
+                const result = await connectToSchoolDb(schoolToUse);
                 connection = result.connection;
               }
             }
@@ -136,8 +154,14 @@ const getDirections = asyncHandler(async (req, res) => {
         } else {
           // Create a new connection
           console.log('Creating new school connection');
-          const result = await connectToSchoolDb(req.school);
-          connection = result.connection;
+          const schoolToUse = req.school || req.user?.schoolDetails;
+          if (schoolToUse) {
+            const result = await connectToSchoolDb(schoolToUse);
+            connection = result.connection;
+          } else {
+            console.error('CRITICAL ERROR: No school information available to establish connection');
+            throw new Error('No school information available');
+          }
         }
         
         if (!connection) {
@@ -169,6 +193,14 @@ const getDirections = asyncHandler(async (req, res) => {
             console.log('Warning: directions collection does not exist yet - will be created on first insert');
           }
           
+          // CRITICAL FIX: Query for directions with detailed logging
+          console.log(`Executing query against: ${connection.db ? connection.db.databaseName : 'unknown'} database`);
+          console.log(`Collection name: ${SchoolDirection.collection.name}`);
+          
+          // Get count of directions before querying them
+          const directionCount = await SchoolDirection.countDocuments({});
+          console.log(`Direction count in database: ${directionCount}`);
+          
           // Query for directions
           directions = await SchoolDirection.find({}).sort({ name: 1 });
           console.log(`Found ${directions.length} directions in school database`);
@@ -179,7 +211,7 @@ const getDirections = asyncHandler(async (req, res) => {
               console.log(`- School DB Direction: ${direction.name} (ID: ${direction._id})`);
             });
           } else {
-            console.log('No directions found in school database');
+            console.log('No directions found in school database - this might indicate a problem with the database or collection');
           }
         } catch (modelError) {
           console.error('Error with Direction model:', modelError.message);
