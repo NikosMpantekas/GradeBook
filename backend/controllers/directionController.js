@@ -95,32 +95,87 @@ const getDirections = asyncHandler(async (req, res) => {
   
   try {
     let directions = [];
+    let schoolId = null;
     
-    // URGENT FIX: Check for BOTH user's token-decoded schoolId AND user-attached schoolConnection
-    // This check has been made MORE AGGRESSIVE to ensure it catches ALL school users
-    let isSchoolUser = req.user?.schoolId || req.user?.schoolConnection || req.school || 
-                      (req.user?.email && req.user.email.includes('@'));
+    // CRITICAL FIX: FORCEFULLY OVERRIDE ALL DETECTION AND ASSUME SCHOOL USER FIRST
+    // ONLY fall back to superadmin if explicit superadmin in token and no school references at all
+    let isSuperAdmin = false;
     
-    // Extra check - if token has schoolId, user is DEFINITELY a school user
-    if (req.user && req.headers?.authorization) {
-      try {
-        const token = req.headers.authorization.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.schoolId) {
-          console.log(`CRITICAL: Token contains schoolId ${decoded.schoolId} - User is DEFINITELY a school user`);
-          isSchoolUser = true;
-        }
-      } catch (err) {
-        // Just log the error but continue
-        console.error('Error checking token for schoolId:', err.message);
+    // Only check for superadmin if user role is explicitly 'superadmin'
+    if (req.user && req.user.role === 'superadmin') {
+      console.log('User has superadmin role - checking if really superadmin with no school connections');
+      // Even then, only consider them superadmin if they have NO school references
+      if (!req.user.schoolId && !req.user.schoolConnection && !req.school && 
+          (!req.user.email || !req.user.email.includes('@'))) {
+        isSuperAdmin = true;
+        console.log('CONFIRMED: User is a true superadmin with no school references');
       }
     }
     
-    console.log(`User type determination: ${isSchoolUser ? 'SCHOOL USER' : 'SUPERADMIN'} (${req.user?.role || 'unknown role'})`);
-    
-    if (isSchoolUser) {
-      // CRITICAL FIX: Handle both cases - when school info is in req.school or req.user.schoolDetails
-      const school = req.school || req.user?.schoolDetails;
+    // Default assume this is a school user unless proven otherwise
+    if (!isSuperAdmin) {
+      console.log('ASSUMING USER IS A SCHOOL USER BY DEFAULT');
+      
+      // Try to extract schoolId from token directly first - most reliable source
+      if (req.headers?.authorization) {
+        try {
+          const token = req.headers.authorization.split(' ')[1];
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          if (decoded.schoolId) {
+            console.log(`HIGHEST PRIORITY: Token contains schoolId ${decoded.schoolId}`);
+            schoolId = decoded.schoolId;
+          }
+        } catch (err) {
+          console.error('Error extracting schoolId from token:', err.message);
+        }
+      }
+      
+      // CRITICAL LOG: Check all possible sources of school information
+      console.log('School detection sources:');
+      console.log(` - Token schoolId: ${schoolId || 'not found'}`);
+      console.log(` - req.user.schoolId: ${req.user?.schoolId || 'not found'}`);
+      console.log(` - req.school: ${req.school ? req.school._id : 'not found'}`);
+      console.log(` - user.schoolConnection: ${req.user?.schoolConnection ? 'present' : 'not found'}`);
+      console.log(` - user email: ${req.user?.email || 'not found'}`);
+      
+      // If no schoolId from token, try other sources
+      if (!schoolId) {
+        if (req.user?.schoolId) {
+          schoolId = req.user.schoolId;
+          console.log(`Using schoolId from user object: ${schoolId}`);
+        } else if (req.school?._id) {
+          schoolId = req.school._id;
+          console.log(`Using schoolId from req.school: ${schoolId}`);
+        }
+      }
+      
+      // MOST CRITICAL FIX: If we have any indication of a school user, try to find their school
+      let school = req.school || req.user?.schoolDetails;
+      
+      // If we don't have the school object yet but have a schoolId, find it
+      if (!school && schoolId) {
+        try {
+          console.log(`Looking up school by ID: ${schoolId}`);
+          const School = mongoose.model('School');
+          school = await School.findById(schoolId);
+          console.log(`School lookup result: ${school ? school.name : 'Not found'}`);
+        } catch (err) {
+          console.error(`Error looking up school by ID: ${err.message}`);
+        }
+      }
+      
+      // If still no school but we have an email domain, try finding by that
+      if (!school && req.user?.email && req.user.email.includes('@')) {
+        try {
+          const emailDomain = req.user.email.split('@')[1];
+          console.log(`Looking up school by email domain: ${emailDomain}`);
+          const School = mongoose.model('School');
+          school = await School.findOne({ emailDomain });
+          console.log(`School lookup by email domain: ${school ? school.name : 'Not found'}`);
+        } catch (err) {
+          console.error(`Error looking up school by email domain: ${err.message}`);
+        }
+      }
       
       // Determine school details from multiple sources
       let schoolName = 'Unknown school';
@@ -276,10 +331,76 @@ const getDirections = asyncHandler(async (req, res) => {
         throw new Error(`Failed to access directions: ${error.message}`);
       }
     } else {
-      // This is definitely a superadmin request
-      console.log('Superadmin user - fetching directions from main database');
-      directions = await Direction.find({}).sort({ name: 1 });
-      console.log(`Found ${directions.length} directions in main database`);
+      // CRITICAL OVERRIDE: Check once more if the user has a schoolId in their token
+      // This is our last chance to avoid using the main database incorrectly
+      let finalCheck = false;
+      
+      if (req.user && req.headers?.authorization) {
+        try {
+          const token = req.headers.authorization.split(' ')[1];
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          
+          // If token has schoolId, definitely use school database
+          if (decoded.schoolId) {
+            console.log(`EMERGENCY OVERRIDE: Token has schoolId ${decoded.schoolId}! Using school database!`);
+            
+            // Fetch school and redirect to school database
+            const School = mongoose.model('School');
+            const school = await School.findById(decoded.schoolId);
+            
+            if (school) {
+              console.log(`REDIRECTING TO SCHOOL DATABASE: ${school.name}`);
+              
+              // Try to find directions in the school database
+              try {
+                const { connectToSchoolDb } = require('../config/multiDbConnect');
+                const { connection } = await connectToSchoolDb(school);
+                
+                if (!connection) {
+                  throw new Error('Failed to connect to school database');
+                }
+                
+                // Get or create Direction model
+                let SchoolDirection;
+                try {
+                  SchoolDirection = connection.model('Direction');
+                } catch (modelError) {
+                  // Create the model if it doesn't exist
+                  const directionSchema = new mongoose.Schema({
+                    name: { type: String, required: true },
+                    description: { type: String },
+                  }, { timestamps: true });
+                  
+                  SchoolDirection = connection.model('Direction', directionSchema);
+                }
+                
+                // Query for directions
+                directions = await SchoolDirection.find({}).sort({ name: 1 });
+                console.log(`EMERGENCY OVERRIDE SUCCESSFUL: Found ${directions.length} directions in school database`);
+                
+                if (directions.length > 0) {
+                  directions.forEach(direction => {
+                    console.log(`- Direction: ${direction.name} (ID: ${direction._id})`);
+                  });
+                }
+                
+                finalCheck = true;
+              } catch (error) {
+                console.error(`EMERGENCY OVERRIDE FAILED: ${error.message}`);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error in emergency check:', err.message);
+        }
+      }
+      
+      // Only use main database if all our emergency checks failed
+      if (!finalCheck) {
+        console.log('Last resort: fetching directions from main database');
+        directions = await Direction.find({}).sort({ name: 1 });
+        console.log(`Found ${directions.length} directions in main database`);
+      }
     }
     
     // Return the directions

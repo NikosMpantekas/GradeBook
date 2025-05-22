@@ -96,12 +96,56 @@ const createSubject = asyncHandler(async (req, res) => {
 // @access  Public
 const getSubjects = asyncHandler(async (req, res) => {
   console.log('getSubjects endpoint called');
+  const jwt = require('jsonwebtoken');
+  const mongoose = require('mongoose');
   
   try {
     let subjects = [];
+    let schoolId = null;
     
-    // Check if this is a request from a school-specific user
-    if (req.school) {
+    // CRITICAL FIX: Default to assuming this is a school user like we did in directionController
+    let isSuperAdmin = false;
+    
+    // Only check for superadmin if user role is explicitly 'superadmin'
+    if (req.user && req.user.role === 'superadmin') {
+      // Even then, only consider them superadmin if they have NO school references
+      if (!req.user.schoolId && !req.user.schoolConnection && !req.school && 
+          (!req.user.email || !req.user.email.includes('@'))) {
+        isSuperAdmin = true;
+        console.log('User is a true superadmin with no school references');
+      }
+    }
+    
+    // Try to extract schoolId from token directly first - most reliable source
+    if (req.headers?.authorization) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.schoolId) {
+          console.log(`Token contains schoolId ${decoded.schoolId} - using school database`);
+          schoolId = decoded.schoolId;
+        }
+      } catch (err) {
+        console.error('Error extracting schoolId from token:', err.message);
+      }
+    }
+    
+    // If we have a schoolId from token, use that to find the school
+    let school = req.school;
+    if (!school && schoolId) {
+      try {
+        const School = mongoose.model('School');
+        school = await School.findById(schoolId);
+        if (school) {
+          console.log(`Found school from token schoolId: ${school.name}`);
+        }
+      } catch (err) {
+        console.error(`Error looking up school by ID: ${err.message}`);
+      }
+    }
+    
+    // If we have a school (either from req.school or from token), use it
+    if (school) {
       console.log(`Fetching subjects for school: ${req.school.name}`);
       
       try {
@@ -200,19 +244,72 @@ const getSubjects = asyncHandler(async (req, res) => {
         throw new Error(`Failed to fetch subjects from school database: ${error.message}`);
       }
     } else {
-      // This is a superadmin or legacy request
-      console.log('Fetching subjects from main database');
-      subjects = await Subject.find({}).sort({ name: 1 })
-        .populate('teachers', 'name email')
-        .populate('directions', 'name');
+      // CRITICAL OVERRIDE: Check once more if the user has a schoolId in their token
+      // This is our last chance to avoid using the main database incorrectly
+      let finalCheck = false;
       
-      // Enhanced logging for debugging
-      console.log(`Found ${subjects.length} subjects in main database:`);
-      
-      if (subjects.length > 0) {
-        subjects.forEach(subject => {
-          console.log(`- Subject: ${subject.name} (ID: ${subject._id})`);
+      if (req.user && req.headers?.authorization) {
+        try {
+          const token = req.headers.authorization.split(' ')[1];
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
           
+          if (decoded.schoolId) {
+            console.log(`EMERGENCY OVERRIDE: Token has schoolId ${decoded.schoolId}! Using school database!`);
+            
+            // Fetch school and redirect to school database
+            const School = mongoose.model('School');
+            const school = await School.findById(decoded.schoolId);
+            
+            if (school) {
+              console.log(`REDIRECTING TO SCHOOL DATABASE: ${school.name}`);
+              
+              // Try to find subjects in the school database
+              try {
+                const { connectToSchoolDb } = require('../config/multiDbConnect');
+                const { connection } = await connectToSchoolDb(school);
+                
+                if (!connection) {
+                  throw new Error('Failed to connect to school database');
+                }
+                
+                // Get or create Subject model
+                let SchoolSubject;
+                try {
+                  SchoolSubject = connection.model('Subject');
+                } catch (modelError) {
+                  // Create the model if it doesn't exist
+                  const subjectSchema = new mongoose.Schema({
+                    name: String,
+                    description: String,
+                    teachers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+                    directions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Direction' }],
+                  }, { timestamps: true });
+                  
+                  SchoolSubject = connection.model('Subject', subjectSchema);
+                }
+                
+                // Query for subjects
+                subjects = await SchoolSubject.find({}).sort({ name: 1 });
+                console.log(`EMERGENCY OVERRIDE SUCCESSFUL: Found ${subjects.length} subjects in school database`);
+                
+                finalCheck = true;
+              } catch (error) {
+                console.error(`EMERGENCY OVERRIDE FAILED: ${error.message}`);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error in emergency check:', err.message);
+        }
+      }
+      
+      // Only use main database if all our emergency checks failed
+      if (!finalCheck) {
+        console.log('Last resort: fetching subjects from main database');
+        subjects = await Subject.find({}).sort({ name: 1 });
+        console.log(`Found ${subjects.length} subjects in main database:`);
+        subjects.forEach(subject => {
+          console.log(`- ${subject.name}`);
           // Log direction associations
           if (subject.directions && subject.directions.length > 0) {
             const directionInfo = subject.directions.map(dir => 
