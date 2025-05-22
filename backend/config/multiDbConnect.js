@@ -7,6 +7,24 @@ const schoolConnections = new Map();
 // Store registered models for each school
 const schoolModels = new Map();
 
+// Debug function to list all available databases
+const listAllDatabases = async (connection) => {
+  try {
+    if (!connection || !connection.db) {
+      console.log('Cannot list databases - no valid connection');
+      return [];
+    }
+    
+    const admin = connection.db.admin();
+    const dbs = await admin.listDatabases();
+    console.log('Available databases:', dbs.databases.map(db => db.name).join(', '));
+    return dbs.databases;
+  } catch (error) {
+    console.error('Error listing databases:', error.message);
+    return [];
+  }
+};
+
 // Connect to a school-specific database with reliability improvements
 const connectToSchoolDb = async (school) => {
   // CRITICAL FIX: Better validation of school object
@@ -149,18 +167,28 @@ const connectToSchoolDb = async (school) => {
           maxPoolSize: 10                  // Increase connection pool
         });
         
-        console.log(`Connection to school database ${school.name} successful!`);
-        
-        // Register all required schema models after establishing connection
-        try {
-          // The registerSchoolModels function is designed to be idempotent
-          // and will handle cases where models are already registered
-          registeredModels = registerSchoolModels(connection) || {};
+        console.log(`Successfully connected to database for school: ${school.name}`);
           
-          if (registeredModels && Object.keys(registeredModels).length > 0) {
-            // Store the models for this school for later use
-            schoolModels.set(schoolId, registeredModels);
-            console.log(`✅ Models successfully registered for ${school.name} database`);
+        try {
+          // ENHANCED: List all collections in the database to debug
+          const collections = await connection.db.listCollections().toArray();
+          console.log(`School database has ${collections.length} collections:`, 
+            collections.map(c => c.name).join(', '));
+            
+          // Try to list all databases to debug
+          await listAllDatabases(connection);
+        } catch (listError) {
+          console.warn('Error listing collections:', listError.message);
+        }
+          
+        // CRITICAL FIX: Register models for this connection with improved error handling
+        try {
+          registeredModels = registerSchoolModels(connection);
+          console.log('Successfully registered models for school database');
+            
+          // Verify models were registered properly
+          if (Object.keys(registeredModels).length > 0) {
+            console.log('Registered models:', Object.keys(registeredModels).join(', '));
           } else {
             console.error(`❌ Failed to register models for ${school.name}`);
             registeredModels = {}; // Ensure we have at least an empty object

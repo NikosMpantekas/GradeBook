@@ -60,9 +60,31 @@ const getSchools = asyncHandler(async (req, res) => {
       console.log(`Fetching schools within cluster: ${req.school.name}`);
       
       try {
-        // Connect to the school's database
-        const { connectToSchoolDb } = require('../config/multiDbConnect');
-        const { connection } = await connectToSchoolDb(req.school);
+        // IMPROVED: Use existing connection from middleware if available
+        let connection;
+        if (req.schoolConnection) {
+          console.log('Using existing school connection from middleware');
+          connection = req.schoolConnection;
+        } else {
+          // Fallback to creating a new connection
+          console.log('Creating new school connection');
+          const { connectToSchoolDb } = require('../config/multiDbConnect');
+          const result = await connectToSchoolDb(req.school);
+          connection = result.connection;
+        }
+        
+        if (!connection) {
+          throw new Error('Failed to get valid database connection');
+        }
+        
+        // ENHANCED LOGGING: Examine connection state
+        console.log(`Database connection state: ${connection.readyState}`);
+        console.log(`Connected to database: ${connection.db ? connection.db.databaseName : 'unknown'}`);
+        
+        // List all collections to verify database contents
+        const collections = await connection.db.listCollections().toArray();
+        console.log(`Database has ${collections.length} collections:`, 
+          collections.map(c => c.name).join(', '));
         
         // Check if School model exists in this school's database
         try {
@@ -70,14 +92,35 @@ const getSchools = asyncHandler(async (req, res) => {
           const schoolsInCluster = await SchoolModel.find({}).sort({ name: 1 });
           
           console.log(`Found ${schoolsInCluster.length} schools in cluster database`);
+          if (schoolsInCluster.length > 0) {
+            schoolsInCluster.forEach(school => {
+              console.log(`- Cluster School: ${school.name} (ID: ${school._id})`);
+            });
+          }
           schools = schoolsInCluster;
         } catch (modelError) {
           // If model doesn't exist, create it
-          console.log('School model not found in cluster database, using empty array');
-          schools = [];
+          console.log('School model not found in cluster database, creating model:', modelError.message);
+          
+          // Create the School model in this database
+          const schoolSchema = new connection.Schema({
+            name: String,
+            address: String,
+            phone: String,
+            email: String,
+            website: String,
+            logo: String,
+            active: { type: Boolean, default: true },
+          }, { timestamps: true });
+          
+          const SchoolModel = connection.model('School', schoolSchema);
+          schools = await SchoolModel.find({}).sort({ name: 1 });
+          console.log(`Found ${schools.length} schools after creating model`);
         }
       } catch (dbError) {
         console.error('Error connecting to school cluster database:', dbError.message);
+        // CRITICAL FIX: For debugging - include stack trace
+        console.error('Stack trace:', dbError.stack);
         schools = [];
       }
     } 

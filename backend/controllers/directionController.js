@@ -97,33 +97,68 @@ const getDirections = asyncHandler(async (req, res) => {
     // Check if this is a request from a school-specific user
     if (req.school) {
       console.log(`Fetching directions for school: ${req.school.name}`);
-      // Connect to the school-specific database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(req.school);
       
-      // Check if Direction model exists in this school's database
       try {
-        const SchoolDirection = connection.model('Direction');
-        directions = await SchoolDirection.find({}).sort({ name: 1 });
-        console.log(`Found ${directions.length} directions in school database`);
-        
-        // Log direction details for debugging
-        if (directions.length > 0) {
-          directions.forEach(direction => {
-            console.log(`- School DB Direction: ${direction.name} (ID: ${direction._id})`);
-          });
+        // IMPROVED: Use existing connection from middleware if available
+        let connection;
+        if (req.schoolConnection) {
+          console.log('Using existing school connection from middleware');
+          connection = req.schoolConnection;
+        } else {
+          // Fallback to creating a new connection
+          console.log('Creating new school connection');
+          const { connectToSchoolDb } = require('../config/multiDbConnect');
+          const result = await connectToSchoolDb(req.school);
+          connection = result.connection;
         }
-      } catch (modelError) {
-        // If model doesn't exist, create a basic one
-        console.log('Direction model not found in school database, creating model');
-        const directionSchema = new connection.Schema({
-          name: String,
-          description: String,
-        }, { timestamps: true });
         
-        const SchoolDirection = connection.model('Direction', directionSchema);
-        directions = await SchoolDirection.find({});
-        console.log(`Found ${directions.length} directions after creating model`);
+        if (!connection) {
+          throw new Error('Failed to get valid database connection');
+        }
+        
+        // Check if Direction model exists in this school's database
+        try {
+          const SchoolDirection = connection.model('Direction');
+          directions = await SchoolDirection.find({}).sort({ name: 1 });
+          console.log(`Found ${directions.length} directions in school database`);
+          
+          // Log direction details for debugging
+          if (directions.length > 0) {
+            directions.forEach(direction => {
+              console.log(`- School DB Direction: ${direction.name} (ID: ${direction._id})`);
+            });
+          } else {
+            console.log('No directions found in school database');
+            
+            // Check if there are any collections in this database
+            const collections = await connection.db.listCollections().toArray();
+            console.log(`Database has ${collections.length} collections:`, 
+              collections.map(c => c.name).join(', '));
+          }
+        } catch (modelError) {
+          // If model doesn't exist, create a basic one
+          console.log('Direction model not found in school database, creating model:', modelError.message);
+          const directionSchema = new connection.Schema({
+            name: String,
+            description: String,
+          }, { timestamps: true });
+          
+          const SchoolDirection = connection.model('Direction', directionSchema);
+          directions = await SchoolDirection.find({});
+          console.log(`Found ${directions.length} directions after creating model`);
+        }
+      } catch (error) {
+        console.error('Error accessing school database:', error.message);
+        
+        // Enhanced error logging for better debugging
+        if (error.stack) {
+          console.error('Error stack:', error.stack);
+        }
+        
+        // CRITICAL FIX: Don't fall back to main database for school users
+        // This ensures we don't mix data from different databases
+        res.status(500);
+        throw new Error(`Failed to fetch directions from school database: ${error.message}`);
       }
     } else {
       // This is a superadmin or legacy request

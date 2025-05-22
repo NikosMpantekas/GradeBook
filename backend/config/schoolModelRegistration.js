@@ -249,6 +249,51 @@ const UserSchema = new mongoose.Schema(
   }
 );
 
+// Define Grade schema for school-specific databases
+const GradeSchema = new mongoose.Schema({
+  student: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  teacher: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  subject: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
+    required: true,
+  },
+  grade: {
+    type: Number,
+    required: true,
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+  description: {
+    type: String,
+  },
+  weight: {
+    type: Number,
+    default: 1,
+  },
+  term: {
+    type: String,
+    enum: ['A', 'B', 'C', 'D', 'final'],
+    required: true,
+  },
+  schoolYear: {
+    type: String,
+    required: true,
+  },
+}, {
+  timestamps: true,
+});
+
 // Add password hashing methods for User schema
 UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
@@ -257,10 +302,12 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
 UserSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     next();
+    return;
   }
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
 
 /**
@@ -269,55 +316,76 @@ UserSchema.pre('save', async function (next) {
  * @returns {Object} Object containing all registered models
  */
 const registerSchoolModels = (connection) => {
-  console.log('Registering all schema models in school database connection...');
-  
   if (!connection) {
-    console.error('❌ Invalid connection provided to registerSchoolModels');
-    return null;
+    console.error('Cannot register models: No connection provided');
+    return {};
   }
+  
+  const registeredModels = {};
+  
+  // Check connection state
+  console.log(`Registering models - connection state: ${connection.readyState}`);
+  console.log(`Registering models for database: ${connection.db ? connection.db.databaseName : 'unknown'}`);
   
   try {
-    // Register models in the correct dependency order
-    // Only register if they don't already exist
-    
-    // 1. Register School model
-    const SchoolModel = connection.models.School || 
-      connection.model('School', SchoolSchema);
-    console.log('✅ School model registered or already exists');
-    
-    // 2. Register Direction model
-    const DirectionModel = connection.models.Direction || 
-      connection.model('Direction', DirectionSchema);
-    console.log('✅ Direction model registered or already exists');
-    
-    // 3. Register Subject model
-    const SubjectModel = connection.models.Subject || 
-      connection.model('Subject', SubjectSchema);
-    console.log('✅ Subject model registered or already exists');
-    
-    // 4. Register Notification model
-    const NotificationModel = connection.models.Notification || 
-      connection.model('Notification', NotificationSchema);
-    console.log('✅ Notification model registered or already exists');
-    
-    // 5. Register User model
-    const UserModel = connection.models.User || 
-      connection.model('User', UserSchema);
-    console.log('✅ User model registered or already exists');
-    
-    console.log('✅ All models registered successfully');
-    
-    return {
-      School: SchoolModel,
-      Direction: DirectionModel,
-      Subject: SubjectModel,
-      Notification: NotificationModel,
-      User: UserModel,
+    // CRITICAL FIX: Enhanced model registration with better error handling and logging
+    const registerModel = (modelName, schema) => {
+      try {
+        // First try to get the existing model
+        registeredModels[modelName] = connection.model(modelName);
+        console.log(`Retrieved existing ${modelName} model`);
+      } catch (e) {
+        // If it doesn't exist, create it with the schema
+        try {
+          registeredModels[modelName] = connection.model(modelName, schema);
+          console.log(`Created new ${modelName} model`);
+        } catch (createError) {
+          console.error(`Failed to create ${modelName} model:`, createError.message);
+          
+          // Last resort: Try creating with a different name and then aliasing
+          try {
+            const tempName = `${modelName}_${Date.now()}`;
+            const tempModel = connection.model(tempName, schema);
+            connection.deleteModel(tempName);
+            registeredModels[modelName] = connection.model(modelName, schema);
+            console.log(`Created ${modelName} model using alternative method`);
+          } catch (finalError) {
+            console.error(`All attempts to create ${modelName} model failed:`, finalError.message);
+          }
+        }
+      }
     };
+    
+    // Register all models
+    registerModel('School', SchoolSchema);
+    registerModel('Direction', DirectionSchema);
+    registerModel('Subject', SubjectSchema);
+    registerModel('User', UserSchema);
+    registerModel('Grade', GradeSchema);
+    registerModel('Notification', NotificationSchema);
+    
+    // Verify registration
+    const modelCount = Object.keys(registeredModels).length;
+    console.log(`Successfully registered ${modelCount} models:`, Object.keys(registeredModels).join(', '));
+    
+    // IMPORTANT: Check for existing data
+    Promise.all([
+      registeredModels.Direction?.countDocuments?.() || Promise.resolve(0),
+      registeredModels.Subject?.countDocuments?.() || Promise.resolve(0),
+      registeredModels.User?.countDocuments?.() || Promise.resolve(0)
+    ])
+    .then(([directionCount, subjectCount, userCount]) => {
+      console.log(`Database contains: ${directionCount} directions, ${subjectCount} subjects, ${userCount} users`);
+    })
+    .catch(err => {
+      console.error('Error counting existing documents:', err.message);
+    });
+    
   } catch (error) {
-    console.error('❌ Error registering schema models:', error);
-    return null;
+    console.error('Error registering models:', error.message);
   }
+  
+  return registeredModels;
 };
 
 module.exports = {
@@ -327,4 +395,5 @@ module.exports = {
   SubjectSchema,
   NotificationSchema,
   UserSchema,
+  GradeSchema
 };

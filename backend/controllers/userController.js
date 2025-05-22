@@ -391,19 +391,20 @@ const getUsers = asyncHandler(async (req, res) => {
       const rawUsers = await SchoolUser.find({}).select('-password').lean();
       console.log(`Found ${rawUsers.length} raw users in school database`);
       
-      // COMPLETELY REBUILT: Simplified approach to fetch reference data
-      console.log('Loading reference data from main database...');
+      // CRITICAL FIX: Do not mix data from different databases
+      // Instead, load reference data from the SAME school database
+      console.log('Loading reference data from SCHOOL database for proper isolation...');
       
       // Initialize empty arrays for reference data
       let schools = [], directions = [], subjects = [];
       
       try {
-        // Attempt to load schools using the main database connection
+        // Attempt to load schools from the SAME school database connection
         try {
-          // First try to get School from main database
-          const School = mongoose.model('School');
-          schools = await School.find({}).select('name _id').lean();
-          console.log(`Successfully loaded ${schools.length} schools from main database`);
+          // Get School model from school connection
+          const SchoolSchool = connection.model('School');
+          schools = await SchoolSchool.find({}).select('name _id').lean();
+          console.log(`Successfully loaded ${schools.length} schools from school database`);
           
           if (schools.length > 0) {
             schools.slice(0, 3).forEach(school => {
@@ -411,31 +412,25 @@ const getUsers = asyncHandler(async (req, res) => {
             });
           }
         } catch (schoolErr) {
-          console.error('Error loading schools:', schoolErr.message);
+          console.error('Error loading schools from school database:', schoolErr.message);
         }
         
-        // Attempt to load directions
+        // Attempt to load directions from school database
         try {
-          const Direction = mongoose.model('Direction');
-          directions = await Direction.find({}).select('name _id').lean();
-          console.log(`Successfully loaded ${directions.length} directions from main database`);
-          
-          if (directions.length > 0) {
-            directions.slice(0, 3).forEach(direction => {
-              console.log(`Direction example: ${direction.name} (${direction._id})`);
-            });
-          }
+          const SchoolDirection = connection.model('Direction');
+          directions = await SchoolDirection.find({}).select('name _id').lean();
+          console.log(`Successfully loaded ${directions.length} directions from school database`);
         } catch (directionErr) {
-          console.error('Error loading directions:', directionErr.message);
+          console.error('Error loading directions from school database:', directionErr.message);
         }
         
-        // Attempt to load subjects
+        // Attempt to load subjects from school database
         try {
-          const Subject = mongoose.model('Subject');
-          subjects = await Subject.find({}).select('name _id').lean();
-          console.log(`Successfully loaded ${subjects.length} subjects from main database`);
+          const SchoolSubject = connection.model('Subject');
+          subjects = await SchoolSubject.find({}).select('name _id').lean();
+          console.log(`Successfully loaded ${subjects.length} subjects from school database`);
         } catch (subjectErr) {
-          console.error('Error loading subjects:', subjectErr.message);
+          console.error('Error loading subjects from school database:', subjectErr.message);
         }
       } catch (error) {
         console.error('General error during reference loading:', error.message);

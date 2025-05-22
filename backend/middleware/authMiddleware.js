@@ -169,32 +169,52 @@ const protect = asyncHandler(async (req, res, next) => {
       }
       
       try {
-        // CRITICAL FIX: Use cached connection if available to improve performance
+        // ENHANCED: Improved connection handling with better caching and validation
         const schoolId = school._id.toString();
-        let schoolConnection;
+        let connection, models;
         
         console.log(`Attempting to connect to school database for: ${school.name} (ID: ${schoolId})`);
         
-        // Check cache first
+        // Check if we have a cached connection first
         if (schoolConnectionCache.has(schoolId)) {
-          console.log('Using cached school connection');
-          schoolConnection = schoolConnectionCache.get(schoolId);
+          console.log('Found cached school connection, verifying status...');
+          const cachedData = schoolConnectionCache.get(schoolId);
           
-          // Verify connection is still valid
-          if (schoolConnection.readyState !== 1) {
-            console.log('Cached connection is stale, creating new one');
-            schoolConnection = await connectToSchoolDb(school);
-            schoolConnectionCache.set(schoolId, schoolConnection);
+          // Verify the connection is still valid and ready
+          if (cachedData.connection && cachedData.connection.readyState === 1) {
+            console.log('Cached connection is valid, using it');
+            connection = cachedData.connection;
+            models = cachedData.models || {};
+          } else {
+            console.log('Cached connection is stale or invalid (readyState:', 
+              cachedData.connection ? cachedData.connection.readyState : 'null', '), creating new one');
+            const result = await connectToSchoolDb(school);
+            connection = result.connection;
+            models = result.models || {};
+            
+            // Update the cache with fresh connection
+            schoolConnectionCache.set(schoolId, { 
+              connection, 
+              models,
+              timestamp: Date.now() 
+            });
           }
         } else {
-          console.log('No cached connection, creating new one');
-          schoolConnection = await connectToSchoolDb(school);
-          // Cache the connection for future use
-          schoolConnectionCache.set(schoolId, schoolConnection);
+          console.log('No cached connection found, creating new one');
+          const result = await connectToSchoolDb(school);
+          connection = result.connection;
+          models = result.models || {};
+          
+          // Cache the connection with timestamp for future use
+          schoolConnectionCache.set(schoolId, { 
+            connection, 
+            models,
+            timestamp: Date.now() 
+          });
         }
         
-        if (!schoolConnection) {
-          console.error('School connection failed but did not throw an error!');
+        if (!connection) {
+          console.error('School database connection failed but did not throw an error!');
           throw new Error('Database connection returned null');
         }
         
@@ -202,7 +222,14 @@ const protect = asyncHandler(async (req, res, next) => {
         
         // Store school info in request for downstream use
         req.school = school;
-        req.schoolConnection = schoolConnection;
+        
+        // CRITICAL FIX: Store connection object and models properly for downstream use
+        req.schoolConnection = connection;
+        req.schoolModels = models || {};
+        
+        // Log successful connection details
+        console.log(`Connected to database: ${connection.db ? connection.db.databaseName : 'unknown'}`);
+        console.log(`Available models: ${Object.keys(models || {}).join(', ') || 'none'}`);
         
         // CRITICAL FIX: Use try-catch for each operation to identify exactly where failures happen
         // This helps prevent silent failures causing white screens

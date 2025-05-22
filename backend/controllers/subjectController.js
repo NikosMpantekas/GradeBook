@@ -103,62 +103,101 @@ const getSubjects = asyncHandler(async (req, res) => {
     // Check if this is a request from a school-specific user
     if (req.school) {
       console.log(`Fetching subjects for school: ${req.school.name}`);
-      // Connect to the school-specific database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(req.school);
       
-      // Check if Subject model exists in this school's database
       try {
-        const SchoolSubject = connection.model('Subject');
-        
-        // Try to fetch subjects with populated fields if models exist
-        try {
-          // First try simple query to check if we have any subjects
-          const basicSubjects = await SchoolSubject.find({}).sort({ name: 1 });
-          console.log(`Basic query found ${basicSubjects.length} subjects in school database`);
-          
-          // Check if we can populate related fields
-          try {
-            const SchoolUser = connection.model('User');
-            const SchoolDirection = connection.model('Direction');
-            
-            // Both models exist, use populated query
-            subjects = await SchoolSubject.find({}).sort({ name: 1 })
-              .populate('teachers', 'name email')
-              .populate('directions', 'name');
-              
-            console.log(`Found ${subjects.length} subjects with populated fields`);
-          } catch (modelError) {
-            // Some related models don't exist yet, use the basic query result
-            console.log('Cannot populate all fields, using basic subject data');
-            subjects = basicSubjects;
-          }
-          
-          // Log subject details for debugging
-          if (subjects.length > 0) {
-            subjects.forEach(subject => {
-              console.log(`- School DB Subject: ${subject.name} (ID: ${subject._id})`);
-            });
-          }
-        } catch (queryError) {
-          console.error('Error fetching subjects with populate:', queryError.message);
-          // Fallback to simple query without populate
-          subjects = await SchoolSubject.find({}).sort({ name: 1 });
-          console.log(`Fallback query found ${subjects.length} subjects`);
+        // IMPROVED: Use existing connection from middleware if available
+        let connection;
+        if (req.schoolConnection) {
+          console.log('Using existing school connection from middleware');
+          connection = req.schoolConnection;
+        } else {
+          // Fallback to creating a new connection
+          console.log('Creating new school connection');
+          const { connectToSchoolDb } = require('../config/multiDbConnect');
+          const result = await connectToSchoolDb(req.school);
+          connection = result.connection;
         }
-      } catch (modelError) {
-        // If model doesn't exist, create a basic one
-        console.log('Subject model not found in school database, creating model');
-        const subjectSchema = new connection.Schema({
-          name: String,
-          description: String,
-          teachers: [{ type: connection.Schema.Types.ObjectId, ref: 'User' }],
-          directions: [{ type: connection.Schema.Types.ObjectId, ref: 'Direction' }],
-        }, { timestamps: true });
         
-        const SchoolSubject = connection.model('Subject', subjectSchema);
-        subjects = await SchoolSubject.find({}).sort({ name: 1 });
-        console.log(`Found ${subjects.length} subjects after creating model`);
+        if (!connection) {
+          throw new Error('Failed to get valid database connection');
+        }
+        
+        // ENHANCED LOGGING: Examine connection state
+        console.log(`Database connection state: ${connection.readyState}`);
+        console.log(`Connected to database: ${connection.db ? connection.db.databaseName : 'unknown'}`);
+        
+        // Check if Subject model exists in this school's database
+        try {
+          const SchoolSubject = connection.model('Subject');
+          
+          // Try to fetch subjects with populated fields if models exist
+          try {
+            // First try simple query to check if we have any subjects
+            const basicSubjects = await SchoolSubject.find({}).sort({ name: 1 });
+            console.log(`Basic query found ${basicSubjects.length} subjects in school database`);
+            
+            // ENHANCED DEBUGGING: List all collections in the database
+            const collections = await connection.db.listCollections().toArray();
+            console.log(`Database has ${collections.length} collections:`, 
+              collections.map(c => c.name).join(', '));
+            
+            // Check if we can populate related fields
+            try {
+              const SchoolUser = connection.model('User');
+              const SchoolDirection = connection.model('Direction');
+              
+              // Both models exist, use populated query
+              subjects = await SchoolSubject.find({}).sort({ name: 1 })
+                .populate('teachers', 'name email')
+                .populate('directions', 'name');
+                
+              console.log(`Found ${subjects.length} subjects with populated fields`);
+            } catch (modelError) {
+              // Some related models don't exist yet, use the basic query result
+              console.log('Cannot populate all fields, using basic subject data:', modelError.message);
+              subjects = basicSubjects;
+            }
+            
+            // Log subject details for debugging
+            if (subjects.length > 0) {
+              subjects.forEach(subject => {
+                console.log(`- School DB Subject: ${subject.name} (ID: ${subject._id})`);
+              });
+            } else {
+              console.log('WARNING: No subjects found in school database');
+            }
+          } catch (queryError) {
+            console.error('Error fetching subjects with populate:', queryError.message);
+            // Fallback to simple query without populate
+            subjects = await SchoolSubject.find({}).sort({ name: 1 });
+            console.log(`Fallback query found ${subjects.length} subjects`);
+          }
+        } catch (modelError) {
+          // If model doesn't exist, create a basic one
+          console.log('Subject model not found in school database, creating model:', modelError.message);
+          const subjectSchema = new connection.Schema({
+            name: String,
+            description: String,
+            teachers: [{ type: connection.Schema.Types.ObjectId, ref: 'User' }],
+            directions: [{ type: connection.Schema.Types.ObjectId, ref: 'Direction' }],
+          }, { timestamps: true });
+          
+          const SchoolSubject = connection.model('Subject', subjectSchema);
+          subjects = await SchoolSubject.find({}).sort({ name: 1 });
+          console.log(`Found ${subjects.length} subjects after creating model`);
+        }
+      } catch (error) {
+        console.error('Error accessing school database:', error.message);
+        
+        // Enhanced error logging for better debugging
+        if (error.stack) {
+          console.error('Error stack:', error.stack);
+        }
+        
+        // CRITICAL FIX: Don't fall back to main database for school users
+        // This ensures we don't mix data from different databases
+        res.status(500);
+        throw new Error(`Failed to fetch subjects from school database: ${error.message}`);
       }
     } else {
       // This is a superadmin or legacy request
