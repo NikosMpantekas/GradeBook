@@ -104,31 +104,32 @@ const connectToSchoolDb = async (school) => {
   try {
     // Use school's database URI if available, otherwise use main URI with school's dbName
     let connectionUri;
+    let dbName;
     
-    // First, try to get from dbConfig
+    // CRITICAL FIX: Prioritize using the email domain for database name
+    // This ensures consistent database connections across the application
+    if (school.emailDomain) {
+      // Extract domain prefix (e.g., "schoolname" from "schoolname.com")
+      const domainParts = school.emailDomain.split('.');
+      dbName = domainParts[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+      console.log(`CRITICAL FIX: Using email domain for database name: ${school.emailDomain} -> ${dbName}`);
+    }
+    // Fall back to dbConfig.dbName if email domain is not available
+    else if (school.dbConfig && school.dbConfig.dbName) {
+      dbName = school.dbConfig.dbName;
+      console.log(`Using dbConfig.dbName for database: ${dbName}`);
+    }
+    // Last resort - use school ID
+    else {
+      dbName = schoolId;
+      console.log(`Fallback to using school ID as database name: ${dbName}`);
+    }
+    
+    // First, try to get from dbConfig.uri if available
     if (school.dbConfig && school.dbConfig.uri) {
       connectionUri = school.dbConfig.uri;
     }
-    // If no specific URI provided, construct one from main URI and school dbName
-    else if (school.dbConfig && school.dbConfig.dbName) {
-      // Extract the base URI from the main connection
-      const mainUri = process.env.MONGO_URI;
-      
-      // CRITICAL FIX: Preserve query parameters when replacing database name
-      // Parse the URI to correctly handle the database name and query parameters
-      if (mainUri.includes('?')) {
-        // URI has query parameters - need to preserve them
-        const [uriBase, queryParams] = mainUri.split('?');
-        // Replace the database name in the base part
-        const baseWithNewDb = uriBase.replace(/\/[^\/]*$/, `/${school.dbConfig.dbName}`);
-        // Reconstruct URI with query parameters
-        connectionUri = `${baseWithNewDb}?${queryParams}`;
-      } else {
-        // No query parameters, just replace database name
-        connectionUri = mainUri.replace(/\/[^\/]*$/, `/${school.dbConfig.dbName}`);
-      }
-    }
-    // If still no URI, use main URI with school ID as database name
+    // Otherwise construct URI using the determined dbName
     else {
       const mainUri = process.env.MONGO_URI;
       
@@ -137,12 +138,12 @@ const connectToSchoolDb = async (school) => {
         // URI has query parameters - need to preserve them
         const [uriBase, queryParams] = mainUri.split('?');
         // Replace the database name in the base part
-        const baseWithNewDb = uriBase.replace(/\/[^\/]*$/, `/${schoolId}`);
+        const baseWithNewDb = uriBase.replace(/\/[^\/]*$/, `/${dbName}`);
         // Reconstruct URI with query parameters
         connectionUri = `${baseWithNewDb}?${queryParams}`;
       } else {
         // No query parameters, just replace database name
-        connectionUri = mainUri.replace(/\/[^\/]*$/, `/${schoolId}`);
+        connectionUri = mainUri.replace(/\/[^\/]*$/, `/${dbName}`);
       }
     }
     

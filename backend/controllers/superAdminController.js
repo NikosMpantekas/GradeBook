@@ -78,35 +78,73 @@ const createSchoolOwner = asyncHandler(async (req, res) => {
     });
 
     if (user) {
-      // Always connect to and create the school's database
+      // ENHANCED: Connect to and set up the school's database with proper model registration
       try {
-        const connection = await connectToSchoolDb(school);
+        // Get the improved connection with models registered
+        const { connection, models } = await connectToSchoolDb(school);
         console.log(`Created and connected to database for school: ${schoolName} (${dbName})`);
         
-        // Create initial user in school's database (same as the admin we just created)
-        // This allows the admin to login to their own school's system
-        const SchoolUser = connection.model('User', mongoose.Schema({
-          name: { type: String, required: true },
-          email: { type: String, required: true, unique: true },
-          password: { type: String, required: true },
-          role: { type: String, required: true, default: 'admin' },
-          active: { type: Boolean, default: true },
-          schoolDomain: { type: String },
-        }, { timestamps: true }));
+        if (!connection) {
+          throw new Error('Failed to establish database connection');
+        }
         
-        await SchoolUser.create({
-          name: user.name,
-          email: user.email,
-          password: user.password, // Already hashed
-          role: 'admin',
-          active: true,
-          schoolDomain: emailDomain
-        });
-        
-        console.log(`Created initial admin user in school database: ${schoolName}`);
+        // Verify we have the User model properly registered
+        if (!models || !models.User) {
+          console.log('User model not found in registered models, trying to get it directly');
+          // Try to get the User model from the connection
+          try {
+            const SchoolUser = connection.model('User');
+            
+            // Check if admin user already exists
+            const existingUser = await SchoolUser.findOne({ email: user.email });
+            
+            if (existingUser) {
+              console.log(`Admin user already exists in school database: ${schoolName}`);
+            } else {
+              // Create the admin user in the school database
+              await SchoolUser.create({
+                name: user.name,
+                email: user.email,
+                password: user.password, // Already hashed
+                role: 'admin',
+                active: true,
+                schoolDomain: emailDomain
+              });
+              
+              console.log(`Created initial admin user in school database: ${schoolName}`);
+            }
+          } catch (modelError) {
+            console.error(`Error accessing User model: ${modelError.message}`);
+            throw modelError;
+          }
+        } else {
+          // Use the registered User model
+          const SchoolUser = models.User;
+          
+          // Check if admin user already exists
+          const existingUser = await SchoolUser.findOne({ email: user.email });
+          
+          if (existingUser) {
+            console.log(`Admin user already exists in school database: ${schoolName}`);
+          } else {
+            // Create the admin user in the school database
+            await SchoolUser.create({
+              name: user.name,
+              email: user.email,
+              password: user.password, // Already hashed
+              role: 'admin',
+              active: true,
+              schoolDomain: emailDomain
+            });
+            
+            console.log(`Created initial admin user in school database: ${schoolName}`);
+          }
+        }
       } catch (error) {
         console.error(`Error setting up school database: ${error.message}`);
-        // Continue anyway, as we can retry database setup later
+        // Don't fail the entire operation, but log the issue for debugging
+        // This way, even if the school-specific database creation fails,
+        // the admin can still log in to the main system
       }
 
       res.status(201).json({
