@@ -213,62 +213,84 @@ const EditUser = () => {
           };
           
           // Handle school field according to role
+          console.log('Processing user data for role:', response.role);
+          console.log('Raw user data:', JSON.stringify(response, null, 2));
+          
           if (response.role === 'student') {
             // For students: single school and direction
             newFormData.school = response.school?._id || response.school || '';
             newFormData.direction = response.direction?._id || response.direction || '';
+            console.log('Student school:', newFormData.school, 'direction:', newFormData.direction);
           } else if (response.role === 'teacher' || response.role === 'secretary') {
-            // For teachers: now using dedicated schools[] and directions[] arrays
-            console.log('Loading teacher data with new field names...');
-            console.log('schools:', response.schools, 'directions:', response.directions);
+            // For teachers and secretaries: handle schools and directions arrays
+            console.log('Processing teacher/secretary data...');
+            console.log('Raw schools:', response.schools, 'Raw directions:', response.directions);
             
-            // Process schools array (from the new schools field)
-            if (Array.isArray(response.schools)) {
-              // Convert array of objects to array of IDs if needed
-              newFormData.schools = response.schools.map(s => typeof s === 'object' ? s._id : s);
-              console.log('Processed schools array:', newFormData.schools);
-            } else if (response.schools) {
-              // If it's a single value, convert to array for the UI
-              const schoolId = typeof response.schools === 'object' ? response.schools._id : response.schools;
-              newFormData.schools = [schoolId];
-              console.log('Converted single school to array:', newFormData.schools);
+            // Process schools array
+            const schoolsArray = [];
+            // Check new field first (schools as array)
+            if (Array.isArray(response.schools) && response.schools.length > 0) {
+              response.schools.forEach(school => {
+                if (typeof school === 'object' && school._id) {
+                  schoolsArray.push(school._id);
+                } else if (school) { // Handle case where it's already an ID
+                  schoolsArray.push(school);
+                }
+              });
+              console.log('Processed schools from schools array:', schoolsArray);
             } 
-            // Fallback to old field name if needed for backward compatibility
+            // Fallback to legacy field (school as single value or array)
             else if (Array.isArray(response.school)) {
-              newFormData.schools = response.school.map(s => typeof s === 'object' ? s._id : s);
-              console.log('Using legacy field name school:', newFormData.schools);
-            } else if (response.school) {
+              response.school.forEach(school => {
+                if (typeof school === 'object' && school._id) {
+                  schoolsArray.push(school._id);
+                } else if (school) {
+                  schoolsArray.push(school);
+                }
+              });
+              console.log('Processed schools from legacy school array:', schoolsArray);
+            } 
+            else if (response.school) {
+              // Handle single school (legacy)
               const schoolId = typeof response.school === 'object' ? response.school._id : response.school;
-              newFormData.schools = [schoolId];
-              console.log('Using legacy field school as fallback:', newFormData.schools);
-            } else {
-              newFormData.schools = [];
-              console.log('No schools found, using empty array');
+              if (schoolId) schoolsArray.push(schoolId);
+              console.log('Processed single school from legacy field:', schoolId);
             }
+            newFormData.schools = schoolsArray;
             
-            // Process directions array (from the new directions field)
-            if (Array.isArray(response.directions)) {
-              // Convert array of objects to array of IDs if needed
-              newFormData.directions = response.directions.map(d => typeof d === 'object' ? d._id : d);
-              console.log('Processed directions array:', newFormData.directions);
-            } else if (response.directions) {
-              // If it's a single value, convert to array for the UI
-              const directionId = typeof response.directions === 'object' ? response.directions._id : response.directions;
-              newFormData.directions = [directionId];
-              console.log('Converted single direction to array:', newFormData.directions);
-            }
-            // Fallback to old field name if needed for backward compatibility
+            // Process directions array
+            const directionsArray = [];
+            // Check new field first (directions as array)
+            if (Array.isArray(response.directions) && response.directions.length > 0) {
+              response.directions.forEach(direction => {
+                if (typeof direction === 'object' && direction._id) {
+                  directionsArray.push(direction._id);
+                } else if (direction) { // Handle case where it's already an ID
+                  directionsArray.push(direction);
+                }
+              });
+              console.log('Processed directions from directions array:', directionsArray);
+            } 
+            // Fallback to legacy field (direction as single value or array)
             else if (Array.isArray(response.direction)) {
-              newFormData.directions = response.direction.map(d => typeof d === 'object' ? d._id : d);
-              console.log('Using legacy field name direction:', newFormData.directions);
-            } else if (response.direction) {
+              response.direction.forEach(direction => {
+                if (typeof direction === 'object' && direction._id) {
+                  directionsArray.push(direction._id);
+                } else if (direction) {
+                  directionsArray.push(direction);
+                }
+              });
+              console.log('Processed directions from legacy direction array:', directionsArray);
+            } 
+            else if (response.direction) {
+              // Handle single direction (legacy)
               const directionId = typeof response.direction === 'object' ? response.direction._id : response.direction;
-              newFormData.directions = [directionId];
-              console.log('Using legacy field direction as fallback:', newFormData.directions);
-            } else {
-              newFormData.directions = [];
-              console.log('No directions found, using empty array');
+              if (directionId) directionsArray.push(directionId);
+              console.log('Processed single direction from legacy field:', directionId);
             }
+            newFormData.directions = directionsArray;
+            
+            console.log('Final schools:', newFormData.schools, 'Final directions:', newFormData.directions);
           }
           
           // Handle subjects (common for both roles)
