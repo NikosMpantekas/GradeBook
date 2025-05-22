@@ -12,24 +12,76 @@ const createDirection = asyncHandler(async (req, res) => {
     throw new Error('Please provide name and description');
   }
 
-  // Check if direction already exists
-  const directionExists = await Direction.findOne({ name });
-
-  if (directionExists) {
-    res.status(400);
-    throw new Error('Direction already exists');
-  }
-
-  const direction = await Direction.create({
-    name,
-    description,
-  });
-
-  if (direction) {
-    res.status(201).json(direction);
-  } else {
-    res.status(400);
-    throw new Error('Invalid direction data');
+  try {
+    let direction;
+    
+    // CRITICAL FIX: Check if this is a request from a school-specific user
+    if (req.school) {
+      console.log(`Creating direction in school database: ${req.school.name}`);
+      
+      // Connect to the school-specific database
+      const { connectToSchoolDb } = require('../config/multiDbConnect');
+      const { connection } = await connectToSchoolDb(req.school);
+      
+      // Get or create the Direction model for this school
+      let SchoolDirection;
+      try {
+        SchoolDirection = connection.model('Direction');
+      } catch (modelError) {
+        // If model doesn't exist, create it
+        console.log('Creating Direction model in school database');
+        const directionSchema = new connection.Schema({
+          name: String,
+          description: String,
+        }, { timestamps: true });
+        
+        SchoolDirection = connection.model('Direction', directionSchema);
+      }
+      
+      // Check if direction already exists in school database
+      const directionExists = await SchoolDirection.findOne({ name });
+      if (directionExists) {
+        res.status(400);
+        throw new Error('Direction already exists in this school');
+      }
+      
+      // Create the direction in the school-specific database
+      direction = await SchoolDirection.create({
+        name,
+        description,
+      });
+      
+      console.log(`Created direction in school database: ${direction.name} (${direction._id})`);
+    } else {
+      // This is a superadmin request - save to main database
+      console.log('Creating direction in main database');
+      
+      // Check if direction already exists in main database
+      const directionExists = await Direction.findOne({ name });
+      if (directionExists) {
+        res.status(400);
+        throw new Error('Direction already exists');
+      }
+      
+      // Create in main database
+      direction = await Direction.create({
+        name,
+        description,
+      });
+      
+      console.log(`Created direction in main database: ${direction.name} (${direction._id})`);
+    }
+    
+    if (direction) {
+      res.status(201).json(direction);
+    } else {
+      res.status(400);
+      throw new Error('Invalid direction data');
+    }
+  } catch (error) {
+    console.error('Error creating direction:', error.message);
+    res.status(500);
+    throw new Error('Failed to create direction: ' + error.message);
   }
 });
 

@@ -12,26 +12,82 @@ const createSubject = asyncHandler(async (req, res) => {
     throw new Error('Please provide a subject name');
   }
 
-  // Check if subject already exists
-  const subjectExists = await Subject.findOne({ name });
-
-  if (subjectExists) {
-    res.status(400);
-    throw new Error('Subject already exists');
-  }
-
-  const subject = await Subject.create({
-    name,
-    description,
-    teachers,
-    directions,
-  });
-
-  if (subject) {
-    res.status(201).json(subject);
-  } else {
-    res.status(400);
-    throw new Error('Invalid subject data');
+  try {
+    let subject;
+    
+    // CRITICAL FIX: Check if this is a request from a school-specific user
+    if (req.school) {
+      console.log(`Creating subject in school database: ${req.school.name}`);
+      
+      // Connect to the school-specific database
+      const { connectToSchoolDb } = require('../config/multiDbConnect');
+      const { connection } = await connectToSchoolDb(req.school);
+      
+      // Get or create the Subject model for this school
+      let SchoolSubject;
+      try {
+        SchoolSubject = connection.model('Subject');
+      } catch (modelError) {
+        // If model doesn't exist, create it
+        console.log('Creating Subject model in school database');
+        const subjectSchema = new connection.Schema({
+          name: String,
+          description: String,
+          teachers: [{ type: connection.Schema.Types.ObjectId, ref: 'User' }],
+          directions: [{ type: connection.Schema.Types.ObjectId, ref: 'Direction' }],
+        }, { timestamps: true });
+        
+        SchoolSubject = connection.model('Subject', subjectSchema);
+      }
+      
+      // Check if subject already exists in school database
+      const subjectExists = await SchoolSubject.findOne({ name });
+      if (subjectExists) {
+        res.status(400);
+        throw new Error('Subject already exists in this school');
+      }
+      
+      // Create the subject in the school-specific database
+      subject = await SchoolSubject.create({
+        name,
+        description,
+        teachers,
+        directions,
+      });
+      
+      console.log(`Created subject in school database: ${subject.name} (${subject._id})`);
+    } else {
+      // This is a superadmin request - save to main database
+      console.log('Creating subject in main database');
+      
+      // Check if subject already exists in main database
+      const subjectExists = await Subject.findOne({ name });
+      if (subjectExists) {
+        res.status(400);
+        throw new Error('Subject already exists');
+      }
+      
+      // Create in main database
+      subject = await Subject.create({
+        name,
+        description,
+        teachers,
+        directions,
+      });
+      
+      console.log(`Created subject in main database: ${subject.name} (${subject._id})`);
+    }
+    
+    if (subject) {
+      res.status(201).json(subject);
+    } else {
+      res.status(400);
+      throw new Error('Invalid subject data');
+    }
+  } catch (error) {
+    console.error('Error creating subject:', error.message);
+    res.status(500);
+    throw new Error('Failed to create subject: ' + error.message);
   }
 });
 
