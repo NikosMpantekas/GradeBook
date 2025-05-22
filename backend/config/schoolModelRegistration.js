@@ -390,12 +390,10 @@ const registerSchoolModels = (connection) => {
 
 module.exports = {
   registerSchoolModels,
+  SchoolSchema,
   DirectionSchema,
-  UserSchema,
-  ClassSchema,
   SubjectSchema,
-  GradeSchema,
-  AttendanceSchema,
-  ClassScheduleSchema,
-  NotificationSchema
+  NotificationSchema,
+  UserSchema,
+  GradeSchema
 };
