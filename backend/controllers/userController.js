@@ -194,7 +194,7 @@ const loginUser = asyncHandler(async (req, res) => {
     
     console.log('Generated superadmin token successfully');
     
-    // Return superadmin user information
+    // Return superadmin user information with all fields expected by frontend
     return res.json({
       _id: isSuperAdmin.id,
       name: isSuperAdmin.name,
@@ -203,6 +203,16 @@ const loginUser = asyncHandler(async (req, res) => {
       token: accessToken,
       refreshToken: userRefreshToken,
       saveCredentials: isSuperAdmin.saveCredentials,
+      // Add school-related fields that the frontend expects
+      school: null,
+      schoolId: null,
+      schoolName: null,
+      // Add empty arrays for collections the dashboard might check
+      schools: [],
+      directions: [],
+      subjects: [],
+      // Add darkMode property if the frontend uses it
+      darkMode: isSuperAdmin.darkMode || false
     });
   }
   

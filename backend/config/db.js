@@ -38,6 +38,7 @@ const getConnection = async () => {
   return dbConnection;
 };
 
+// Export functions
 module.exports = {
   connectDB,
   getConnection
