@@ -168,17 +168,27 @@ app.get('/emergency-diagnostics', (req, res) => {
   res.send(htmlContent);
 });
 
-// Regular API Routes
-// Routes that require schoolId context enforcement (multi-tenancy protection)
-app.use('/api/users', require('./routes/userRoutes')); // User routes should verify schoolId context
-app.use('/api/grades', setSchoolContext, require('./routes/gradeRoutes')); // Enforce schoolId on all grade requests
-app.use('/api/notifications', setSchoolContext, require('./routes/notificationRoutes')); // Enforce schoolId on all notification requests
-app.use('/api/subjects', setSchoolContext, require('./routes/subjectRoutes')); // Enforce schoolId on all subject requests
-app.use('/api/directions', setSchoolContext, require('./routes/directionRoutes')); // Enforce schoolId on all direction requests
-app.use('/api/contact', setSchoolContext, require('./routes/contactRoutes')); // Enforce schoolId on all contact requests
+// Import logger for consistent detailed logging
+const logger = require('./utils/logger');
 
-// Subscription routes need special handling to allow superadmin subscriptions without schoolId
-app.use('/api/subscriptions', require('./routes/subscriptionRoutes')); // No schoolId middleware for better superadmin compatibility
+// User routes - No global middleware for auth checking, each route will handle individually
+app.use('/api/users', require('./routes/userRoutes')); 
+
+// Routes requiring auth but NOT schoolId - safe for superadmin
+// These routes don't need schoolId context and are safe for superadmin users
+app.use('/api/subscriptions', require('./routes/subscriptionRoutes')); 
+app.use('/api/contact', require('./routes/contactRoutes')); 
+
+// IMPORTANT: Ensure auth middleware runs BEFORE schoolId middleware
+// Routes that need both auth and schoolId context for regular users
+// But will BYPASS schoolId check for superadmin users
+const { protect } = require('./middleware/authMiddleware');
+app.use('/api/grades', protect, setSchoolContext, require('./routes/gradeRoutes')); 
+app.use('/api/notifications', protect, setSchoolContext, require('./routes/notificationRoutes')); 
+app.use('/api/subjects', protect, setSchoolContext, require('./routes/subjectRoutes')); 
+app.use('/api/directions', protect, setSchoolContext, require('./routes/directionRoutes')); 
+
+logger.info('SERVER', 'Routes configured with proper middleware ordering')
 
 // Routes that may access multiple schools or don't require schoolId filtering
 app.use('/api/schools', require('./routes/schoolRoutes')); // School routes have special handling

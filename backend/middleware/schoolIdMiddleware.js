@@ -2,6 +2,9 @@
  * Multi-Tenancy Middleware
  * Ensures that all routes have access to the user's schoolId
  * and helps enforce data isolation between schools
+ * 
+ * CRITICAL: This middleware MUST be used AFTER the 'protect' auth middleware
+ * Because it expects req.user to be populated by the auth middleware
  */
 
 const asyncHandler = require('express-async-handler');
@@ -14,50 +17,105 @@ const logger = require('../utils/logger');
  * This middleware should be added after the auth middleware
  */
 const setSchoolContext = asyncHandler(async (req, res, next) => {
-  // First check if user is authenticated at all
+  // IMPORTANT: This middleware assumes req.user has already been set by auth middleware
+  // The 'protect' middleware should run BEFORE this middleware
+  
+  // First check if user exists on the request
   if (!req.user) {
-    logger.warn('AUTH', 'Access attempt without authentication', {
+    logger.error('AUTH', 'No user object found in request - auth middleware should have run first', {
       path: req.path,
       method: req.method,
-      ip: req.ip
+      ip: req.ip,
+      hasAuthHeader: !!req.headers.authorization
     });
     res.status(401);
-    throw new Error('Not authorized to access this route');
+    throw new Error('Authentication error - user context missing');
   }
   
-  // Log the authenticated request
-  logger.info('MIDDLEWARE', 'User authenticated for request', {
-    userId: req.user._id,
-    role: req.user.role,
-    path: req.path,
-    method: req.method
-  });
-  
-  // Skip for superadmin routes - they can access everything and don't need schoolId
+  // Special handling for superadmin users - they don't need schoolId context
   if (req.user.role === 'superadmin') {
-    logger.info('MIDDLEWARE', 'Superadmin access - bypassing school context enforcement', {
+    logger.info('MIDDLEWARE', 'Superadmin user detected - bypassing school context checks', {
       userId: req.user._id,
       path: req.path
     });
+    
+    // For superadmins, set empty school context to avoid errors
+    req.schoolId = null;
+    req.schoolName = 'System-wide Access';
+    req.school = null;
     next();
     return;
   }
 
+  // Log the regular user access attempt
+  logger.info('MIDDLEWARE', 'Processing regular user school context', {
+    userId: req.user._id,
+    role: req.user.role,
+    path: req.path,
+    hasSchoolId: !!req.user.schoolId
+  });
+
   // Get schoolId from the user object
   const schoolId = req.user.schoolId;
 
+  // CRITICAL FIX: Try to recover schoolId if missing
   if (!schoolId) {
-    logger.error('MIDDLEWARE', 'SchoolId missing from user object', {
+    logger.warn('MIDDLEWARE', 'SchoolId missing from user object - attempting recovery', {
       userId: req.user._id,
-      userEmail: req.user.email,
-      userRole: req.user.role,
-      path: req.path
+      email: req.user.email,
+      role: req.user.role
     });
-    res.status(500);
-    throw new Error('Missing school context - please contact administrator');
+    
+    // Recovery method 1: Try to find schoolId from email domain
+    try {
+      if (req.user.email && req.user.email.includes('@')) {
+        const emailDomain = req.user.email.split('@')[1];
+        const school = await School.findOne({ emailDomain });
+        
+        if (school) {
+          // Found a school with matching email domain
+          logger.info('MIDDLEWARE', 'Recovered schoolId from email domain', {
+            userId: req.user._id,
+            email: req.user.email,
+            schoolId: school._id
+          });
+          
+          // Update user with schoolId for future requests
+          await mongoose.model('User').findByIdAndUpdate(
+            req.user._id, 
+            { schoolId: school._id },
+            { new: true }
+          );
+          
+          // Set context for this request
+          req.user.schoolId = school._id;
+          req.schoolId = school._id;
+          req.schoolName = school.name;
+          req.school = school;
+          
+          // Continue with the request
+          return next();
+        }
+      }
+      
+      // If we get here, recovery failed
+      logger.error('MIDDLEWARE', 'SchoolId recovery failed - no matching school found', {
+        userId: req.user._id,
+        email: req.user.email
+      });
+      res.status(400);
+      throw new Error('Unable to determine your school context - please contact administrator');
+    } catch (error) {
+      logger.error('MIDDLEWARE', 'Error during schoolId recovery', {
+        error: error.message,
+        userId: req.user._id
+      });
+      res.status(500);
+      throw new Error('Error determining school context');
+    }
   }
 
-  // Verify that the school exists
+  // Verify that the school exists and is active
   try {
     logger.debug('MIDDLEWARE', 'Verifying school exists', { schoolId });
     const school = await School.findById(schoolId);
@@ -65,8 +123,7 @@ const setSchoolContext = asyncHandler(async (req, res, next) => {
     if (!school) {
       logger.error('MIDDLEWARE', `School not found with ID: ${schoolId}`, {
         userId: req.user._id,
-        userRole: req.user.role,
-        path: req.path
+        role: req.user.role
       });
       res.status(404);
       throw new Error('School not found');
@@ -75,28 +132,28 @@ const setSchoolContext = asyncHandler(async (req, res, next) => {
     if (!school.active) {
       logger.error('MIDDLEWARE', `School ${school.name} is inactive`, {
         schoolId: school._id,
-        userId: req.user._id,
-        userRole: req.user.role
+        userId: req.user._id
       });
       res.status(403);
       throw new Error('School account is inactive');
     }
 
     // Set school in request for downstream middleware and controllers
+    req.schoolId = schoolId;
+    req.schoolName = school.name;
     req.school = school;
+    
     logger.info('MIDDLEWARE', 'School context set successfully', {
       schoolId: school._id,
       schoolName: school.name,
-      userId: req.user._id,
       path: req.path
     });
     next();
   } catch (error) {
-    if (error.kind === 'ObjectId') {
+    if (error.name === 'CastError' || error.kind === 'ObjectId') {
       logger.error('MIDDLEWARE', 'Invalid school ID format', {
         schoolId,
-        userId: req.user._id,
-        path: req.path
+        userId: req.user._id
       });
       res.status(400);
       throw new Error('Invalid school ID format');

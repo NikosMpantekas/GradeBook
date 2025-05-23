@@ -3,6 +3,7 @@ const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const User = require('../models/userModel');
 const School = require('../models/schoolModel');
+const logger = require('../utils/logger');
 
 // Helper function to safely parse JSON without crashing
 const safeJsonParse = (str) => {
@@ -22,8 +23,13 @@ const safeJsonParse = (str) => {
 const protect = asyncHandler(async (req, res, next) => {
   let token;
 
-  // Add detailed request logging for debugging
-  console.log(`Request to ${req.method} ${req.originalUrl}`);
+  // Enhanced request logging with proper categorization
+  logger.info('AUTH', `Authorization request for ${req.method} ${req.originalUrl}`, {
+    method: req.method,
+    path: req.originalUrl,
+    ip: req.ip,
+    hasAuthHeader: !!req.headers.authorization
+  });
   
   // Store request info for debugging
   req.originalRequestPath = req.originalUrl;
@@ -36,64 +42,119 @@ const protect = asyncHandler(async (req, res, next) => {
       
       // Validate token format more thoroughly
       if (!token || token === 'null' || token === 'undefined' || token.trim() === '') {
-        console.error('Invalid token format received:', token);
+        logger.warn('AUTH', 'Invalid token format received', {
+          token: token || 'EMPTY',
+          path: req.originalUrl
+        });
         res.status(401);
         throw new Error('Invalid token format');
       }
       
       // Log the token format for debugging
-      console.log(`Token validation - length: ${token.length}, format check: ${typeof token === 'string' && token.length > 20 ? 'Valid' : 'Invalid'}`);
+      logger.info('AUTH', 'Token validation check', {
+        tokenLength: token.length,
+        formatCheck: typeof token === 'string' && token.length > 20 ? 'Valid' : 'Invalid'
+      });
       
       // Handle the common case where the token might be a string "undefined"
       if (token.toLowerCase() === 'undefined') {
-        console.error('Token is the string "undefined"');
+        logger.warn('AUTH', 'Token is the string "undefined"', {
+          path: req.originalUrl
+        });
         res.status(401);
         throw new Error('Invalid token - received string "undefined"');
       }
 
       // Check JWT secret existence
       if (!process.env.JWT_SECRET) {
-        console.error('JWT_SECRET environment variable is not set');
+        logger.error('AUTH', 'JWT_SECRET environment variable is not set');
         res.status(500);
         throw new Error('Server configuration error - contact administrator');
       }
 
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('JWT Token successfully decoded for user ID:', decoded.id);
+      logger.info('AUTH', `JWT Token decoded successfully for user ID: ${decoded.id}`);
       
-      // Check for superadmin (they bypass schoolId enforcement)
-      const superadmin = await User.findOne({ _id: decoded.id, role: 'superadmin' }).select('-password');
+      // CRITICAL FIX: First check if this is a superadmin user
+      // Superadmin users need special handling and bypass schoolId requirements
+      const superadmin = await User.findOne({ _id: decoded.id, role: 'superadmin' })
+        .select('-password')
+        .lean(); // Use lean() for better performance with plain objects
       
       if (superadmin) {
-        console.log('User is a superadmin - bypassing schoolId restrictions');
-        req.user = superadmin;
+        logger.info('AUTH', 'Superadmin user authenticated successfully', {
+          userId: superadmin._id,
+          email: superadmin.email,
+          path: req.originalUrl
+        });
+        
+        // Make sure all required fields are present for the frontend
+        const enhancedSuperadmin = {
+          ...superadmin,
+          // Ensure these fields exist even if null to prevent white screen issues
+          schoolId: null,
+          schoolName: null,
+          school: null
+        };
+        
+        // Set the enhanced user in the request
+        req.user = enhancedSuperadmin;
+        
+        // For superadmin, add a flag to bypass schoolId checks
+        req.isSuperadmin = true;
+        
+        logger.debug('AUTH', 'Superadmin context set - bypassing schoolId restrictions');
         next();
         return;
       }
 
-      // Multi-tenancy: Find user with their schoolId
+      // Multi-tenancy: For regular users, we need to find and validate their schoolId
       let schoolId = null;
       
       // STRATEGY 1: Try to get schoolId from token (most reliable source)
       if (decoded.schoolId) {
         schoolId = decoded.schoolId;
-        console.log(`Found schoolId in token: ${schoolId}`);
+        logger.info('AUTH', `Found schoolId in token: ${schoolId}`);
       }
       
-      // Find the user including their schoolId
+      // Find the user with all their details
       const user = await User.findById(decoded.id).select('-password');
       
       if (!user) {
-        console.error(`User not found with ID: ${decoded.id}`);
+        logger.error('AUTH', `User not found with ID: ${decoded.id}`);
         res.status(401);
         throw new Error('User not found');
       }
       
+      logger.info('AUTH', `Found user ${user.name} (${user.email}) with role ${user.role}`);
+      
+      // Second check for superadmin (safety net - in case user role was updated)
+      if (user.role === 'superadmin') {
+        logger.info('AUTH', 'User is superadmin (second check) - bypassing school context', {
+          userId: user._id,
+          email: user.email
+        });
+        
+        // Make sure all required fields are present for the frontend
+        user.schoolId = null;
+        user.schoolName = 'System-wide Access';
+        user.school = null;
+        
+        // Set the enhanced user in the request
+        req.user = user;
+        req.isSuperadmin = true;
+        
+        next();
+        return;
+      }
+      
+      // Regular user processing continues here
+      
       // STRATEGY 2: Get schoolId from user object if not in token
       if (!schoolId && user.schoolId) {
         schoolId = user.schoolId;
-        console.log(`Found schoolId in user object: ${schoolId}`);
+        logger.info('AUTH', `Found schoolId in user object: ${schoolId}`);
       }
       
       // STRATEGY 3: If we still don't have a schoolId, try to find it by email domain
@@ -104,11 +165,11 @@ const protect = asyncHandler(async (req, res, next) => {
           const school = await School.findOne({ emailDomain: domain });
           if (school) {
             schoolId = school._id;
-            console.log(`Found schoolId by email domain: ${schoolId}`);
+            logger.info('AUTH', `Found schoolId by email domain: ${schoolId}`);
             
             // Update the user with the schoolId for future requests
             await User.findByIdAndUpdate(user._id, { schoolId: schoolId });
-            console.log(`Updated user ${user._id} with schoolId ${schoolId}`);
+            logger.info('AUTH', `Updated user ${user._id} with schoolId ${schoolId}`);
           }
         }
       }
@@ -116,56 +177,87 @@ const protect = asyncHandler(async (req, res, next) => {
       // STRATEGY 4: Try to find schoolId by school reference (legacy field)
       if (!schoolId && user.school) {
         schoolId = user.school;
-        console.log(`Found schoolId from legacy school field: ${schoolId}`);
+        logger.info('AUTH', `Found schoolId from legacy school field: ${schoolId}`);
         
         // Update the user with the schoolId field for future requests
         await User.findByIdAndUpdate(user._id, { schoolId: schoolId });
-        console.log(`Updated user ${user._id} with schoolId ${schoolId}`);
+        logger.info('AUTH', `Updated user ${user._id} with schoolId ${schoolId}`);
       }
       
-      // If we still don't have a schoolId, reject the request
-      if (!schoolId) {
-        console.error(`Could not determine schoolId for user: ${user._id}`);
+      // For non-superadmin users who aren't students or parents, schoolId is required
+      if (!schoolId && !['student', 'parent'].includes(user.role)) {
+        logger.error('AUTH', `Could not determine schoolId for user with role ${user.role}`, {
+          userId: user._id,
+          email: user.email
+        });
         res.status(403);
-        throw new Error('No school associated with this account');
+        throw new Error('No school associated with this account - please contact administrator');
       }
       
-      // Verify that the school exists and is active
-      const school = await School.findById(schoolId);
-      if (!school) {
-        console.error(`School not found with ID: ${schoolId}`);
-        res.status(404);
-        throw new Error('School not found');
+      // If we have a schoolId, verify the school exists and is active
+      if (schoolId) {
+        // Convert string to ObjectId if needed
+        try {
+          if (typeof schoolId === 'string') {
+            schoolId = mongoose.Types.ObjectId(schoolId);
+          }
+        } catch (error) {
+          logger.error('AUTH', `Invalid schoolId format: ${schoolId}`, { error: error.message });
+          res.status(400);
+          throw new Error('Invalid school ID format');
+        }
+        
+        const school = await School.findById(schoolId);
+        if (!school) {
+          logger.error('AUTH', `School not found with ID: ${schoolId}`);
+          res.status(404);
+          throw new Error('School not found');
+        }
+        
+        if (!school.active) {
+          logger.error('AUTH', `School ${school.name} is inactive`);
+          res.status(403);
+          throw new Error('School account is inactive');
+        }
+        
+        // Set school context in request object for downstream middleware and controllers
+        req.schoolId = schoolId;
+        req.schoolName = school.name;
+        req.school = school;
+        
+        // Enhance user object with school information
+        user.schoolId = schoolId; // Ensure the field is set
+        user.schoolName = school.name;
+        user.schoolDetails = school;
+      } else {
+        // For students/parents without schoolId, we'll proceed but log a warning
+        logger.warn('AUTH', `User ${user.role} proceeding without school context`, {
+          userId: user._id,
+          email: user.email
+        });
       }
-      
-      if (!school.active) {
-        console.error(`School ${school.name} is inactive`);
-        res.status(403);
-        throw new Error('School account is inactive');
-      }
-      
-      // Set school context in request object for downstream middleware and controllers
-      req.schoolId = schoolId;
-      req.schoolName = school.name;
-      
-      // Enhance user object with school information
-      user.schoolId = schoolId; // Ensure the field is set
-      user.schoolName = school.name;
-      user.schoolDetails = school;
       
       // Check if user account is active
       if (user.active === false) {
-        console.warn(`User account is disabled: ${user.email}`);
+        logger.warn('AUTH', `User account is disabled: ${user.email}`);
         res.status(403);
         throw new Error('Your account has been disabled. Please contact administrator');
       }
       
       // Set the enhanced user in the request
       req.user = user;
-      console.log(`Multi-tenant auth successful: User ${user.name} (${user.role}) in school ${school.name}`);
+      logger.info('AUTH', `Authentication successful for ${user.name} (${user.role})`, {
+        userId: user._id,
+        schoolId: user.schoolId || 'None'
+      });
       next();
     } catch (error) {
-      console.error('Auth Error:', error.message);
+      logger.error('AUTH', 'Authentication error', {
+        error: error.message,
+        name: error.name,
+        path: req.originalUrl,
+        stack: error.stack?.substring(0, 300) // Just capture the top of the stack
+      });
       
       if (error.name === 'JsonWebTokenError') {
         res.status(401);
@@ -173,12 +265,20 @@ const protect = asyncHandler(async (req, res, next) => {
       } else if (error.name === 'TokenExpiredError') {
         res.status(401);
         throw new Error('Token expired - please log in again');
+      } else if (error.name === 'CastError' || error.message.includes('ObjectId')) {
+        res.status(400);
+        throw new Error('Invalid ID format in token - please log in again');
       } else {
         res.status(401);
-        throw new Error('Not authorized: ' + error.message);
+        throw new Error('Authentication failed: ' + error.message);
       }
     }
   } else {
+    logger.warn('AUTH', 'No authorization token provided', {
+      path: req.originalUrl,
+      method: req.method,
+      ip: req.ip
+    });
     res.status(401);
     throw new Error('Not authorized, no token provided');
   }
@@ -186,9 +286,35 @@ const protect = asyncHandler(async (req, res, next) => {
 
 // Middleware to check if user is admin
 const admin = asyncHandler(async (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (!req.user) {
+    logger.error('AUTH', 'Admin check - No user object found in request', {
+      path: req.originalUrl,
+      method: req.method,
+      ip: req.ip
+    });
+    res.status(401);
+    throw new Error('Authentication required - please log in');
+  }
+  
+  if (req.user.role === 'admin') {
+    logger.info('AUTH', 'Admin access granted', {
+      userId: req.user._id,
+      path: req.originalUrl
+    });
+    next();
+  } else if (req.user.role === 'superadmin') {
+    // Superadmins can access admin routes too
+    logger.info('AUTH', 'Superadmin accessing admin route', {
+      userId: req.user._id,
+      path: req.originalUrl
+    });
     next();
   } else {
+    logger.warn('AUTH', 'Unauthorized admin access attempt', {
+      userId: req.user._id,
+      role: req.user.role,
+      path: req.originalUrl
+    });
     res.status(403);
     throw new Error('Not authorized as an admin');
   }
@@ -196,7 +322,21 @@ const admin = asyncHandler(async (req, res, next) => {
 
 // Middleware to check if user is superadmin
 const superadmin = asyncHandler(async (req, res, next) => {
-  if (req.user && req.user.role === 'superadmin') {
+  if (!req.user) {
+    logger.error('AUTH', 'Superadmin check - No user object found in request', {
+      path: req.originalUrl,
+      method: req.method,
+      ip: req.ip
+    });
+    res.status(401);
+    throw new Error('Authentication required - please log in');
+  }
+  
+  if (req.user.role === 'superadmin') {
+    logger.info('AUTH', 'Superadmin access granted', {
+      userId: req.user._id,
+      path: req.originalUrl
+    });
     next();
   } else {
     res.status(403);
