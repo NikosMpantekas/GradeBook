@@ -33,6 +33,7 @@ import {
   ensureValidData,
   safeValidateStudentData 
 } from '../../features/students/studentSlice';
+import { getDirections, reset as resetDirections } from '../../features/directions/directionSlice';
 
 const CreateGrade = () => {
   const navigate = useNavigate();
@@ -55,17 +56,10 @@ const CreateGrade = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   
-  // CRITICAL FIX: Import needed Redux actions properly
-  // Do not use require() - this causes the TypeError: y(...) is undefined in production
-  import { getDirections, reset as resetDirections } from '../../features/directions/directionSlice';
-
+  // CRITICAL FIX: Added safer validation logic to prevent runtime errors
   // Safely handle direction validation
   const validateDirections = () => {
     try {
-      // Import actions directly to avoid runtime errors
-      const { dispatch: _dispatch } = require('react-redux');
-      const { getState } = _dispatch;
-      
       // Safety check - validate direction data structure
       if (reduxDirections && !Array.isArray(reduxDirections)) {
         console.error('[CreateGrade] Redux directions is not an array:', reduxDirections);
