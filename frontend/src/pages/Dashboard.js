@@ -57,10 +57,24 @@ const Dashboard = () => {
   // Use a ref to track whether we've loaded data
   const dataLoaded = React.useRef(false);
 
+  // Add immediate redirect for superadmin users
+  useEffect(() => {
+    if (user && user.role === 'superadmin') {
+      console.log('Superadmin detected, redirecting to superadmin dashboard');
+      navigate('/app/superadmin');
+    }
+  }, [user, navigate]);
+
   useEffect(() => {
     if (user && !dataLoaded.current) {
       // Set flag to prevent infinite reload
       dataLoaded.current = true;
+      
+      // Skip data loading for superadmin users
+      if (user.role === 'superadmin') {
+        console.log('Skipping standard data loading for superadmin user');
+        return;
+      }
       
       // Fetch initial data only once
       dispatch(getMyNotifications());
