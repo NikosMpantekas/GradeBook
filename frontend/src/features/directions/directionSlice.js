@@ -226,5 +226,23 @@ export const directionSlice = createSlice({
   },
 });
 
-export const { reset } = directionSlice.actions;
+// CRITICAL FIX: Export all slice actions properly to prevent undefined errors
+export const { reset, ensureValidData } = directionSlice.actions;
 export default directionSlice.reducer;
+
+// CRITICAL FIX: Add a safe validation helper that can be called directly
+// This prevents the TypeError in production builds
+export const safeValidateDirectionData = (dispatch) => {
+  try {
+    if (typeof ensureValidData === 'function') {
+      dispatch(ensureValidData());
+      return true;
+    } else {
+      console.error('[directionSlice] ensureValidData is not a function');
+      return false;
+    }
+  } catch (error) {
+    console.error('[directionSlice] Error in safeValidateDirectionData:', error);
+    return false;
+  }
+};

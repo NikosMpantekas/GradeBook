@@ -33,7 +33,12 @@ import {
   ensureValidData,
   safeValidateStudentData 
 } from '../../features/students/studentSlice';
-import { getDirections, reset as resetDirections } from '../../features/directions/directionSlice';
+import { 
+  getDirections, 
+  reset as resetDirections,
+  ensureValidData as ensureValidDirectionData,
+  safeValidateDirectionData 
+} from '../../features/directions/directionSlice';
 
 const CreateGrade = () => {
   const navigate = useNavigate();
@@ -78,25 +83,35 @@ const CreateGrade = () => {
   // Get directions from Redux store for consistent data handling
   const { directions: reduxDirections, isLoading: directionsLoading } = useSelector((state) => state.direction);
   
-  // Initial data loading effect
+  // CRITICAL FIX: Initial data loading with safe validation
   useEffect(() => {
     try {
-      // Load subjects taught by this teacher
+      console.log('[CreateGrade] Component mounted - initializing data');
+      
+      // Step 1: First, validate existing data structures to prevent errors
+      console.log('[CreateGrade] Validating data structures...');
+      safeValidateStudentData(dispatch);
+      safeValidateDirectionData(dispatch);
+      
+      // Step 2: Load teacher subjects
       if (user && user._id) {
         console.log('[CreateGrade] Loading subjects for teacher:', user._id);
         dispatch(getSubjectsByTeacher(user._id));
       }
       
-      // Load directions safely
-      console.log('[CreateGrade] Dispatching getDirections action');
+      // Step 3: Load directions safely
+      console.log('[CreateGrade] Loading directions...');
       dispatch(getDirections())
         .unwrap()
         .then(data => {
-          console.log(`[CreateGrade] Loaded ${Array.isArray(data) ? data.length : 0} directions through Redux`);
+          console.log(`[CreateGrade] Loaded ${Array.isArray(data) ? data.length : 0} directions`);
+          // Immediately validate direction data after loading
+          safeValidateDirectionData(dispatch);
         })
         .catch(error => {
           console.error('[CreateGrade] Error fetching directions:', error);
-          toast.error('Failed to load directions. Please try again.');
+          // Force validate even on error to ensure store is in good state
+          safeValidateDirectionData(dispatch);
         });
       
       // Cleanup function
@@ -105,58 +120,82 @@ const CreateGrade = () => {
         dispatch(reset());
       };
     } catch (error) {
-      console.error('[CreateGrade] Error in initial data loading effect:', error);
-      toast.error('Error initializing page. Please refresh and try again.');
+      console.error('[CreateGrade] Error in initialization:', error);
+      toast.error('Error loading data. Please try again.');
     }
   }, [dispatch, user?._id, user?.token]);
   
-  // Update local directions state from Redux store
+  // CRITICAL FIX: Update local directions state from Redux store with robust validation
   useEffect(() => {
-    if (Array.isArray(reduxDirections)) {
-      console.log(`Setting directions from Redux store: ${reduxDirections.length} items`);
-      setDirections(reduxDirections);
-    } else {
-      console.warn('Redux directions is not an array:', reduxDirections);
+    try {
+      // Double validate the direction data structure before using
+      safeValidateDirectionData(dispatch);
+      
+      if (Array.isArray(reduxDirections)) {
+        console.log(`[CreateGrade] Setting ${reduxDirections.length} directions from Redux store`);
+        setDirections(reduxDirections);
+      } else {
+        console.warn('[CreateGrade] Redux directions is not an array:', reduxDirections);
+        setDirections([]);
+      }
+    } catch (error) {
+      console.error('[CreateGrade] Error setting directions from Redux store:', error);
+      // Safety fallback
       setDirections([]);
     }
-  }, [reduxDirections]);
+  }, [reduxDirections, dispatch]);
   
-  // When a subject is selected, fetch students for that subject
+  // CRITICAL FIX: When a subject is selected, fetch students for that subject with improved validation
   useEffect(() => {
-    if (formData.subject) {
-      console.log(`[CreateGrade] Subject selected: ${formData.subject}, fetching students...`);
+    try {
+      // Validate existing student data to prevent errors
+      safeValidateStudentData(dispatch);
       
-      // Reset student selection
-      setFormData(prev => ({ ...prev, student: '' }));
-      
-      // Try to get students for this subject
-      dispatch(getStudentsBySubject(formData.subject))
-        .unwrap()
-        .then((data) => {
-          console.log(`[CreateGrade] Successfully fetched ${data?.length || 0} students for subject`);
-          
-          // If no students found for subject, try to get all students as fallback
-          if (!data || data.length === 0) {
-            console.log('[CreateGrade] No students found for subject, trying to get all students');
+      if (formData.subject) {
+        console.log(`[CreateGrade] Subject selected: ${formData.subject}, fetching students...`);
+        
+        // Reset student selection for safety
+        setFormData(prev => ({ ...prev, student: '' }));
+        
+        // Try to get students for this subject
+        dispatch(getStudentsBySubject(formData.subject))
+          .unwrap()
+          .then((data) => {
+            // Immediately validate student data
+            safeValidateStudentData(dispatch);
+            console.log(`[CreateGrade] Successfully fetched ${data?.length || 0} students for subject`);
+            
+            // If no students found for subject, try to get all students as fallback
+            if (!data || data.length === 0) {
+              console.log('[CreateGrade] No students found for subject, loading all students');
+              dispatch(getStudents())
+                .unwrap()
+                .then(allStudents => {
+                  safeValidateStudentData(dispatch);
+                  console.log(`[CreateGrade] Loaded ${allStudents?.length || 0} total students`);
+                })
+                .catch(err => {
+                  console.error('[CreateGrade] Error loading all students:', err);
+                  safeValidateStudentData(dispatch);
+                });
+            }
+          })
+          .catch((error) => {
+            console.error('[CreateGrade] Error fetching students for subject:', error);
+            // If this fails, load all students as a fallback
             dispatch(getStudents())
-              .unwrap()
-              .then(allStudents => {
-                console.log(`[CreateGrade] Loaded ${allStudents?.length || 0} total students`);
-              })
-              .catch(err => {
-                console.error('[CreateGrade] Error loading all students:', err);
-              });
-          }
-        })
-        .catch((error) => {
-          console.error('[CreateGrade] Error fetching students for subject:', error);
-          // If this fails, load all students as a fallback
-          dispatch(getStudents());
-        });
-    } else {
-      // If no subject is selected, load all students so the dropdown is never empty
-      console.log('[CreateGrade] No subject selected, loading all students as fallback');
-      dispatch(getStudents());
+              .then(() => safeValidateStudentData(dispatch));
+          });
+      } else {
+        // If no subject is selected, load all students so the dropdown is never empty
+        console.log('[CreateGrade] No subject selected, loading all students as fallback');
+        dispatch(getStudents())
+          .then(() => safeValidateStudentData(dispatch));
+      }
+    } catch (error) {
+      console.error('[CreateGrade] Critical error in subject selection effect:', error);
+      // Force empty array as last resort
+      setStudentsToSelect([]);
     }
   }, [dispatch, formData.subject]);
   

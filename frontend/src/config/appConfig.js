@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.22'; // Fixed critical runtime errors and cluster school filtering
+const APP_VERSION = '1.4.23'; // Fixed critical runtime errors and cluster school filtering
 
 /**
  * Safely store app version in localStorage with error handling
