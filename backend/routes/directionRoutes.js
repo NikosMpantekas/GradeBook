@@ -9,9 +9,9 @@ const {
 } = require('../controllers/directionController');
 const { protect, admin, canManageDirections } = require('../middleware/authMiddleware');
 
-// Public routes
-router.get('/', getDirections);
-router.get('/:id', getDirectionById);
+// Protected routes that require authentication
+router.get('/', protect, getDirections);
+router.get('/:id', protect, getDirectionById);
 
 // Admin routes (with secretary support where appropriate)
 router.post('/', protect, canManageDirections, createDirection);

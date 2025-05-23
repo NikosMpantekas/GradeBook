@@ -194,6 +194,14 @@ export const studentSlice = createSlice({
       state.isError = false;
       state.message = '';
     },
+    // CRITICAL FIX: Add this reducer to ensure students is always an array
+    ensureValidData: (state) => {
+      // Ensure students is always an array to prevent .map() errors
+      if (!Array.isArray(state.students)) {
+        console.warn('[studentSlice] Fixed invalid students data type:', typeof state.students);
+        state.students = [];
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -203,7 +211,11 @@ export const studentSlice = createSlice({
       .addCase(getStudents.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.students = action.payload;
+        // CRITICAL FIX: Ensure payload is an array before setting it
+        state.students = Array.isArray(action.payload) ? action.payload : [];
+        if (!Array.isArray(action.payload)) {
+          console.warn('[studentSlice] getStudents.fulfilled received non-array data:', typeof action.payload);
+        }
       })
       .addCase(getStudents.rejected, (state, action) => {
         state.isLoading = false;
@@ -216,12 +228,18 @@ export const studentSlice = createSlice({
       .addCase(getStudentsBySubject.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.students = action.payload;
+        // CRITICAL FIX: Ensure payload is an array before setting it
+        state.students = Array.isArray(action.payload) ? action.payload : [];
+        if (!Array.isArray(action.payload)) {
+          console.warn('[studentSlice] getStudentsBySubject.fulfilled received non-array data:', typeof action.payload);
+        }
       })
       .addCase(getStudentsBySubject.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
+        // CRITICAL FIX: Set empty array on failure to prevent UI errors
+        state.students = [];
       })
       .addCase(getStudentsByDirection.pending, (state) => {
         state.isLoading = true;
@@ -229,12 +247,18 @@ export const studentSlice = createSlice({
       .addCase(getStudentsByDirection.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.students = action.payload;
+        // CRITICAL FIX: Ensure payload is an array before setting it
+        state.students = Array.isArray(action.payload) ? action.payload : [];
+        if (!Array.isArray(action.payload)) {
+          console.warn('[studentSlice] getStudentsByDirection.fulfilled received non-array data:', typeof action.payload);
+        }
       })
       .addCase(getStudentsByDirection.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
+        // CRITICAL FIX: Set empty array on failure to prevent UI errors
+        state.students = [];
       });
   },
 });

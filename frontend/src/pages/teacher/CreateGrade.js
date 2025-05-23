@@ -50,28 +50,49 @@ const CreateGrade = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   
+  // CRITICAL FIX: Import needed Redux actions
+  const directionSliceModule = require('../../features/directions/directionSlice');
+  const { getDirections } = directionSliceModule;
+  const { ensureValidData: ensureValidDirectionData } = directionSliceModule.directionSlice.actions;
+  
+  // Get directions from Redux store for consistent data handling
+  const { directions: reduxDirections, isLoading: directionsLoading } = useSelector((state) => state.direction);
+  
+  // Initial data loading effect
   useEffect(() => {
     // Load subjects taught by this teacher
     dispatch(getSubjectsByTeacher(user._id));
     
-    // Fetch directions for the filter
-    fetch('/api/directions', {
-      headers: {
-        Authorization: `Bearer ${user.token}`,
-      },
-    })
-      .then(response => response.json())
+    // CRITICAL FIX: Use Redux action to fetch directions with token
+    console.log('Dispatching getDirections action');
+    dispatch(getDirections())
+      .unwrap()
       .then(data => {
-        setDirections(data);
+        // CRITICAL FIX: Dispatch action to ensure data is valid
+        dispatch(ensureValidDirectionData());
+        console.log(`Loaded ${Array.isArray(data) ? data.length : 0} directions through Redux`);
       })
       .catch(error => {
-        console.error('Error fetching directions:', error);
+        console.error('Error fetching directions through Redux:', error);
+        toast.error('Failed to load directions. Please refresh the page.');
       });
-    
+      
+    // Cleanup function  
     return () => {
       dispatch(reset());
     };
   }, [dispatch, user._id, user.token]);
+  
+  // Update local directions state from Redux store
+  useEffect(() => {
+    if (Array.isArray(reduxDirections)) {
+      console.log(`Setting directions from Redux store: ${reduxDirections.length} items`);
+      setDirections(reduxDirections);
+    } else {
+      console.warn('Redux directions is not an array:', reduxDirections);
+      setDirections([]);
+    }
+  }, [reduxDirections]);
   
   // When a subject is selected, fetch students for that subject
   useEffect(() => {
@@ -112,15 +133,30 @@ const CreateGrade = () => {
     }
   }, [dispatch, formData.subject]);
   
+  // CRITICAL FIX: Call ensureValidData action at component mount to prevent map errors
+  useEffect(() => {
+    // Import the action
+    const { ensureValidData } = studentSlice.actions;
+    // Dispatch it to validate the store
+    dispatch(ensureValidData());
+  }, [dispatch]);
+
   // Update students dropdown when students are fetched from API or direction changes
   useEffect(() => {
+    // CRITICAL FIX: Add comprehensive validation before accessing students data
+    // This prevents the TypeError: l.map is not a function error
+    
+    // First, log current state for debugging
     console.log('[CreateGrade] Students data updated:', {
-      studentsCount: students?.length || 0,
+      studentsAvailable: !!students,
+      isArray: Array.isArray(students),
+      studentsCount: Array.isArray(students) ? students.length : 'NOT AN ARRAY',
       selectedDirection,
       currentSubject: formData.subject,
-      studentsData: students
+      dataType: typeof students
     });
     
+    // Safety check: if students is not a valid array, reset the dropdown and exit early
     if (!students || !Array.isArray(students)) {
       console.warn('[CreateGrade] Students data is not an array:', students);
       setStudentsToSelect([]);
