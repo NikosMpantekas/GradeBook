@@ -5,8 +5,6 @@ const {
   getAllNotifications,
   getMyNotifications,
   getSentNotifications,
-  updateNotification,
-  deleteNotification,
   markNotificationRead,
   getNotificationById,
 } = require('../controllers/notificationController');
@@ -29,25 +27,11 @@ router.post('/', protect, (req, res, next) => {
   throw new Error('Not authorized for this action');
 }, createNotification);
 
-router.put('/:id', protect, (req, res, next) => {
-  // Allow teachers, admins, and secretaries with notification permission
-  if (req.user.role === 'teacher' || req.user.role === 'admin' || 
-      (req.user.role === 'secretary' && req.user.secretaryPermissions?.canSendNotifications === true)) {
-    return next();
-  }
-  res.status(403);
-  throw new Error('Not authorized for this action');
-}, updateNotification);
+// Update notification route removed - not supported in current version
+// Implementation can be added in future if needed
 
-router.delete('/:id', protect, (req, res, next) => {
-  // Only admins, teachers who created the notification, or secretaries with permission can delete
-  if (req.user.role === 'admin' || req.user.role === 'teacher' || 
-      (req.user.role === 'secretary' && req.user.secretaryPermissions?.canSendNotifications === true)) {
-    return next();
-  }
-  res.status(403);
-  throw new Error('Not authorized for this action');
-}, deleteNotification);
+// Delete notification route removed - not supported in current version
+// Implementation can be added in future if needed
 
 // Admin routes (with secretary support where appropriate)
 router.get('/', protect, canSendNotifications, getAllNotifications);
