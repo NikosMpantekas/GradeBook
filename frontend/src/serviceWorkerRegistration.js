@@ -151,7 +151,7 @@ function registerValidSW(swUrl, config) {
               try {
                 registration.active.postMessage({
                   type: 'CLEAN_CACHES',
-                  version: APP_VERSION
+                  version: getAppVersion()
                 });
                 console.log('[PWA] Sent cache cleanup message to service worker');
               } catch (err) {
@@ -351,22 +351,8 @@ function checkValidServiceWorker(swUrl, config) {
         navigator.serviceWorker.ready.then((registration) => {
           registration.unregister().then(() => {
             window.location.reload();
-            // If you want your app to work offline and load faster, you can change
-            // unregister() to register() below. Note this comes with some pitfalls.
-            // Learn more about service workers: https://cra.link/PWA
-            serviceWorker.register(swUrl)
-              .then(registration => {
-                console.log('ServiceWorker registration successful.');
-                // Log the current app version for debugging
-                try {
-                  console.log(`App version from registration: ${getAppVersion()}`);
-                } catch (error) {
-                  console.error('Error logging app version:', error);
-                }
-              })
-              .catch(error => {
-                console.error('ServiceWorker registration failed:', error);
-              });
+            // Reload the page to activate the new service worker
+            console.log('Service worker unregistered, reloading page...');
           });
         });
       } else {
