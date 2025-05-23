@@ -15,6 +15,13 @@ const notificationSchema = mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    // Added for multi-tenancy - required field for all documents
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: true,
+      index: true, // Index for performance
+    },
     recipients: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -69,5 +76,8 @@ const notificationSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Index for improved query performance when filtering by schoolId
+notificationSchema.index({ schoolId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

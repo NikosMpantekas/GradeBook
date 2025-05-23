@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const Contact = require('../models/contactModel');
+const { enforceSchoolFilter } = require('../middleware/schoolIdMiddleware');
 
 // @desc    Send a contact message to admin
 // @route   POST /api/contact
@@ -21,6 +22,7 @@ const sendContactMessage = asyncHandler(async (req, res) => {
     // Create a new contact message in the database
     const contactMessage = await Contact.create({
       user: user._id,
+      schoolId: user.schoolId, // Add schoolId for multi-tenancy
       subject,
       message,
       userName: user.name,
@@ -78,8 +80,14 @@ const getContactMessages = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Get all messages, newest first
-    const messages = await Contact.find({})
+    // For admin users, filter messages by their schoolId (multi-tenancy)
+    // Superadmins can see all messages across schools
+    const filter = req.user.role === 'superadmin' 
+      ? {} 
+      : { schoolId: req.user.schoolId };
+      
+    // Get all messages for this school, newest first
+    const messages = await Contact.find(filter)
       .sort({ createdAt: -1 })
       .lean();
     
@@ -151,7 +159,11 @@ const updateContactMessage = asyncHandler(async (req, res) => {
 const getUserMessages = asyncHandler(async (req, res) => {
   try {
     // Get all messages for this user, newest first
-    const messages = await Contact.find({ user: req.user._id })
+    // Include schoolId in the filter for multi-tenancy
+    const messages = await Contact.find({
+      user: req.user._id,
+      schoolId: req.user.schoolId
+    })
       .sort({ createdAt: -1 })
       .lean();
     
@@ -186,8 +198,13 @@ const markReplyAsRead = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Find the message and ensure it belongs to this user
-    const message = await Contact.findOne({ _id: id, user: req.user._id });
+    // Find the message and ensure it belongs to this user and school
+    // Include schoolId in the filter for multi-tenancy
+    const message = await Contact.findOne({
+      _id: id,
+      user: req.user._id,
+      schoolId: req.user.schoolId
+    });
     
     if (!message) {
       res.status(404);

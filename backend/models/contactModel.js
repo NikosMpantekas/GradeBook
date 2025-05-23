@@ -7,6 +7,13 @@ const contactSchema = mongoose.Schema(
       required: true,
       ref: 'User',
     },
+    // Added for multi-tenancy - required field for all documents
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: true,
+      index: true, // Index for performance
+    },
     subject: {
       type: String,
       required: [true, 'Please add a subject'],
@@ -58,5 +65,8 @@ const contactSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Index for improved query performance when filtering by schoolId
+contactSchema.index({ schoolId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Contact', contactSchema);

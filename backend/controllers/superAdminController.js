@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const User = require('../models/userModel');
 const School = require('../models/schoolModel');
-const { connectToSchoolDb, getSchoolConnection } = require('../config/multiDbConnect');
 const jwt = require('jsonwebtoken');
 
 // @desc    Create a new school owner (admin)
@@ -66,7 +65,7 @@ const createSchoolOwner = asyncHandler(async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create admin user for the school
+    // Create admin user for the school with schoolId for multi-tenancy
     const user = await User.create({
       name,
       email,
@@ -74,78 +73,18 @@ const createSchoolOwner = asyncHandler(async (req, res) => {
       role: 'admin', // School owner is an admin
       schoolDomain: emailDomain,
       active: true,
-      school: school._id, // Link to the school
+      school: school._id, // Legacy field - keeping for compatibility
+      schoolId: school._id, // New field for multi-tenancy
     });
 
     if (user) {
-      // ENHANCED: Connect to and set up the school's database with proper model registration
-      try {
-        // Get the improved connection with models registered
-        const { connection, models } = await connectToSchoolDb(school);
-        console.log(`Created and connected to database for school: ${schoolName} (${dbName})`);
-        
-        if (!connection) {
-          throw new Error('Failed to establish database connection');
-        }
-        
-        // Verify we have the User model properly registered
-        if (!models || !models.User) {
-          console.log('User model not found in registered models, trying to get it directly');
-          // Try to get the User model from the connection
-          try {
-            const SchoolUser = connection.model('User');
-            
-            // Check if admin user already exists
-            const existingUser = await SchoolUser.findOne({ email: user.email });
-            
-            if (existingUser) {
-              console.log(`Admin user already exists in school database: ${schoolName}`);
-            } else {
-              // Create the admin user in the school database
-              await SchoolUser.create({
-                name: user.name,
-                email: user.email,
-                password: user.password, // Already hashed
-                role: 'admin',
-                active: true,
-                schoolDomain: emailDomain
-              });
-              
-              console.log(`Created initial admin user in school database: ${schoolName}`);
-            }
-          } catch (modelError) {
-            console.error(`Error accessing User model: ${modelError.message}`);
-            throw modelError;
-          }
-        } else {
-          // Use the registered User model
-          const SchoolUser = models.User;
-          
-          // Check if admin user already exists
-          const existingUser = await SchoolUser.findOne({ email: user.email });
-          
-          if (existingUser) {
-            console.log(`Admin user already exists in school database: ${schoolName}`);
-          } else {
-            // Create the admin user in the school database
-            await SchoolUser.create({
-              name: user.name,
-              email: user.email,
-              password: user.password, // Already hashed
-              role: 'admin',
-              active: true,
-              schoolDomain: emailDomain
-            });
-            
-            console.log(`Created initial admin user in school database: ${schoolName}`);
-          }
-        }
-      } catch (error) {
-        console.error(`Error setting up school database: ${error.message}`);
-        // Don't fail the entire operation, but log the issue for debugging
-        // This way, even if the school-specific database creation fails,
-        // the admin can still log in to the main system
-      }
+      // In single-database architecture, we don't need to set up a separate database
+      // Just log that the school and user were created successfully
+      console.log(`Created school ${schoolName} with ID ${school._id}`);
+      console.log(`Created school admin user with email ${email} and schoolId ${school._id}`);
+      
+      // Note about the migration
+      console.log(`IMPORTANT: No additional database setup required with new single-database architecture`)
 
       res.status(201).json({
         message: 'School owner created successfully',

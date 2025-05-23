@@ -1,6 +1,8 @@
 const asyncHandler = require('express-async-handler');
 const Grade = require('../models/gradeModel');
 const User = require('../models/userModel');
+const Subject = require('../models/subjectModel');
+const { enforceSchoolFilter } = require('../middleware/schoolIdMiddleware');
 
 // @desc    Create a new grade
 // @route   POST /api/grades
@@ -8,7 +10,12 @@ const User = require('../models/userModel');
 const createGrade = asyncHandler(async (req, res) => {
   const { student, subject, value, description, date } = req.body;
   
-  console.log('Grade creation request received:', { body: req.body, user: req.user._id, userRole: req.user.role });
+  console.log('Grade creation request received:', { 
+    body: req.body, 
+    user: req.user._id, 
+    userRole: req.user.role,
+    schoolId: req.user.schoolId 
+  });
 
   if (!student || !subject || !value) {
     res.status(400);
@@ -16,129 +23,37 @@ const createGrade = asyncHandler(async (req, res) => {
   }
 
   try {
-    // COMPLETELY REWRITTEN: Using the same multi-strategy approach as other controllers
-    const mongoose = require('mongoose');
-    const jwt = require('jsonwebtoken');
+    // Verify the student exists and belongs to the same school
+    const studentUser = await User.findOne({ 
+      _id: student, 
+      role: 'student',
+      schoolId: req.user.schoolId // Multi-tenancy: Only find students in the same school
+    });
     
-    // STEP 1: Extract token data safely
-    let tokenData = null;
-    if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      try {
-        const token = req.headers.authorization.split(' ')[1];
-        tokenData = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Successfully decoded JWT token for grade creation');
-      } catch (err) {
-        console.log('Error decoding token:', err.message);
-      }
-    }
-    
-    // STEP 2: Try to identify the school using multiple strategies
-    let school = null;
-    
-    // Strategy A: Check if school is already in request (from middleware)
-    if (req.school) {
-      school = req.school;
-      console.log(`Strategy A: Found school in request: ${school.name}`);
-    }
-    
-    // Strategy B: Check token for schoolId
-    if (!school && tokenData && tokenData.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(tokenData.schoolId);
-        if (school) {
-          console.log(`Strategy B: Found school from token schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by token schoolId:', err.message);
-      }
-    }
-    
-    // Strategy C: Check user object for schoolId
-    if (!school && req.user && req.user.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(req.user.schoolId);
-        if (school) {
-          console.log(`Strategy C: Found school from user.schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by user.schoolId:', err.message);
-      }
-    }
-    
-    // Strategy D: Check user email domain
-    if (!school && req.user && req.user.email && req.user.email.includes('@')) {
-      try {
-        const emailDomain = req.user.email.split('@')[1];
-        const School = mongoose.model('School');
-        school = await School.findOne({ emailDomain });
-        if (school) {
-          console.log(`Strategy D: Found school from email domain: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by email domain:', err.message);
-      }
-    }
-    
-    if (!school) {
-      res.status(400);
-      throw new Error('No school found for this user - grades must be associated with a school');
-    }
-    
-    console.log(`Using school database: ${school.name} for grade creation`);
-    
-    // STEP 3: Connect to the school database
-    const { connectToSchoolDb } = require('../config/multiDbConnect');
-    const { connection } = await connectToSchoolDb(school);
-    
-    if (!connection) {
-      throw new Error('Failed to connect to school database');
-    }
-    
-    console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
-    
-    // STEP 4: Get or create the necessary models
-    let SchoolUser, SchoolGrade;
-    try {
-      SchoolUser = connection.model('User');
-      console.log('Using existing User model');
-    } catch (err) {
-      console.error('Cannot access User model in school database - critical error');
-      res.status(500);
-      throw new Error('Database configuration error - User model not found');
-    }
-    
-    try {
-      SchoolGrade = connection.model('Grade');
-      console.log('Using existing Grade model');
-    } catch (err) {
-      console.log('Creating new Grade model in school database');
-      // Get the schema definition from the main Grade model
-      const gradeSchemaObj = require('../models/gradeModel').schema.obj;
-      const gradeSchema = new mongoose.Schema(gradeSchemaObj, { timestamps: true });
-      SchoolGrade = connection.model('Grade', gradeSchema);
-    }
-    
-    // STEP 5: Check if student exists and is actually a student
-    const studentUser = await SchoolUser.findById(student);
     if (!studentUser) {
-      console.log('Student not found in school database:', student);
+      console.log('Student not found or not in the same school:', student);
       res.status(400);
       throw new Error('Student not found in this school');
     }
     
-    if (studentUser.role !== 'student') {
-      console.log('Invalid student role:', studentUser.role);
-      res.status(400);
-      throw new Error('Invalid student - must have role "student"');
-    }
+    // Verify the subject exists and belongs to the same school
+    const subjectDoc = await Subject.findOne({
+      _id: subject,
+      schoolId: req.user.schoolId // Multi-tenancy: Only find subjects in the same school
+    });
     
-    // STEP 6: Check if a grade already exists for this student, subject, and date
-    const existingGrade = await SchoolGrade.findOne({
+    if (!subjectDoc) {
+      console.log('Subject not found or not in the same school:', subject);
+      res.status(400);
+      throw new Error('Subject not found in this school');
+    }
+
+    // Check if a grade already exists for this student, subject, and date in this school
+    const existingGrade = await Grade.findOne({
       student,
       subject,
-      date: date || Date.now()
+      date: date || Date.now(),
+      schoolId: req.user.schoolId // Multi-tenancy: Only check grades in the same school
     });
     
     if (existingGrade) {
@@ -147,14 +62,14 @@ const createGrade = asyncHandler(async (req, res) => {
       throw new Error('A grade already exists for this student, subject, and date. Please use a different date or update the existing grade.');
     }
 
-    // Create the grade with very specific handling
+    // Create the grade with schoolId for multi-tenancy
     const gradeData = {
       student,
       subject,
-      teacher: req.user._id, // Use _id instead of id
-      value: parseInt(value), // Ensure value is a number
+      teacher: req.user._id,
+      value: parseInt(value),
       date: date || Date.now(),
-      schoolId: school._id // Add reference to school
+      schoolId: req.user.schoolId // Multi-tenancy: Associate grade with the school
     };
     
     // Add description if provided
@@ -162,30 +77,25 @@ const createGrade = asyncHandler(async (req, res) => {
       gradeData.description = description;
     }
 
-    // Create the grade in the SCHOOL database with try-catch for duplicate handling
-    try {
-      const grade = await SchoolGrade.create(gradeData);
-      
-      if (grade) {
-        console.log(`SUCCESSFULLY created grade in SCHOOL database: ${school.name}, Grade ID: ${grade._id}`);
-        res.status(201).json(grade);
-      } else {
-        console.log('Failed to create grade');
-        res.status(400);
-        throw new Error('Invalid grade data');
-      }
-    } catch (duplicateError) {
-      // Check if this is a duplicate key error
-      if (duplicateError.code === 11000) {
-        console.error('Duplicate key error:', duplicateError.message);
-        res.status(400);
-        throw new Error('A grade with this student, subject, and date combination already exists. Please use a different date.');
-      } else {
-        // Re-throw other errors
-        throw duplicateError;
-      }
+    // Create the grade in the database
+    const grade = await Grade.create(gradeData);
+    
+    if (grade) {
+      console.log(`Successfully created grade. ID: ${grade._id}, School: ${req.user.schoolId}`);
+      res.status(201).json(grade);
+    } else {
+      console.log('Failed to create grade');
+      res.status(400);
+      throw new Error('Invalid grade data');
     }
   } catch (error) {
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      console.error('Duplicate key error:', error.message);
+      res.status(400);
+      throw new Error('A grade with this student, subject, and date combination already exists. Please use a different date.');
+    }
+    
     console.error('Error in createGrade controller:', error.message);
     res.status(error.statusCode || 500);
     throw new Error(error.message || 'Error creating grade');

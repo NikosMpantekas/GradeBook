@@ -4,14 +4,20 @@ const dotenv = require('dotenv');
 const colors = require('colors');
 const cors = require('cors');
 const { errorHandler } = require('./middleware/errorMiddleware');
-const connectDB = require('./config/db');
+const { setSchoolContext } = require('./middleware/schoolIdMiddleware');
+const { connectDB } = require('./config/db');
 const webpush = require('web-push');
 
 // Load environment variables
 dotenv.config();
 
-// Connect to database
-connectDB();
+// Connect to the single MongoDB database for multi-tenancy
+connectDB().then(() => {
+  console.log('MongoDB Connected with multi-tenant configuration'.cyan.bold);
+}).catch(err => {
+  console.error(`MongoDB Connection Error: ${err.message}`.red.bold);
+  process.exit(1);
+});
 
 // Set up web push
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -163,15 +169,18 @@ app.get('/emergency-diagnostics', (req, res) => {
 });
 
 // Regular API Routes
-app.use('/api/users', require('./routes/userRoutes'));
-app.use('/api/grades', require('./routes/gradeRoutes'));
-app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/schools', require('./routes/schoolRoutes'));
-app.use('/api/subjects', require('./routes/subjectRoutes'));
-app.use('/api/directions', require('./routes/directionRoutes'));
-app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
-app.use('/api/contact', require('./routes/contactRoutes'));
-app.use('/api/superadmin', require('./routes/superAdminRoutes'));
+// Routes that require schoolId context enforcement (multi-tenancy protection)
+app.use('/api/users', require('./routes/userRoutes')); // User routes should verify schoolId context
+app.use('/api/grades', setSchoolContext, require('./routes/gradeRoutes')); // Enforce schoolId on all grade requests
+app.use('/api/notifications', setSchoolContext, require('./routes/notificationRoutes')); // Enforce schoolId on all notification requests
+app.use('/api/subjects', setSchoolContext, require('./routes/subjectRoutes')); // Enforce schoolId on all subject requests
+app.use('/api/directions', setSchoolContext, require('./routes/directionRoutes')); // Enforce schoolId on all direction requests
+app.use('/api/subscriptions', setSchoolContext, require('./routes/subscriptionRoutes')); // Enforce schoolId on all subscription requests
+app.use('/api/contact', setSchoolContext, require('./routes/contactRoutes')); // Enforce schoolId on all contact requests
+
+// Routes that may access multiple schools or don't require schoolId filtering
+app.use('/api/schools', require('./routes/schoolRoutes')); // School routes have special handling
+app.use('/api/superadmin', require('./routes/superAdminRoutes')); // Superadmin routes bypass schoolId filtering
 
 // Debug middleware to log all requests
 app.use((req, res, next) => {

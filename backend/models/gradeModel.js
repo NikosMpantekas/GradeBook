@@ -30,13 +30,20 @@ const gradeSchema = mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // Added for multi-tenancy - required field for all documents
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: true,
+      index: true, // Index for performance
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Create a compound index to ensure unique grades per student, subject, and date
-gradeSchema.index({ student: 1, subject: 1, date: 1 }, { unique: true });
+// Create a compound index to ensure unique grades per student, subject, date, and schoolId
+gradeSchema.index({ student: 1, subject: 1, date: 1, schoolId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Grade', gradeSchema);

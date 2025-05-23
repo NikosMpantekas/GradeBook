@@ -10,7 +10,16 @@ const userSchema = mongoose.Schema(
     email: {
       type: String,
       required: [true, 'Please add an email'],
-      unique: true,
+      // Remove global uniqueness as users can have the same email in different schools
+      // uniqueness will be enforced per school with a compound index
+    },
+    // Added for multi-tenancy - required field for all documents
+    // This is the primary school association for the user in the single-database model
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: true,
+      index: true, // Index for performance
     },
     // Mobile phone for contact purposes
     mobilePhone: {
@@ -154,6 +163,13 @@ const userSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Create compound index for school-specific uniqueness of email addresses
+// This ensures emails are unique within a school but can be reused across different schools
+userSchema.index({ email: 1, schoolId: 1 }, { unique: true });
+
+// Index for faster queries by schoolId and role (common query pattern)
+userSchema.index({ schoolId: 1, role: 1 });
 
 // Method to compare entered password with hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {

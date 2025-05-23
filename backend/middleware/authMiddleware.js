@@ -3,10 +3,6 @@ const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const User = require('../models/userModel');
 const School = require('../models/schoolModel');
-const { connectToSchoolDb, getSchoolConnection } = require('../config/multiDbConnect');
-
-// Cache for school connections to avoid repeated lookups
-const schoolConnectionCache = new Map();
 
 // Helper function to safely parse JSON without crashing
 const safeJsonParse = (str) => {
@@ -20,7 +16,7 @@ const safeJsonParse = (str) => {
 
 /**
  * Authentication and authorization middleware for the GradeBook application
- * Handles multi-database authentication across school-specific databases
+ * Updated to support multi-tenancy with a single database and schoolId field
  */
 
 const protect = asyncHandler(async (req, res, next) => {
@@ -45,7 +41,7 @@ const protect = asyncHandler(async (req, res, next) => {
         throw new Error('Invalid token format');
       }
       
-      // Log the token format (first few characters) for debugging
+      // Log the token format for debugging
       console.log(`Token validation - length: ${token.length}, format check: ${typeof token === 'string' && token.length > 20 ? 'Valid' : 'Invalid'}`);
       
       // Handle the common case where the token might be a string "undefined"
@@ -66,323 +62,110 @@ const protect = asyncHandler(async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log('JWT Token successfully decoded for user ID:', decoded.id);
       
-      // Check for user being a superadmin (in main database)
+      // Check for superadmin (they bypass schoolId enforcement)
       const superadmin = await User.findOne({ _id: decoded.id, role: 'superadmin' }).select('-password');
       
       if (superadmin) {
-        // Superadmin found in main database
-        console.log('Found superadmin user in main database');
+        console.log('User is a superadmin - bypassing schoolId restrictions');
         req.user = superadmin;
         next();
         return;
       }
 
-      // CRITICAL FIX: Check for SchoolId in token first, as this is the most reliable source
-      // The token might have been generated with school information
-      const schoolId = decoded.schoolId;
+      // Multi-tenancy: Find user with their schoolId
+      let schoolId = null;
       
-      // If we have a schoolId in the token, we should use that first
-      if (schoolId) {
-        console.log(`Token contains schoolId: ${schoolId} - using this to find school`);
-        const school = await School.findById(schoolId);
+      // STRATEGY 1: Try to get schoolId from token (most reliable source)
+      if (decoded.schoolId) {
+        schoolId = decoded.schoolId;
+        console.log(`Found schoolId in token: ${schoolId}`);
+      }
+      
+      // Find the user including their schoolId
+      const user = await User.findById(decoded.id).select('-password');
+      
+      if (!user) {
+        console.error(`User not found with ID: ${decoded.id}`);
+        res.status(401);
+        throw new Error('User not found');
+      }
+      
+      // STRATEGY 2: Get schoolId from user object if not in token
+      if (!schoolId && user.schoolId) {
+        schoolId = user.schoolId;
+        console.log(`Found schoolId in user object: ${schoolId}`);
+      }
+      
+      // STRATEGY 3: If we still don't have a schoolId, try to find it by email domain
+      if (!schoolId && user.email) {
+        const emailParts = user.email.split('@');
+        if (emailParts.length === 2) {
+          const domain = emailParts[1];
+          const school = await School.findOne({ emailDomain: domain });
+          if (school) {
+            schoolId = school._id;
+            console.log(`Found schoolId by email domain: ${schoolId}`);
+            
+            // Update the user with the schoolId for future requests
+            await User.findByIdAndUpdate(user._id, { schoolId: schoolId });
+            console.log(`Updated user ${user._id} with schoolId ${schoolId}`);
+          }
+        }
+      }
+      
+      // STRATEGY 4: Try to find schoolId by school reference (legacy field)
+      if (!schoolId && user.school) {
+        schoolId = user.school;
+        console.log(`Found schoolId from legacy school field: ${schoolId}`);
         
-        if (school) {
-          console.log(`Found school from token schoolId: ${school.name}`);
-          // School found directly from token - continue with processing below
-          req.targetSchool = school;
-          
-          // ENHANCED FIX: Check if this school has an email domain (making it a cluster)
-          // This distinguishes between regular schools and school clusters
-          if (school.emailDomain) {
-            console.log(`School ${school.name} is a cluster with domain: ${school.emailDomain}`);
-            req.isSchoolCluster = true;
-          } else {
-            console.log(`School ${school.name} is a regular school (no domain)`);
-            req.isSchoolCluster = false;
-          }
-        } else {
-          console.log(`School not found for ID in token: ${schoolId}`);
-        }
+        // Update the user with the schoolId field for future requests
+        await User.findByIdAndUpdate(user._id, { schoolId: schoolId });
+        console.log(`Updated user ${user._id} with schoolId ${schoolId}`);
       }
       
-      // Initialize userRef variable at a higher scope
-      let userRef = null;
-      
-      // If school not found by token ID, try looking up user reference in main DB
-      if (!req.targetSchool) {
-        // Not a superadmin - find user reference in main DB to determine school
-        userRef = await User.findById(decoded.id).select('email schoolDomain school');
-        console.log(`Looking up user reference in main DB: ${userRef ? 'Found' : 'Not found'}`);
-        
-        if (!userRef) {
-          // Legacy case - check if user exists directly in main database
-          const mainUser = await User.findById(decoded.id).select('-password');
-          if (mainUser) {
-            console.log('Found user in main database (legacy user)');
-            req.user = mainUser;
-            next();
-            return;
-          } else {
-            console.error(`User not found for ID: ${decoded.id}`);
-            res.status(401);
-            throw new Error('User not found');
-          }
-        }
-      }
-      
-      // Determine which school this user belongs to if not already found from token
-      let school = req.targetSchool;
-      
-      if (!school && userRef) {
-        if (userRef.school) {
-          // Direct reference to school
-          school = await School.findById(userRef.school);
-          console.log(`Found school by direct reference: ${school ? school.name : 'Not found'}`);
-        } else if (userRef.schoolDomain) {
-          // Find by school domain
-          school = await School.findOne({ emailDomain: userRef.schoolDomain });
-          console.log(`Found school by domain reference: ${school ? school.name : 'Not found'}`);
-        } else {
-          // Extract domain from email
-          const emailParts = userRef.email.split('@');
-          if (emailParts.length === 2) {
-            school = await School.findOne({ emailDomain: emailParts[1] });
-            console.log(`Found school by email domain extraction: ${school ? school.name : 'Not found'}`);
-          }
-        }
-      }
-      
-      if (!school) {
-        console.error(`Could not determine school for user: ${decoded.id}`);
-        // Fallback to main database as a last resort
-        const mainUser = await User.findById(decoded.id).select('-password');
-        if (mainUser) {
-          req.user = mainUser;
-          next();
-          return;
-        } else {
-          res.status(401);
-          throw new Error('School not found for user');
-        }
-      }
-      
-      // Found the school - check if active
-      if (school.active === false) {
+      // If we still don't have a schoolId, reject the request
+      if (!schoolId) {
+        console.error(`Could not determine schoolId for user: ${user._id}`);
         res.status(403);
-        throw new Error('School account is disabled. Please contact administrator');
+        throw new Error('No school associated with this account');
       }
       
-      try {
-        // ENHANCED: Improved connection handling with better caching and validation
-        const schoolId = school._id.toString();
-        let connection, models;
-        
-        console.log(`Attempting to connect to school database for: ${school.name} (ID: ${schoolId})`);
-        
-        // Check if we have a cached connection first
-        if (schoolConnectionCache.has(schoolId)) {
-          console.log('Found cached school connection, verifying status...');
-          const cachedData = schoolConnectionCache.get(schoolId);
-          
-          // Verify the connection is still valid and ready
-          if (cachedData.connection && cachedData.connection.readyState === 1) {
-            console.log('Cached connection is valid, using it');
-            connection = cachedData.connection;
-            models = cachedData.models || {};
-          } else {
-            console.log('Cached connection is stale or invalid (readyState:', 
-              cachedData.connection ? cachedData.connection.readyState : 'null', '), creating new one');
-            const result = await connectToSchoolDb(school);
-            connection = result.connection;
-            models = result.models || {};
-            
-            // Update the cache with fresh connection
-            schoolConnectionCache.set(schoolId, { 
-              connection, 
-              models,
-              timestamp: Date.now() 
-            });
-          }
-        } else {
-          console.log('No cached connection found, creating new one');
-          const result = await connectToSchoolDb(school);
-          connection = result.connection;
-          models = result.models || {};
-          
-          // Cache the connection with timestamp for future use
-          schoolConnectionCache.set(schoolId, { 
-            connection, 
-            models,
-            timestamp: Date.now() 
-          });
-        }
-        
-        if (!connection) {
-          console.error('School database connection failed but did not throw an error!');
-          throw new Error('Database connection returned null');
-        }
-        
-        console.log('School connection successful, setting up user lookup...');
-        
-        // Store school info in request for downstream use
-        req.school = school;
-        
-        // CRITICAL FIX: Store connection object and models properly for downstream use
-        req.schoolConnection = connection;
-        req.schoolModels = models || {};
-        
-        // Log successful connection details
-        console.log(`Connected to database: ${connection.db ? connection.db.databaseName : 'unknown'}`);
-        console.log(`Available models: ${Object.keys(models || {}).join(', ') || 'none'}`);
-        
-        // CRITICAL FIX: Use try-catch for each operation to identify exactly where failures happen
-        // This helps prevent silent failures causing white screens
-        
-        // Step 1: Get or create the User model properly
-        let SchoolUser;
-        try {
-          // Check if model already exists on this connection
-          // CRITICAL FIX: Use the correct variable name 'connection' instead of 'schoolConnection'
-          if (connection.models && connection.models.User) {
-            console.log('User model already exists in this connection');
-            SchoolUser = connection.models.User;
-          } else {
-            // Create a new model with the standard User schema
-            console.log('Creating new User model in school database');
-            // Make sure we copy the schema completely
-            const userSchema = mongoose.Schema(
-              User.schema.obj,
-              { timestamps: true }
-            );
-            SchoolUser = connection.model('User', userSchema);
-          }
-        } catch (modelError) {
-          console.error('Error creating or accessing User model:', modelError);
-          throw new Error(`Model creation failed: ${modelError.message}`);
-        }
-        
-        // Step 2: Try to find the user with timeout protection
-        console.log(`Looking up user ${decoded.id} in school database: ${school.name}`);
-        let schoolUser;
-        
-        try {
-          // CRITICAL FIX: More robust user lookup with multiple strategies and detailed logging
-          try {
-            console.log(`Looking for user by ID: ${decoded.id}`);
-            schoolUser = await SchoolUser.findById(decoded.id).select('-password');
-            
-            // If not found by ID, try by email as fallback (useful for migrated users)
-            if (!schoolUser && userRef && userRef.email) {
-              console.log(`User not found by ID, trying email lookup: ${userRef.email}`);
-              schoolUser = await SchoolUser.findOne({ email: userRef.email }).select('-password');
-              
-              if (schoolUser) {
-                console.log(`Found user by email: ${schoolUser.name} (${schoolUser._id})`);
-                // CRITICAL FIX: If we found a user by email but their ID doesn't match the token,
-                // update our reference to their actual ID for future requests
-                console.log(`Token ID (${decoded.id}) doesn't match actual user ID (${schoolUser._id})`);
-                console.log('Storing user ID mapping for future requests');
-                // Store mapping in memory for quick reference
-                global.userIdMapping = global.userIdMapping || new Map();
-                global.userIdMapping.set(decoded.id, schoolUser._id.toString());
-              }
-            }
-            
-            // CRITICAL FIX: Check the global ID mapping if we still can't find the user
-            if (!schoolUser && global.userIdMapping && global.userIdMapping.has(decoded.id)) {
-              const mappedId = global.userIdMapping.get(decoded.id);
-              console.log(`Using mapped ID ${mappedId} for token ID ${decoded.id}`);
-              schoolUser = await SchoolUser.findById(mappedId).select('-password');
-            }
-          } catch (lookupError) {
-            console.error(`Error during school user lookup: ${lookupError.message}`);
-            // Continue with fallback options
-          }
-          
-          console.log('User lookup result:', schoolUser ? `User found: ${schoolUser.name} (${schoolUser.role})` : 'User not found');
-        } catch (lookupError) {
-          console.error('Error during user lookup:', lookupError);
-          throw new Error(`User lookup failed: ${lookupError.message}`);
-        }
-        
-        if (schoolUser) {
-          console.log(`\u2705 Successfully found user in school database: ${school.name}`);
-          
-          // CRITICAL FIX: Ensure user is properly marked as active
-          if (schoolUser.active === false) {
-            console.warn(`User account is disabled: ${schoolUser.email}`);
-            res.status(403);
-            throw new Error('Your account has been disabled. Please contact administrator');
-          }
-          
-          // CRITICAL FIX: Enhance user object with necessary school context
-          // Add school reference to user object for use in controllers
-          schoolUser.schoolConnection = connection; // Fixed: Use connection instead of undefined schoolConnection
-          schoolUser.schoolDetails = school;
-          schoolUser.schoolId = school._id;
-          
-          // For admin users, ensure they have necessary fields
-          if (schoolUser.role === 'admin') {
-            console.log('Admin user detected - ensuring proper access rights');
-            // Make sure admin has all necessary permissions
-            schoolUser.canAccessAdminPanel = true;
-          }
-          
-          req.user = schoolUser;
-          next();
-          return;
-        } else {
-          console.warn(`User not found in school database: ${school.name}`);
-        }
-      } catch (err) {
-        console.error(`\u26a0\ufe0f Error with school database: ${err.message}`);
-        // Log the full error for debugging
-        console.error('Full error:', err);
-        
-        // Write better diagnostics for debugging
-        console.error(`Auth diagnostics for ${req.originalRequestPath}:`);
-        console.error(`- User ID from token: ${decoded.id}`);
-        console.error(`- School ID ${schoolId || 'not present'} in token`);
-        console.error(`- School found: ${school ? school.name : 'No'}`);
-        console.error(`- User ref found: ${userRef ? 'Yes' : 'No'}`);
-        
-        // Continue to fallback rather than failing completely
+      // Verify that the school exists and is active
+      const school = await School.findById(schoolId);
+      if (!school) {
+        console.error(`School not found with ID: ${schoolId}`);
+        res.status(404);
+        throw new Error('School not found');
       }
       
-      // Fallback to main database as last resort
-      try {
-        console.log('Attempting to find user in main database as fallback');
-        
-        // Get user from main database
-        const mainUser = await User.findById(decoded.id).select('-password');
-        
-        if (mainUser) {
-          console.log('User found in main database as fallback');
-          
-          // Store school info and user in the request
-          req.school = school;
-          req.user = mainUser;
-          
-          // Check if user account is active
-          if (mainUser.active === false) {
-            res.status(403);
-            throw new Error('Account is disabled. Please contact administrator');
-          }
-          
-          next();
-          return;
-        } else {
-          console.error('User not found in any database');
-          res.status(401);
-          throw new Error('User not found in any database');
-        }
-      } catch (finalError) {
-        console.error(`Critical database error: ${finalError.message}`);
-        res.status(500);
-        throw new Error('Database connection failed. Please try again later.');
+      if (!school.active) {
+        console.error(`School ${school.name} is inactive`);
+        res.status(403);
+        throw new Error('School account is inactive');
       }
+      
+      // Set school context in request object for downstream middleware and controllers
+      req.schoolId = schoolId;
+      req.schoolName = school.name;
+      
+      // Enhance user object with school information
+      user.schoolId = schoolId; // Ensure the field is set
+      user.schoolName = school.name;
+      user.schoolDetails = school;
+      
+      // Check if user account is active
+      if (user.active === false) {
+        console.warn(`User account is disabled: ${user.email}`);
+        res.status(403);
+        throw new Error('Your account has been disabled. Please contact administrator');
+      }
+      
+      // Set the enhanced user in the request
+      req.user = user;
+      console.log(`Multi-tenant auth successful: User ${user.name} (${user.role}) in school ${school.name}`);
+      next();
     } catch (error) {
-      console.error('JWT Error:', error.message);
+      console.error('Auth Error:', error.message);
       
       if (error.name === 'JsonWebTokenError') {
         res.status(401);

@@ -1542,7 +1542,6 @@ const deleteUser = asyncHandler(async (req, res) => {
     console.log(`User with ID ${req.params.id} not found in any database`);
     return res.status(404).json({ message: 'User not found in any database' });
   }
-});
 
 // Generate JWT
 // Generate main access token (short-lived)
@@ -2399,4 +2398,3 @@ module.exports = {
   getStudentsBySubject,
   getUsersByRole,
 };
-
