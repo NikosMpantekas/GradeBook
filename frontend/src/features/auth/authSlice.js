@@ -211,7 +211,34 @@ export const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.user = action.payload;
+        
+        // Special handling for superadmin users to ensure all required fields exist
+        if (action.payload?.role === 'superadmin') {
+          console.log('Processing superadmin login response');
+          
+          // Ensure all required fields are present for superadmin
+          const superadminUser = {
+            ...action.payload,
+            // Ensure these fields exist with default values if not present
+            school: action.payload.school || null,
+            schoolId: action.payload.schoolId || null,
+            schoolName: action.payload.schoolName || null,
+            schools: action.payload.schools || [],
+            directions: action.payload.directions || [],
+            subjects: action.payload.subjects || [],
+            darkMode: action.payload.darkMode || false
+          };
+          
+          state.user = superadminUser;
+          console.log('Superadmin user processed successfully:', {
+            id: superadminUser._id,
+            role: superadminUser.role,
+            hasToken: !!superadminUser.token
+          });
+        } else {
+          // Normal handling for non-superadmin users
+          state.user = action.payload;
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;

@@ -61,7 +61,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (user && user.role === 'superadmin') {
       console.log('Superadmin detected, redirecting to superadmin dashboard');
-      navigate('/app/superadmin');
+      navigate('/superadmin/dashboard');
     }
   }, [user, navigate]);
 
