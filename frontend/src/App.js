@@ -6,6 +6,9 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useSelector, useDispatch } from 'react-redux';
 
+// CRITICAL FIX: Import error handling system
+import { initGlobalErrorHandlers, trackError } from './utils/errorHandler';
+
 // Layout Components
 import Layout from './components/layout/Layout';
 import PrivateRoute from './components/PrivateRoute';
@@ -34,7 +37,8 @@ import GradeDetail from './pages/student/GradeDetail';
 // Teacher Pages
 import TeacherGrades from './pages/teacher/TeacherGrades';
 import ManageGrades from './pages/teacher/ManageGrades';
-import CreateGrade from './pages/teacher/CreateGrade';
+// CRITICAL FIX: Use error-wrapped version of CreateGrade to help diagnose the TypeError
+import CreateGradeErrorWrapper from './pages/teacher/CreateGradeErrorWrapper';
 import TeacherNotifications from './pages/teacher/TeacherNotifications';
 import CreateNotification from './pages/teacher/CreateNotification';
 
@@ -101,17 +105,25 @@ function App() {
     }
   }, [user, isLoading, darkMode]);
 
-  // Initialize app configuration safely
+  // Initialize app configuration and error handlers safely
   useEffect(() => {
     try {
-      console.log('Initializing app configuration (v' + APP_VERSION + ')');
+      // First, initialize the global error handlers
+      console.log('[App] Initializing global error handlers (v' + APP_VERSION + ')');
+      initGlobalErrorHandlers();
+      
+      // Then initialize app configuration
+      console.log('[App] Initializing app configuration');
       const initResult = initAppConfig();
       setConfigInitialized(initResult);
+      
       if (!initResult) {
-        console.error('Failed to initialize app configuration');
+        console.error('[App] Failed to initialize app configuration');
+        trackError(new Error('App configuration initialization failed'), 'App');
       }
     } catch (error) {
-      console.error('Error during app configuration initialization:', error);
+      console.error('[App] Error during initialization:', error);
+      trackError(error, 'App.initialization');
       setConfigInitialized(false);
     }
   }, []);
@@ -318,7 +330,7 @@ function App() {
             } />
             <Route path="/app/teacher/grades/create" element={
               <TeacherRoute>
-                <CreateGrade />
+                <CreateGradeErrorWrapper />
               </TeacherRoute>
             } />
             <Route path="/app/teacher/notifications" element={
