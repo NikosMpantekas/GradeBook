@@ -13,12 +13,15 @@ const userSchema = mongoose.Schema(
       // Remove global uniqueness as users can have the same email in different schools
       // uniqueness will be enforced per school with a compound index
     },
-    // Added for multi-tenancy - required field for all documents
+    // Added for multi-tenancy - required field for regular users but not for superadmins
     // This is the primary school association for the user in the single-database model
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'School',
-      required: true,
+      required: function() {
+        // Not required for superadmin users, required for all others
+        return this.role !== 'superadmin';
+      },
       index: true, // Index for performance
     },
     // Mobile phone for contact purposes

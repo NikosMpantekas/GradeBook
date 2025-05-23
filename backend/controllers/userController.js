@@ -163,9 +163,15 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new Error('Invalid credentials');
       }
     
-      // Update login timestamp
-      isSuperAdmin.lastLogin = Date.now();
-      await isSuperAdmin.save();
+      // Update login timestamp and refresh token without triggering validation
+      // Use updateOne instead of save to bypass validation that might require schoolId
+      await User.updateOne(
+        { _id: isSuperAdmin._id },
+        { 
+          lastLogin: Date.now(),
+          saveCredentials: req.body.saveCredentials || false
+        }
+      );
       
       // Generate access token and refresh token for superadmin
       const accessToken = generateToken(isSuperAdmin._id);
@@ -179,9 +185,13 @@ const loginUser = asyncHandler(async (req, res) => {
         refreshTokenLength: userRefreshToken?.length
       });
 
-      // Save refresh token to user document
-      isSuperAdmin.refreshToken = userRefreshToken;
-      await isSuperAdmin.save();
+      // Save refresh token also using updateOne to bypass validation
+      await User.updateOne(
+        { _id: isSuperAdmin._id },
+        { refreshToken: userRefreshToken }
+      );
+      
+      logger.info('AUTH', 'Superadmin data updated successfully');
 
       // Prepare response object with detailed logging
       const responseObj = {
