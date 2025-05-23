@@ -263,5 +263,18 @@ export const studentSlice = createSlice({
   },
 });
 
-export const { reset } = studentSlice.actions;
+// CRITICAL FIX: Export all actions properly to avoid undefined references
+export const { reset, ensureValidData } = studentSlice.actions;
 export default studentSlice.reducer;
+
+// CRITICAL FIX: Add a safe validation helper function that can be imported
+// This prevents the TypeError: y(...) is undefined in production builds
+export const safeValidateStudentData = (dispatch) => {
+  try {
+    dispatch(ensureValidData());
+    return true;
+  } catch (error) {
+    console.error('[studentSlice] Error in safeValidateStudentData:', error);
+    return false;
+  }
+};

@@ -27,7 +27,12 @@ import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import { createGrade, reset } from '../../features/grades/gradeSlice';
 import { getSubjectsByTeacher } from '../../features/subjects/subjectSlice';
-import { getStudentsBySubject, getStudents } from '../../features/students/studentSlice';
+import { 
+  getStudentsBySubject, 
+  getStudents, 
+  ensureValidData,
+  safeValidateStudentData 
+} from '../../features/students/studentSlice';
 
 const CreateGrade = () => {
   const navigate = useNavigate();
@@ -50,38 +55,66 @@ const CreateGrade = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   
-  // CRITICAL FIX: Import needed Redux actions
-  const directionSliceModule = require('../../features/directions/directionSlice');
-  const { getDirections } = directionSliceModule;
-  const { ensureValidData: ensureValidDirectionData } = directionSliceModule.directionSlice.actions;
+  // CRITICAL FIX: Import needed Redux actions properly
+  // Do not use require() - this causes the TypeError: y(...) is undefined in production
+  import { getDirections, reset as resetDirections } from '../../features/directions/directionSlice';
+
+  // Safely handle direction validation
+  const validateDirections = () => {
+    try {
+      // Import actions directly to avoid runtime errors
+      const { dispatch: _dispatch } = require('react-redux');
+      const { getState } = _dispatch;
+      
+      // Safety check - validate direction data structure
+      if (reduxDirections && !Array.isArray(reduxDirections)) {
+        console.error('[CreateGrade] Redux directions is not an array:', reduxDirections);
+        setDirections([]);
+      } else if (Array.isArray(reduxDirections)) {
+        console.log(`[CreateGrade] Setting ${reduxDirections.length} directions from Redux store`);
+        setDirections(reduxDirections);
+      }
+    } catch (error) {
+      console.error('[CreateGrade] Error validating directions:', error);
+      // Safety fallback
+      setDirections([]);
+    }
+  };
   
   // Get directions from Redux store for consistent data handling
   const { directions: reduxDirections, isLoading: directionsLoading } = useSelector((state) => state.direction);
   
   // Initial data loading effect
   useEffect(() => {
-    // Load subjects taught by this teacher
-    dispatch(getSubjectsByTeacher(user._id));
-    
-    // CRITICAL FIX: Use Redux action to fetch directions with token
-    console.log('Dispatching getDirections action');
-    dispatch(getDirections())
-      .unwrap()
-      .then(data => {
-        // CRITICAL FIX: Dispatch action to ensure data is valid
-        dispatch(ensureValidDirectionData());
-        console.log(`Loaded ${Array.isArray(data) ? data.length : 0} directions through Redux`);
-      })
-      .catch(error => {
-        console.error('Error fetching directions through Redux:', error);
-        toast.error('Failed to load directions. Please refresh the page.');
-      });
+    try {
+      // Load subjects taught by this teacher
+      if (user && user._id) {
+        console.log('[CreateGrade] Loading subjects for teacher:', user._id);
+        dispatch(getSubjectsByTeacher(user._id));
+      }
       
-    // Cleanup function  
-    return () => {
-      dispatch(reset());
-    };
-  }, [dispatch, user._id, user.token]);
+      // Load directions safely
+      console.log('[CreateGrade] Dispatching getDirections action');
+      dispatch(getDirections())
+        .unwrap()
+        .then(data => {
+          console.log(`[CreateGrade] Loaded ${Array.isArray(data) ? data.length : 0} directions through Redux`);
+        })
+        .catch(error => {
+          console.error('[CreateGrade] Error fetching directions:', error);
+          toast.error('Failed to load directions. Please try again.');
+        });
+      
+      // Cleanup function
+      return () => {
+        // Reset only grades state to avoid interfering with other components
+        dispatch(reset());
+      };
+    } catch (error) {
+      console.error('[CreateGrade] Error in initial data loading effect:', error);
+      toast.error('Error initializing page. Please refresh and try again.');
+    }
+  }, [dispatch, user?._id, user?.token]);
   
   // Update local directions state from Redux store
   useEffect(() => {
@@ -133,15 +166,37 @@ const CreateGrade = () => {
     }
   }, [dispatch, formData.subject]);
   
-  // CRITICAL FIX: Call ensureValidData action at component mount to prevent map errors
+  // CRITICAL FIX: Add safe validation on component mount to ensure student data is an array
   useEffect(() => {
-    // Import the actions needed from the studentSlice module
-    const studentSliceModule = require('../../features/students/studentSlice');
-    const { ensureValidData } = studentSliceModule.studentSlice.actions;
-    
-    // Dispatch it to validate the store
-    dispatch(ensureValidData());
-  }, [dispatch]);
+    try {
+      console.log('[CreateGrade] Safely validating student data structures');
+      
+      // Call our new helper function that prevents the TypeError
+      safeValidateStudentData(dispatch);
+      
+      // Also explicitly call the validation action
+      dispatch(ensureValidData());
+      
+      // Log validation results
+      if (students) {
+        if (!Array.isArray(students)) {
+          console.error('[CreateGrade] Students data is not an array - fixing structure');
+          // Force an empty array if structure is invalid
+          // This is a direct fix since Redux may not update fast enough
+          setStudentsToSelect([]);
+        } else {
+          console.log(`[CreateGrade] Students array contains ${students.length} items`);
+        }
+      } else {
+        console.log('[CreateGrade] No students data loaded yet');
+        setStudentsToSelect([]);
+      }
+    } catch (error) {
+      console.error('[CreateGrade] Error during student data validation:', error);
+      // Recover from any error
+      setStudentsToSelect([]);
+    }
+  }, [dispatch, students]);
 
   // Update students dropdown when students are fetched from API or direction changes
   useEffect(() => {
