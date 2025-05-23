@@ -515,11 +515,17 @@ const CreateGrade = () => {
                   <MenuItem value="">
                     <em>All Directions</em>
                   </MenuItem>
-                  {directions.map((direction) => (
-                    <MenuItem key={direction._id} value={direction._id}>
-                      {direction.name}
+                  {Array.isArray(directions) && directions.length > 0 ? (
+                    directions.map((direction) => (
+                      <MenuItem key={direction._id} value={direction._id}>
+                        {direction.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      <em>No directions available</em>
                     </MenuItem>
-                  ))}
+                  )}
                 </Select>
                 <FormHelperText>
                   Filter students by their academic direction
@@ -549,7 +555,7 @@ const CreateGrade = () => {
                         Loading subjects...
                       </Box>
                     </MenuItem>
-                  ) : subjects && subjects.length > 0 ? (
+                  ) : Array.isArray(subjects) && subjects.length > 0 ? (
                     subjects.map((subject) => (
                       <MenuItem key={subject._id} value={subject._id}>
                         {subject.name}
@@ -564,7 +570,7 @@ const CreateGrade = () => {
                 <FormHelperText>
                   {formErrors.subject || 
                    (subjectsLoading ? 'Loading subjects...' : 
-                    !subjects || subjects.length === 0 ? 'No subjects assigned to you' :
+                    !Array.isArray(subjects) || subjects.length === 0 ? 'No subjects assigned to you' :
                     'Select the subject for this grade')}
                 </FormHelperText>
               </FormControl>

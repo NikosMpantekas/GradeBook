@@ -15,18 +15,53 @@ const createSubject = async (subjectData, token) => {
   return response.data;
 };
 
-// Get all subjects
-const getSubjects = async () => {
-  const response = await axios.get(API_URL);
-
-  return response.data;
+// Get all subjects with proper authentication and error handling
+const getSubjects = async (token) => {
+  try {
+    // CRITICAL FIX: Always include authentication token
+    const config = token ? {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    } : {};
+    
+    const response = await axios.get(API_URL, config);
+    
+    // CRITICAL FIX: Validate response data
+    if (!response.data) {
+      console.error('Subject API returned no data');
+      return [];
+    }
+    
+    if (!Array.isArray(response.data)) {
+      console.error('Subject API returned non-array data:', typeof response.data);
+      return [];
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching subjects:', error.message);
+    // Return empty array to prevent UI errors
+    return [];
+  }
 };
 
-// Get subject by ID
-const getSubject = async (subjectId) => {
-  const response = await axios.get(API_URL + subjectId);
-
-  return response.data;
+// Get subject by ID with proper authentication and error handling
+const getSubject = async (subjectId, token) => {
+  try {
+    // CRITICAL FIX: Always include authentication token
+    const config = token ? {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    } : {};
+    
+    const response = await axios.get(API_URL + subjectId, config);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching subject ${subjectId}:`, error.message);
+    return null;
+  }
 };
 
 // Get subjects by teacher ID

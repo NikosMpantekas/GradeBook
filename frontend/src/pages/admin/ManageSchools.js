@@ -77,13 +77,33 @@ const ManageSchools = () => {
   }, [schools, searchTerm, isError, message]);
   
   const applyFilters = () => {
+    // First filter out any cluster schools to prevent them from appearing in the list
+    const nonClusterSchools = schools.filter(school => {
+      // If the isClusterSchool flag is explicitly set to true, exclude it
+      if (school.isClusterSchool === true) {
+        return false;
+      }
+      
+      // IMPORTANT: If the school is used as the general cluster for school IDs, exclude it
+      // These schools won't have the isClusterSchool flag yet but shouldn't be shown
+      // This is a temporary heuristic until all schools are properly flagged
+      const clusterNamePattern = /cluster|general|main|central|district/i;
+      if (clusterNamePattern.test(school.name)) {
+        console.log(`Filtering out potential cluster school: ${school.name}`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    // Then apply the search filter to the non-cluster schools
     if (searchTerm.trim() === '') {
-      setFilteredSchools(schools);
+      setFilteredSchools(nonClusterSchools);
     } else {
-      const filtered = schools.filter(school => 
+      const filtered = nonClusterSchools.filter(school => 
         school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         school.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        school.phone.includes(searchTerm)
+        (school.phone && school.phone.includes(searchTerm))
       );
       setFilteredSchools(filtered);
     }

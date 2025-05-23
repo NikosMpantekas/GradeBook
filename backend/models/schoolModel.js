@@ -46,6 +46,11 @@ const schoolSchema = mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Flag to identify if this is a cluster school (parent school that annexes belong to)
+    isClusterSchool: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

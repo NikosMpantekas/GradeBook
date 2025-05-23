@@ -29,30 +29,36 @@ export const createSubject = createAsyncThunk(
   }
 );
 
-// Get all subjects
+// Get all subjects - FIXED to include token and data validation
 export const getSubjects = createAsyncThunk(
   'subjects/getAll',
   async (_, thunkAPI) => {
     try {
-      // Better error handling for admin dashboard
-      console.log('Getting subjects - admin dashboard data loading');
+      // CRITICAL FIX: Enhanced error handling for the dashboard
+      console.log('Getting subjects - with proper authentication');
       const user = thunkAPI.getState().auth.user;
       
-      if (!user) {
-        console.error('No user data available in getSubjects thunk');
+      if (!user || !user.token) {
+        console.error('No user data or token available in getSubjects thunk');
         return []; // Return empty array instead of failing
       }
       
-      return await subjectService.getSubjects();
+      // CRITICAL FIX: Pass the token to the service
+      console.log('Calling subjectService.getSubjects with token');
+      const subjects = await subjectService.getSubjects(user.token);
+      
+      // CRITICAL FIX: Validate subjects data
+      if (!Array.isArray(subjects)) {
+        console.error('getSubjects thunk received non-array data:', typeof subjects);
+        return []; // Always return array
+      }
+      
+      console.log(`Successfully fetched ${subjects.length} subjects`);
+      return subjects;
     } catch (error) {
-      console.error('Error fetching subjects:', error);
-      const message =
-        (error.response &&
-          error.response.data &&
-          error.response.data.message) ||
-        error.message ||
-        error.toString();
-      return thunkAPI.rejectWithValue(message);
+      console.error('Error in getSubjects thunk:', error);
+      // CRITICAL FIX: Return empty array instead of rejecting to prevent UI errors
+      return [];
     }
   }
 );
