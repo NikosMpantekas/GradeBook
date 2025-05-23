@@ -135,8 +135,10 @@ const CreateGrade = () => {
   
   // CRITICAL FIX: Call ensureValidData action at component mount to prevent map errors
   useEffect(() => {
-    // Import the action
-    const { ensureValidData } = studentSlice.actions;
+    // Import the actions needed from the studentSlice module
+    const studentSliceModule = require('../../features/students/studentSlice');
+    const { ensureValidData } = studentSliceModule.studentSlice.actions;
+    
     // Dispatch it to validate the store
     dispatch(ensureValidData());
   }, [dispatch]);
