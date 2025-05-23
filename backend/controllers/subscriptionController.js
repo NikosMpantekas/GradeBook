@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const Subscription = require('../models/subscriptionModel');
+const logger = require('../utils/logger');
 
 // @desc    Register a push notification subscription
 // @route   POST /api/subscriptions
@@ -7,11 +8,22 @@ const Subscription = require('../models/subscriptionModel');
 const registerSubscription = asyncHandler(async (req, res) => {
   const { endpoint, expirationTime, keys } = req.body;
 
+  logger.info('SUBSCRIPTION', 'Registration attempt', {
+    userId: req.user._id,
+    userRole: req.user.role,
+    endpoint: endpoint?.substring(0, 30) + '...' // Log partial endpoint for privacy
+  });
+
   if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
+    logger.warn('SUBSCRIPTION', 'Invalid subscription data', { userId: req.user._id });
     res.status(400);
     throw new Error('Invalid subscription data');
   }
 
+  // Check if the user is a superadmin - special handling needed
+  const isSuperadmin = req.user.role === 'superadmin';
+  logger.info('SUBSCRIPTION', `Processing ${isSuperadmin ? 'superadmin' : 'regular user'} subscription`);
+  
   // Check if subscription already exists
   let subscription = await Subscription.findOne({
     user: req.user.id,
@@ -19,16 +31,37 @@ const registerSubscription = asyncHandler(async (req, res) => {
   });
 
   if (subscription) {
+    logger.info('SUBSCRIPTION', 'Updating existing subscription', {
+      subscriptionId: subscription._id,
+      userId: req.user._id
+    });
+    
     // Update existing subscription
     subscription.expirationTime = expirationTime;
     subscription.keys.p256dh = keys.p256dh;
     subscription.keys.auth = keys.auth;
-
-    await subscription.save();
+    
+    // Make sure isSuperadmin flag is set correctly
+    subscription.isSuperadmin = isSuperadmin;
+    
+    // Use updateOne to bypass validation issues
+    await Subscription.updateOne(
+      { _id: subscription._id },
+      {
+        expirationTime,
+        'keys.p256dh': keys.p256dh,
+        'keys.auth': keys.auth,
+        isSuperadmin
+      }
+    );
+    
+    logger.info('SUBSCRIPTION', 'Subscription updated successfully');
     res.status(200).json({ message: 'Subscription updated' });
   } else {
-    // Create new subscription
-    subscription = await Subscription.create({
+    logger.info('SUBSCRIPTION', 'Creating new subscription', { userId: req.user._id });
+    
+    // Prepare subscription data
+    const subscriptionData = {
       user: req.user.id,
       endpoint,
       expirationTime,
@@ -36,13 +69,35 @@ const registerSubscription = asyncHandler(async (req, res) => {
         p256dh: keys.p256dh,
         auth: keys.auth,
       },
-    });
-
-    if (subscription) {
+      isSuperadmin // Set flag for superadmin users
+    };
+    
+    // Only set schoolId for non-superadmin users
+    if (!isSuperadmin && req.user.schoolId) {
+      subscriptionData.schoolId = req.user.schoolId;
+    }
+    
+    try {
+      // Create new subscription
+      subscription = await Subscription.create(subscriptionData);
+      
+      logger.info('SUBSCRIPTION', 'New subscription created successfully', {
+        subscriptionId: subscription._id,
+        userId: req.user._id
+      });
+      
       res.status(201).json({ message: 'Subscription saved' });
-    } else {
+    } catch (error) {
+      logger.error('SUBSCRIPTION', 'Failed to create subscription', {
+        error: error.message,
+        stack: error.stack,
+        userData: {
+          id: req.user._id,
+          role: req.user.role
+        }
+      });
       res.status(400);
-      throw new Error('Invalid subscription data');
+      throw new Error(`Failed to save subscription: ${error.message}`);
     }
   }
 });

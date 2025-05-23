@@ -7,12 +7,20 @@ const subscriptionSchema = mongoose.Schema(
       ref: 'User',
       required: true,
     },
-    // Added for multi-tenancy - required field for all documents
+    // Added for multi-tenancy - conditionally required based on user role
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'School',
-      required: true,
+      required: function() {
+        // If this is related to a superadmin user, don't require schoolId
+        return this.isSuperadmin !== true;
+      },
       index: true, // Index for performance
+    },
+    // Flag to indicate if this subscription belongs to a superadmin
+    isSuperadmin: {
+      type: Boolean,
+      default: false
     },
     endpoint: {
       type: String,

@@ -175,8 +175,10 @@ app.use('/api/grades', setSchoolContext, require('./routes/gradeRoutes')); // En
 app.use('/api/notifications', setSchoolContext, require('./routes/notificationRoutes')); // Enforce schoolId on all notification requests
 app.use('/api/subjects', setSchoolContext, require('./routes/subjectRoutes')); // Enforce schoolId on all subject requests
 app.use('/api/directions', setSchoolContext, require('./routes/directionRoutes')); // Enforce schoolId on all direction requests
-app.use('/api/subscriptions', setSchoolContext, require('./routes/subscriptionRoutes')); // Enforce schoolId on all subscription requests
 app.use('/api/contact', setSchoolContext, require('./routes/contactRoutes')); // Enforce schoolId on all contact requests
+
+// Subscription routes need special handling to allow superadmin subscriptions without schoolId
+app.use('/api/subscriptions', require('./routes/subscriptionRoutes')); // No schoolId middleware for better superadmin compatibility
 
 // Routes that may access multiple schools or don't require schoolId filtering
 app.use('/api/schools', require('./routes/schoolRoutes')); // School routes have special handling
