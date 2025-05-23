@@ -117,8 +117,22 @@ const setSchoolContext = asyncHandler(async (req, res, next) => {
 
   // Verify that the school exists and is active
   try {
-    logger.debug('MIDDLEWARE', 'Verifying school exists', { schoolId });
-    const school = await School.findById(schoolId);
+    // Convert string to ObjectId if needed
+    let schoolIdObj = schoolId;
+    if (typeof schoolId === 'string') {
+      try {
+        // CRITICAL FIX: Must use 'new' with the ObjectId constructor
+        schoolIdObj = new mongoose.Types.ObjectId(schoolId);
+        logger.debug('MIDDLEWARE', 'Converted string schoolId to ObjectId', { original: schoolId });
+      } catch (error) {
+        logger.error('MIDDLEWARE', `Invalid schoolId format: ${schoolId}`, { error: error.message });
+        res.status(400);
+        throw new Error('Invalid school ID format');
+      }
+    }
+    
+    logger.debug('MIDDLEWARE', 'Verifying school exists', { schoolId: schoolIdObj });
+    const school = await School.findById(schoolIdObj);
     
     if (!school) {
       logger.error('MIDDLEWARE', `School not found with ID: ${schoolId}`, {
@@ -167,7 +181,7 @@ const setSchoolContext = asyncHandler(async (req, res, next) => {
  * Force adds schoolId filter to database query
  * Use this in controllers to ensure data isolation
  * @param {Object} query - Mongoose query object or filter object
- * @param {String} schoolId - The schoolId to filter by
+ * @param {String|ObjectId} schoolId - The schoolId to filter by
  * @returns {Object} Modified query with schoolId filter
  */
 const enforceSchoolFilter = (query, schoolId) => {
@@ -175,14 +189,25 @@ const enforceSchoolFilter = (query, schoolId) => {
     throw new Error('SchoolId is required for data isolation');
   }
   
+  // CRITICAL FIX: Convert string to ObjectId if needed
+  let schoolIdObj = schoolId;
+  if (typeof schoolId === 'string') {
+    try {
+      schoolIdObj = new mongoose.Types.ObjectId(schoolId);
+    } catch (error) {
+      // Log error but continue with original value
+      console.error(`Warning: Invalid schoolId format in enforceSchoolFilter: ${schoolId}`);
+    }
+  }
+  
   // For simple object filters, add schoolId
   if (typeof query === 'object' && !query.schoolId) {
-    return { ...query, schoolId };
+    return { ...query, schoolId: schoolIdObj };
   }
   
   // For Mongoose Query objects
   if (query instanceof mongoose.Query && !query._conditions.schoolId) {
-    query._conditions.schoolId = schoolId;
+    query._conditions.schoolId = schoolIdObj;
   }
   
   return query;

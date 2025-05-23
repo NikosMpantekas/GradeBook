@@ -197,14 +197,15 @@ const protect = asyncHandler(async (req, res, next) => {
       // If we have a schoolId, verify the school exists and is active
       if (schoolId) {
         // Convert string to ObjectId if needed
-        try {
-          if (typeof schoolId === 'string') {
-            schoolId = mongoose.Types.ObjectId(schoolId);
+        if (typeof schoolId === 'string') {
+          try {
+            // CRITICAL FIX: Must use 'new' with the ObjectId constructor
+            schoolId = new mongoose.Types.ObjectId(schoolId);
+          } catch (error) {
+            logger.error('AUTH', `Invalid schoolId format: ${schoolId}`, { error: error.message });
+            res.status(400);
+            throw new Error('Invalid school ID format');
           }
-        } catch (error) {
-          logger.error('AUTH', `Invalid schoolId format: ${schoolId}`, { error: error.message });
-          res.status(400);
-          throw new Error('Invalid school ID format');
         }
         
         const school = await School.findById(schoolId);
