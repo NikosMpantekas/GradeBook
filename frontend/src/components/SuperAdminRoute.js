@@ -26,12 +26,6 @@ const SuperAdminRoute = ({ children }) => {
     console.log(`Access denied: User is not a superadmin (role: ${user.role})`);
     return <Navigate to="/app/dashboard" />;
   }
-  
-  // Verify the user has the necessary properties
-  if (!user._id || !user.name || !user.email) {
-    console.error('Superadmin user object is missing required properties:', user);
-    // Still allow access since role check passed, but log the error
-  }
 
   console.log('SuperAdmin access granted for:', user.name);
   

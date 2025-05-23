@@ -217,6 +217,7 @@ export const authSlice = createSlice({
           console.log('Processing superadmin login response');
           
           // Ensure all required fields are present for superadmin
+          // This is CRITICAL to prevent white screens and routing issues
           const superadminUser = {
             ...action.payload,
             // Ensure these fields exist with default values if not present
@@ -226,7 +227,11 @@ export const authSlice = createSlice({
             schools: action.payload.schools || [],
             directions: action.payload.directions || [],
             subjects: action.payload.subjects || [],
-            darkMode: action.payload.darkMode || false
+            darkMode: action.payload.darkMode || false,
+            // Ensure these critical fields have fallback values
+            _id: action.payload._id || action.payload.id, // Handle possible field name differences
+            name: action.payload.name || 'Superadmin',
+            email: action.payload.email || 'admin@system.com'
           };
           
           state.user = superadminUser;

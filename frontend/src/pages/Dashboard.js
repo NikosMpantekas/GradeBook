@@ -60,8 +60,11 @@ const Dashboard = () => {
   // Add immediate redirect for superadmin users
   useEffect(() => {
     if (user && user.role === 'superadmin') {
-      console.log('Superadmin detected, redirecting to superadmin dashboard');
-      navigate('/superadmin/dashboard');
+      console.log('Superadmin detected in Dashboard component, redirecting to superadmin dashboard');
+      // Add a check to prevent infinite redirect loops
+      if (window.location.pathname !== '/superadmin/dashboard') {
+        navigate('/superadmin/dashboard', { replace: true });
+      }
     }
   }, [user, navigate]);
 

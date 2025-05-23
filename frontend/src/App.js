@@ -174,9 +174,11 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/diagnostics" element={<DiagnosticPage />} />
           
-          {/* Default root route - redirects to app dashboard if logged in, otherwise to login */}
+          {/* Default root route - redirects based on user role */}
           <Route path="/" element={
-            user ? <Navigate to="/app/dashboard" replace /> : <Navigate to="/login" replace />
+            !user ? <Navigate to="/login" replace /> :
+            user.role === 'superadmin' ? <Navigate to="/superadmin/dashboard" replace /> :
+            <Navigate to="/app/dashboard" replace />
           } />
           
           {/* Simple direct Dashboard route - using standalone component designed to work without Layout */}
