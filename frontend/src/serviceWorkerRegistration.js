@@ -1,6 +1,17 @@
 // This optional code is used to register a service worker.
-// Import the app version from the central config file
+// Import the app version from the central config file - but ONLY the version number
+// This prevents any execution of module-level code that might cause errors
 import { APP_VERSION } from './config/appConfig';
+
+// Safely access the APP_VERSION with error handling
+const getAppVersion = () => {
+  try {
+    return APP_VERSION || '1.0.0';
+  } catch (error) {
+    console.error('Error accessing APP_VERSION:', error);
+    return '1.0.0'; // Fallback version if there's an error
+  }
+};
 
 // register() is not called by default.
 
@@ -55,12 +66,13 @@ export function register(config) {
               'worker. To learn more, visit https://cra.link/PWA'
           );
           
-          // Send the APP_VERSION to the service worker
+          // Send the APP_VERSION to the service worker - safely
           if (registration.active) {
-            console.log('Sending app version to service worker:', APP_VERSION);
+            const safeVersion = getAppVersion();
+            console.log('Sending app version to service worker:', safeVersion);
             registration.active.postMessage({
               type: 'APP_VERSION',
-              version: APP_VERSION
+              version: safeVersion
             });
           }
         });
@@ -72,11 +84,16 @@ export function register(config) {
       // For both localhost and production, send the APP_VERSION when the worker is ready
       navigator.serviceWorker.ready.then((registration) => {
         if (registration.active) {
-          console.log('Sending app version to service worker:', APP_VERSION);
-          registration.active.postMessage({
-            type: 'APP_VERSION',
-            version: APP_VERSION
-          });
+          try {
+            const safeVersion = getAppVersion();
+            console.log('Sending app version to service worker:', safeVersion);
+            registration.active.postMessage({
+              type: 'APP_VERSION',
+              version: safeVersion
+            });
+          } catch (error) {
+            console.error('Error sending version to service worker:', error);
+          }
         }
       });
     });
@@ -334,6 +351,22 @@ function checkValidServiceWorker(swUrl, config) {
         navigator.serviceWorker.ready.then((registration) => {
           registration.unregister().then(() => {
             window.location.reload();
+            // If you want your app to work offline and load faster, you can change
+            // unregister() to register() below. Note this comes with some pitfalls.
+            // Learn more about service workers: https://cra.link/PWA
+            serviceWorker.register(swUrl)
+              .then(registration => {
+                console.log('ServiceWorker registration successful.');
+                // Log the current app version for debugging
+                try {
+                  console.log(`App version from registration: ${getAppVersion()}`);
+                } catch (error) {
+                  console.error('Error logging app version:', error);
+                }
+              })
+              .catch(error => {
+                console.error('ServiceWorker registration failed:', error);
+              });
           });
         });
       } else {

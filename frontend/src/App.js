@@ -59,6 +59,7 @@ import { setupPushNotifications } from './services/pushNotificationService';
 import setupAxios from './app/setupAxios';
 import logger from './services/loggerService';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { APP_VERSION, initAppConfig } from './config/appConfig';
 
 // Custom components
 import HomeScreenPrompt from './components/HomeScreenPrompt';
@@ -69,6 +70,7 @@ function App() {
   const { user, isLoading } = useSelector((state) => state.auth);
   const { darkMode } = useSelector((state) => state.ui);
   const [routingError, setRoutingError] = useState(null);
+  const [configInitialized, setConfigInitialized] = useState(false);
   
   // Log important application state on mount and auth changes
   useEffect(() => {
@@ -99,6 +101,21 @@ function App() {
     }
   }, [user, isLoading, darkMode]);
 
+  // Initialize app configuration safely
+  useEffect(() => {
+    try {
+      console.log('Initializing app configuration (v' + APP_VERSION + ')');
+      const initResult = initAppConfig();
+      setConfigInitialized(initResult);
+      if (!initResult) {
+        console.error('Failed to initialize app configuration');
+      }
+    } catch (error) {
+      console.error('Error during app configuration initialization:', error);
+      setConfigInitialized(false);
+    }
+  }, []);
+  
   // Initialize axios interceptors for token management
   useEffect(() => {
     console.log('Setting up global axios interceptors');

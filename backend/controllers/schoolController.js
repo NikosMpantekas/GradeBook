@@ -57,21 +57,26 @@ const getSchools = asyncHandler(async (req, res) => {
       // Superadmin can see all schools from the database
       console.log('Fetching all schools for superadmin');
       
-      // IMPORTANT: Apply filter to remove cluster/primary schools 
+      // CRITICAL: Apply PERMANENT FIXED FILTER to remove cluster/primary schools
       // This ensures primary schools used for database assignment don't appear in the school list
-      // Use $nor to exclude documents matching ANY of these conditions
+      // We use a strict multi-condition filter to guarantee cluster schools never appear
       const filter = { 
-        $nor: [
-          // Exclude schools explicitly marked as cluster schools
-          { isClusterSchool: true },
-          // Exclude schools with cluster-related names (for legacy data)
-          { name: { $regex: /primary|cluster|general|main|district/i } }
+        $and: [
+          // First, explicitly filter out by isClusterSchool flag
+          { $or: [
+              { isClusterSchool: { $exists: false } }, // If flag doesn't exist
+              { isClusterSchool: { $ne: true } }       // Or if flag is not true
+          ]},
+          // Second, filter out by name patterns (absolute block for clusters)
+          { name: { $not: { $regex: /primary|cluster|general|main|central|district|organization/i } } },
+          // Third, filter out any name shorter than 5 chars (likely an acronym for a district)
+          { $expr: { $gt: [{ $strLenCP: "$name" }, 4] } }
         ]
       };
       
-      console.log('Applying cluster school filter:', JSON.stringify(filter));
+      console.log('FIXED: Applying strict cluster school filter:', JSON.stringify(filter));
       schools = await School.find(filter);
-      console.log(`After filtering, returning ${schools.length} non-cluster schools`);
+      console.log(`FIXED: After filtering, returning ${schools.length} genuine schools (no clusters)`);
     } 
     // Check if this is a school-specific user
     else if (req.school) {

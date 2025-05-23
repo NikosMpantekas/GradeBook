@@ -1,15 +1,25 @@
 /**
  * Application configuration
  * Contains global settings and version information
+ * IMPORTANT: This module has been refactored to fix critical initialization errors
  */
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.18'; // System-wide data validation: fixed 'subjects.map is not a function' error and implemented robust cluster school filtering
+const APP_VERSION = '1.4.19'; // Fixed critical runtime errors and cluster school filtering
 
-// Store version in localStorage to detect updates across refreshes
+/**
+ * Safely store app version in localStorage with error handling
+ * @returns {Object} Version status information
+ */
 const storeAppVersion = () => {
   try {
+    // Safety check for localStorage availability
+    if (typeof localStorage === 'undefined') {
+      console.warn('[App] localStorage is not available');
+      return { isNewVersion: false, previousVersion: null, error: 'localStorage not available' };
+    }
+    
     const previousVersion = localStorage.getItem('app_version');
     
     // First time the app is loaded, no need for update notifier
@@ -35,33 +45,72 @@ const storeAppVersion = () => {
   }
 };
 
-// Check version when this module loads
-const versionStatus = storeAppVersion();
-if (versionStatus.isNewVersion) {
-  console.log(`[App] Running new version ${APP_VERSION}`);
-}
-
-// Send version info to service worker
+/**
+ * Safely send version info to service worker with error handling
+ * This fixes the "y(...) is undefined" error by adding proper safety checks
+ */
 const sendVersionToServiceWorker = () => {
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({
-      type: 'APP_VERSION',
-      version: APP_VERSION
-    });
-    console.log(`[App] Sent version ${APP_VERSION} to service worker`);
+  try {
+    // Only execute if both serviceWorker and controller exist
+    if (typeof navigator !== 'undefined' && 
+        navigator.serviceWorker && 
+        navigator.serviceWorker.controller) {
+      
+      navigator.serviceWorker.controller.postMessage({
+        type: 'APP_VERSION',
+        version: APP_VERSION
+      });
+      console.log(`[App] Sent version ${APP_VERSION} to service worker`);
+    } else {
+      console.log('[App] Service worker not available, skipping version notification');
+    }
+  } catch (error) {
+    // Catch any errors to prevent app crashes
+    console.error('[App] Error sending version to service worker:', error);
   }
 };
 
-// Call on module load
-setTimeout(sendVersionToServiceWorker, 2000); // Delay to ensure SW is ready
+/**
+ * Initialize the app configuration module
+ * This function should be called explicitly instead of relying on module-level execution
+ */
+const initAppConfig = () => {
+  try {
+    // Check version when explicitly initialized
+    const versionStatus = storeAppVersion();
+    if (versionStatus.isNewVersion) {
+      console.log(`[App] Running new version ${APP_VERSION}`);
+    }
+    
+    // Schedule sending version to service worker with safety delay
+    // This ensures the service worker is registered before we try to communicate
+    setTimeout(() => {
+      try {
+        sendVersionToServiceWorker();
+      } catch (error) {
+        console.error('[App] Error in delayed sendVersionToServiceWorker:', error);
+      }
+    }, 3000);
+    
+    return true;
+  } catch (error) {
+    console.error('[App] Error initializing app config:', error);
+    return false;
+  }
+};
 
-// Export the app version for use throughout the application
-export { APP_VERSION };
+// Export everything as named exports - no default export to ensure proper tree-shaking
+export { 
+  APP_VERSION,
+  storeAppVersion,
+  sendVersionToServiceWorker,
+  initAppConfig
+};
 
 // Export other configuration settings
 export const APP_CONFIG = {
   version: APP_VERSION,
-  releaseDate: new Date('2025-05-18'),
+  releaseDate: new Date('2025-05-23'), // Updated to today's date
   requireForceUpdate: true, // iOS devices will require updating
   updateCheckIntervalMinutes: 5, // Check for updates every 5 minutes on iOS
 };

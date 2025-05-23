@@ -10,24 +10,69 @@ const initialState = {
   message: '',
 };
 
-// Helper function to determine if a school is a cluster/primary school
+/**
+ * CRITICAL FIX: Definitive cluster school detection and filtering
+ * This is a comprehensive solution to ensure cluster schools never appear in the UI
+ * @param {Object} school - School object to check
+ * @returns {boolean} - True if this is a cluster school that should be filtered out
+ */
 const isClusterSchool = (school) => {
-  if (!school) return false;
-  
-  // Check explicit flag if available
-  if (school.isClusterSchool === true) return true;
-  
-  // Check name patterns for legacy data
-  const clusterPatterns = /primary|cluster|general|main|district/i;
-  if (school.name && clusterPatterns.test(school.name)) return true;
-  
-  return false;
+  try {
+    // Handle null/undefined schools
+    if (!school) return true; // Safety: filter out undefined schools
+    
+    // Multi-layer detection:
+    
+    // 1. Check explicit flag first (most reliable)
+    if (school.isClusterSchool === true) {
+      console.log(`Filtering cluster school by flag: ${school.name}`);
+      return true;
+    }
+    
+    // 2. Check name patterns for legacy data (comprehensive pattern matching)
+    const clusterPatterns = /primary|cluster|general|main|central|district|organization/i;
+    if (school.name && typeof school.name === 'string' && clusterPatterns.test(school.name)) {
+      console.log(`Filtering cluster school by name pattern: ${school.name}`);
+      return true;
+    }
+    
+    // 3. Check for very short names (likely acronyms for districts)
+    if (school.name && typeof school.name === 'string' && school.name.length < 5) {
+      console.log(`Filtering potential cluster by short name: ${school.name}`);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    // Safety: If any error occurs during detection, filter the school out
+    console.error('Error in cluster school detection, filtering out for safety:', error);
+    return true;
+  }
 };
 
-// Helper function to filter out cluster schools from arrays
+/**
+ * CRITICAL FIX: Safe filtering function with comprehensive error handling
+ * @param {Array} schools - Array of schools to filter
+ * @returns {Array} - Filtered schools with all cluster schools removed
+ */
 const filterOutClusterSchools = (schools) => {
-  if (!Array.isArray(schools)) return [];
-  return schools.filter(school => !isClusterSchool(school));
+  try {
+    // Validate input is an array
+    if (!Array.isArray(schools)) {
+      console.error('School data is not an array:', schools);
+      return [];
+    }
+    
+    // Apply robust filtering
+    const filteredSchools = schools.filter(school => !isClusterSchool(school));
+    console.log(`Filtered ${schools.length - filteredSchools.length} cluster schools from data`);
+    
+    return filteredSchools;
+  } catch (error) {
+    // Safety: If any error occurs during filtering, return empty array
+    console.error('Critical error in school filtering, returning empty array:', error);
+    return [];
+  }
 };
 
 // Create new school (admin only)

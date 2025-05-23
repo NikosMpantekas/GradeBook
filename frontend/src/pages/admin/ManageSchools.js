@@ -76,36 +76,86 @@ const ManageSchools = () => {
     }
   }, [schools, searchTerm, isError, message]);
   
-  const applyFilters = () => {
-    // First filter out any cluster schools to prevent them from appearing in the list
-    const nonClusterSchools = schools.filter(school => {
-      // If the isClusterSchool flag is explicitly set to true, exclude it
+  /**
+   * CRITICAL FIX: Definitive cluster school detection - UI-level filter
+   * Third and final layer of protection to ensure cluster schools never appear
+   */
+  const isClusterSchool = (school) => {
+    try {
+      // Handle null/undefined schools
+      if (!school) return true;
+      
+      // Multi-layer detection:
+      
+      // 1. Check explicit flag first (most reliable)
       if (school.isClusterSchool === true) {
-        return false;
+        console.log(`UI Filter: Excluding cluster school by flag: ${school.name}`);
+        return true;
       }
       
-      // IMPORTANT: If the school is used as the general cluster for school IDs, exclude it
-      // These schools won't have the isClusterSchool flag yet but shouldn't be shown
-      // This is a temporary heuristic until all schools are properly flagged
-      const clusterNamePattern = /cluster|general|main|central|district/i;
-      if (clusterNamePattern.test(school.name)) {
-        console.log(`Filtering out potential cluster school: ${school.name}`);
-        return false;
+      // 2. Check name patterns (comprehensive pattern matching)
+      const clusterPatterns = /primary|cluster|general|main|central|district|organization/i;
+      if (school.name && typeof school.name === 'string' && clusterPatterns.test(school.name)) {
+        console.log(`UI Filter: Excluding cluster school by name pattern: ${school.name}`);
+        return true;
       }
       
-      return true;
-    });
-    
-    // Then apply the search filter to the non-cluster schools
-    if (searchTerm.trim() === '') {
-      setFilteredSchools(nonClusterSchools);
-    } else {
-      const filtered = nonClusterSchools.filter(school => 
-        school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        school.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (school.phone && school.phone.includes(searchTerm))
-      );
-      setFilteredSchools(filtered);
+      // 3. Check for very short names (likely acronyms for districts)
+      if (school.name && typeof school.name === 'string' && school.name.length < 5) {
+        console.log(`UI Filter: Excluding potential cluster by short name: ${school.name}`);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('UI Filter: Error in cluster detection, excluding for safety:', error);
+      return true; // Safety: exclude on error
+    }
+  };
+  
+  // Apply all filters to schools data
+  const applyFilters = () => {
+    try {
+      // Safety check for schools array
+      if (!Array.isArray(schools)) {
+        console.error('UI Filter: Schools is not an array:', schools);
+        setFilteredSchools([]);
+        return;
+      }
+
+      // First apply cluster school filtering as a UI-level safeguard
+      const nonClusterSchools = schools.filter(school => !isClusterSchool(school));
+      
+      console.log(`UI Filter: Excluded ${schools.length - nonClusterSchools.length} cluster schools`);
+      
+      // Then apply the search filter to the non-cluster schools
+      if (searchTerm.trim() === '') {
+        setFilteredSchools(nonClusterSchools);
+      } else {
+        // Apply search with safety checks
+        const filtered = nonClusterSchools.filter(school => {
+          try {
+            const nameMatch = school.name && typeof school.name === 'string' ? 
+              school.name.toLowerCase().includes(searchTerm.toLowerCase()) : false;
+              
+            const addressMatch = school.address && typeof school.address === 'string' ? 
+              school.address.toLowerCase().includes(searchTerm.toLowerCase()) : false;
+              
+            const phoneMatch = school.phone && typeof school.phone === 'string' ? 
+              school.phone.includes(searchTerm) : false;
+              
+            return nameMatch || addressMatch || phoneMatch;
+          } catch (error) {
+            console.error('UI Filter: Error filtering school by search term:', error);
+            return false; // Safety: exclude on error
+          }
+        });
+        
+        setFilteredSchools(filtered);
+      }
+    } catch (error) {
+      console.error('UI Filter: Critical error in applyFilters, showing no schools:', error);
+      setFilteredSchools([]); // Safety: show no schools on error
     }
   };
   
