@@ -107,108 +107,38 @@ const createGrade = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const getAllGrades = asyncHandler(async (req, res) => {
   try {
-    // COMPLETELY REWRITTEN: Using the same multi-strategy approach
-    const mongoose = require('mongoose');
-    const jwt = require('jsonwebtoken');
+    // Apply filters
+    let filter = {};
     
-    // STEP 1: Extract token data safely
-    let tokenData = null;
-    if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      try {
-        const token = req.headers.authorization.split(' ')[1];
-        tokenData = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Successfully decoded JWT token for getting all grades');
-      } catch (err) {
-        console.log('Error decoding token:', err.message);
-      }
+    // Multi-tenancy: Filter by schoolId unless superadmin
+    if (req.user.role !== 'superadmin') {
+      filter.schoolId = req.user.schoolId;
     }
     
-    // STEP 2: Try to identify the school using multiple strategies
-    let school = null;
+    // Support query parameters for filtering
+    if (req.query.student) filter.student = req.query.student;
+    if (req.query.subject) filter.subject = req.query.subject;
+    if (req.query.teacher) filter.teacher = req.query.teacher;
     
-    // Strategy A: Check if school is already in request (from middleware)
-    if (req.school) {
-      school = req.school;
-      console.log(`Strategy A: Found school in request: ${school.name}`);
+    // Date range filtering
+    if (req.query.startDate || req.query.endDate) {
+      filter.date = {};
+      if (req.query.startDate) filter.date.$gte = new Date(req.query.startDate);
+      if (req.query.endDate) filter.date.$lte = new Date(req.query.endDate);
     }
     
-    // Strategy B: Check token for schoolId
-    if (!school && tokenData && tokenData.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(tokenData.schoolId);
-        if (school) {
-          console.log(`Strategy B: Found school from token schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by token schoolId:', err.message);
-      }
-    }
+    // Get all grades with the filter
+    const grades = await Grade.find(filter)
+      .populate('student', 'name email')
+      .populate('subject', 'name')
+      .populate('teacher', 'name')
+      .sort({ date: -1 });
     
-    // Strategy C: Check user object for schoolId
-    if (!school && req.user && req.user.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(req.user.schoolId);
-        if (school) {
-          console.log(`Strategy C: Found school from user.schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by user.schoolId:', err.message);
-      }
-    }
-    
-    // Strategy D: Check user email domain
-    if (!school && req.user && req.user.email && req.user.email.includes('@')) {
-      try {
-        const emailDomain = req.user.email.split('@')[1];
-        const School = mongoose.model('School');
-        school = await School.findOne({ emailDomain });
-        if (school) {
-          console.log(`Strategy D: Found school from email domain: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by email domain:', err.message);
-      }
-    }
-    
-    // STEP 3: Handle database access based on user type
-    let grades = [];
-    
-    if (school) {
-      console.log(`Fetching grades from school database: ${school.name}`);
-      
-      // Single-database architecture: Use schoolId filtering
-      console.log(`Fetching grades for school: ${school.name} (ID: ${school._id})`);
-      
-      // Fetch grades for the specified school using schoolId filter
-      grades = await Grade.find({ schoolId: school._id })
-        .populate('student', 'name email')
-        .populate('subject', 'name')
-        .populate('teacher', 'name email')
-        .sort({ date: -1 });
-      
-      console.log(`Found ${grades.length} grades in school database: ${school.name}`);
-    } else if (req.user && req.user.role === 'superadmin') {
-      // Only superadmins can access the main database
-      console.log('Superadmin accessing grades from main database');
-      grades = await Grade.find({})
-        .populate('student', 'name email')
-        .populate('subject', 'name')
-        .populate('teacher', 'name email')
-        .sort({ date: -1 });
-      
-      console.log(`Found ${grades.length} grades in main database`);
-    } else {
-      console.log('No school found and user is not superadmin');
-      return res.status(400).json({ message: 'No school found for this user' });
-    }
-    
-    return res.json(grades);
+    res.status(200).json(grades);
   } catch (error) {
-    console.error('Error getting grades:', error.message);
+    console.error('Error in getAllGrades controller:', error.message);
     res.status(500);
-    throw new Error(`Failed to retrieve grades: ${error.message}`);
+    throw new Error('Error retrieving grades');
   }
 });
 
@@ -220,486 +150,109 @@ const getStudentGrades = asyncHandler(async (req, res) => {
     // Students can only view their own grades, teachers and admins can view any student's grades
     if (req.user.role === 'student' && req.user.id !== req.params.id) {
       res.status(403);
-      throw new Error('Not authorized to view these grades');
+      throw new Error('Not authorized to view other students\' grades');
     }
     
-    // COMPLETELY REWRITTEN: Using the same multi-strategy approach
-    const mongoose = require('mongoose');
-    const jwt = require('jsonwebtoken');
+    // First, verify the student exists and belongs to the same school
+    const student = await User.findOne({ 
+      _id: req.params.id, 
+      role: 'student',
+      schoolId: req.user.schoolId // Multi-tenancy: Only find students in the same school
+    });
     
-    // STEP 1: Extract token data safely
-    let tokenData = null;
-    if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      try {
-        const token = req.headers.authorization.split(' ')[1];
-        tokenData = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Successfully decoded JWT token for student grades');
-      } catch (err) {
-        console.log('Error decoding token:', err.message);
-      }
+    if (!student) {
+      res.status(404);
+      throw new Error('Student not found in this school');
     }
     
-    // STEP 2: Try to identify the school using multiple strategies
-    let school = null;
+    // Find all grades for this student in this school
+    const grades = await Grade.find({
+      student: req.params.id,
+      schoolId: req.user.schoolId // Multi-tenancy: Only find grades in the same school
+    })
+      .populate('subject', 'name')
+      .populate('teacher', 'name')
+      .sort({ date: -1 });
     
-    // Strategy A: Check if school is already in request (from middleware)
-    if (req.school) {
-      school = req.school;
-      console.log(`Strategy A: Found school in request: ${school.name}`);
-    }
-    
-    // Strategy B: Check token for schoolId
-    if (!school && tokenData && tokenData.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(tokenData.schoolId);
-        if (school) {
-          console.log(`Strategy B: Found school from token schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by token schoolId:', err.message);
-      }
-    }
-    
-    // Strategy C: Check user object for schoolId
-    if (!school && req.user && req.user.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(req.user.schoolId);
-        if (school) {
-          console.log(`Strategy C: Found school from user.schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by user.schoolId:', err.message);
-      }
-    }
-    
-    // Strategy D: Check user email domain
-    if (!school && req.user && req.user.email && req.user.email.includes('@')) {
-      try {
-        const emailDomain = req.user.email.split('@')[1];
-        const School = mongoose.model('School');
-        school = await School.findOne({ emailDomain });
-        if (school) {
-          console.log(`Strategy D: Found school from email domain: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by email domain:', err.message);
-      }
-    }
-    
-    // STEP 3: Handle database access based on school detection
-    let grades = [];
-    
-    if (school) {
-      console.log(`Fetching student grades from school database: ${school.name}`);
-      
-      // Connect to the school database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(school);
-      
-      if (!connection) {
-        throw new Error('Failed to connect to school database');
-      }
-      
-      console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
-      
-      // Get the necessary models
-      const SchoolGrade = connection.model('Grade');
-      
-      // Fetch grades from school database with proper population
-      grades = await SchoolGrade.find({ student: req.params.id })
-        .populate('subject', 'name')
-        .populate('teacher', 'name')
-        .sort({ date: -1 });
-      
-      console.log(`Found ${grades.length} grades for student in school database: ${school.name}`);
-    } else if (req.user && req.user.role === 'superadmin') {
-      // Only superadmins can access the main database
-      console.log('Superadmin accessing student grades from main database');
-      grades = await Grade.find({ student: req.params.id })
-        .populate('subject', 'name')
-        .populate('teacher', 'name')
-        .sort({ date: -1 });
-      
-      console.log(`Found ${grades.length} student grades in main database`);
-    } else {
-      console.log('No school found and user is not superadmin');
-      return res.status(400).json({ message: 'No school found for this user' });
-    }
-    
-    return res.json(grades);
+    res.status(200).json(grades);
   } catch (error) {
-    console.error('Error getting student grades:', error.message);
+    console.error('Error in getStudentGrades controller:', error.message);
     res.status(error.statusCode || 500);
-    throw new Error(`Failed to retrieve student grades: ${error.message}`);
+    throw new Error(error.message || 'Error retrieving student grades');
   }
 });
 
-// @desc    Get grades by subject
+// @desc    Get grades for a specific subject
 // @route   GET /api/grades/subject/:id
 // @access  Private
 const getGradesBySubject = asyncHandler(async (req, res) => {
   try {
     // Set up query based on user role
-    let query = { subject: req.params.id };
+    let query = { 
+      subject: req.params.id,
+      schoolId: req.user.schoolId // Multi-tenancy: Only find grades in the same school
+    };
     
-    // Students can only view their own grades in a subject
+    // Students can only view their own grades
     if (req.user.role === 'student') {
-      query.student = req.user.id;
+      query.student = req.user._id;
     }
     
-    // Teachers can only view grades they assigned
-    if (req.user.role === 'teacher') {
-      query.teacher = req.user.id;
-    }
+    // Find all grades for this subject with proper filtering
+    const grades = await Grade.find(query)
+      .populate('student', 'name')
+      .populate('teacher', 'name')
+      .sort({ date: -1 });
     
-    // COMPLETELY REWRITTEN: Using the same multi-strategy approach
-    const mongoose = require('mongoose');
-    const jwt = require('jsonwebtoken');
-    
-    // STEP 1: Extract token data safely
-    let tokenData = null;
-    if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      try {
-        const token = req.headers.authorization.split(' ')[1];
-        tokenData = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Successfully decoded JWT token for subject grades');
-      } catch (err) {
-        console.log('Error decoding token:', err.message);
-      }
-    }
-    
-    // STEP 2: Try to identify the school using multiple strategies
-    let school = null;
-    
-    // Strategy A: Check if school is already in request (from middleware)
-    if (req.school) {
-      school = req.school;
-      console.log(`Strategy A: Found school in request: ${school.name}`);
-    }
-    
-    // Strategy B: Check token for schoolId
-    if (!school && tokenData && tokenData.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(tokenData.schoolId);
-        if (school) {
-          console.log(`Strategy B: Found school from token schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by token schoolId:', err.message);
-      }
-    }
-    
-    // Strategy C: Check user object for schoolId
-    if (!school && req.user && req.user.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(req.user.schoolId);
-        if (school) {
-          console.log(`Strategy C: Found school from user.schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by user.schoolId:', err.message);
-      }
-    }
-    
-    // Strategy D: Check user email domain
-    if (!school && req.user && req.user.email && req.user.email.includes('@')) {
-      try {
-        const emailDomain = req.user.email.split('@')[1];
-        const School = mongoose.model('School');
-        school = await School.findOne({ emailDomain });
-        if (school) {
-          console.log(`Strategy D: Found school from email domain: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by email domain:', err.message);
-      }
-    }
-    
-    // STEP 3: Handle database access based on school detection
-    let grades = [];
-    
-    if (school) {
-      console.log(`Fetching subject grades from school database: ${school.name}`);
-      
-      // Connect to the school database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(school);
-      
-      if (!connection) {
-        throw new Error('Failed to connect to school database');
-      }
-      
-      console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
-      
-      // Get the necessary models
-      const SchoolGrade = connection.model('Grade');
-      
-      // Fetch grades from school database with proper population
-      grades = await SchoolGrade.find(query)
-        .populate('student', 'name')
-        .populate('teacher', 'name')
-        .sort({ date: -1 });
-      
-      console.log(`Found ${grades.length} grades for subject in school database: ${school.name}`);
-    } else if (req.user && req.user.role === 'superadmin') {
-      // Only superadmins can access the main database
-      console.log('Superadmin accessing subject grades from main database');
-      grades = await Grade.find(query)
-        .populate('student', 'name')
-        .populate('teacher', 'name')
-        .sort({ date: -1 });
-      
-      console.log(`Found ${grades.length} subject grades in main database`);
-    } else {
-      console.log('No school found and user is not superadmin');
-      return res.status(400).json({ message: 'No school found for this user' });
-    }
-    
-    return res.json(grades);
+    res.status(200).json(grades);
   } catch (error) {
-    console.error('Error getting subject grades:', error.message);
-    res.status(error.statusCode || 500);
-    throw new Error(`Failed to retrieve subject grades: ${error.message}`);
+    console.error('Error in getGradesBySubject controller:', error.message);
+    res.status(500);
+    throw new Error('Error retrieving subject grades');
   }
 });
 
-// @desc    Get grades assigned by a teacher
+// @desc    Get grades assigned by a specific teacher
 // @route   GET /api/grades/teacher/:id
-// @access  Private/Teacher Admin
+// @access  Private
 const getGradesByTeacher = asyncHandler(async (req, res) => {
   try {
     // Teachers can only view their own assigned grades
     if (req.user.role === 'teacher' && req.user.id !== req.params.id) {
       res.status(403);
-      throw new Error('Not authorized to view these grades');
+      throw new Error('Not authorized to view grades assigned by other teachers');
     }
     
-    // COMPLETELY REWRITTEN: Using the same multi-strategy approach
-    const mongoose = require('mongoose');
-    const jwt = require('jsonwebtoken');
+    // Find all grades assigned by this teacher in this school
+    const grades = await Grade.find({
+      teacher: req.params.id,
+      schoolId: req.user.schoolId // Multi-tenancy: Only find grades in the same school
+    })
+      .populate('student', 'name')
+      .populate('subject', 'name')
+      .sort({ date: -1 });
     
-    // STEP 1: Extract token data safely
-    let tokenData = null;
-    if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      try {
-        const token = req.headers.authorization.split(' ')[1];
-        tokenData = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Successfully decoded JWT token for teacher grades');
-      } catch (err) {
-        console.log('Error decoding token:', err.message);
-      }
-    }
-    
-    // STEP 2: Try to identify the school using multiple strategies
-    let school = null;
-    
-    // Strategy A: Check if school is already in request (from middleware)
-    if (req.school) {
-      school = req.school;
-      console.log(`Strategy A: Found school in request: ${school.name}`);
-    }
-    
-    // Strategy B: Check token for schoolId
-    if (!school && tokenData && tokenData.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(tokenData.schoolId);
-        if (school) {
-          console.log(`Strategy B: Found school from token schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by token schoolId:', err.message);
-      }
-    }
-    
-    // Strategy C: Check user object for schoolId
-    if (!school && req.user && req.user.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(req.user.schoolId);
-        if (school) {
-          console.log(`Strategy C: Found school from user.schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by user.schoolId:', err.message);
-      }
-    }
-    
-    // Strategy D: Check user email domain
-    if (!school && req.user && req.user.email && req.user.email.includes('@')) {
-      try {
-        const emailDomain = req.user.email.split('@')[1];
-        const School = mongoose.model('School');
-        school = await School.findOne({ emailDomain });
-        if (school) {
-          console.log(`Strategy D: Found school from email domain: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by email domain:', err.message);
-      }
-    }
-    
-    // STEP 3: Handle database access based on school detection
-    let grades = [];
-    
-    if (school) {
-      console.log(`Fetching teacher grades from school database: ${school.name}`);
-      
-      // Connect to the school database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(school);
-      
-      if (!connection) {
-        throw new Error('Failed to connect to school database');
-      }
-      
-      console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
-      
-      // Get the necessary models
-      const SchoolGrade = connection.model('Grade');
-      
-      // Fetch grades from school database with proper population
-      grades = await SchoolGrade.find({ teacher: req.params.id })
-        .populate('student', 'name email')
-        .populate('subject', 'name')
-        .sort({ date: -1 });
-      
-      console.log(`Found ${grades.length} grades for teacher in school database: ${school.name}`);
-    } else if (req.user && req.user.role === 'superadmin') {
-      // Only superadmins can access the main database
-      console.log('Superadmin accessing teacher grades from main database');
-      grades = await Grade.find({ teacher: req.params.id })
-        .populate('student', 'name email')
-        .populate('subject', 'name')
-        .sort({ date: -1 });
-      
-      console.log(`Found ${grades.length} teacher grades in main database`);
-    } else {
-      console.log('No school found and user is not superadmin');
-      return res.status(400).json({ message: 'No school found for this user' });
-    }
-    
-    return res.json(grades);
+    res.status(200).json(grades);
   } catch (error) {
-    console.error('Error getting teacher grades:', error.message);
-    res.status(error.statusCode || 500);
-    throw new Error(`Failed to retrieve teacher grades: ${error.message}`);
+    console.error('Error in getGradesByTeacher controller:', error.message);
+    res.status(500);
+    throw new Error('Error retrieving teacher grades');
   }
 });
 
-// @desc    Get grade by ID
+// @desc    Get a single grade by ID
 // @route   GET /api/grades/:id
 // @access  Private
 const getGradeById = asyncHandler(async (req, res) => {
   try {
-    // COMPLETELY REWRITTEN: Using the same multi-strategy approach
-    const mongoose = require('mongoose');
-    const jwt = require('jsonwebtoken');
-    
-    // STEP 1: Extract token data safely
-    let tokenData = null;
-    if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      try {
-        const token = req.headers.authorization.split(' ')[1];
-        tokenData = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Successfully decoded JWT token for grade by ID');
-      } catch (err) {
-        console.log('Error decoding token:', err.message);
-      }
-    }
-    
-    // STEP 2: Try to identify the school using multiple strategies
-    let school = null;
-    
-    // Strategy A: Check if school is already in request (from middleware)
-    if (req.school) {
-      school = req.school;
-      console.log(`Strategy A: Found school in request: ${school.name}`);
-    }
-    
-    // Strategy B: Check token for schoolId
-    if (!school && tokenData && tokenData.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(tokenData.schoolId);
-        if (school) {
-          console.log(`Strategy B: Found school from token schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by token schoolId:', err.message);
-      }
-    }
-    
-    // Strategy C: Check user object for schoolId
-    if (!school && req.user && req.user.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(req.user.schoolId);
-        if (school) {
-          console.log(`Strategy C: Found school from user.schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by user.schoolId:', err.message);
-      }
-    }
-    
-    // Strategy D: Check user email domain
-    if (!school && req.user && req.user.email && req.user.email.includes('@')) {
-      try {
-        const emailDomain = req.user.email.split('@')[1];
-        const School = mongoose.model('School');
-        school = await School.findOne({ emailDomain });
-        if (school) {
-          console.log(`Strategy D: Found school from email domain: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by email domain:', err.message);
-      }
-    }
-    
-    // STEP 3: Handle database access based on school detection
-    let grade = null;
-    
-    if (school) {
-      console.log(`Fetching grade by ID from school database: ${school.name}`);
-      
-      // Connect to the school database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(school);
-      
-      if (!connection) {
-        throw new Error('Failed to connect to school database');
-      }
-      
-      console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
-      
-      // Get the necessary models
-      const SchoolGrade = connection.model('Grade');
-      
-      // Fetch grade from school database with proper population
-      grade = await SchoolGrade.findById(req.params.id)
-        .populate('student', 'name email')
-        .populate('subject', 'name')
-        .populate('teacher', 'name email');
-      
-      console.log(`Grade lookup in school database: ${grade ? 'found' : 'not found'}`);
-    } else if (req.user && req.user.role === 'superadmin') {
-      // Only superadmins can access the main database
-      console.log('Superadmin accessing grade by ID from main database');
-      grade = await Grade.findById(req.params.id)
-        .populate('student', 'name email')
-        .populate('subject', 'name')
-        .populate('teacher', 'name email');
-      
-      console.log(`Grade lookup in main database: ${grade ? 'found' : 'not found'}`);
-    } else {
-      console.log('No school found and user is not superadmin');
-      return res.status(400).json({ message: 'No school found for this user' });
-    }
+    // Find the grade in the current school
+    const grade = await Grade.findOne({
+      _id: req.params.id,
+      schoolId: req.user.schoolId // Multi-tenancy: Only find grades in the same school
+    })
+      .populate('student', 'name email')
+      .populate('subject', 'name')
+      .populate('teacher', 'name');
     
     if (!grade) {
       res.status(404);
@@ -712,163 +265,70 @@ const getGradeById = asyncHandler(async (req, res) => {
       throw new Error('Not authorized to view this grade');
     }
     
-    // Teachers can only view grades they assigned
-    if (req.user.role === 'teacher' && grade.teacher._id.toString() !== req.user.id) {
-      res.status(403);
-      throw new Error('Not authorized to view this grade');
+    // Teachers can only view grades they assigned or grades for students they teach
+    if (req.user.role === 'teacher') {
+      const isTeacherOfGrade = grade.teacher._id.toString() === req.user.id;
+      if (!isTeacherOfGrade) {
+        res.status(403);
+        throw new Error('Not authorized to view this grade');
+      }
     }
     
-    return res.json(grade);
+    res.status(200).json(grade);
   } catch (error) {
-    console.error('Error getting grade by ID:', error.message);
+    console.error('Error in getGradeById controller:', error.message);
     res.status(error.statusCode || 500);
-    throw new Error(`Failed to retrieve grade: ${error.message}`);
+    throw new Error(error.message || 'Error retrieving grade');
   }
 });
 
-// @desc    Update grade
+// @desc    Update a grade
 // @route   PUT /api/grades/:id
 // @access  Private/Teacher
 const updateGrade = asyncHandler(async (req, res) => {
   try {
     const { value, description, date } = req.body;
   
-    // COMPLETELY REWRITTEN: Using the same multi-strategy approach
-    const mongoose = require('mongoose');
-    const jwt = require('jsonwebtoken');
+    // Find the grade to update
+    const grade = await Grade.findOne({
+      _id: req.params.id,
+      schoolId: req.user.schoolId // Multi-tenancy: Only find grades in the same school
+    });
     
-    // STEP 1: Extract token data safely
-    let tokenData = null;
-    if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      try {
-        const token = req.headers.authorization.split(' ')[1];
-        tokenData = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Successfully decoded JWT token for updating grade');
-      } catch (err) {
-        console.log('Error decoding token:', err.message);
+    if (!grade) {
+      res.status(404);
+      throw new Error('Grade not found');
+    }
+    
+    // Only the teacher who created the grade can update it, or an admin
+    if (req.user.role === 'teacher' && grade.teacher.toString() !== req.user.id) {
+      res.status(403);
+      throw new Error('Not authorized to update this grade');
+    }
+    
+    // Update the grade
+    if (value !== undefined) grade.value = value;
+    if (description !== undefined) grade.description = description;
+    if (date !== undefined) grade.date = date;
+    
+    // Check if updating the date would create a duplicate
+    if (date) {
+      const duplicateCheck = await Grade.findOne({
+        student: grade.student,
+        subject: grade.subject,
+        date: date,
+        schoolId: req.user.schoolId, // Multi-tenancy: Only check grades in the same school
+        _id: { $ne: grade._id } // Exclude current grade from check
+      });
+      
+      if (duplicateCheck) {
+        res.status(400);
+        throw new Error('A grade already exists for this student, subject, and date. Please use a different date.');
       }
     }
     
-    // STEP 2: Try to identify the school using multiple strategies
-    let school = null;
-    
-    // Strategy A: Check if school is already in request (from middleware)
-    if (req.school) {
-      school = req.school;
-      console.log(`Strategy A: Found school in request: ${school.name}`);
-    }
-    
-    // Strategy B: Check token for schoolId
-    if (!school && tokenData && tokenData.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(tokenData.schoolId);
-        if (school) {
-          console.log(`Strategy B: Found school from token schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by token schoolId:', err.message);
-      }
-    }
-    
-    // Strategy C: Check user object for schoolId
-    if (!school && req.user && req.user.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(req.user.schoolId);
-        if (school) {
-          console.log(`Strategy C: Found school from user.schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by user.schoolId:', err.message);
-      }
-    }
-    
-    // Strategy D: Check user email domain
-    if (!school && req.user && req.user.email && req.user.email.includes('@')) {
-      try {
-        const emailDomain = req.user.email.split('@')[1];
-        const School = mongoose.model('School');
-        school = await School.findOne({ emailDomain });
-        if (school) {
-          console.log(`Strategy D: Found school from email domain: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by email domain:', err.message);
-      }
-    }
-    
-    // STEP 3: Handle database access based on school detection
-    let grade = null;
-    let updatedGrade = null;
-    
-    if (school) {
-      console.log(`Updating grade in school database: ${school.name}`);
-      
-      // Connect to the school database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(school);
-      
-      if (!connection) {
-        throw new Error('Failed to connect to school database');
-      }
-      
-      console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
-      
-      // Get the necessary models
-      const SchoolGrade = connection.model('Grade');
-      
-      // Find the grade in the school database
-      grade = await SchoolGrade.findById(req.params.id);
-      
-      if (!grade) {
-        res.status(404);
-        throw new Error('Grade not found in school database');
-      }
-      
-      // Only the teacher who assigned the grade or an admin can update it
-      if (req.user.role === 'teacher' && grade.teacher.toString() !== req.user.id) {
-        res.status(403);
-        throw new Error('Not authorized to update this grade');
-      }
-      
-      // Update the grade
-      grade.value = value || grade.value;
-      grade.description = description || grade.description;
-      
-      if (date) {
-        grade.date = date;
-      }
-      
-      updatedGrade = await grade.save();
-      console.log(`Grade updated successfully in school database: ${school.name}`);
-    } else if (req.user && req.user.role === 'superadmin') {
-      // Only superadmins can access the main database
-      console.log('Superadmin updating grade in main database');
-      
-      grade = await Grade.findById(req.params.id);
-      
-      if (!grade) {
-        res.status(404);
-        throw new Error('Grade not found in main database');
-      }
-      
-      // Update the grade
-      grade.value = value || grade.value;
-      grade.description = description || grade.description;
-      
-      if (date) {
-        grade.date = date;
-      }
-      
-      updatedGrade = await grade.save();
-      console.log('Grade updated successfully in main database');
-    } else {
-      console.log('No school found and user is not superadmin');
-      return res.status(400).json({ message: 'No school found for this user' });
-    }
-    
-    return res.json(updatedGrade);
+    const updatedGrade = await grade.save();
+    res.status(200).json(updatedGrade);
   } catch (error) {
     console.error('Error updating grade:', error.message);
     res.status(error.statusCode || 500);
@@ -881,125 +341,26 @@ const updateGrade = asyncHandler(async (req, res) => {
 // @access  Private/Teacher
 const deleteGrade = asyncHandler(async (req, res) => {
   try {
-    // COMPLETELY REWRITTEN: Using the same multi-strategy approach
-    const mongoose = require('mongoose');
-    const jwt = require('jsonwebtoken');
+    // Find the grade to delete
+    const grade = await Grade.findOne({
+      _id: req.params.id,
+      schoolId: req.user.schoolId // Multi-tenancy: Only find grades in the same school
+    });
     
-    // STEP 1: Extract token data safely
-    let tokenData = null;
-    if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      try {
-        const token = req.headers.authorization.split(' ')[1];
-        tokenData = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('Successfully decoded JWT token for deleting grade');
-      } catch (err) {
-        console.log('Error decoding token:', err.message);
-      }
+    if (!grade) {
+      res.status(404);
+      throw new Error('Grade not found');
     }
     
-    // STEP 2: Try to identify the school using multiple strategies
-    let school = null;
-    
-    // Strategy A: Check if school is already in request (from middleware)
-    if (req.school) {
-      school = req.school;
-      console.log(`Strategy A: Found school in request: ${school.name}`);
+    // Only the teacher who created the grade can delete it, or an admin
+    if (req.user.role === 'teacher' && grade.teacher.toString() !== req.user.id) {
+      res.status(403);
+      throw new Error('Not authorized to delete this grade');
     }
     
-    // Strategy B: Check token for schoolId
-    if (!school && tokenData && tokenData.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(tokenData.schoolId);
-        if (school) {
-          console.log(`Strategy B: Found school from token schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by token schoolId:', err.message);
-      }
-    }
-    
-    // Strategy C: Check user object for schoolId
-    if (!school && req.user && req.user.schoolId) {
-      try {
-        const School = mongoose.model('School');
-        school = await School.findById(req.user.schoolId);
-        if (school) {
-          console.log(`Strategy C: Found school from user.schoolId: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by user.schoolId:', err.message);
-      }
-    }
-    
-    // Strategy D: Check user email domain
-    if (!school && req.user && req.user.email && req.user.email.includes('@')) {
-      try {
-        const emailDomain = req.user.email.split('@')[1];
-        const School = mongoose.model('School');
-        school = await School.findOne({ emailDomain });
-        if (school) {
-          console.log(`Strategy D: Found school from email domain: ${school.name}`);
-        }
-      } catch (err) {
-        console.log('Error finding school by email domain:', err.message);
-      }
-    }
-    
-    // STEP 3: Handle database access based on school detection
-    let grade = null;
-    
-    if (school) {
-      console.log(`Deleting grade from school database: ${school.name}`);
-      
-      // Connect to the school database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(school);
-      
-      if (!connection) {
-        throw new Error('Failed to connect to school database');
-      }
-      
-      console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
-      
-      // Get the necessary models
-      const SchoolGrade = connection.model('Grade');
-      
-      // Find the grade in the school database
-      grade = await SchoolGrade.findById(req.params.id);
-      
-      if (!grade) {
-        res.status(404);
-        throw new Error('Grade not found in school database');
-      }
-      
-      // Only the teacher who assigned the grade or an admin can delete it
-      if (req.user.role === 'teacher' && grade.teacher.toString() !== req.user.id) {
-        res.status(403);
-        throw new Error('Not authorized to delete this grade');
-      }
-      
-      await grade.deleteOne();
-      console.log(`Grade deleted successfully from school database: ${school.name}`);
-    } else if (req.user && req.user.role === 'superadmin') {
-      // Only superadmins can access the main database
-      console.log('Superadmin deleting grade from main database');
-      
-      grade = await Grade.findById(req.params.id);
-      
-      if (!grade) {
-        res.status(404);
-        throw new Error('Grade not found in main database');
-      }
-      
-      await grade.deleteOne();
-      console.log('Grade deleted successfully from main database');
-    } else {
-      console.log('No school found and user is not superadmin');
-      return res.status(400).json({ message: 'No school found for this user' });
-    }
-    
-    return res.json({ message: 'Grade removed' });
+    // Delete the grade
+    await grade.remove();
+    res.status(200).json({ message: 'Grade deleted successfully' });
   } catch (error) {
     console.error('Error deleting grade:', error.message);
     res.status(error.statusCode || 500);
