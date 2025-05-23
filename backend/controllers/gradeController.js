@@ -178,21 +178,11 @@ const getAllGrades = asyncHandler(async (req, res) => {
     if (school) {
       console.log(`Fetching grades from school database: ${school.name}`);
       
-      // Connect to the school database
-      const { connectToSchoolDb } = require('../config/multiDbConnect');
-      const { connection } = await connectToSchoolDb(school);
+      // Single-database architecture: Use schoolId filtering
+      console.log(`Fetching grades for school: ${school.name} (ID: ${school._id})`);
       
-      if (!connection) {
-        throw new Error('Failed to connect to school database');
-      }
-      
-      console.log(`Connected to school database: ${connection.db?.databaseName || 'unknown'}`);
-      
-      // Get the necessary models
-      const SchoolGrade = connection.model('Grade');
-      
-      // Fetch grades from school database with proper population
-      grades = await SchoolGrade.find({})
+      // Fetch grades for the specified school using schoolId filter
+      grades = await Grade.find({ schoolId: school._id })
         .populate('student', 'name email')
         .populate('subject', 'name')
         .populate('teacher', 'name email')
