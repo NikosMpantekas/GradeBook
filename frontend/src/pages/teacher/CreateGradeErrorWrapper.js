@@ -1,19 +1,22 @@
 import React from 'react';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
-import CreateGrade from './CreateGrade';
+// CRITICAL FIX: Use the simplified version that avoids the Redux patterns causing errors
+import CreateGradeSimple from './CreateGradeSimple';
 import { trackError } from '../../utils/errorHandler';
 
 /**
  * Special error boundary wrapper for the CreateGrade component
- * This adds extra debugging information specific to the persistent TypeError
+ * This now uses a simplified implementation that avoids the complex Redux patterns
+ * causing the TypeError: x(...) is undefined error
  */
 const CreateGradeErrorWrapper = (props) => {
-  // Add specific instrumentation for the CreateGrade component
+  // Add error logging for debugging
   React.useEffect(() => {
-    console.log('[CreateGradeErrorWrapper] Component mounted - adding specific error detection');
+    console.log('[CreateGradeErrorWrapper] Component mounted - using simplified implementation');
+    console.log('[CreateGradeErrorWrapper] This version bypasses complex Redux patterns to avoid errors');
     
     try {
-      // Check Redux store structure
+      // Check Redux store structure for debugging purposes
       const reduxStore = window.__REDUX_DEVTOOLS_EXTENSION__ ? 
         window.__REDUX_DEVTOOLS_EXTENSION__.connect().getState() : 
         null;
@@ -30,19 +33,11 @@ const CreateGradeErrorWrapper = (props) => {
         });
       }
       
-      // Add listener for the specific TypeError
+      // Still listen for any errors for diagnostic purposes
       const errorListener = (event) => {
-        if (event.error && event.error.message && 
-            (event.error.message.includes('x(...) is undefined') || 
-             event.error.message.includes('y(...) is undefined'))) {
-          
-          console.log('🔍 DETECTED CRITICAL ERROR: TypeError: x(...) is undefined');
-          console.log('🔍 This is likely a Redux action or selector that is not properly exported');
-          
-          // Log helpful debugging information
-          trackError(event.error, 'CreateGradeComponent');
-          
-          // You could add additional redux-specific debugging here
+        if (event.error) {
+          console.log(`🔍 Error detected in CreateGrade: ${event.error.message}`);
+          trackError(event.error, 'CreateGradeSimpleComponent');
         }
       };
       
@@ -58,8 +53,8 @@ const CreateGradeErrorWrapper = (props) => {
   }, []);
 
   return (
-    <ErrorBoundary componentName="CreateGrade">
-      <CreateGrade {...props} />
+    <ErrorBoundary componentName="CreateGradeSimple">
+      <CreateGradeSimple {...props} />
     </ErrorBoundary>
   );
 };
