@@ -11,6 +11,40 @@ const initialState = {
   message: '',
 };
 
+// Helper function to ensure data is always in the expected format
+const ensureValidData = (data) => {
+  if (!data) return null;
+  
+  // Clone the data to avoid modifying the original
+  const validatedData = { ...data };
+  
+  // Ensure subjects is always an array
+  if (validatedData.subjects === null || validatedData.subjects === undefined) {
+    validatedData.subjects = [];
+  } else if (!Array.isArray(validatedData.subjects)) {
+    console.warn('Subjects data is not an array, converting to array:', validatedData.subjects);
+    validatedData.subjects = [];
+  }
+  
+  // Ensure schools is always an array
+  if (validatedData.schools === null || validatedData.schools === undefined) {
+    validatedData.schools = [];
+  } else if (!Array.isArray(validatedData.schools)) {
+    console.warn('Schools data is not an array, converting to array:', validatedData.schools);
+    validatedData.schools = [];
+  }
+  
+  // Ensure directions is always an array
+  if (validatedData.directions === null || validatedData.directions === undefined) {
+    validatedData.directions = [];
+  } else if (!Array.isArray(validatedData.directions)) {
+    console.warn('Directions data is not an array, converting to array:', validatedData.directions);
+    validatedData.directions = [];
+  }
+  
+  return validatedData;
+};
+
 // Get all users
 export const getUsers = createAsyncThunk('users/getAll', async (_, thunkAPI) => {
   try {
@@ -173,6 +207,20 @@ export const userSlice = createSlice({
       state.isError = false;
       state.message = '';
     },
+    // Add a reducer to validate user data structure
+    validateUserData: (state) => {
+      if (state.user) {
+        state.user = ensureValidData(state.user);
+      }
+      
+      if (state.users && Array.isArray(state.users)) {
+        state.users = state.users.map(user => ensureValidData(user));
+      }
+      
+      if (state.filteredUsers && Array.isArray(state.filteredUsers)) {
+        state.filteredUsers = state.filteredUsers.map(user => ensureValidData(user));
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -182,7 +230,10 @@ export const userSlice = createSlice({
       .addCase(getUsers.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.users = action.payload;
+        // Apply data validation to ensure all users have properly formatted arrays
+        state.users = Array.isArray(action.payload) 
+          ? action.payload.map(user => ensureValidData(user)) 
+          : [];
       })
       .addCase(getUsers.rejected, (state, action) => {
         state.isLoading = false;
@@ -195,7 +246,11 @@ export const userSlice = createSlice({
       .addCase(createUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.users.push(action.payload);
+        // Validate the user data before adding to state
+        if (action.payload && action.payload._id) {
+          const validatedUser = ensureValidData(action.payload);
+          state.users.push(validatedUser);
+        }
       })
       .addCase(createUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -208,7 +263,8 @@ export const userSlice = createSlice({
       .addCase(getUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.user = action.payload;
+        // Apply data validation to ensure arrays are properly formatted
+        state.user = ensureValidData(action.payload);
       })
       .addCase(getUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -222,7 +278,8 @@ export const userSlice = createSlice({
       .addCase(getUserById.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.user = action.payload;
+        // Apply data validation to ensure arrays are properly formatted
+        state.user = ensureValidData(action.payload);
       })
       .addCase(getUserById.rejected, (state, action) => {
         state.isLoading = false;
@@ -237,7 +294,10 @@ export const userSlice = createSlice({
         state.isLoading = false;
         state.isSuccess = true;
         // Store the filtered users without replacing the main users list
-        state.filteredUsers = action.payload;
+        // Apply data validation to ensure all users have properly formatted arrays
+        state.filteredUsers = Array.isArray(action.payload) 
+          ? action.payload.map(user => ensureValidData(user)) 
+          : [];
       })
       .addCase(getUsersByRole.rejected, (state, action) => {
         state.isLoading = false;
@@ -253,15 +313,18 @@ export const userSlice = createSlice({
         state.isSuccess = true;
         // Handle the case where action.payload might be null or undefined
         if (action.payload && action.payload._id) {
+          // Validate the user data before updating state
+          const validatedUser = ensureValidData(action.payload);
+          
           // Update the user in the users array
           if (state.users && state.users.length > 0) {
             state.users = state.users.map((user) =>
-              user._id === action.payload._id ? action.payload : user
+              user._id === validatedUser._id ? validatedUser : ensureValidData(user)
             );
           }
           // Also update the single user if it matches
-          if (state.user && state.user._id === action.payload._id) {
-            state.user = action.payload;
+          if (state.user && state.user._id === validatedUser._id) {
+            state.user = validatedUser;
           }
         } else {
           console.warn('Received invalid payload in updateUser.fulfilled', action.payload);

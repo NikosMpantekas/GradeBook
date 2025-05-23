@@ -5,7 +5,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.17'; // Fixed school filtering to exclude cluster schools and improved error handling in Add Grade functionality
+const APP_VERSION = '1.4.18'; // System-wide data validation: fixed 'subjects.map is not a function' error and implemented robust cluster school filtering
 
 // Store version in localStorage to detect updates across refreshes
 const storeAppVersion = () => {

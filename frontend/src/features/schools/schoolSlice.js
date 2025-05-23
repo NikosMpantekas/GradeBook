@@ -10,6 +10,26 @@ const initialState = {
   message: '',
 };
 
+// Helper function to determine if a school is a cluster/primary school
+const isClusterSchool = (school) => {
+  if (!school) return false;
+  
+  // Check explicit flag if available
+  if (school.isClusterSchool === true) return true;
+  
+  // Check name patterns for legacy data
+  const clusterPatterns = /primary|cluster|general|main|district/i;
+  if (school.name && clusterPatterns.test(school.name)) return true;
+  
+  return false;
+};
+
+// Helper function to filter out cluster schools from arrays
+const filterOutClusterSchools = (schools) => {
+  if (!Array.isArray(schools)) return [];
+  return schools.filter(school => !isClusterSchool(school));
+};
+
 // Create new school (admin only)
 export const createSchool = createAsyncThunk(
   'schools/create',
@@ -141,7 +161,18 @@ export const schoolSlice = createSlice({
       .addCase(getSchools.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.schools = action.payload;
+        
+        // CRITICAL FIX: Apply cluster school filtering at the Redux level
+        // This ensures cluster/primary schools never appear in the UI
+        if (Array.isArray(action.payload)) {
+          console.log(`Received ${action.payload.length} schools from API`);
+          const filteredSchools = filterOutClusterSchools(action.payload);
+          console.log(`After filtering out cluster schools: ${filteredSchools.length} schools remain`);
+          state.schools = filteredSchools;
+        } else {
+          console.warn('Schools data is not an array:', action.payload);
+          state.schools = [];
+        }
       })
       .addCase(getSchools.rejected, (state, action) => {
         state.isLoading = false;

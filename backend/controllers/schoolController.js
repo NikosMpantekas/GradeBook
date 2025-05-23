@@ -56,7 +56,22 @@ const getSchools = asyncHandler(async (req, res) => {
     if (req.user && req.user.role === 'superadmin') {
       // Superadmin can see all schools from the database
       console.log('Fetching all schools for superadmin');
-      schools = await School.find({});
+      
+      // IMPORTANT: Apply filter to remove cluster/primary schools 
+      // This ensures primary schools used for database assignment don't appear in the school list
+      // Use $nor to exclude documents matching ANY of these conditions
+      const filter = { 
+        $nor: [
+          // Exclude schools explicitly marked as cluster schools
+          { isClusterSchool: true },
+          // Exclude schools with cluster-related names (for legacy data)
+          { name: { $regex: /primary|cluster|general|main|district/i } }
+        ]
+      };
+      
+      console.log('Applying cluster school filter:', JSON.stringify(filter));
+      schools = await School.find(filter);
+      console.log(`After filtering, returning ${schools.length} non-cluster schools`);
     } 
     // Check if this is a school-specific user
     else if (req.school) {
