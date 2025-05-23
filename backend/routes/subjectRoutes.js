@@ -5,19 +5,16 @@ const {
   getSubjects,
   getSubjectById,
   updateSubject,
-  deleteSubject,
-  getSubjectsByTeacher,
-  getSubjectsByDirection,
+  deleteSubject
 } = require('../controllers/subjectController');
 const { protect, admin, teacher, canManageSubjects } = require('../middleware/authMiddleware');
 
 // Public routes that don't have parameters
 router.get('/', getSubjects);
 
-// IMPORTANT: Order matters! Specific routes must come before generic routes
-// Otherwise Express will match /teacher/123 as /:id = 'teacher/123' instead of /teacher/:id
-router.get('/direction/:id', getSubjectsByDirection);
-router.get('/teacher/:id', protect, getSubjectsByTeacher);
+// Routes for filtering subjects by teacher or direction have been removed
+// in the single-database architecture migration
+// These can be reimplemented in the future if needed
 
 // Generic parameter route should be LAST to avoid wrongly catching specific routes
 router.get('/:id', getSubjectById);
