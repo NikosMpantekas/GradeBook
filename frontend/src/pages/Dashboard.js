@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { getUserData } from '../features/auth/authSlice';
+import logger from '../services/loggerService';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 import { 
   Typography, 
   Grid, 
@@ -34,15 +36,70 @@ const Dashboard = () => {
   const { user } = useSelector((state) => state.auth);
   const { notifications, isLoading: notificationsLoading } = useSelector((state) => state.notifications);
   
-  // Add debug log to track component mounting
-  console.log('Dashboard component rendering with user:', user ? { role: user.role, name: user.name } : 'No user');
+  // Enhanced logging for component rendering and user state
+  logger.info('DASHBOARD', 'Component rendering', {
+    user: user ? {
+      id: user._id || user.id,
+      role: user.role,
+      name: user.name,
+      hasToken: !!user.token,
+      tokenLength: user.token?.length
+    } : 'No user',
+    currentPath: window.location.pathname,
+    previousPath: window.history?.state?.prev || 'Unknown'
+  });
   
-  // Basic navigation functions to ensure we have functionality even without Layout
-  const goToProfile = () => navigate('/app/profile');
-  const goToNotifications = () => navigate('/app/notifications');
-  const goToGrades = () => navigate('/app/grades');
-  const goToTeacherDashboard = () => navigate('/app/teacher');
-  const goToAdminDashboard = () => navigate('/app/admin');
+  // Create a memoized error handler for navigation
+  const handleNavigationError = useCallback((destination, error) => {
+    logger.error('NAVIGATION', `Failed to navigate to ${destination}`, {
+      error: error.message,
+      stack: error.stack,
+      from: window.location.pathname,
+      to: destination,
+      user: user ? { id: user._id, role: user.role } : 'No user'
+    });
+  }, [user]);
+  
+  // Basic navigation functions with error handling
+  const goToProfile = () => {
+    try {
+      navigate('/app/profile');
+    } catch (error) {
+      handleNavigationError('/app/profile', error);
+    }
+  };
+  
+  const goToNotifications = () => {
+    try {
+      navigate('/app/notifications');
+    } catch (error) {
+      handleNavigationError('/app/notifications', error);
+    }
+  };
+  
+  const goToGrades = () => {
+    try {
+      navigate('/app/grades');
+    } catch (error) {
+      handleNavigationError('/app/grades', error);
+    }
+  };
+  
+  const goToTeacherDashboard = () => {
+    try {
+      navigate('/app/teacher');
+    } catch (error) {
+      handleNavigationError('/app/teacher', error);
+    }
+  };
+  
+  const goToAdminDashboard = () => {
+    try {
+      navigate('/app/admin');
+    } catch (error) {
+      handleNavigationError('/app/admin', error);
+    }
+  };
   const { grades, isLoading: gradesLoading } = useSelector((state) => state.grades);
   const { subjects } = useSelector((state) => state.subjects);
   const { schools } = useSelector((state) => state.schools);
@@ -57,13 +114,57 @@ const Dashboard = () => {
   // Use a ref to track whether we've loaded data
   const dataLoaded = React.useRef(false);
 
-  // Add immediate redirect for superadmin users
+  // Enhanced superadmin redirection with comprehensive error logging
   useEffect(() => {
     if (user && user.role === 'superadmin') {
-      console.log('Superadmin detected in Dashboard component, redirecting to superadmin dashboard');
-      // Add a check to prevent infinite redirect loops
-      if (window.location.pathname !== '/superadmin/dashboard') {
-        navigate('/superadmin/dashboard', { replace: true });
+      logger.info('SUPERADMIN', 'Superadmin detected in Dashboard component', {
+        id: user._id || user.id || 'MISSING_ID',
+        name: user.name || 'MISSING_NAME',
+        currentPath: window.location.pathname,
+        hasToken: !!user.token,
+        tokenLength: user.token?.length,
+        userProperties: Object.keys(user),
+        storageType: localStorage.getItem('user') ? 'localStorage' : 
+                    sessionStorage.getItem('user') ? 'sessionStorage' : 'none'
+      });
+      
+      // Extensive logging and error handling for the critical redirection
+      try {
+        // Check if already on target page to prevent loops
+        if (window.location.pathname !== '/superadmin/dashboard') {
+          logger.info('NAVIGATION', 'Redirecting superadmin to dashboard', {
+            from: window.location.pathname,
+            to: '/superadmin/dashboard',
+            replace: true
+          });
+          
+          // Actual navigation with error catching
+          navigate('/superadmin/dashboard', { replace: true });
+          
+          // Log success after navigation attempt
+          logger.info('NAVIGATION', 'Superadmin redirect initiated successfully');
+        } else {
+          logger.info('NAVIGATION', 'Superadmin already on dashboard page, skipping redirect');
+        }
+      } catch (error) {
+        // Critical error logging for navigation failures
+        logger.critical('NAVIGATION', 'Failed to redirect superadmin to dashboard', {
+          error: error.message,
+          stack: error.stack,
+          user: {
+            id: user._id || user.id,
+            role: user.role,
+            hasToken: !!user.token
+          },
+          currentPath: window.location.pathname,
+          navigationState: window.history?.state || 'No history state'
+        });
+        
+        // Fallback redirect attempt using window.location as a last resort
+        setTimeout(() => {
+          logger.warn('NAVIGATION', 'Attempting fallback navigation using window.location');
+          window.location.href = '/superadmin/dashboard';
+        }, 500);
       }
     }
   }, [user, navigate]);
@@ -525,4 +626,11 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+// Wrap the Dashboard component with an ErrorBoundary for comprehensive error catching
+const DashboardWithErrorBoundary = () => (
+  <ErrorBoundary componentName="Dashboard">
+    <Dashboard />
+  </ErrorBoundary>
+);
+
+export default DashboardWithErrorBoundary;

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authService from './authService';
+import logger from '../../services/loggerService';
 
 // Get user from localStorage or sessionStorage
 const localUser = localStorage.getItem('user');
@@ -62,9 +63,17 @@ export const register = createAsyncThunk(
 // Login user
 export const login = createAsyncThunk(
   'auth/login',
-  async (user, thunkAPI) => {
+  async (userData, thunkAPI) => {
+    logger.info('AUTH', 'Login attempt', { email: userData.email, saveCredentials: userData.saveCredentials });
     try {
-      return await authService.login(user);
+      const response = await authService.login(userData);
+      logger.info('AUTH', 'Login successful', { 
+        userId: response._id, 
+        role: response.role,
+        hasToken: !!response.token,
+        schoolId: response.schoolId
+      });
+      return response;
     } catch (error) {
       const message =
         (error.response &&
@@ -72,6 +81,15 @@ export const login = createAsyncThunk(
           error.response.data.message) ||
         error.message ||
         error.toString();
+      
+      // Detailed error logging
+      logger.error('AUTH', 'Login failed', {
+        errorMessage: message,
+        statusCode: error.response?.status,
+        responseData: error.response?.data,
+        errorStack: error.stack
+      });
+      
       return thunkAPI.rejectWithValue(message);
     }
   }
@@ -214,10 +232,16 @@ export const authSlice = createSlice({
         
         // Special handling for superadmin users to ensure all required fields exist
         if (action.payload?.role === 'superadmin') {
-          console.log('Processing superadmin login response');
+          logger.info('AUTH', 'Processing superadmin login response', { 
+            payloadFields: Object.keys(action.payload),
+            hasId: !!action.payload._id || !!action.payload.id,
+            hasName: !!action.payload.name,
+            hasEmail: !!action.payload.email,
+            hasToken: !!action.payload.token
+          });
           
-          // Ensure all required fields are present for superadmin
           // This is CRITICAL to prevent white screens and routing issues
+          // Ensure all required fields are present for superadmin
           const superadminUser = {
             ...action.payload,
             // Ensure these fields exist with default values if not present
@@ -235,21 +259,32 @@ export const authSlice = createSlice({
           };
           
           state.user = superadminUser;
-          console.log('Superadmin user processed successfully:', {
+          logger.info('AUTH', 'Superadmin user processed successfully', {
             id: superadminUser._id,
             role: superadminUser.role,
-            hasToken: !!superadminUser.token
+            hasToken: !!superadminUser.token,
+            stateUser: !!state.user
           });
         } else {
-          // Normal handling for non-superadmin users
+          // Regular user
           state.user = action.payload;
+          logger.info('AUTH', 'Regular user login processed', {
+            id: action.payload._id,
+            role: action.payload.role
+          });
         }
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
-        state.message = action.payload;
+        state.message = action.payload || 'Login failed';
         state.user = null;
+        
+        logger.error('AUTH', 'Login rejected', {
+          errorMessage: action.payload,
+          meta: action.meta,
+          error: action.error
+        });
       })
       .addCase(logout.fulfilled, (state) => {
         // Full state reset on logout

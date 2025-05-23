@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -57,6 +57,8 @@ import SchoolOwnerDetails from './pages/superadmin/SchoolOwnerDetails';
 // Push notification service
 import { setupPushNotifications } from './services/pushNotificationService';
 import setupAxios from './app/setupAxios';
+import logger from './services/loggerService';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Custom components
 import HomeScreenPrompt from './components/HomeScreenPrompt';
@@ -64,9 +66,39 @@ import AndroidInstallPrompt from './components/AndroidInstallPrompt';
 
 function App() {
   const dispatch = useDispatch();
+  const { user, isLoading } = useSelector((state) => state.auth);
   const { darkMode } = useSelector((state) => state.ui);
-  const { user } = useSelector((state) => state.auth);
+  const [routingError, setRoutingError] = useState(null);
   
+  // Log important application state on mount and auth changes
+  useEffect(() => {
+    logger.info('APP', 'Application state updated', {
+      isAuthenticated: !!user,
+      userRole: user?.role,
+      authLoading: isLoading,
+      darkMode,
+      currentPath: window.location.pathname,
+      userState: user ? {
+        hasId: !!user._id,
+        hasRole: !!user.role,
+        hasToken: !!user.token,
+        role: user.role,
+        hasSchool: !!user.school,
+        hasSchoolId: !!user.schoolId
+      } : 'No user'
+    });
+    
+    // Special logging for superadmin users
+    if (user?.role === 'superadmin') {
+      logger.info('APP', 'Superadmin user detected', {
+        id: user._id || user.id || 'Missing ID',
+        token: user.token ? 'Present' : 'Missing',
+        currentPath: window.location.pathname,
+        userKeys: Object.keys(user)
+      });
+    }
+  }, [user, isLoading, darkMode]);
+
   // Initialize axios interceptors for token management
   useEffect(() => {
     console.log('Setting up global axios interceptors');
@@ -163,16 +195,67 @@ function App() {
   // Console log initial state - helps with debugging
   console.log('App rendering with auth state:', { isLoggedIn: !!user });
 
+  // Global error handler for uncaught exceptions
+  useEffect(() => {
+    const handleGlobalError = (event) => {
+      event.preventDefault();
+      
+      logger.critical('GLOBAL', 'Unhandled error caught by window.onerror', {
+        message: event.message,
+        source: event.filename,
+        lineNumber: event.lineno,
+        columnNumber: event.colno,
+        error: event.error?.stack || 'No stack trace available',
+        currentPath: window.location.pathname
+      });
+      
+      // Set routing error if related to routing
+      if (event.message?.includes('router') || event.message?.includes('navigate')) {
+        setRoutingError(event.message);
+      }
+    };
+    
+    // Handle unhandled promise rejections
+    const handlePromiseRejection = (event) => {
+      logger.critical('GLOBAL', 'Unhandled Promise rejection', {
+        reason: event.reason?.message || event.reason,
+        stack: event.reason?.stack || 'No stack trace',
+        currentPath: window.location.pathname
+      });
+    };
+    
+    // Handle React errors
+    const handleReactError = (error, errorInfo) => {
+      logger.critical('REACT', 'Error in React component tree', {
+        error: error.message,
+        componentStack: errorInfo?.componentStack,
+        stack: error.stack,
+        currentPath: window.location.pathname
+      });
+    };
+    
+    // Register handlers
+    window.addEventListener('error', handleGlobalError);
+    window.addEventListener('unhandledrejection', handlePromiseRejection);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('error', handleGlobalError);
+      window.removeEventListener('unhandledrejection', handlePromiseRejection);
+    };
+  }, []);
+
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <HomeScreenPrompt />
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/diagnostics" element={<DiagnosticPage />} />
+    <ErrorBoundary componentName="App Root">
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <HomeScreenPrompt />
+        <Router>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/diagnostics" element={<DiagnosticPage />} />
           
           {/* Default root route - redirects based on user role */}
           <Route path="/" element={
@@ -329,6 +412,7 @@ function App() {
       {/* Android PWA Installation Prompt */}
       <AndroidInstallPrompt />
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

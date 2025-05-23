@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const User = require('../models/userModel');
+const logger = require('../utils/logger');
 // Single database architecture - no need for multiDbConnect
 
 // @desc    Register new user
@@ -119,66 +120,105 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   
-  console.log(`Login attempt for email: ${email}`);
+  logger.info('AUTH', `Login attempt for email: ${email}`, {
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+    requestPath: req.path
+  });
 
   // Special handling for superadmin logins - always check by role
-  const isSuperAdmin = await User.findOne({ email, role: 'superadmin' });
-  
-  if (isSuperAdmin) {
-    console.log('Superadmin login attempt detected');
+  try {
+    const isSuperAdmin = await User.findOne({ email, role: 'superadmin' });
     
-    // Verify superadmin password and login status
-    if (isSuperAdmin.active === false) {
-      console.log(`Superadmin account is disabled for email: ${email}`);
-      res.status(403);
-      throw new Error('Your account has been disabled. Please contact system administrator');
+    logger.info('AUTH', 'Superadmin check result', { 
+      email,
+      found: !!isSuperAdmin,
+      superadminId: isSuperAdmin?._id,
+      hasPassword: !!isSuperAdmin?.password
+    });
+    
+    if (isSuperAdmin) {
+      logger.info('AUTH', 'Superadmin login attempt', {
+        id: isSuperAdmin._id,
+        name: isSuperAdmin.name,
+        active: isSuperAdmin.active,
+        createdAt: isSuperAdmin.createdAt,
+        hasToken: false // Not yet generated
+      });
+      
+      // Verify superadmin password and login status
+      if (isSuperAdmin.active === false) {
+        logger.warn('AUTH', `Superadmin account is disabled`, {
+          id: isSuperAdmin._id,
+          email
+        });
+        res.status(403);
+        throw new Error('Your account has been disabled. Please contact system administrator');
+      }
+      
+      const isMatch = await bcrypt.compare(password, isSuperAdmin.password);
+      if (!isMatch) {
+        logger.warn('AUTH', 'Invalid superadmin password', { id: isSuperAdmin._id, email });
+        res.status(401);
+        throw new Error('Invalid credentials');
+      }
+    
+      // Update login timestamp
+      isSuperAdmin.lastLogin = Date.now();
+      await isSuperAdmin.save();
+      
+      // Generate access token and refresh token for superadmin
+      const accessToken = generateToken(isSuperAdmin._id);
+      const userRefreshToken = generateRefreshToken(isSuperAdmin._id);
+      
+      logger.info('AUTH', 'Superadmin tokens generated', {
+        id: isSuperAdmin._id,
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!userRefreshToken,
+        accessTokenLength: accessToken?.length,
+        refreshTokenLength: userRefreshToken?.length
+      });
+
+      // Save refresh token to user document
+      isSuperAdmin.refreshToken = userRefreshToken;
+      await isSuperAdmin.save();
+
+      // Prepare response object with detailed logging
+      const responseObj = {
+        _id: isSuperAdmin.id,
+        name: isSuperAdmin.name,
+        email: isSuperAdmin.email,
+        role: isSuperAdmin.role,
+        token: accessToken,
+        refreshToken: userRefreshToken,
+        saveCredentials: isSuperAdmin.saveCredentials,
+        school: null,
+        schoolId: null,
+        schoolName: null,
+        schools: [],
+        directions: [],
+        subjects: [],
+        darkMode: isSuperAdmin.darkMode || false
+      };
+      
+      // Log the response object keys for debugging
+      logger.info('AUTH', 'Superadmin login response prepared', {
+        responseKeys: Object.keys(responseObj),
+        hasId: !!responseObj._id,
+        role: responseObj.role,
+        hasToken: !!responseObj.token
+      });
+
+      // Return superadmin user information with all fields expected by frontend
+      return res.json(responseObj);
     }
-    
-    const isMatch = await bcrypt.compare(password, isSuperAdmin.password);
-    if (!isMatch) {
-      console.log('Invalid superadmin password');
-      res.status(401);
-      throw new Error('Invalid credentials');
-    }
-    
-    // Update login timestamp
-    isSuperAdmin.lastLogin = Date.now();
-    isSuperAdmin.saveCredentials = req.body.saveCredentials || false;
-    await isSuperAdmin.save();
-    
-    // Generate tokens for superadmin using the original format for backward compatibility
-    // Don't use the schoolId parameter for superadmin to maintain original token structure
-    const accessToken = jwt.sign({ id: isSuperAdmin._id }, process.env.JWT_SECRET, {
-      expiresIn: '30d',
+  } catch (error) {
+    logger.error('AUTH', 'Error during superadmin authentication', {
+      error: error.message,
+      stack: error.stack,
+      email
     });
-    
-    // Use the same secret for refresh token as the frontend expects
-    const userRefreshToken = jwt.sign({ id: isSuperAdmin._id, type: 'refresh' }, process.env.JWT_SECRET, {
-      expiresIn: '30d',
-    });
-    
-    console.log('Generated superadmin token successfully');
-    
-    // Return superadmin user information with all fields expected by frontend
-    return res.json({
-      _id: isSuperAdmin.id,
-      name: isSuperAdmin.name,
-      email: isSuperAdmin.email,
-      role: isSuperAdmin.role,
-      token: accessToken,
-      refreshToken: userRefreshToken,
-      saveCredentials: isSuperAdmin.saveCredentials,
-      // Add school-related fields that the frontend expects
-      school: null,
-      schoolId: null,
-      schoolName: null,
-      // Add empty arrays for collections the dashboard might check
-      schools: [],
-      directions: [],
-      subjects: [],
-      // Add darkMode property if the frontend uses it
-      darkMode: isSuperAdmin.darkMode || false
-    });
+    throw error; // Re-throw to be caught by error handler
   }
   
   // For non-superadmin users, determine the school based on email domain
