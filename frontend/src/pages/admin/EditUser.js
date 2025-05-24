@@ -260,62 +260,110 @@ const EditUser = () => {
           
           // Process based on role
           if (response.role === 'student') {
-            // For students: handle both single and array formats, with fallbacks
-            const schools = processSchoolData(response.schools || response.school);
-            const directions = processDirectionData(response.directions || response.direction);
+            // CRITICAL FIX: Properly handle both single object and array of objects or ids
+            console.log('Raw student data:', {
+              school: response.school,
+              schools: response.schools,
+              direction: response.direction,
+              directions: response.directions
+            });
             
-            // CRITICAL FIX: Ensure we have values for dropdown selects
-            newFormData.school = schools[0] || ''; // Use first school if available
-            newFormData.direction = directions[0] || ''; // Use first direction if available
+            // Process schools with better fallback handling
+            let schools = [];
+            // First try schools array
+            if (response.schools && Array.isArray(response.schools) && response.schools.length > 0) {
+              schools = processSchoolData(response.schools);
+            }
+            // Then try single school
+            else if (response.school) {
+              schools = processSchoolData([response.school]);
+            }
+            
+            // Process directions with better fallback handling
+            let directions = [];
+            // First try directions array
+            if (response.directions && Array.isArray(response.directions) && response.directions.length > 0) {
+              directions = processDirectionData(response.directions);
+            }
+            // Then try single direction
+            else if (response.direction) {
+              directions = processDirectionData([response.direction]);
+            }
+            
+            // CRITICAL FIX: Make sure we have values for the dropdowns
             newFormData.schools = schools;
             newFormData.directions = directions;
+            newFormData.school = schools.length > 0 ? schools[0] : '';
+            newFormData.direction = directions.length > 0 ? directions[0] : '';
             
-            console.log('Student data processed:', {
+            console.log('FIXED: Student data processed:', {
               school: newFormData.school,
               direction: newFormData.direction,
               schools: newFormData.schools,
               directions: newFormData.directions
             });
           } else if (response.role === 'teacher' || response.role === 'secretary') {
-            // For teachers/secretaries: always use arrays, with fallbacks
+            // CRITICAL FIX: Better handling for teacher/secretary data
+            console.log('Raw teacher/secretary data:', {
+              role: response.role,
+              school: response.school,
+              schools: response.schools,
+              direction: response.direction,
+              directions: response.directions
+            });
             
-            // CRITICAL FIX: Ensure we always have arrays, process schools correctly
-            const schools = processSchoolData(response.schools || response.school);
+            // Process schools with better fallback handling
+            let schools = [];
+            // First try schools array
+            if (response.schools && Array.isArray(response.schools) && response.schools.length > 0) {
+              schools = processSchoolData(response.schools);
+            }
+            // Then try single school
+            else if (response.school) {
+              schools = Array.isArray(response.school)
+                ? processSchoolData(response.school)
+                : processSchoolData([response.school]);
+            }
+            
+            // Set schools array and single school value
             newFormData.schools = schools;
+            newFormData.school = schools.length > 0 ? schools[0] : '';
             
             // Only set directions for teachers, not for secretaries
             if (response.role === 'teacher') {
-              const directions = processDirectionData(response.directions || response.direction);
+              // Process directions with better fallback handling
+              let directions = [];
+              // First try directions array
+              if (response.directions && Array.isArray(response.directions) && response.directions.length > 0) {
+                directions = processDirectionData(response.directions);
+              }
+              // Then try single direction
+              else if (response.direction) {
+                directions = Array.isArray(response.direction)
+                  ? processDirectionData(response.direction)
+                  : processDirectionData([response.direction]);
+              }
+              
               newFormData.directions = directions;
+              newFormData.direction = directions.length > 0 ? directions[0] : '';
             } else {
-              // For secretary, set empty directions array
+              // For secretary, set empty directions
               newFormData.directions = [];
+              newFormData.direction = '';
             }
             
-            // For backward compatibility with single-value fields
-            if (schools && schools.length > 0) {
-              newFormData.school = schools[0];
-            }
-            
-            if (response.role === 'teacher' && newFormData.directions && newFormData.directions.length > 0) {
-              newFormData.direction = newFormData.directions[0];
-            }
-            
-            console.log('Teacher/Secretary data processed:', {
+            console.log('FIXED: Teacher/Secretary data processed:', {
               role: response.role,
-              schools: newFormData.schools,
-              directions: newFormData.directions,
               school: newFormData.school,
-              direction: newFormData.direction
+              direction: newFormData.direction,
+              schools: newFormData.schools,
+              directions: newFormData.directions
             });
           }
           
           // Process subjects for all roles
           newFormData.subjects = processSubjectData(response.subjects);
           console.log('Processed subjects:', newFormData.subjects);
-          
-          // Handle subjects (common for both roles)
-          newFormData.subjects = response.subjects?.map(subj => typeof subj === 'object' ? subj._id : subj) || [];
           
           setFormData(newFormData);
           dataLoaded.current = true;

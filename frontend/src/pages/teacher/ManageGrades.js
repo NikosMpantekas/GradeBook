@@ -291,26 +291,53 @@ const ManageGrades = () => {
 
   // Edit Grade Dialog
   const handleEditClick = (grade) => {
-    // Ensure we store the complete grade data
+    console.log('Edit grade clicked:', {
+      grade, 
+      studentType: typeof grade.student,
+      studentValue: grade.student,
+      studentId: grade.student?._id || grade.student
+    });
+    
+    // Ensure we store the complete grade data with proper ID handling
+    const studentId = typeof grade.student === 'object' ? grade.student._id : grade.student;
+    const subjectId = typeof grade.subject === 'object' ? grade.subject._id : grade.subject;
+    
+    // CRITICAL FIX: Log and verify the actual IDs being used
+    console.log('Resolved IDs for edit:', {
+      studentId,
+      subjectId,
+      originalStudent: grade.student,
+      originalSubject: grade.subject
+    });
+    
     setEditGradeData({
       id: grade._id,
       value: grade.value,
       description: grade.description || '',
-      student: grade.student?._id || grade.student || '',
-      subject: grade.subject?._id || grade.subject || '',
+      student: studentId,
+      subject: subjectId,
       date: grade.date ? new Date(grade.date) : new Date(),
     });
     
     // Make sure we have all the necessary data for editing
     // If students aren't loaded yet, fetch them based on the subject
     try {
-      if (grade.subject) {
-        const subjectId = typeof grade.subject === 'object' ? grade.subject._id : grade.subject;
+      if (subjectId) {
         console.log('Fetching students for subject:', subjectId);
-        dispatch(getStudentsBySubject(subjectId));
+        // Dispatch with error handling
+        dispatch(getStudentsBySubject(subjectId))
+          .unwrap()
+          .then(fetchedStudents => {
+            console.log('Students fetched successfully:', fetchedStudents?.length || 0);
+          })
+          .catch(error => {
+            console.error('Error fetching students:', error);
+            toast.error('Error loading students. Please try again.');
+          });
       }
     } catch (error) {
-      console.error('Error fetching students:', error);
+      console.error('Error in student fetch process:', error);
+      toast.error('Error preparing the edit form. Please try again.');
     }
     
     setEditDialogOpen(true);
@@ -597,23 +624,33 @@ const ManageGrades = () => {
               <FormHelperText>Select the subject for this grade</FormHelperText>
             </FormControl>
             
-            {/* Added student selection */}
+            {/* FIXED: Student selection with improved error handling */}
             <FormControl fullWidth margin="dense" required>
               <InputLabel id="student-label">Student</InputLabel>
               <Select
                 labelId="student-label"
                 name="student"
-                value={editGradeData.student}
+                value={editGradeData.student || ''}
                 onChange={handleEditChange}
                 label="Student"
               >
-                {Array.isArray(students) && students.length > 0 ? students.map((student) => (
-                  <MenuItem key={student._id} value={student._id}>
-                    {student.name}
-                  </MenuItem>
-                )) : <MenuItem disabled>No students available</MenuItem>}
+                {isLoading ? (
+                  <MenuItem disabled>Loading students...</MenuItem>
+                ) : Array.isArray(students) && students.length > 0 ? (
+                  students.map((student) => (
+                    <MenuItem key={student._id} value={student._id}>
+                      {student.name}
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem disabled>No students available</MenuItem>
+                )}
               </Select>
-              <FormHelperText>Select the student for this grade</FormHelperText>
+              <FormHelperText>
+                {editGradeData.student ? 
+                  `Selected: ${students.find(s => s._id === editGradeData.student)?.name || 'Unknown Student'}` : 
+                  'Select the student for this grade'}
+              </FormHelperText>
             </FormControl>
             
             {/* Grade value field */}

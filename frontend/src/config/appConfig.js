@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.50'; // CRITICAL FIX: All bug fixes rolled into one final release
+const APP_VERSION = '1.4.51'; // CRITICAL FIX: Fixed mobile update notification loop
 
 /**
  * Safely store app version in localStorage with error handling
@@ -34,26 +34,45 @@ const storeAppVersion = () => {
     if (previousVersion !== APP_VERSION) {
       console.log(`[App] Version changed: ${previousVersion} → ${APP_VERSION}`);
       
+      // CRITICAL FIX: Prevent mobile update loop by checking all storage locations
+      // First, check if we've EVER shown this exact version update before
+      const globalUpdateRecord = localStorage.getItem('global_updates_shown') || '{}';
+      let updatesShown = {};
+      try {
+        updatesShown = JSON.parse(globalUpdateRecord);
+      } catch (e) {
+        console.error('Failed to parse update record', e);
+        updatesShown = {};
+      }
+      
       // Always update localStorage with the current version
       localStorage.setItem('app_version', APP_VERSION);
       localStorage.setItem('app_version_updated_at', Date.now().toString());
       
-      // CRITICAL FIX: Never show update notification after first update
-      // Mark this version as seen immediately
-      sessionStorage.setItem('last_shown_update_version', APP_VERSION);
+      // MOBILE FIX: Create a persistent update record to prevent loops
+      // Determine if we have already shown this version ever
+      const hasShownThisVersionBefore = updatesShown[APP_VERSION] === true;
       
-      // Only show update notification if we have a remembered version and if this is 
-      // the first time we're seeing this specific version
-      const lastShownVersion = sessionStorage.getItem('last_shown_update_version');
-      const wasUpdateShown = localStorage.getItem('update_shown_for_version') === APP_VERSION;
-      
-      if (previousVersion && !wasUpdateShown) {
-        // Mark that we've shown this update exactly once
+      if (!hasShownThisVersionBefore) {
+        // This is the first time we're seeing this version - show update
+        console.log(`[App] First time showing update for version ${APP_VERSION}`);
+        
+        // Mark this version as shown in ALL possible storage locations
+        updatesShown[APP_VERSION] = true;
+        localStorage.setItem('global_updates_shown', JSON.stringify(updatesShown));
         localStorage.setItem('update_shown_for_version', APP_VERSION);
+        sessionStorage.setItem('last_shown_update_version', APP_VERSION);
+        
+        // On mobile, also set a special flag to prevent re-showing after refresh
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          localStorage.setItem('mobile_update_shown_' + APP_VERSION, 'true');
+        }
+        
         return { isNewVersion: true, previousVersion };
       }
       
-      // Version changed but notification already shown
+      // We've shown this version before - never show again
+      console.log(`[App] Update already shown for version ${APP_VERSION}`);
       return { isNewVersion: false, previousVersion, alreadyNotified: true };
     }
     

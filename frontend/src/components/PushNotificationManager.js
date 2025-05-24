@@ -126,7 +126,7 @@ const PushNotificationManager = () => {
       setPushSubscription(newSubscription);
       
       // Send subscription to server
-      await axios.post('/api/notifications/push-subscription', 
+      await axios.post('/api/notifications/subscription', 
         { subscription: newSubscription },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );

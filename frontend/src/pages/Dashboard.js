@@ -113,6 +113,8 @@ const Dashboard = () => {
 
   // Use a ref to track whether we've loaded data
   const dataLoaded = React.useRef(false);
+  const [loadingErrors, setLoadingErrors] = useState({});
+  const [showErrorWarning, setShowErrorWarning] = useState(false);
 
   // Enhanced superadmin redirection with comprehensive error logging
   useEffect(() => {
@@ -180,22 +182,67 @@ const Dashboard = () => {
         return;
       }
       
-      // Fetch initial data only once
-      dispatch(getMyNotifications());
-      dispatch(getSchools());
-      dispatch(getDirections());
-      dispatch(getSubjects());
+      // Fetch initial data only once - with error handling
+      const loadData = async () => {
+        const errors = {};
+        
+        try {
+          await dispatch(getMyNotifications()).unwrap();
+        } catch (error) {
+          console.error('Failed to load notifications:', error);
+          errors.notifications = true;
+        }
+        
+        try {
+          await dispatch(getSchools()).unwrap();
+        } catch (error) {
+          console.error('Failed to load schools:', error);
+          errors.schools = true;
+        }
+        
+        try {
+          await dispatch(getDirections()).unwrap();
+        } catch (error) {
+          console.error('Failed to load directions:', error);
+          errors.directions = true;
+        }
+        
+        try {
+          await dispatch(getSubjects()).unwrap();
+        } catch (error) {
+          console.error('Failed to load subjects:', error);
+          errors.subjects = true;
+        }
+        
+        // Only fetch grades for students
+        if (user.role === 'student') {
+          try {
+            await dispatch(getStudentGrades(user._id)).unwrap();
+          } catch (error) {
+            console.error('Failed to load grades:', error);
+            errors.grades = true;
+          }
+        }
+        
+        // Get populated user data only if we don't already have it
+        if (!(user.school && typeof user.school === 'object') || 
+            !(user.direction && typeof user.direction === 'object')) {
+          try {
+            await dispatch(getUserData()).unwrap();
+          } catch (error) {
+            console.error('Failed to load user data:', error);
+            errors.userData = true;
+          }
+        }
+        
+        // Set errors and show warning if any errors occurred
+        if (Object.keys(errors).length > 0) {
+          setLoadingErrors(errors);
+          setShowErrorWarning(true);
+        }
+      };
       
-      // Only fetch grades for students
-      if (user.role === 'student') {
-        dispatch(getStudentGrades(user._id));
-      }
-      
-      // Get populated user data only if we don't already have it
-      if (!(user.school && typeof user.school === 'object') || 
-          !(user.direction && typeof user.direction === 'object')) {
-        dispatch(getUserData());
-      }
+      loadData();
     }
   }, [user, dispatch]);
 
@@ -331,7 +378,8 @@ const Dashboard = () => {
     return 'Good Evening';
   };
 
-  if (notificationsLoading || gradesLoading) {
+  // If data is still loading, show loading state
+  if ((notificationsLoading || gradesLoading) && !user) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <CircularProgress />
@@ -341,21 +389,43 @@ const Dashboard = () => {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
+      {/* Error warning banner */}
+      {showErrorWarning && (
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: 2, 
+            mb: 3, 
+            bgcolor: 'warning.light', 
+            borderRadius: 1,
+            border: '1px solid',
+            borderColor: 'warning.main'
+          }}
+        >
+          <Typography variant="body1" color="warning.dark">
+            Some data could not be loaded. The dashboard is showing partial information.
+          </Typography>
+          <Button 
+            size="small" 
+            onClick={() => window.location.reload()} 
+            sx={{ mt: 1 }}
+          >
+            Refresh Page
+          </Button>
+        </Paper>
+      )}
       <Grid container spacing={{ xs: 2, sm: 3 }}>
-        {/* Welcome Card */}
-        <Grid item xs={12}>
-          <Paper 
-            elevation={2} 
-            sx={{ 
-              p: { xs: 2, sm: 3 }, 
-              display: 'flex', 
-              flexDirection: 'column',
-              borderRadius: 2,
-              background: theme => theme.palette.mode === 'dark' 
-                ? 'linear-gradient(to right, #1e3c72, #2a5298)'
-                : 'linear-gradient(to right, #4b6cb7, #182848)',
-              color: 'white'
-            }}
+        {/* Welcome Section */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={2} sx={{
+            p: { xs: 1.5, sm: 2 }, 
+            height: '100%', 
+            borderRadius: 2,
+            background: theme => theme.palette.mode === 'dark' 
+              ? 'linear-gradient(to right, #1e3c72, #2a5298)'
+              : 'linear-gradient(to right, #4b6cb7, #182848)',
+            color: 'white'
+          }}
           >
             <Typography variant="h5" sx={{ mb: 1 }}>
               {getWelcomeMessage()}, {user?.name}!

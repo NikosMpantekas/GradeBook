@@ -50,8 +50,23 @@ const UserContactMessages = () => {
           },
         };
         
-        // Fetch the user's contact messages and bug reports
+        // CRITICAL FIX: Include verbose debugging for message loading
+        console.log('Fetching contact messages for user:', user._id);
+        
+        // Use the correct endpoint for user messages
         const { data } = await axios.get('/api/contact/user', config);
+        
+        // Verbose logging to debug response data
+        console.log('Contact messages response:', {
+          count: data?.length || 0,
+          hasData: !!data,
+          firstMessage: data && data.length > 0 ? {
+            id: data[0]._id,
+            subject: data[0].subject,
+            hasReply: !!data[0].adminReply,
+            replyLength: data[0].adminReply?.length || 0
+          } : 'No messages'
+        });
         
         console.log('User messages fetched:', data);
         setMessages(data);
