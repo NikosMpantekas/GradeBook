@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.48'; // CRITICAL FIX: Fixed push notification API endpoints for deployment + key handling
+const APP_VERSION = '1.4.49'; // CRITICAL FIX: Fixed update notifications and edit bugs
 
 /**
  * Safely store app version in localStorage with error handling
@@ -38,15 +38,22 @@ const storeAppVersion = () => {
       localStorage.setItem('app_version', APP_VERSION);
       localStorage.setItem('app_version_updated_at', Date.now().toString());
       
-      // Only show update notification if this version is not already in sessionStorage
-      // This prevents the notification from showing on every page reload
+      // CRITICAL FIX: Never show update notification after first update
+      // Mark this version as seen immediately
+      sessionStorage.setItem('last_shown_update_version', APP_VERSION);
+      
+      // Only show update notification if we have a remembered version and if this is 
+      // the first time we're seeing this specific version
       const lastShownVersion = sessionStorage.getItem('last_shown_update_version');
-      if (lastShownVersion !== APP_VERSION) {
-        sessionStorage.setItem('last_shown_update_version', APP_VERSION);
+      const wasUpdateShown = localStorage.getItem('update_shown_for_version') === APP_VERSION;
+      
+      if (previousVersion && !wasUpdateShown) {
+        // Mark that we've shown this update exactly once
+        localStorage.setItem('update_shown_for_version', APP_VERSION);
         return { isNewVersion: true, previousVersion };
       }
       
-      // Version changed but notification already shown this session
+      // Version changed but notification already shown
       return { isNewVersion: false, previousVersion, alreadyNotified: true };
     }
     

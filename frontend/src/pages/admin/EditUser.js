@@ -264,6 +264,7 @@ const EditUser = () => {
             const schools = processSchoolData(response.schools || response.school);
             const directions = processDirectionData(response.directions || response.direction);
             
+            // CRITICAL FIX: Ensure we have values for dropdown selects
             newFormData.school = schools[0] || ''; // Use first school if available
             newFormData.direction = directions[0] || ''; // Use first direction if available
             newFormData.schools = schools;
@@ -277,18 +278,31 @@ const EditUser = () => {
             });
           } else if (response.role === 'teacher' || response.role === 'secretary') {
             // For teachers/secretaries: always use arrays, with fallbacks
-            newFormData.schools = processSchoolData(response.schools || response.school);
-            newFormData.directions = processDirectionData(response.directions || response.direction);
             
-            // For backward compatibility, also set single values if not already set
-            if (!newFormData.school && newFormData.schools.length > 0) {
-              newFormData.school = newFormData.schools[0];
+            // CRITICAL FIX: Ensure we always have arrays, process schools correctly
+            const schools = processSchoolData(response.schools || response.school);
+            newFormData.schools = schools;
+            
+            // Only set directions for teachers, not for secretaries
+            if (response.role === 'teacher') {
+              const directions = processDirectionData(response.directions || response.direction);
+              newFormData.directions = directions;
+            } else {
+              // For secretary, set empty directions array
+              newFormData.directions = [];
             }
-            if (!newFormData.direction && newFormData.directions.length > 0) {
+            
+            // For backward compatibility with single-value fields
+            if (schools && schools.length > 0) {
+              newFormData.school = schools[0];
+            }
+            
+            if (response.role === 'teacher' && newFormData.directions && newFormData.directions.length > 0) {
               newFormData.direction = newFormData.directions[0];
             }
             
             console.log('Teacher/Secretary data processed:', {
+              role: response.role,
               schools: newFormData.schools,
               directions: newFormData.directions,
               school: newFormData.school,
