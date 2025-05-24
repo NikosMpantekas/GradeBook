@@ -4,7 +4,7 @@ import { Provider } from 'react-redux';
 import { store } from './app/store';
 import App from './App';
 import './index.css';
-import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+// Service worker has been completely disabled to prevent update notifications
 
 const container = document.getElementById('root');
 const root = createRoot(container);
@@ -17,16 +17,33 @@ root.render(
   </React.StrictMode>
 );
 
-// CRITICAL: Ensure service worker is properly registered for PWA support
-// This is essential for Android PWA installation to work correctly
-console.log('[PWA] Registering service worker for Android support');
+// SERVICE WORKER COMPLETELY DISABLED
+console.log('⚠️ Service worker has been completely disabled to prevent update notifications');
 
-// Force immediate registration with explicit options
-serviceWorkerRegistration.register({
-  onSuccess: (registration) => {
-    console.log('[PWA] Service worker registration successful with scope:', registration.scope);
-  },
-  onUpdate: (registration) => {
-    console.log('[PWA] Service worker updated');
+// EMERGENCY FIX: Remove any existing update notifications
+setTimeout(() => {
+  try {
+    // Remove any update notification elements that might exist
+    const elements = [
+      'sw-update-notification',
+      'pwa-update-overlay',
+      'app-update-notification',
+      'update-modal',
+      'update-notification'
+    ];
+    
+    elements.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    
+    // Also clear localStorage
+    const keysToRemove = [
+      'app_version', 'app_version_updated_at', 'update_shown_for_version', 'global_updates_shown',
+      'last_shown_update_version', 'update_notification_shown_session'
+    ];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+  } catch (e) {
+    console.error('Error cleaning up notifications:', e);
   }
-});
+}, 100);
