@@ -186,7 +186,8 @@ const { protect } = require('./middleware/authMiddleware');
 app.use('/api/grades', protect, setSchoolContext, require('./routes/gradeRoutes')); 
 app.use('/api/notifications', protect, setSchoolContext, require('./routes/notificationRoutes')); 
 app.use('/api/subjects', protect, setSchoolContext, require('./routes/subjectRoutes')); 
-app.use('/api/directions', protect, setSchoolContext, require('./routes/directionRoutes')); 
+app.use('/api/directions', protect, setSchoolContext, require('./routes/directionRoutes'));
+app.use('/api/students', protect, setSchoolContext, require('./routes/studentRoutes')); 
 
 logger.info('SERVER', 'Routes configured with proper middleware ordering')
 

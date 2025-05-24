@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.38'; // CRITICAL FIX: Fixed grade creation, form submission, and API validation
+const APP_VERSION = '1.4.39'; // CRITICAL FIX: Added missing student API endpoints + fixed grade creation
 
 /**
  * Safely store app version in localStorage with error handling

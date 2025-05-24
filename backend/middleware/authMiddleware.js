@@ -391,6 +391,36 @@ const canManageDirections = adminOrSecretary('canManageDirections');
 const canManageSubjects = adminOrSecretary('canManageSubjects');
 const canAccessStudentProgress = adminOrSecretary('canAccessStudentProgress');
 
+// Middleware to check if user can manage students (admin, teacher, secretary)
+const canManageStudents = asyncHandler(async (req, res, next) => {
+  if (!req.user) {
+    logger.error('AUTH', 'Student management check - No user object found in request', {
+      path: req.originalUrl,
+      method: req.method
+    });
+    res.status(401);
+    throw new Error('Authentication required - please log in');
+  }
+  
+  // Check if user has permissions to manage students
+  if (['admin', 'teacher', 'secretary', 'superadmin'].includes(req.user.role)) {
+    logger.info('AUTH', `Student management access granted to ${req.user.role}`, {
+      userId: req.user._id,
+      role: req.user.role,
+      path: req.originalUrl
+    });
+    next();
+  } else {
+    logger.warn('AUTH', 'Unauthorized student management access attempt', {
+      userId: req.user._id,
+      role: req.user.role,
+      path: req.originalUrl
+    });
+    res.status(403);
+    throw new Error('Not authorized to access student information');
+  }
+});
+
 module.exports = { 
   protect, 
   admin, 
@@ -403,5 +433,6 @@ module.exports = {
   canManageSchools,
   canManageDirections,
   canManageSubjects,
-  canAccessStudentProgress
+  canAccessStudentProgress,
+  canManageStudents
 };
