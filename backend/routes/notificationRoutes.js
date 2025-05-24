@@ -8,6 +8,8 @@ const {
   markNotificationRead,
   getNotificationById,
   deleteNotification,
+  getVapidPublicKey,
+  createPushSubscription
 } = require('../controllers/notificationController');
 const { protect, admin, teacher, canSendNotifications } = require('../middleware/authMiddleware');
 
@@ -33,6 +35,10 @@ router.post('/', protect, (req, res, next) => {
 
 // Delete notification route
 router.delete('/:id', protect, deleteNotification);
+
+// Push notification routes
+router.get('/vapid-public-key', protect, getVapidPublicKey);
+router.post('/subscription', protect, createPushSubscription);
 
 // Admin routes (with secretary support where appropriate)
 router.get('/', protect, canSendNotifications, getAllNotifications);

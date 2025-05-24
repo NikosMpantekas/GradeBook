@@ -121,11 +121,11 @@ const createNotification = asyncHandler(async (req, res) => {
       const pushPromises = subscriptions.map(async (subscription) => {
         try {
           // Validate subscription has the required keys before trying to send
-          if (!subscription.endpoint || !subscription.p256dh || !subscription.auth) {
+          if (!subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
             console.warn(`Incomplete subscription for user ${subscription.user}. Missing:`, {
               endpoint: !subscription.endpoint,
-              p256dh: !subscription.p256dh,
-              auth: !subscription.auth
+              p256dh: !subscription.keys?.p256dh,
+              auth: !subscription.keys?.auth
             });
             // Remove invalid subscription
             await Subscription.findByIdAndDelete(subscription._id);
@@ -135,8 +135,8 @@ const createNotification = asyncHandler(async (req, res) => {
           const pushSubscription = {
             endpoint: subscription.endpoint,
             keys: {
-              p256dh: subscription.p256dh,
-              auth: subscription.auth
+              p256dh: subscription.keys.p256dh,
+              auth: subscription.keys.auth
             }
           };
           
@@ -478,6 +478,81 @@ const deleteNotification = asyncHandler(async (req, res) => {
       res.status(500);
     }
     throw error;
+  }
+});
+
+// @desc    Get VAPID public key for push notifications
+// @route   GET /api/notifications/vapid-public-key
+// @access  Private
+const getVapidPublicKey = asyncHandler(async (req, res) => {
+  // In a production app, these would be stored securely in environment variables
+  // For this app, we'll use a default public key that works for development
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || 
+    'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+  
+  console.log('Providing VAPID public key for push notifications');
+  
+  res.json({ vapidPublicKey });
+});
+
+// @desc    Create or update push subscription
+// @route   POST /api/notifications/subscription
+// @access  Private
+const createPushSubscription = asyncHandler(async (req, res) => {
+  const { endpoint, keys, expirationTime } = req.body;
+  
+  if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
+    res.status(400);
+    throw new Error('Invalid subscription data - missing required fields');
+  }
+  
+  try {
+    console.log(`Creating/updating push subscription for user ${req.user._id}`);
+    
+    // Find existing subscription for this user and endpoint
+    let subscription = await Subscription.findOne({
+      user: req.user._id,
+      endpoint
+    });
+    
+    if (subscription) {
+      // Update existing subscription
+      subscription.keys.p256dh = keys.p256dh;
+      subscription.keys.auth = keys.auth;
+      if (expirationTime) {
+        subscription.expirationTime = expirationTime;
+      }
+      await subscription.save();
+      console.log(`Updated existing subscription for user ${req.user._id}`);
+    } else {
+      // Create new subscription
+      const subscriptionData = {
+        user: req.user._id,
+        endpoint,
+        keys: {
+          p256dh: keys.p256dh,
+          auth: keys.auth
+        },
+        schoolId: req.user.schoolId, // Add schoolId for multi-tenancy
+        isSuperadmin: req.user.role === 'superadmin'
+      };
+      
+      if (expirationTime) {
+        subscriptionData.expirationTime = expirationTime;
+      }
+      
+      subscription = await Subscription.create(subscriptionData);
+      console.log(`Created new subscription for user ${req.user._id}`);
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: 'Push subscription saved successfully'
+    });
+  } catch (error) {
+    console.error('Error saving push subscription:', error);
+    res.status(500);
+    throw new Error('Failed to save push subscription: ' + error.message);
   }
 });
 
