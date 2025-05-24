@@ -75,10 +75,10 @@ const CreateUser = (props) => {
     // Check URL parameters to see if secretary role creation should be restricted
     const queryParams = new URLSearchParams(window.location.search);
     const restrictParam = queryParams.get('restrictSecretary');
-    if (restrictParam === 'true' || currentUser?.role === 'secretary') {
+    if (restrictParam === 'true' || user?.role === 'secretary') {
       setRestrictSecretary(true);
     }
-  }, [currentUser]);
+  }, [user]);
 
   // Additional state for loading schools, directions, and subjects
   const [loadingOptions, setLoadingOptions] = useState({
@@ -309,7 +309,7 @@ const CreateUser = (props) => {
       // CRITICAL FIX: Add proper authorization headers
       const config = {
         headers: {
-          Authorization: `Bearer ${currentUser.token}`,
+          Authorization: `Bearer ${user.token}`,
         },
       };
       
@@ -560,7 +560,7 @@ const CreateUser = (props) => {
       try {
         const config = {
           headers: {
-            Authorization: `Bearer ${currentUser.token}`,
+            Authorization: `Bearer ${user.token}`,
           },
         };
         const { data } = await axios.get('/api/schools', config);
@@ -580,7 +580,7 @@ const CreateUser = (props) => {
       try {
         const config = {
           headers: {
-            Authorization: `Bearer ${currentUser.token}`,
+            Authorization: `Bearer ${user.token}`,
           },
         };
         const { data } = await axios.get('/api/directions', config);
@@ -600,7 +600,7 @@ const CreateUser = (props) => {
       try {
         const config = {
           headers: {
-            Authorization: `Bearer ${currentUser.token}`,
+            Authorization: `Bearer ${user.token}`,
           },
         };
         const { data } = await axios.get('/api/subjects', config);
@@ -619,7 +619,7 @@ const CreateUser = (props) => {
     fetchSchools();
     fetchDirections();
     fetchSubjects();
-  }, [currentUser]);
+  }, [user]);
 
   // Handle API response effects
   useEffect(() => {
