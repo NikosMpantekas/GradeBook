@@ -432,14 +432,24 @@ const CreateGradeSimple = () => {
     return Object.keys(errors).length === 0;
   };
   
+  // Track submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Handle form submission
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
       toast.error('Please check form for errors');
       return;
     }
+    
+    // Prevent double submissions
+    if (isSubmitting) {
+      return;
+    }
+    
+    setIsSubmitting(true);
     
     try {
       const gradeData = {
@@ -451,27 +461,40 @@ const CreateGradeSimple = () => {
       };
       
       console.log('[CreateGradeSimple] Submitting grade:', gradeData);
-      dispatch(createGrade(gradeData));
+      await dispatch(createGrade(gradeData)).unwrap();
+      
+      // If we get here, the grade was created successfully
+      resetForm();
+      toast.success('Grade created successfully');
+      
+      // Short delay before navigation to ensure toast is shown
+      setTimeout(() => {
+        navigate('/app/teacher/grades/manage');
+      }, 1000);
     } catch (error) {
       console.error('[CreateGradeSimple] Error submitting form:', error);
+      const errorMessage = error?.message || 'An unexpected error occurred. Please try again.';
+      toast.error(errorMessage);
       setFormErrors({
-        form: 'An unexpected error occurred. Please try again.'
+        form: errorMessage
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
-  // Handle successful grade creation
+  // Handle error and success states
   useEffect(() => {
-    if (isSuccess) {
-      resetForm();
-      toast.success('Grade created successfully');
-      navigate('/app/teacher/grades/manage');
+    // Show error messages from Redux state
+    if (isError && message) {
+      toast.error(message);
     }
     
+    // Cleanup function
     return () => {
       dispatch(reset());
     };
-  }, [isSuccess, navigate, dispatch]);
+  }, [isError, isSuccess, message, dispatch]);
   
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', pb: 10 }}>

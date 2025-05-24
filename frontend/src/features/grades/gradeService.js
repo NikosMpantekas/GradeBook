@@ -16,16 +16,28 @@ const createGrade = async (gradeData, token) => {
     gradeData.value = parseInt(gradeData.value, 10);
   }
 
-  console.log('Attempting to save grade with data:', JSON.stringify(gradeData));
+  // Add timestamp to ensure fresh request
+  const timestamp = new Date().getTime();
+  const url = `${API_URL}?_t=${timestamp}`;
+  
+  console.log(`Attempting to save grade with data to ${url}:`, JSON.stringify(gradeData));
   
   try {
-    const response = await axios.post(API_URL, gradeData, config);
+    const response = await axios.post(url, gradeData, config);
     console.log('Grade saved successfully:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error saving grade:', error.response?.data || error.message);
+    console.error('Error saving grade:', error.response?.data?.message || error.response?.data || error.message);
     if (error.response?.status === 403) {
       console.error('Permission denied - this might be an authentication issue');
+      throw new Error('Permission denied - you may not have rights to create grades');
+    } else if (error.response?.status === 400) {
+      const errorMsg = error.response.data.message || 'Validation error creating grade';
+      console.error('Validation error:', errorMsg);
+      throw new Error(errorMsg);
+    } else if (error.response?.status === 500) {
+      console.error('Server error saving grade');
+      throw new Error('Server error - please try again later');
     }
     throw error;
   }

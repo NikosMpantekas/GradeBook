@@ -17,9 +17,17 @@ const createGrade = asyncHandler(async (req, res) => {
     schoolId: req.user.schoolId 
   });
 
-  if (!student || !subject || !value) {
+  // Validate required fields
+  if (!student || !subject || value === undefined || value === null) {
     res.status(400);
     throw new Error('Please provide student, subject and grade value');
+  }
+
+  // Validate value is a number between 0 and 100
+  const numValue = Number(value);
+  if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+    res.status(400);
+    throw new Error('Grade value must be a number between 0 and 100');
   }
 
   try {
@@ -48,11 +56,27 @@ const createGrade = asyncHandler(async (req, res) => {
       throw new Error('Subject not found in this school');
     }
 
+    // Convert value to number and ensure it's within valid range (0-100)
+    const numericValue = Number(value);
+    if (isNaN(numericValue) || numericValue < 0 || numericValue > 100) {
+      console.log('Invalid grade value:', value);
+      res.status(400);
+      throw new Error('Grade value must be a number between 0 and 100');
+    }
+    
+    // Format the date or use current date
+    const gradeDate = date ? new Date(date) : new Date();
+    if (isNaN(gradeDate.getTime())) {
+      console.log('Invalid date format:', date);
+      res.status(400);
+      throw new Error('Invalid date format');
+    }
+
     // Check if a grade already exists for this student, subject, and date in this school
     const existingGrade = await Grade.findOne({
       student,
       subject,
-      date: date || Date.now(),
+      date: { $eq: gradeDate },
       schoolId: req.user.schoolId // Multi-tenancy: Only check grades in the same school
     });
     
@@ -67,9 +91,10 @@ const createGrade = asyncHandler(async (req, res) => {
       student,
       subject,
       teacher: req.user._id,
-      value: parseInt(value),
-      date: date || Date.now(),
-      schoolId: req.user.schoolId // Multi-tenancy: Associate grade with the school
+      value: numericValue,
+      date: gradeDate,
+      schoolId: req.user.schoolId, // Multi-tenancy: Associate grade with the school
+      createdAt: new Date() // Explicit creation timestamp
     };
     
     // Add description if provided
@@ -77,12 +102,22 @@ const createGrade = asyncHandler(async (req, res) => {
       gradeData.description = description;
     }
 
+    console.log('Creating grade with data:', { ...gradeData, teacher: req.user._id.toString() });
+
     // Create the grade in the database
     const grade = await Grade.create(gradeData);
     
     if (grade) {
-      console.log(`Successfully created grade. ID: ${grade._id}, School: ${req.user.schoolId}`);
-      res.status(201).json(grade);
+      console.log(`Successfully created grade. ID: ${grade._id}, Student: ${student}, Subject: ${subject}, Value: ${numericValue}, School: ${req.user.schoolId}`);
+      res.status(201).json({
+        _id: grade._id,
+        student: grade.student,
+        subject: grade.subject,
+        value: grade.value,
+        date: grade.date,
+        description: grade.description,
+        message: 'Grade successfully created'
+      });
     } else {
       console.log('Failed to create grade');
       res.status(400);
