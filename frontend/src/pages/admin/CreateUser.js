@@ -37,7 +37,7 @@ import axios from 'axios';
 import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
 
-const CreateUser = () => {
+const CreateUser = (props) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user: currentUser } = useSelector((state) => state.auth);

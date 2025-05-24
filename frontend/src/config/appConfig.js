@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.26'; // Fixed grade creation and user creation TypeErrors
+const APP_VERSION = '1.4.27'; // Fixed grade creation, user creation TypeErrors, and ESLint errors
 
 /**
  * Safely store app version in localStorage with error handling
