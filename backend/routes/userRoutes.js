@@ -6,7 +6,8 @@ const {
   refreshToken,
   getMe,
   updateProfile,
-  getUsers
+  getUsers,
+  createUserByAdmin
 } = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -21,5 +22,6 @@ router.put('/profile', protect, updateProfile);
 
 // Admin routes - simplified for single-database architecture
 router.get('/', protect, admin, getUsers); // Only admins can see all users
+router.post('/admin/create', protect, admin, createUserByAdmin); // Admin route to create users
 
 module.exports = router;

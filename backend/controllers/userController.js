@@ -552,6 +552,111 @@ const generateRefreshToken = (id, schoolId = null) => {
   });
 };
 
+// @desc    Create new user by admin
+// @route   POST /api/users/admin/create
+// @access  Private/Admin
+const createUserByAdmin = asyncHandler(async (req, res) => {
+  console.log('Admin create user endpoint called');
+  
+  try {
+    const { 
+      name, 
+      email, 
+      password, 
+      role, 
+      school, 
+      direction, 
+      subjects,
+      mobilePhone,
+      personalEmail
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password || !role) {
+      res.status(400);
+      throw new Error('Please provide name, email, password and role');
+    }
+
+    // Check if admin is in the same school
+    if (req.user.role !== 'superadmin' && !req.user.schoolId) {
+      res.status(401);
+      throw new Error('Not authorized - no school context');
+    }
+
+    // Check if user exists
+    const userExists = await User.findOne({ 
+      email, 
+      schoolId: role === 'student' ? school : { $exists: true } 
+    });
+
+    if (userExists) {
+      res.status(400);
+      throw new Error('User with this email already exists');
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create user data object
+    const userData = {
+      name,
+      email,
+      password: hashedPassword,
+      role,
+      mobilePhone: mobilePhone || '',
+      personalEmail: personalEmail || '',
+      active: true
+    };
+
+    // Set school differently based on role
+    if (role === 'student') {
+      // Students have a single school
+      userData.school = school;
+      userData.schoolId = school;
+      userData.direction = direction;
+      userData.subjects = subjects || [];
+    } else if (role === 'teacher' || role === 'secretary') {
+      // Teachers and secretaries can have multiple schools
+      userData.schools = Array.isArray(req.body.schools) ? req.body.schools : [school];
+      userData.school = userData.schools[0]; // Set the first school as the primary for compatibility
+      userData.schoolId = userData.schools[0];
+      userData.directions = Array.isArray(req.body.directions) ? req.body.directions : [direction];
+      userData.direction = userData.directions; // Keep for compatibility
+      userData.subjects = subjects || [];
+    } else if (role === 'admin') {
+      // Admins are tied to a school but don't have directions or subjects
+      userData.school = school;
+      userData.schoolId = school;
+    }
+
+    console.log('Creating user with data:', { ...userData, password: '[HIDDEN]' });
+
+    // Create user
+    const user = await User.create(userData);
+
+    if (user) {
+      res.status(201).json({
+        _id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        school: user.school,
+        direction: user.direction,
+        subjects: user.subjects,
+        message: 'User created successfully'
+      });
+    } else {
+      res.status(400);
+      throw new Error('Invalid user data');
+    }
+  } catch (error) {
+    console.error('Error creating user:', error.message);
+    res.status(400);
+    throw new Error('Failed to create user: ' + error.message);
+  }
+});
+
 // Export functions
 module.exports = {
   registerUser,
@@ -560,6 +665,7 @@ module.exports = {
   getMe,
   updateProfile,
   getUsers,
+  createUserByAdmin,
   generateToken,
   generateRefreshToken
 };

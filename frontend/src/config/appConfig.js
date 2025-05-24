@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.35'; // CRITICAL FIX: API routes no longer captured by client routes + stopped infinite API calls
+const APP_VERSION = '1.4.36'; // CRITICAL FIX: Added missing admin user creation endpoint + fixed API routes
 
 /**
  * Safely store app version in localStorage with error handling
