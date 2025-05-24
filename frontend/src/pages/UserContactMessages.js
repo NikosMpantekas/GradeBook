@@ -50,25 +50,32 @@ const UserContactMessages = () => {
           },
         };
         
-        // CRITICAL FIX: Include verbose debugging for message loading
-        console.log('Fetching contact messages for user:', user._id);
+        // CRITICAL FIX: Force direct API call without caching
+        const timestamp = Date.now();
+        console.log(`Fetching contact messages for user ${user._id} at timestamp ${timestamp}`);
         
-        // Use the correct endpoint for user messages
-        const { data } = await axios.get('/api/contact/user', config);
+        // CRITICAL FIX: Make direct API call with timestamp to bypass cache
+        const { data } = await axios.get(`/api/contact/user?_t=${timestamp}`, config);
         
-        // Verbose logging to debug response data
-        console.log('Contact messages response:', {
-          count: data?.length || 0,
-          hasData: !!data,
-          firstMessage: data && data.length > 0 ? {
-            id: data[0]._id,
-            subject: data[0].subject,
-            hasReply: !!data[0].adminReply,
-            replyLength: data[0].adminReply?.length || 0
-          } : 'No messages'
+        // DEBUG all messages to find admin replies
+        data.forEach((msg, index) => {
+          console.log(`Message ${index + 1} (${msg._id}):`, {
+            subject: msg.subject,
+            hasAdminReply: !!msg.adminReply,
+            adminReplyLength: msg.adminReply?.length || 0,
+            adminReplyDate: msg.adminReplyDate || 'No date',
+            status: msg.status
+          });
         });
         
-        console.log('User messages fetched:', data);
+        // Alert user about reply status
+        const messagesWithReplies = data.filter(m => m.adminReply && m.adminReply.trim() !== '');
+        if (messagesWithReplies.length > 0) {
+          console.log(`Found ${messagesWithReplies.length} messages with admin replies`);
+        } else {
+          console.log('No messages with admin replies found');
+        }
+        
         setMessages(data);
       } catch (err) {
         console.error('Error fetching user messages:', err);
@@ -183,18 +190,22 @@ const UserContactMessages = () => {
                     {message.message}
                   </Typography>
                   
-                  {message.adminReply && (
+                  {/* CRITICAL FIX: Better admin reply display with redundant checks */}
+                  {(message.adminReply && message.adminReply.trim() !== '') ? (
                     <Box 
                       sx={{ 
                         mt: 2, 
                         pt: 2, 
                         borderTop: '1px dashed rgba(0, 0, 0, 0.12)',
                         position: 'relative',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)', // Light green background
+                        borderRadius: 2,
+                        p: 1
                       }}
                     >
                       <Box sx={{ position: 'absolute', top: -12, left: 16, bgcolor: 'white', px: 1 }}>
                         <Badge color="success" badgeContent=" " variant="dot" invisible={message.replyRead}>
-                          <Typography variant="caption" color="textSecondary">
+                          <Typography variant="subtitle1" color="success.main" fontWeight="bold">
                             Admin Reply ({formatDate(message.adminReplyDate)})
                           </Typography>
                         </Badge>
@@ -204,15 +215,24 @@ const UserContactMessages = () => {
                         bgcolor: 'rgba(76, 175, 80, 0.08)', 
                         p: 2, 
                         borderRadius: 1,
-                        mt: 1
+                        mt: 2,
+                        border: '1px solid #4caf50'
                       }}>
-                        <ReplyIcon sx={{ mr: 1, color: 'success.main' }} />
-                        <Typography sx={{ whiteSpace: 'pre-wrap' }}>
+                        <ReplyIcon sx={{ mr: 1, color: 'success.main', fontSize: 24 }} />
+                        <Typography sx={{ whiteSpace: 'pre-wrap', fontWeight: 'medium' }}>
                           {message.adminReply}
                         </Typography>
                       </Box>
                     </Box>
-                  )}
+                  ) : message.status === 'replied' ? (
+                    /* Fallback if status is replied but no reply text found */
+                    <Box sx={{ mt: 2, p: 2, bgcolor: 'warning.light', borderRadius: 1 }}>
+                      <Typography fontWeight="bold">
+                        This message has been marked as replied, but the reply text couldn't be loaded. 
+                        Please refresh the page or contact support.
+                      </Typography>
+                    </Box>
+                  ) : null}
                 </CardContent>
               </Card>
             </Grid>

@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.51'; // CRITICAL FIX: Fixed mobile update notification loop
+const APP_VERSION = '1.4.52'; // CRITICAL FIX: Completely disabled update notifications
 
 /**
  * Safely store app version in localStorage with error handling
@@ -30,51 +30,30 @@ const storeAppVersion = () => {
       return { isNewVersion: false, previousVersion: null };
     }
     
-    // Check if version has changed and is actually newer
+    // CRITICAL FIX: COMPLETELY DISABLED UPDATE NOTIFICATIONS
+    // Always update localStorage with the current version silently
     if (previousVersion !== APP_VERSION) {
-      console.log(`[App] Version changed: ${previousVersion} → ${APP_VERSION}`);
-      
-      // CRITICAL FIX: Prevent mobile update loop by checking all storage locations
-      // First, check if we've EVER shown this exact version update before
-      const globalUpdateRecord = localStorage.getItem('global_updates_shown') || '{}';
-      let updatesShown = {};
-      try {
-        updatesShown = JSON.parse(globalUpdateRecord);
-      } catch (e) {
-        console.error('Failed to parse update record', e);
-        updatesShown = {};
-      }
-      
-      // Always update localStorage with the current version
+      console.log(`[App] Version changed: ${previousVersion} → ${APP_VERSION} (notifications disabled)`);
       localStorage.setItem('app_version', APP_VERSION);
       localStorage.setItem('app_version_updated_at', Date.now().toString());
       
-      // MOBILE FIX: Create a persistent update record to prevent loops
-      // Determine if we have already shown this version ever
-      const hasShownThisVersionBefore = updatesShown[APP_VERSION] === true;
+      // Hard kill all update notifications by setting all possible flags
+      localStorage.setItem('update_notification_disabled', 'true');
+      localStorage.setItem('update_shown_for_version', APP_VERSION);
+      sessionStorage.setItem('last_shown_update_version', APP_VERSION);
+      localStorage.setItem('mobile_update_shown_' + APP_VERSION, 'true');
       
-      if (!hasShownThisVersionBefore) {
-        // This is the first time we're seeing this version - show update
-        console.log(`[App] First time showing update for version ${APP_VERSION}`);
-        
-        // Mark this version as shown in ALL possible storage locations
-        updatesShown[APP_VERSION] = true;
+      try {
+        // Clear any existing update records and set the new one as already shown
+        const updatesShown = { [APP_VERSION]: true };
         localStorage.setItem('global_updates_shown', JSON.stringify(updatesShown));
-        localStorage.setItem('update_shown_for_version', APP_VERSION);
-        sessionStorage.setItem('last_shown_update_version', APP_VERSION);
-        
-        // On mobile, also set a special flag to prevent re-showing after refresh
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-          localStorage.setItem('mobile_update_shown_' + APP_VERSION, 'true');
-        }
-        
-        return { isNewVersion: true, previousVersion };
+      } catch (e) {
+        console.error('Error updating records, but notifications still disabled:', e);
       }
-      
-      // We've shown this version before - never show again
-      console.log(`[App] Update already shown for version ${APP_VERSION}`);
-      return { isNewVersion: false, previousVersion, alreadyNotified: true };
     }
+    
+    // ALWAYS return false to never show updates
+    return { isNewVersion: false, previousVersion, alreadyNotified: true };
     
     return { isNewVersion: false, previousVersion };
   } catch (err) {
@@ -114,6 +93,12 @@ const sendVersionToServiceWorker = () => {
  */
 const initAppConfig = () => {
   try {
+    // COMPLETELY DISABLED - Never show update notification
+    const shouldShowUpdateNotification = () => {
+      // Force return false to never show update notifications
+      return false;
+    };
+
     // Check version when explicitly initialized
     const versionStatus = storeAppVersion();
     if (versionStatus.isNewVersion) {

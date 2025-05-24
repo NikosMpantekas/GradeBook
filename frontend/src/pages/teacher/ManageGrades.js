@@ -291,56 +291,85 @@ const ManageGrades = () => {
 
   // Edit Grade Dialog
   const handleEditClick = (grade) => {
-    console.log('Edit grade clicked:', {
-      grade, 
-      studentType: typeof grade.student,
-      studentValue: grade.student,
-      studentId: grade.student?._id || grade.student
-    });
+    console.log('Edit grade clicked:', grade);
     
-    // Ensure we store the complete grade data with proper ID handling
-    const studentId = typeof grade.student === 'object' ? grade.student._id : grade.student;
-    const subjectId = typeof grade.subject === 'object' ? grade.subject._id : grade.subject;
+    // CRITICAL FIX: Store the complete student object for better display
+    const studentObject = typeof grade.student === 'object' ? grade.student : null;
+    const studentId = studentObject ? studentObject._id : grade.student;
+    const studentName = studentObject ? studentObject.name : null;
     
-    // CRITICAL FIX: Log and verify the actual IDs being used
-    console.log('Resolved IDs for edit:', {
+    const subjectObject = typeof grade.subject === 'object' ? grade.subject : null;
+    const subjectId = subjectObject ? subjectObject._id : grade.subject;
+    const subjectName = subjectObject ? subjectObject.name : null;
+    
+    // EMERGENCY FIX: Directly preload the student data in memory to avoid reliance on API
+    console.log('CRITICAL FIX - Preloaded student data:', {
       studentId,
+      studentName,
       subjectId,
-      originalStudent: grade.student,
-      originalSubject: grade.subject
+      subjectName
     });
     
-    setEditGradeData({
+    // Force update the editGradeData with complete student information
+    const newGradeData = {
       id: grade._id,
       value: grade.value,
       description: grade.description || '',
       student: studentId,
       subject: subjectId,
       date: grade.date ? new Date(grade.date) : new Date(),
-    });
+      // CRITICAL FIX: Add cached student data to avoid reliance on redux
+      studentObject: studentObject,
+      studentName: studentName,
+      subjectName: subjectName
+    };
+    
+    // Update the form state with the correct data
+    setEditGradeData(newGradeData);
     
     // Make sure we have all the necessary data for editing
-    // If students aren't loaded yet, fetch them based on the subject
     try {
+      // CRITICAL FIX: Force immediate student data retrieval before opening dialog
       if (subjectId) {
-        console.log('Fetching students for subject:', subjectId);
-        // Dispatch with error handling
+        // Show loading toast
+        toast.info('Loading students data...', {
+          autoClose: 2000,
+          position: 'bottom-right'
+        });
+        
+        // Dispatch action to fetch students
         dispatch(getStudentsBySubject(subjectId))
           .unwrap()
           .then(fetchedStudents => {
-            console.log('Students fetched successfully:', fetchedStudents?.length || 0);
+            console.log(`Successfully loaded ${fetchedStudents.length} students`);
+            
+            // Double-check if our student is in the list, add if missing
+            if (studentObject && !fetchedStudents.find(s => s._id === studentId)) {
+              console.log('CRITICAL FIX: Adding missing student to students list');
+              dispatch({
+                type: 'students/studentsLoaded',
+                payload: [...fetchedStudents, studentObject]
+              });
+            }
+            
+            // Open the dialog after data is loaded
+            setEditDialogOpen(true);
           })
           .catch(error => {
-            console.error('Error fetching students:', error);
-            toast.error('Error loading students. Please try again.');
+            console.error('Failed to load students:', error);
+            // Continue anyway with our cached student data
+            toast.warning('Using cached student data due to API error');
+            setEditDialogOpen(true);
           });
+      } else {
+        // No subject ID, just open the dialog
+        setEditDialogOpen(true);
       }
     } catch (error) {
-      console.error('Error in student fetch process:', error);
-      toast.error('Error preparing the edit form. Please try again.');
+      console.error('Critical error in edit process:', error);
+      // Open dialog anyway - we have the cached student data
+      setEditDialogOpen(true);
     }
-    
-    setEditDialogOpen(true);
   };
 
   const handleEditChange = (e) => {
@@ -624,7 +653,7 @@ const ManageGrades = () => {
               <FormHelperText>Select the subject for this grade</FormHelperText>
             </FormControl>
             
-            {/* FIXED: Student selection with improved error handling */}
+            {/* EMERGENCY FIX: Completely redesigned student selection that always shows the student */}
             <FormControl fullWidth margin="dense" required>
               <InputLabel id="student-label">Student</InputLabel>
               <Select
@@ -634,22 +663,40 @@ const ManageGrades = () => {
                 onChange={handleEditChange}
                 label="Student"
               >
+                {/* CRITICAL FIX: Always show the current student as first option */}
+                {editGradeData.student && (
+                  <MenuItem key={`current-${editGradeData.student}`} value={editGradeData.student}>
+                    {editGradeData.studentName || students.find(s => s._id === editGradeData.student)?.name || `Student ID: ${editGradeData.student}`}
+                  </MenuItem>
+                )}
+                
+                {/* Then show divider if we're showing additional students */}
+                {editGradeData.student && Array.isArray(students) && students.length > 0 && (
+                  <Divider sx={{ my: 1 }} />
+                )}
+                
+                {/* Then show other available students */}
                 {isLoading ? (
                   <MenuItem disabled>Loading students...</MenuItem>
                 ) : Array.isArray(students) && students.length > 0 ? (
-                  students.map((student) => (
-                    <MenuItem key={student._id} value={student._id}>
-                      {student.name}
-                    </MenuItem>
-                  ))
+                  students
+                    // Filter out duplicates of current student
+                    .filter(student => student._id !== editGradeData.student)
+                    .map((student) => (
+                      <MenuItem key={student._id} value={student._id}>
+                        {student.name}
+                      </MenuItem>
+                    ))
                 ) : (
-                  <MenuItem disabled>No students available</MenuItem>
+                  <MenuItem disabled>No other students available</MenuItem>
                 )}
               </Select>
-              <FormHelperText>
-                {editGradeData.student ? 
-                  `Selected: ${students.find(s => s._id === editGradeData.student)?.name || 'Unknown Student'}` : 
-                  'Select the student for this grade'}
+              <FormHelperText sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                {editGradeData.studentName ? 
+                  `Student: ${editGradeData.studentName}` : 
+                  editGradeData.student ? 
+                    `Student ID: ${editGradeData.student}` : 
+                    'Select a student for this grade'}
               </FormHelperText>
             </FormControl>
             
