@@ -443,6 +443,7 @@ const CreateGradeSimple = () => {
 
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <Button
                   variant="outlined"
                   onClick={resetForm}
                   disabled={isLoading || loading}
