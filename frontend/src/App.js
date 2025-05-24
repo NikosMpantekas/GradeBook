@@ -12,6 +12,7 @@ import { applyGlobalSafetyGuards, safe, safeGet } from './utils/safetyGuards';
 
 // Layout Components
 import Layout from './components/layout/Layout';
+import ScrollFix from './components/layout/ScrollFix';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import SuperAdminRoute from './components/SuperAdminRoute';
@@ -287,6 +288,7 @@ function App() {
     <ErrorBoundary componentName="App Root">
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        <ScrollFix />
         <HomeScreenPrompt />
         <Router>
           <Routes>

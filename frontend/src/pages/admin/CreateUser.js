@@ -281,14 +281,24 @@ const CreateUser = (props) => {
       setLoadingOptions(prev => ({ ...prev, subjects: true }));
       setOptionsError(prev => ({ ...prev, subjects: null }));
       
+      // CRITICAL FIX: Add proper authorization headers
+      const config = {
+        headers: {
+          Authorization: `Bearer ${currentUser.token}`,
+        },
+      };
+      
       // If a direction is selected, fetch subjects for that direction
       let url = '/api/subjects';
       if (directionId) {
         url = `/api/subjects/direction/${directionId}`;
-        console.log(`Fetching subjects for direction: ${directionId}`);
+        console.log(`[CreateUser] Fetching subjects for direction: ${directionId}`);
+      } else {
+        console.log('[CreateUser] Fetching all subjects');
       }
       
-      const response = await axios.get(url);
+      const response = await axios.get(url, config);
+      console.log(`[CreateUser] Subjects loaded:`, response.data);
       setOptionsData(prev => ({ ...prev, subjects: response.data }));
       
       // If we had subjects selected but changed direction, reset the selection
@@ -299,7 +309,7 @@ const CreateUser = (props) => {
         
         // Update form data with only valid subjects for this direction
         if (filteredSubjects.length !== formData.subjects.length) {
-          console.log('Resetting subject selection due to direction change');
+          console.log('[CreateUser] Resetting subject selection due to direction change');
           setFormData(prev => ({
             ...prev,
             subjects: filteredSubjects
@@ -1184,7 +1194,10 @@ const CreateUser = (props) => {
                     )}
                   </Select>
                   <FormHelperText>
-                    {formErrors.subjects || loadingOptions.subjects ? 'Loading subjects...' : 'Select subjects for this teacher'}
+                    {formErrors.subjects ? formErrors.subjects : 
+                     loadingOptions.subjects ? 'Loading subjects...' : 
+                     formData.role === 'student' ? 'Select subjects for this student' : 
+                     'Select subjects for this teacher'}
                   </FormHelperText>
                 </FormControl>
               </Grid>

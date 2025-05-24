@@ -8,8 +8,9 @@ body {
   font-family: 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  height: 100vh;
+  min-height: 100vh;
   overflow-x: hidden;
+  overflow-y: auto !important; /* CRITICAL FIX: Ensure vertical scrolling always works */
 }
 
 /* Set minimum heights for mobile */

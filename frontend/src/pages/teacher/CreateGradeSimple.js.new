@@ -30,8 +30,6 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import { createGrade, reset } from '../../features/grades/gradeSlice';
-import { getSubjectsByTeacher } from '../../features/subjects/subjectSlice';
-import { getStudentsBySubject, getStudents } from '../../features/students/studentSlice';
 import axios from 'axios';
 
 /**
@@ -64,75 +62,46 @@ const CreateGradeSimple = () => {
   const [directions, setDirections] = useState([]);
   const [selectedDirection, setSelectedDirection] = useState('');
   
-  // Handle errors from axios and apply fallbacks
-  const handleAxiosError = (error, context) => {
-    console.error(`[CreateGradeSimple] Error in ${context}:`, error);
-    const errorMessage = error.response?.data?.message || 'Network error. Please try again.';
-    toast.error(errorMessage);
-    return []; // Fallback empty array
+  // Reset form after submission
+  const resetForm = () => {
+    setFormData({
+      student: '',
+      subject: '',
+      value: '',
+      description: '',
+      date: format(new Date(), 'yyyy-MM-dd'),
+    });
+    setFormErrors({});
   };
   
-  // Load initial data (subjects and directions)
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        setLoading(true);
-        
-        // Load teacher's subjects directly with axios
-        if (user && user._id && user.token) {
-          const config = {
-            headers: {
-              Authorization: `Bearer ${user.token}`
-            }
-          };
-          
-          // Get subjects taught by this teacher
-          const subjectsResponse = await axios.get(
-            `/api/subjects/teacher/${user._id}`, 
-            config
-          );
-          
-          if (Array.isArray(subjectsResponse.data)) {
-            setSubjects(subjectsResponse.data);
-            console.log(`[CreateGradeSimple] Loaded ${subjectsResponse.data.length} subjects`);
-          }
-          
-          // Get all directions
-          const directionsResponse = await axios.get('/api/directions', config);
-          if (Array.isArray(directionsResponse.data)) {
-            setDirections(directionsResponse.data);
-            console.log(`[CreateGradeSimple] Loaded ${directionsResponse.data.length} directions`);
-          }
-        }
-      } catch (error) {
-        handleAxiosError(error, 'loadInitialData');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadInitialData();
-    
-    // Reset grade state when component unmounts
-    return () => {
-      dispatch(reset());
-    };
-  }, [user, dispatch]);
+  // Handle direction filter change
+  const handleDirectionChange = (e) => {
+    setSelectedDirection(e.target.value);
+  };
   
-  // Load students when subject changes
+  // Navigate back to grades list
+  const handleBack = () => {
+    navigate('/app/teacher/grades/manage');
+  };
+  
+  // Log Axios errors consistently
+  const handleAxiosError = (error, context) => {
+    console.error(`[CreateGradeSimple] Error in ${context}:`, error);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+    } else if (error.request) {
+      console.error('No response received');
+    } else {
+      console.error('Error message:', error.message);
+    }
+  };
+  
+  // Load subjects for the teacher on component mount
   useEffect(() => {
-    const loadStudents = async () => {
-      if (!formData.subject) {
-        setStudents([]);
-        return;
-      }
-      
+    const loadSubjects = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        
-        // Reset student selection when subject changes
-        setFormData(prev => ({ ...prev, student: '' }));
-        
         if (user && user.token) {
           const config = {
             headers: {
@@ -140,17 +109,53 @@ const CreateGradeSimple = () => {
             }
           };
           
-          // Try to get students by subject
-          const response = await axios.get(
-            `/api/students/subject/${formData.subject}`,
-            config
-          );
+          // Get subjects taught by this teacher
+          const response = await axios.get('/api/subjects/teacher', config);
+          if (Array.isArray(response.data)) {
+            setSubjects(response.data);
+            console.log(`[CreateGradeSimple] Loaded ${response.data.length} subjects for teacher`);
+          }
           
-          if (Array.isArray(response.data) && response.data.length > 0) {
+          // Also get all directions for filtering
+          const directionsResponse = await axios.get('/api/directions', config);
+          if (Array.isArray(directionsResponse.data)) {
+            setDirections(directionsResponse.data);
+            console.log(`[CreateGradeSimple] Loaded ${directionsResponse.data.length} directions`);
+          }
+        }
+      } catch (error) {
+        handleAxiosError(error, 'loadSubjects');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSubjects();
+  }, [user]);
+  
+  // Load students when subject changes
+  useEffect(() => {
+    const loadStudents = async () => {
+      if (!formData.subject) {
+        return; // Don't load students if no subject is selected
+      }
+      
+      setLoading(true);
+      try {
+        if (user && user.token) {
+          const config = {
+            headers: {
+              Authorization: `Bearer ${user.token}`
+            }
+          };
+          
+          // Try to get students for this specific subject
+          const response = await axios.get(`/api/students/subject/${formData.subject}`, config);
+          if (Array.isArray(response.data)) {
             setStudents(response.data);
             console.log(`[CreateGradeSimple] Loaded ${response.data.length} students for subject`);
           } else {
-            // If no students found for subject, get all students
+            // Fallback: get all students if subject-specific endpoint fails
             const allStudentsResponse = await axios.get('/api/students', config);
             if (Array.isArray(allStudentsResponse.data)) {
               setStudents(allStudentsResponse.data);
@@ -256,80 +261,63 @@ const CreateGradeSimple = () => {
         date: formData.date,
       };
       
-      // Dispatch action to create grade
       dispatch(createGrade(gradeData));
     } catch (error) {
-      console.error('[CreateGradeSimple] Error submitting grade:', error);
-      toast.error('Error creating grade. Please try again.');
+      console.error('[CreateGradeSimple] Error submitting form:', error);
+      setFormErrors({
+        form: 'An unexpected error occurred. Please try again.'
+      });
     }
-  };
-  
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      student: '',
-      subject: '',
-      value: '',
-      description: '',
-      date: format(new Date(), 'yyyy-MM-dd'),
-    });
-    setFormErrors({});
-  };
-  
-  // Navigate back
-  const goBack = () => {
-    navigate('/app/teacher/grades/manage');
   };
   
   // Handle successful grade creation
   useEffect(() => {
-    if (isError) {
-      toast.error(message);
-    }
-    
     if (isSuccess) {
-      toast.success('Grade added successfully');
+      resetForm();
+      toast.success('Grade created successfully');
       navigate('/app/teacher/grades/manage');
     }
-  }, [isError, isSuccess, message, navigate]);
-  
-  // Handle direction selection
-  const handleDirectionChange = (e) => {
-    setSelectedDirection(e.target.value);
-  };
+    
+    return () => {
+      dispatch(reset());
+    };
+  }, [isSuccess, navigate, dispatch]);
   
   return (
-    <Box sx={{ py: 3, px: { xs: 2, md: 3 } }}>
-      <Paper elevation={2} sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}>
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Typography variant="h5" component="h1" gutterBottom>
-            Create New Grade
-          </Typography>
-          <Button 
-            startIcon={<ArrowBackIcon />} 
-            onClick={goBack}
-            variant="outlined"
-          >
-            Back to Grades
-          </Button>
-        </Box>
+    <Box sx={{ flexGrow: 1, overflowY: 'auto', pb: 10 }}>
+      <Button
+        startIcon={<ArrowBackIcon />}
+        onClick={handleBack}
+        sx={{ mb: 2 }}
+        variant="outlined"
+      >
+        Back to Grades
+      </Button>
+      
+      <Paper elevation={3} sx={{ p: 4, mb: 3, maxWidth: '1200px', mx: 'auto' }}>
+        <Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+          Create New Grade
+        </Typography>
         
-        <Divider sx={{ mb: 3 }} />
+        <Divider sx={{ mb: 4 }} />
         
-        {/* Form */}
-        <Box component="form" onSubmit={onSubmit} noValidate>
-          <Grid container spacing={3}>
-            {/* Subject selection */}
+        {isError && <Alert severity="error" sx={{ mb: 4 }}>{message}</Alert>}
+        
+        <form onSubmit={onSubmit}>
+          <Grid container spacing={4}>
+            {/* Subject Selection */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth error={!!formErrors.subject}>
-                <InputLabel id="subject-label">Subject</InputLabel>
+              <FormControl fullWidth error={!!formErrors.subject} sx={{ mb: { xs: 0, md: 2 } }}>
+                <InputLabel id="subject-label">Subject *</InputLabel>
                 <Select
                   labelId="subject-label"
-                  id="subject"
                   name="subject"
                   value={formData.subject}
+                  label="Subject *"
                   onChange={onChange}
-                  label="Subject"
+                  disabled={isLoading || loading}
+                  sx={{ '& .MuiSelect-select': { py: 1.5 } }}
+                  startAdornment={formData.subject && <BookIcon color="primary" sx={{ ml: 1, mr: 1 }} />}
                 >
                   <MenuItem value="">Select a subject</MenuItem>
                   {subjects.length > 0 ? (
@@ -351,23 +339,39 @@ const CreateGradeSimple = () => {
                 )}
               </FormControl>
             </Grid>
-
+            
+            {/* Direction Filter */}
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Date *"
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={onChange}
-                InputLabelProps={{ shrink: true }}
-                error={!!formErrors.date}
-                helperText={formErrors.date || 'Date when the grade was assigned'}
-                disabled={isLoading}
-                sx={{ mb: { xs: 0, md: 2 }, '& .MuiInputBase-input': { py: 1.5 } }}
-              />
+              <FormControl fullWidth sx={{ mb: { xs: 0, md: 2 } }}>
+                <InputLabel id="direction-filter-label">Filter by Direction</InputLabel>
+                <Select
+                  labelId="direction-filter-label"
+                  name="direction-filter"
+                  value={selectedDirection}
+                  label="Filter by Direction"
+                  onChange={handleDirectionChange}
+                  disabled={isLoading || loading}
+                  sx={{ '& .MuiSelect-select': { py: 1.5 } }}
+                  startAdornment={selectedDirection && <SchoolIcon color="primary" sx={{ ml: 1, mr: 1 }} />}
+                >
+                  <MenuItem value="">All Directions</MenuItem>
+                  {directions.length > 0 ? (
+                    directions.map((direction) => (
+                      <MenuItem key={direction._id} value={direction._id}>
+                        {direction.name}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>No directions available</MenuItem>
+                  )}
+                </Select>
+                <FormHelperText>
+                  Optional: Filter students by their academic direction
+                </FormHelperText>
+              </FormControl>
             </Grid>
-
+            
+            {/* Student Selection */}
             <Grid item xs={12} md={6}>
               <FormControl fullWidth error={!!formErrors.student} sx={{ mb: { xs: 0, md: 2 } }}>
                 <InputLabel id="student-label">Student *</InputLabel>
@@ -379,6 +383,7 @@ const CreateGradeSimple = () => {
                   onChange={onChange}
                   disabled={isLoading || loading || !formData.subject}
                   sx={{ '& .MuiSelect-select': { py: 1.5 } }}
+                  startAdornment={formData.student && <PersonIcon color="primary" sx={{ ml: 1, mr: 1 }} />}
                 >
                   <MenuItem value="">Select a student</MenuItem>
                   {loading ? (
@@ -401,12 +406,36 @@ const CreateGradeSimple = () => {
                   <FormHelperText error>{formErrors.student}</FormHelperText>
                 ) : (
                   <FormHelperText>
-                    {loading ? 'Loading students...' : !formData.subject ? 'Select a subject first' : filteredStudents.length === 0 ? 'No students found for this subject' : 'Select the student to grade'}
+                    {loading ? 'Loading students...' : 
+                    !formData.subject ? 'Select a subject first' : 
+                    filteredStudents.length === 0 ? 'No students found for this subject' : 
+                    'Select the student to grade'}
                   </FormHelperText>
                 )}
               </FormControl>
             </Grid>
-
+            
+            {/* Date Selection */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Date *"
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={onChange}
+                InputLabelProps={{ shrink: true }}
+                error={!!formErrors.date}
+                helperText={formErrors.date || 'Date when the grade was assigned'}
+                disabled={isLoading}
+                sx={{ mb: { xs: 0, md: 2 }, '& .MuiInputBase-input': { py: 1.5 } }}
+                InputProps={{
+                  startAdornment: <CalendarIcon color="primary" sx={{ mr: 1 }} />
+                }}
+              />
+            </Grid>
+            
+            {/* Grade Value */}
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
@@ -415,9 +444,9 @@ const CreateGradeSimple = () => {
                 name="value"
                 value={formData.value}
                 onChange={onChange}
-                InputProps={{
+                InputProps={{ 
                   inputProps: { min: 0, max: 20, step: 0.5 },
-                  sx: { py: 1.5 },
+                  sx: { py: 1.5 }
                 }}
                 error={!!formErrors.value}
                 helperText={formErrors.value || 'Enter a value between 0 and 20'}
@@ -425,7 +454,8 @@ const CreateGradeSimple = () => {
                 sx={{ mb: { xs: 0, md: 2 } }}
               />
             </Grid>
-
+            
+            {/* Description */}
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -437,30 +467,44 @@ const CreateGradeSimple = () => {
                 rows={4}
                 helperText="Optional: Add additional notes about this grade"
                 disabled={isLoading}
-                sx={{ mb: 2, '& .MuiOutlinedInput-root': { padding: 1.5 } }}
+                sx={{ mb: 2, '& .MuiOutlinedInput-root': { padding: 1 } }}
               />
             </Grid>
-
+            
+            {/* Submit Button */}
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                <Button
                   variant="outlined"
                   onClick={resetForm}
                   disabled={isLoading || loading}
+                  sx={{ px: 3, py: 1.2 }}
                 >
-                  Reset
+                  Reset Form
                 </Button>
+                
                 <Button
                   type="submit"
                   variant="contained"
-                  startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                  color="primary"
+                  size="large"
+                  startIcon={<SaveIcon />}
                   disabled={isLoading || loading}
+                  sx={{ px: 4, py: 1.2, borderRadius: 2 }}
                 >
-                  {isLoading ? 'Saving...' : 'Save Grade'}
+                  {isLoading ? (
+                    <>
+                      <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Grade'
+                  )}
                 </Button>
               </Box>
             </Grid>
           </Grid>
-        </Box>
+        </form>
       </Paper>
     </Box>
   );

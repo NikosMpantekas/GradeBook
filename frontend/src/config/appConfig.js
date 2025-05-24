@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.29'; // Fixed subjects not loading when directions are selected
+const APP_VERSION = '1.4.30'; // Fixed scrolling issues, form UI, and subject loading
 
 /**
  * Safely store app version in localStorage with error handling
