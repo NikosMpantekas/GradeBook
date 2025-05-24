@@ -839,21 +839,58 @@ const CreateUser = (props) => {
                     onChange={handleChange}
                     multiple
                     disabled={loadingOptions.schools}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => {
-                          const school = optionsData.schools.find(s => s._id === value);
-                          return school ? school.name : value;
-                        }).join(', ')}
-                      </Box>
-                    )}
+                    renderValue={(selected) => {
+                      // Safety check for selected being an array
+                      if (!Array.isArray(selected)) {
+                        console.warn('[CreateUser] selected is not an array in schools renderValue:', selected);
+                        return 'Invalid selection';
+                      }
+                      
+                      // Safety check for schools data
+                      if (!Array.isArray(optionsData.schools)) {
+                        console.warn('[CreateUser] schools data is not an array in renderValue');
+                        return selected.join(', ');
+                      }
+                      
+                      return (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => {
+                            try {
+                              const school = optionsData.schools.find(s => s && s._id === value);
+                              return school ? school.name : value;
+                            } catch (error) {
+                              console.error('[CreateUser] Error in schools renderValue:', error);
+                              return value;
+                            }
+                          }).join(', ')}
+                        </Box>
+                      );
+                    }}
                   >
-                    {optionsData.schools && optionsData.schools.map((school) => (
-                      <MenuItem key={school._id} value={school._id}>
-                        <Checkbox checked={formData.schools && formData.schools.indexOf(school._id) > -1} />
-                        <ListItemText primary={school.name} />
+                    {/* Safety check to ensure schools exists and is an array */}
+                    {Array.isArray(optionsData.schools) ? optionsData.schools.map((school) => {
+                      // Skip rendering invalid school items
+                      if (!school || !school._id || !school.name) {
+                        console.warn('[CreateUser] Invalid school in list:', school);
+                        return null;
+                      }
+                      
+                      // Safe check for the formData.schools array
+                      const isChecked = Array.isArray(formData.schools) && 
+                        formData.schools.indexOf(school._id) > -1;
+                        
+                      return (
+                        <MenuItem key={school._id} value={school._id}>
+                          <Checkbox checked={isChecked} />
+                          <ListItemText primary={school.name} />
+                        </MenuItem>
+                      );
+                    }) : (
+                      // If not an array, render an empty/disabled item
+                      <MenuItem disabled>
+                        <ListItemText primary="No schools available" />
                       </MenuItem>
-                    ))}
+                    )}
                   </Select>
                   <FormHelperText>
                     {formErrors.schools || loadingOptions.schools ? 'Loading schools...' : 'Select schools for this teacher'}
@@ -1067,31 +1104,66 @@ const CreateUser = (props) => {
                   <InputLabel>Subjects *</InputLabel>
                   <Select
                     name="subjects"
-                    multiple
-                    value={formData.subjects}
+                    value={formData.subjects || []}
+                    label="Subjects *"
                     onChange={handleChange}
-                    input={<OutlinedInput label="Subjects *" />}
+                    multiple
                     disabled={loadingOptions.subjects}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => {
-                          const subject = optionsData.subjects.find(s => s._id === value);
-                          return (
-                            <Chip key={value} label={subject ? subject.name : value} />
-                          );
-                        })}
-                      </Box>
-                    )}
+                    renderValue={(selected) => {
+                      // Safety check for selected being an array
+                      if (!Array.isArray(selected)) {
+                        console.warn('[CreateUser] selected is not an array in subjects renderValue:', selected);
+                        return 'Invalid selection';
+                      }
+                      
+                      // Safety check for subjects data
+                      if (!Array.isArray(optionsData.subjects)) {
+                        console.warn('[CreateUser] subjects data is not an array in renderValue');
+                        return selected.join(', ');
+                      }
+                      
+                      return (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => {
+                            try {
+                              const subject = optionsData.subjects.find(s => s && s._id === value);
+                              return subject ? subject.name : value;
+                            } catch (error) {
+                              console.error('[CreateUser] Error in subjects renderValue:', error);
+                              return value;
+                            }
+                          }).join(', ')}
+                        </Box>
+                      );
+                    }}
                   >
-                    {optionsData.subjects && optionsData.subjects.map((subject) => (
-                      <MenuItem key={subject._id} value={subject._id}>
-                        <Checkbox checked={formData.subjects.indexOf(subject._id) > -1} />
-                        <ListItemText primary={subject.name} />
+                    {/* Safety check to ensure subjects exists and is an array */}
+                    {Array.isArray(optionsData.subjects) ? optionsData.subjects.map((subject) => {
+                      // Skip rendering invalid subject items
+                      if (!subject || !subject._id || !subject.name) {
+                        console.warn('[CreateUser] Invalid subject in list:', subject);
+                        return null;
+                      }
+                      
+                      // Safe check for the formData.subjects array
+                      const isChecked = Array.isArray(formData.subjects) && 
+                        formData.subjects.indexOf(subject._id) > -1;
+                        
+                      return (
+                        <MenuItem key={subject._id} value={subject._id}>
+                          <Checkbox checked={isChecked} />
+                          <ListItemText primary={subject.name} />
+                        </MenuItem>
+                      );
+                    }) : (
+                      // If not an array, render an empty/disabled item
+                      <MenuItem disabled>
+                        <ListItemText primary="No subjects available" />
                       </MenuItem>
-                    ))}
+                    )}
                   </Select>
                   <FormHelperText>
-                    {formErrors.subjects || loadingOptions.subjects ? 'Loading subjects...' : 'Select the subjects this teacher will teach'}
+                    {formErrors.subjects || loadingOptions.subjects ? 'Loading subjects...' : 'Select subjects for this teacher'}
                   </FormHelperText>
                 </FormControl>
               </Grid>

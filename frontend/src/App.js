@@ -6,8 +6,9 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useSelector, useDispatch } from 'react-redux';
 
-// CRITICAL FIX: Import error handling system
+// CRITICAL FIX: Import error handling and safety guard systems
 import { initGlobalErrorHandlers, trackError } from './utils/errorHandler';
+import { applyGlobalSafetyGuards, safe, safeGet } from './utils/safetyGuards';
 
 // Layout Components
 import Layout from './components/layout/Layout';
@@ -112,6 +113,13 @@ function App() {
       // First, initialize the global error handlers
       console.log('[App] Initializing global error handlers (v' + APP_VERSION + ')');
       initGlobalErrorHandlers();
+      
+      // CRITICAL FIX: Apply global safety guards to prevent TypeErrors
+      // This prevents the "x(...) is undefined" errors by providing safe fallbacks
+      // for all array operations and object property access
+      console.log('[App] Applying global safety guards to prevent TypeErrors');
+      const safetyApplied = applyGlobalSafetyGuards();
+      console.log(`[App] Global safety guards ${safetyApplied ? 'successfully applied' : 'failed to apply'}`);
       
       // Then initialize app configuration
       console.log('[App] Initializing app configuration');
