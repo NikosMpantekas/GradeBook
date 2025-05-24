@@ -211,10 +211,77 @@ const deleteSubject = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get subjects by direction
+// @route   GET /api/subjects/direction/:directionId
+// @access  Public
+const getSubjectsByDirection = asyncHandler(async (req, res) => {
+  try {
+    const { directionId } = req.params;
+    console.log(`getSubjectsByDirection called for direction: ${directionId}`);
+    
+    if (!directionId) {
+      res.status(400);
+      throw new Error('Direction ID is required');
+    }
+    
+    // Extract schoolId for filtering
+    const schoolId = req.user?.schoolId || (req.school && req.school._id);
+    
+    // Filter query by direction and school
+    const query = { directions: directionId };
+    if (schoolId) {
+      query.schoolId = schoolId;
+    }
+    
+    const subjects = await Subject.find(query)
+      .populate('teachers', 'name email')
+      .populate('directions', 'name');
+    
+    console.log(`Found ${subjects.length} subjects for direction ${directionId}`);
+    res.json(subjects);
+  } catch (error) {
+    console.error(`Error getting subjects by direction: ${error.message}`);
+    res.status(500);
+    throw new Error(`Failed to get subjects by direction: ${error.message}`);
+  }
+});
+
+// @desc    Get subjects taught by current teacher
+// @route   GET /api/subjects/teacher
+// @access  Private/Teacher
+const getSubjectsByTeacher = asyncHandler(async (req, res) => {
+  try {
+    const teacherId = req.user._id;
+    console.log(`getSubjectsByTeacher called for teacher: ${teacherId}`);
+    
+    // Extract schoolId for filtering
+    const schoolId = req.user.schoolId || (req.school && req.school._id);
+    
+    // Filter query by teacher and school
+    const query = { teachers: teacherId };
+    if (schoolId) {
+      query.schoolId = schoolId;
+    }
+    
+    const subjects = await Subject.find(query)
+      .populate('teachers', 'name email')
+      .populate('directions', 'name');
+    
+    console.log(`Found ${subjects.length} subjects for teacher ${teacherId}`);
+    res.json(subjects);
+  } catch (error) {
+    console.error(`Error getting subjects by teacher: ${error.message}`);
+    res.status(500);
+    throw new Error(`Failed to get subjects by teacher: ${error.message}`);
+  }
+});
+
 module.exports = {
   createSubject,
   getSubjects,
   getSubjectById,
   updateSubject,
   deleteSubject,
+  getSubjectsByDirection,
+  getSubjectsByTeacher
 };

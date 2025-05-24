@@ -12,9 +12,9 @@ const { protect, admin, teacher, canManageSubjects } = require('../middleware/au
 // Public routes that don't have parameters
 router.get('/', getSubjects);
 
-// Routes for filtering subjects by teacher or direction have been removed
-// in the single-database architecture migration
-// These can be reimplemented in the future if needed
+// CRITICAL: Routes for filtering subjects by direction - restored due to frontend dependency
+router.get('/direction/:directionId', getSubjectsByDirection);
+router.get('/teacher', protect, teacher, getSubjectsByTeacher);
 
 // Generic parameter route should be LAST to avoid wrongly catching specific routes
 router.get('/:id', getSubjectById);

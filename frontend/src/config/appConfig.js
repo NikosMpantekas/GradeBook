@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.31'; // Fixed JSX syntax error in CreateGradeSimple.js
+const APP_VERSION = '1.4.32'; // Fixed subject loading in CreateUser and CreateGradeSimple
 
 /**
  * Safely store app version in localStorage with error handling

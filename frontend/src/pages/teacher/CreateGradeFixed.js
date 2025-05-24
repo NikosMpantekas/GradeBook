@@ -32,7 +32,7 @@ import { createGrade, reset } from '../../features/grades/gradeSlice';
 import axios from 'axios';
 
 /**
- * CreateGradeSimple - Revised version with proper field order and filtering
+ * CreateGradeFixed - Revised version with proper field order and filtering
  * Fields appear in this order: Direction, Subject, Student, Grade, Date
  * Each selection filters the next field's options
  */
@@ -85,7 +85,7 @@ const CreateGradeSimple = () => {
   
   // Log Axios errors consistently
   const handleAxiosError = (error, context) => {
-    console.error(`[CreateGradeSimple] Error in ${context}:`, error);
+    console.error(`[CreateGradeFixed] Error in ${context}:`, error);
     if (error.response) {
       console.error('Response data:', error.response.data);
       console.error('Response status:', error.response.status);
@@ -112,7 +112,7 @@ const CreateGradeSimple = () => {
           const response = await axios.get('/api/directions', config);
           if (Array.isArray(response.data)) {
             setDirections(response.data);
-            console.log(`[CreateGradeSimple] Loaded ${response.data.length} directions`);
+            console.log(`[CreateGradeFixed] Loaded ${response.data.length} directions`);
           }
         }
       } catch (error) {
@@ -143,7 +143,7 @@ const CreateGradeSimple = () => {
             if (Array.isArray(response.data)) {
               setSubjects(response.data);
               setFilteredSubjects(response.data);
-              console.log(`[CreateGradeSimple] Loaded ${response.data.length} subjects (all)`);
+              console.log(`[CreateGradeFixed] Loaded ${response.data.length} subjects (all)`);
             }
           }
         } catch (error) {
@@ -164,12 +164,12 @@ const CreateGradeSimple = () => {
             }
           };
           
-          console.log(`[CreateGradeSimple] Loading subjects for direction: ${selectedDirection}`);
+          console.log(`[CreateGradeFixed] Loading subjects for direction: ${selectedDirection}`);
           const response = await axios.get(`/api/subjects/direction/${selectedDirection}`, config);
           
           if (Array.isArray(response.data)) {
             setFilteredSubjects(response.data);
-            console.log(`[CreateGradeSimple] Loaded ${response.data.length} subjects for direction ${selectedDirection}`);
+            console.log(`[CreateGradeFixed] Loaded ${response.data.length} subjects for direction ${selectedDirection}`);
             
             // Reset subject selection if it's not in the new list
             const subjectStillValid = response.data.some(s => s._id === formData.subject);
@@ -181,7 +181,7 @@ const CreateGradeSimple = () => {
               }));
             }
           } else {
-            console.warn('[CreateGradeSimple] Non-array response from subjects API:', response.data);
+            console.warn('[CreateGradeFixed] Non-array response from subjects API:', response.data);
             setFilteredSubjects([]);
           }
         }
@@ -195,7 +195,7 @@ const CreateGradeSimple = () => {
     };
     
     loadSubjects();
-  }, [selectedDirection, user, subjects, formData.subject]);
+  }, [selectedDirection, user, subjects]);
   
   // Load students when subject changes
   useEffect(() => {
@@ -215,7 +215,7 @@ const CreateGradeSimple = () => {
           };
           
           // Try to get students for this specific subject
-          console.log(`[CreateGradeSimple] Loading students for subject: ${formData.subject}`);
+          console.log(`[CreateGradeFixed] Loading students for subject: ${formData.subject}`);
           const response = await axios.get(`/api/students/subject/${formData.subject}`, config);
           
           if (Array.isArray(response.data)) {
@@ -232,11 +232,11 @@ const CreateGradeSimple = () => {
                 return studentDirId && studentDirId.toString() === selectedDirection;
               });
               
-              console.log(`[CreateGradeSimple] Filtered to ${studentsToShow.length} students in direction ${selectedDirection}`);
+              console.log(`[CreateGradeFixed] Filtered to ${studentsToShow.length} students in direction ${selectedDirection}`);
             }
             
             setFilteredStudents(studentsToShow);
-            console.log(`[CreateGradeSimple] Loaded ${studentsToShow.length} students for subject ${formData.subject}`);
+            console.log(`[CreateGradeFixed] Loaded ${studentsToShow.length} students for subject ${formData.subject}`);
             
             // Reset student selection if not in the new list
             const studentStillValid = studentsToShow.some(s => s._id === formData.student);
@@ -247,7 +247,7 @@ const CreateGradeSimple = () => {
               }));
             }
           } else {
-            console.warn('[CreateGradeSimple] Non-array response from students API:', response.data);
+            console.warn('[CreateGradeFixed] Non-array response from students API:', response.data);
             setFilteredStudents([]);
           }
         }
@@ -279,11 +279,11 @@ const CreateGradeSimple = () => {
               }
               
               setFilteredStudents(allStudents);
-              console.log(`[CreateGradeSimple] Fallback loaded ${allStudents.length} students (all)`);
+              console.log(`[CreateGradeFixed] Fallback loaded ${allStudents.length} students (all)`);
             }
           }
         } catch (fallbackError) {
-          console.error('[CreateGradeSimple] Fallback error:', fallbackError);
+          console.error('[CreateGradeFixed] Fallback error:', fallbackError);
         }
       } finally {
         setLoading(false);
@@ -291,12 +291,12 @@ const CreateGradeSimple = () => {
     };
     
     loadStudents();
-  }, [formData.subject, selectedDirection, user, formData.student]);
+  }, [formData.subject, selectedDirection, user]);
   
   // Handle direction change
   const handleDirectionChange = (e) => {
     const directionId = e.target.value;
-    console.log(`[CreateGradeSimple] Direction changed to: ${directionId}`);
+    console.log(`[CreateGradeFixed] Direction changed to: ${directionId}`);
     setSelectedDirection(directionId);
     
     // When direction changes, we need to update the subject list and potentially reset selections
@@ -311,7 +311,7 @@ const CreateGradeSimple = () => {
   // Handle form input changes
   const onChange = (e) => {
     const { name, value } = e.target;
-    console.log(`[CreateGradeSimple] Field changed: ${name} = ${value}`);
+    console.log(`[CreateGradeFixed] Field changed: ${name} = ${value}`);
     
     setFormData((prevState) => ({
       ...prevState,
@@ -373,10 +373,10 @@ const CreateGradeSimple = () => {
         date: formData.date,
       };
       
-      console.log('[CreateGradeSimple] Submitting grade:', gradeData);
+      console.log('[CreateGradeFixed] Submitting grade:', gradeData);
       dispatch(createGrade(gradeData));
     } catch (error) {
-      console.error('[CreateGradeSimple] Error submitting form:', error);
+      console.error('[CreateGradeFixed] Error submitting form:', error);
       setFormErrors({
         form: 'An unexpected error occurred. Please try again.'
       });
