@@ -401,8 +401,15 @@ const CreateUser = (props) => {
       isValid = false;
     }
 
-    if ((formData.role === 'teacher' || formData.role === 'secretary') && formData.subjects.length === 0) {
+    // Teachers must have at least one subject
+    if (formData.role === 'teacher' && formData.subjects.length === 0) {
       errors.subjects = 'At least one subject is required';
+      isValid = false;
+    }
+    
+    // Secretaries don't need to have subjects necessarily
+    if (formData.role === 'secretary' && formData.schools.length === 0) {
+      errors.schools = 'At least one school is required';
       isValid = false;
     }
 
@@ -504,14 +511,13 @@ const CreateUser = (props) => {
         // For secretary accounts, include the permission flags
         userData.secretaryPermissions = formData.secretaryPermissions;
         
-        // Set schools and directions
+        // Set schools only (secretaries don't need directions)
         const schoolsArray = formData.schools && formData.schools.length > 0 ? formData.schools : [];
         userData.schools = schoolsArray;
         userData.school = schoolsArray; // For compatibility
         
-        const directionsArray = formData.directions && formData.directions.length > 0 ? formData.directions : [];
-        userData.directions = directionsArray;
-        userData.direction = directionsArray; // For compatibility
+        // FIX: Secretaries should not have directions assigned
+        // No directions or direction fields for secretaries
         
         userData.subjects = formData.subjects && formData.subjects.length > 0 
           ? formData.subjects 
@@ -519,7 +525,6 @@ const CreateUser = (props) => {
           
         console.log('Creating secretary account with permissions:', userData.secretaryPermissions);
         console.log('Secretary schools:', schoolsArray);
-        console.log('Secretary directions:', directionsArray);
       } else {
         // For admins, ensure these fields are null/empty
         userData.school = null;
@@ -627,6 +632,15 @@ const CreateUser = (props) => {
       return;
     }
 
+    // Log state for debugging
+    console.log('CreateUser effect triggered with state:', { 
+      isError, 
+      isSuccess, 
+      isLoading, 
+      hasSubmitted: hasSubmitted.current,
+      submitting
+    });
+
     if (isError) {
       console.log('CreateUser: Error occurred:', message);
       toast.error(message || 'Failed to create user');
@@ -637,12 +651,33 @@ const CreateUser = (props) => {
     if (isSuccess && hasSubmitted.current) {
       console.log('CreateUser: Success after form submission');
       toast.success('User created successfully');
-      navigate('/app/admin/users');
-      dispatch(reset());
+      
+      // Important: Reset state and navigate
+      setSubmitting(false);
       hasSubmitted.current = false;
+      
+      // Use a short timeout to ensure state updates before navigation
+      setTimeout(() => {
+        dispatch(reset());
+        navigate('/app/admin/users');
+      }, 50);
     }
     
+    // If we've been in loading state too long (10 seconds), assume something went wrong
+    const loadingTimeout = setTimeout(() => {
+      if (submitting && hasSubmitted.current) {
+        console.warn('CreateUser: Form submission timeout - resetting state');
+        setSubmitting(false);
+        toast.error('Request is taking too long. Please try again.');
+        dispatch(reset());
+        hasSubmitted.current = false;
+      }
+    }, 10000); // 10 second timeout
+    
     return () => {
+      clearTimeout(loadingTimeout);
+      
+      // Reset redux state if needed
       if (isSuccess || isError) {
         dispatch(reset());
       }
@@ -975,8 +1010,8 @@ const CreateUser = (props) => {
               </Grid>
             )}
             
-            {/* Direction Selection for Teachers and Secretaries (Multiple) */}
-            {(formData.role === 'teacher' || formData.role === 'secretary') && (
+            {/* Direction Selection for Teachers only (Multiple) - Secretaries don't need directions */}
+            {formData.role === 'teacher' && (
               <Grid item xs={12}>
                 <FormControl fullWidth error={!!formErrors.directions}>
                   <InputLabel>Directions *</InputLabel>

@@ -229,14 +229,32 @@ const AdminDashboard = () => {
     );
   }
   
-  // Only show error state with retry button if ALL data is missing
-  // If we have at least some data, we'll show what we have
-  const allDataMissing = 
-    (!Array.isArray(users) || users.length === 0) &&
-    (!Array.isArray(schools) || schools.length === 0) &&
-    (!Array.isArray(subjects) || subjects.length === 0) &&
-    (!Array.isArray(directions) || directions.length === 0);
-    
+  // Improved error handling logic
+  // 1. Check if we have at least some data to display
+  const hasUsers = Array.isArray(users) && users.length > 0;
+  const hasSchools = Array.isArray(schools) && schools.length > 0;
+  const hasSubjects = Array.isArray(subjects) && subjects.length > 0;
+  const hasDirections = Array.isArray(directions) && directions.length > 0;
+  const hasNotifications = Array.isArray(notifications) && notifications.length > 0;
+  
+  // 2. Check if ALL data is missing - only show full error state in this case
+  const allDataMissing = !hasUsers && !hasSchools && !hasSubjects && !hasDirections && !hasNotifications;
+  
+  // 3. Check if we have partial data load success
+  const hasPartialData = (hasUsers || hasSchools || hasSubjects || hasDirections || hasNotifications);
+  
+  // Log the data availability for debugging
+  console.log('Data availability:', {
+    hasUsers,
+    hasSchools,
+    hasSubjects,
+    hasDirections,
+    hasNotifications,
+    hasPartialData,
+    allDataMissing
+  });
+  
+  // Only show complete error state when ALL data is missing
   if (hasError && allDataMissing) {
     return (
       <Box sx={{ width: '100%' }}>
@@ -269,6 +287,25 @@ const AdminDashboard = () => {
       <Typography variant="h4" gutterBottom>
         Admin Dashboard
       </Typography>
+      
+      {/* Show a warning banner when some data failed to load but we can still show partial data */}
+      {hasError && hasPartialData && (
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 3 }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small"
+              onClick={handleRetryDataLoad}
+            >
+              Retry
+            </Button>
+          }
+        >
+          Some data could not be loaded. The dashboard is showing partial information.
+        </Alert>
+      )}
       
       {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>

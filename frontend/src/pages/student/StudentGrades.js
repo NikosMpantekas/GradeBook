@@ -19,16 +19,21 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid,
   Card,
+  CardHeader,
   CardContent,
+  Avatar,
+  Divider,
+  IconButton,
+  Tooltip,
+  Grid,
 } from '@mui/material';
-import {
-  Search as SearchIcon,
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  RemoveRedEye as ViewIcon,
-} from '@mui/icons-material';
+import SearchIcon from '@mui/icons-material/Search';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import PersonIcon from '@mui/icons-material/Person';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title } from 'chart.js';
@@ -374,68 +379,89 @@ const StudentGrades = () => {
       
       {/* Grades Table - Responsive Design */}
       <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
-        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-          {/* Mobile Vertical Card Layout */}
+        <Box sx={{ display: { xs: 'block', md: 'none' }, px: 1, py: 2 }}>
+          {/* Enhanced Mobile Vertical Card Layout */}
           {displayedGrades.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((grade) => (
-            <Box 
+            <Card 
               key={grade._id} 
               sx={{ 
-                p: 2, 
-                mb: 2, 
-                border: '1px solid rgba(0,0,0,0.12)',
-                borderRadius: 1,
-                '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)', cursor: 'pointer' }
+                mb: 2,
+                borderRadius: 2,
+                overflow: 'hidden',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': { 
+                  transform: 'translateY(-2px)', 
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.1)', 
+                  cursor: 'pointer' 
+                }
               }}
               onClick={() => handleViewGrade(grade._id)}
             >
-              <Typography variant="h6" gutterBottom>
-                {grade.subject?.name || 'Unknown Subject'}
-              </Typography>
-              <Grid container spacing={1}>
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="textSecondary">Grade:</Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body1" sx={{
-                    fontWeight: 'bold',
-                    color: grade.value >= 60 ? 'success.main' : 'error.main'
+              <CardHeader
+                title={
+                  <Typography variant="h6" sx={{ fontWeight: 500, fontSize: { xs: '1rem', sm: '1.1rem' } }}>
+                    {grade.subject?.name || 'Unknown Subject'}
+                  </Typography>
+                }
+                avatar={
+                  <Avatar sx={{ 
+                    bgcolor: grade.value >= 80 ? 'success.main' : 
+                             grade.value >= 60 ? 'info.main' : 'error.main'
                   }}>
                     {grade.value}
-                  </Typography>
-                </Grid>
-                
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="textSecondary">Date:</Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body1">
-                    {grade.date ? format(new Date(grade.date), 'dd/MM/yyyy') : 'N/A'}
-                  </Typography>
-                </Grid>
-                
-                <Grid item xs={6}>
-                  <Typography variant="body2" color="textSecondary">Teacher:</Typography>
-                </Grid>
-                <Grid item xs={6}>
-                  <Typography variant="body1">
-                    {grade.teacher?.name || 'Unknown'}
-                  </Typography>
-                </Grid>
-                
-                {grade.description && (
-                  <>
-                    <Grid item xs={12}>
-                      <Typography variant="body2" color="textSecondary">Description:</Typography>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Typography variant="body1">
-                        {grade.description}
+                  </Avatar>
+                }
+                action={
+                  <Tooltip title="View Details">
+                    <IconButton aria-label="view details">
+                      <VisibilityIcon />
+                    </IconButton>
+                  </Tooltip>
+                }
+                sx={{ pb: 1 }}
+              />
+              <Divider />
+              <CardContent sx={{ pt: 2, pb: 1 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Date
                       </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500, display: 'flex', alignItems: 'center' }}>
+                        <CalendarTodayIcon sx={{ mr: 0.5, fontSize: '0.9rem', color: 'primary.main' }} />
+                        {grade.date ? format(new Date(grade.date), 'dd/MM/yyyy') : 'N/A'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Teacher
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500, display: 'flex', alignItems: 'center' }}>
+                        <PersonIcon sx={{ mr: 0.5, fontSize: '0.9rem', color: 'primary.main' }} />
+                        {grade.teacher?.name || 'Unknown'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  
+                  {grade.description && (
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Description
+                      </Typography>
+                      <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'background.default' }}>
+                        <Typography variant="body2">
+                          {grade.description}
+                        </Typography>
+                      </Paper>
                     </Grid>
-                  </>
-                )}
-              </Grid>
-            </Box>
+                  )}
+                </Grid>
+              </CardContent>
+            </Card>
           ))}
         </Box>
         

@@ -322,7 +322,15 @@ const getGradeById = asyncHandler(async (req, res) => {
 // @access  Private/Teacher
 const updateGrade = asyncHandler(async (req, res) => {
   try {
-    const { value, description, date } = req.body;
+    const { value, description, date, student, subject } = req.body;
+    
+    console.log('Grade update request received:', { 
+      id: req.params.id,
+      body: req.body, 
+      user: req.user._id, 
+      userRole: req.user.role,
+      schoolId: req.user.schoolId 
+    });
   
     // Find the grade to update
     const grade = await Grade.findOne({
@@ -341,17 +349,52 @@ const updateGrade = asyncHandler(async (req, res) => {
       throw new Error('Not authorized to update this grade');
     }
     
-    // Update the grade
+    // Update the grade fields if provided
     if (value !== undefined) grade.value = value;
     if (description !== undefined) grade.description = description;
     if (date !== undefined) grade.date = date;
     
+    // Update student if provided (FIX: This was missing before)
+    if (student !== undefined) {
+      // Verify the student exists and belongs to the same school
+      const studentUser = await User.findOne({ 
+        _id: student, 
+        role: 'student',
+        schoolId: req.user.schoolId // Multi-tenancy: Only find students in the same school
+      });
+      
+      if (!studentUser) {
+        console.log('Student not found or not in the same school:', student);
+        res.status(400);
+        throw new Error('Student not found in this school');
+      }
+      
+      grade.student = student;
+    }
+    
+    // Update subject if provided
+    if (subject !== undefined) {
+      // Verify the subject exists and belongs to the same school
+      const subjectDoc = await Subject.findOne({
+        _id: subject,
+        schoolId: req.user.schoolId // Multi-tenancy: Only find subjects in the same school
+      });
+      
+      if (!subjectDoc) {
+        console.log('Subject not found or not in the same school:', subject);
+        res.status(400);
+        throw new Error('Subject not found in this school');
+      }
+      
+      grade.subject = subject;
+    }
+    
     // Check if updating the date would create a duplicate
-    if (date) {
+    if (date || student || subject) {
       const duplicateCheck = await Grade.findOne({
         student: grade.student,
         subject: grade.subject,
-        date: date,
+        date: date || grade.date,
         schoolId: req.user.schoolId, // Multi-tenancy: Only check grades in the same school
         _id: { $ne: grade._id } // Exclude current grade from check
       });
@@ -363,7 +406,14 @@ const updateGrade = asyncHandler(async (req, res) => {
     }
     
     const updatedGrade = await grade.save();
-    res.status(200).json(updatedGrade);
+    
+    // Return the populated grade for immediate UI update
+    const populatedGrade = await Grade.findById(updatedGrade._id)
+      .populate('student', 'name email')
+      .populate('subject', 'name')
+      .populate('teacher', 'name');
+      
+    res.status(200).json(populatedGrade);
   } catch (error) {
     console.error('Error updating grade:', error.message);
     res.status(error.statusCode || 500);

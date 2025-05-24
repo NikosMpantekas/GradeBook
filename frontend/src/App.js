@@ -6,6 +6,9 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useSelector, useDispatch } from 'react-redux';
 
+// Push Notification Component
+import PushNotificationManager from './components/PushNotificationManager';
+
 // CRITICAL FIX: Import error handling and safety guard systems
 import { initGlobalErrorHandlers, trackError } from './utils/errorHandler';
 import { applyGlobalSafetyGuards, safe, safeGet } from './utils/safetyGuards';
@@ -449,6 +452,8 @@ function App() {
         </Routes>
       </Router>
       <ToastContainer position="top-right" autoClose={3000} />
+      {/* Push notification manager */}
+      <PushNotificationManager />
       {/* Android PWA Installation Prompt */}
       <AndroidInstallPrompt />
     </ThemeProvider>

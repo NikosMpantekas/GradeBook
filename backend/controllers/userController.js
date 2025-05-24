@@ -616,13 +616,24 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       userData.schoolId = school;
       userData.direction = direction;
       userData.subjects = subjects || [];
-    } else if (role === 'teacher' || role === 'secretary') {
-      // Teachers and secretaries can have multiple schools
+    } else if (role === 'teacher') {
+      // Teachers can have multiple schools and directions
       userData.schools = Array.isArray(req.body.schools) ? req.body.schools : [school];
       userData.school = userData.schools[0]; // Set the first school as the primary for compatibility
       userData.schoolId = userData.schools[0];
-      userData.directions = Array.isArray(req.body.directions) ? req.body.directions : [direction];
-      userData.direction = userData.directions; // Keep for compatibility
+      
+      // FIX: Don't assign array to direction field, only use directions array field
+      userData.directions = Array.isArray(req.body.directions) ? req.body.directions : (direction ? [direction] : []);
+      // DO NOT set userData.direction for teachers - it expects a single ObjectId, not an array
+      
+      userData.subjects = subjects || [];
+    } else if (role === 'secretary') {
+      // Secretaries are linked to schools but not to directions
+      userData.schools = Array.isArray(req.body.schools) ? req.body.schools : [school];
+      userData.school = userData.schools[0]; // Set the first school as the primary for compatibility
+      userData.schoolId = userData.schools[0];
+      
+      // FIX: Secretaries should not have directions assigned
       userData.subjects = subjects || [];
     } else if (role === 'admin') {
       // Admins are tied to a school but don't have directions or subjects

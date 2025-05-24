@@ -53,6 +53,7 @@ export function register(config) {
 
     window.addEventListener('load', () => {
       const swUrl = `${process.env.PUBLIC_URL}/service-worker.js`;
+      const pushWorkerUrl = `${process.env.PUBLIC_URL}/push-worker.js`;
 
       if (isLocalhost) {
         // This is running on localhost. Let's check if a service worker still exists or not.
@@ -96,6 +97,31 @@ export function register(config) {
           }
         }
       });
+      
+      // Register the dedicated push notification service worker
+      // This is registered separately from the main service worker to avoid conflicts
+      if ('PushManager' in window) {
+        console.log('[PWA] Push notifications are supported by this browser');
+        
+        // Register the push notification service worker with its own scope
+        navigator.serviceWorker.register(pushWorkerUrl, {
+          scope: '/push/'
+        }).then(registration => {
+          console.log('[PWA] Push notification service worker registered successfully:', registration);
+          
+          // Store the push registration in sessionStorage for the notification components to use
+          sessionStorage.setItem('pushWorkerRegistered', 'true');
+          
+          // If we have config.onPushRegistration callback, call it
+          if (config && config.onPushRegistration) {
+            config.onPushRegistration(registration);
+          }
+        }).catch(error => {
+          console.error('[PWA] Error registering push notification service worker:', error);
+        });
+      } else {
+        console.log('[PWA] Push notifications are not supported by this browser');
+      }
     });
   }
 }
