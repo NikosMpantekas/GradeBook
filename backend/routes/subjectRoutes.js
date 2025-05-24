@@ -5,7 +5,9 @@ const {
   getSubjects,
   getSubjectById,
   updateSubject,
-  deleteSubject
+  deleteSubject,
+  getSubjectsByDirection,
+  getSubjectsByTeacher
 } = require('../controllers/subjectController');
 const { protect, admin, teacher, canManageSubjects } = require('../middleware/authMiddleware');
 
