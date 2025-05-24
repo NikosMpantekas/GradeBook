@@ -372,9 +372,75 @@ const StudentGrades = () => {
         </Grid>
       </Paper>
       
-      {/* Grades Table */}
+      {/* Grades Table - Responsive Design */}
       <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
-        <TableContainer>
+        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+          {/* Mobile Vertical Card Layout */}
+          {displayedGrades.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((grade) => (
+            <Box 
+              key={grade._id} 
+              sx={{ 
+                p: 2, 
+                mb: 2, 
+                border: '1px solid rgba(0,0,0,0.12)',
+                borderRadius: 1,
+                '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)', cursor: 'pointer' }
+              }}
+              onClick={() => handleViewGrade(grade._id)}
+            >
+              <Typography variant="h6" gutterBottom>
+                {grade.subject?.name || 'Unknown Subject'}
+              </Typography>
+              <Grid container spacing={1}>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Grade:</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body1" sx={{
+                    fontWeight: 'bold',
+                    color: grade.value >= 60 ? 'success.main' : 'error.main'
+                  }}>
+                    {grade.value}
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Date:</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body1">
+                    {grade.date ? format(new Date(grade.date), 'dd/MM/yyyy') : 'N/A'}
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="textSecondary">Teacher:</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body1">
+                    {grade.teacher?.name || 'Unknown'}
+                  </Typography>
+                </Grid>
+                
+                {grade.description && (
+                  <>
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="textSecondary">Description:</Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="body1">
+                        {grade.description}
+                      </Typography>
+                    </Grid>
+                  </>
+                )}
+              </Grid>
+            </Box>
+          ))}
+        </Box>
+        
+        {/* Desktop Table Layout */}
+        <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
           <Table stickyHeader>
             <TableHead>
               <TableRow>
@@ -450,10 +516,11 @@ const StudentGrades = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        {/* Unified pagination for both mobile and desktop views */}
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={filteredGrades.length}
+          count={displayedGrades.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

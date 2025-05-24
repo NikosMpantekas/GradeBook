@@ -40,12 +40,37 @@ import ErrorState from '../../components/common/ErrorState';
 const CreateUser = (props) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user: currentUser } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.users);
-  
+  const { schools } = useSelector((state) => state.schools);
+
+  // Get admin's school domain for email addresses
+  const [schoolDomain, setSchoolDomain] = useState("");
+
+  // Find the admin's school domain for automatic email domain population
+  useEffect(() => {
+    if (user && user.schoolId && schools && schools.length > 0) {
+      const adminSchool = schools.find(school => school._id === user.schoolId);
+      if (adminSchool && adminSchool.domain) {
+        console.log(`Found admin school domain: ${adminSchool.domain}`);
+        setSchoolDomain(adminSchool.domain);
+      } else {
+        // Try to create a domain from the school name if no domain is set
+        if (adminSchool && adminSchool.name) {
+          // Convert school name to lowercase, remove spaces and special characters
+          const derivedDomain = adminSchool.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "") + ".com";
+          console.log(`Created derived domain from school name: ${derivedDomain}`);
+          setSchoolDomain(derivedDomain);
+        }
+      }
+    }
+  }, [user, schools]);
+
   // Check if secretary restriction is enabled from URL parameter
   const [restrictSecretary, setRestrictSecretary] = useState(false);
-  
+
   useEffect(() => {
     // Check URL parameters to see if secretary role creation should be restricted
     const queryParams = new URLSearchParams(window.location.search);
@@ -409,9 +434,17 @@ const CreateUser = (props) => {
 
     try {
       // Prepare user data based on role
+      let userEmail = formData.email.trim().toLowerCase();
+      
+      // Check if we need to append the school domain to the email
+      if (schoolDomain && !userEmail.includes('@')) {
+        userEmail = `${userEmail}@${schoolDomain}`;
+        console.log(`Appended school domain to email: ${userEmail}`);
+      }
+      
       const userData = {
         name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
+        email: userEmail,
         password: formData.password,
         role: formData.role,
         mobilePhone: formData.mobilePhone?.trim() || '',
@@ -693,25 +726,15 @@ const CreateUser = (props) => {
                 fullWidth
                 label="User ID (Login Email) *"
                 name="email"
-                type="email"
+                type="text"
                 value={formData.email}
                 onChange={handleChange}
                 error={!!formErrors.email}
-                helperText={formErrors.email || 'This will be the username used to log in'}
+                helperText={formErrors.email || (schoolDomain ? `Email will be [username]@${schoolDomain}` : 'This will be the username used to log in')}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      {formData.school && optionsData.schools && formData.role === 'student' ? 
-                        (() => {
-                          const school = optionsData.schools.find(s => s._id === formData.school);
-                          return school?.emailDomain ? `@${school.emailDomain}` : '';
-                        })() : 
-                        formData.schools && formData.schools.length > 0 && optionsData.schools && (formData.role === 'teacher' || formData.role === 'secretary') ?
-                        (() => {
-                          const school = optionsData.schools.find(s => s._id === formData.schools[0]);
-                          return school?.emailDomain ? `@${school.emailDomain}` : '';
-                        })() : ''
-                      }
+                      {schoolDomain ? `@${schoolDomain}` : ''}
                     </InputAdornment>
                   ),
                 }}

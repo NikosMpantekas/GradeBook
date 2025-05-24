@@ -73,8 +73,8 @@ const sendContactMessage = asyncHandler(async (req, res) => {
 // @route   GET /api/contact
 // @access  Private (admin only)
 const getContactMessages = asyncHandler(async (req, res) => {
-  // Check if user is admin
-  if (req.user.role !== 'admin') {
+  // Check if user is admin or superadmin
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     res.status(403);
     throw new Error('Not authorized to view contact messages');
   }

@@ -7,6 +7,7 @@ const {
   getMe,
   updateProfile,
   getUsers,
+  getUserById,
   createUserByAdmin,
   getUsersByRole
 } = require('../controllers/userController');
@@ -24,6 +25,7 @@ router.put('/profile', protect, updateProfile);
 // Admin routes - simplified for single-database architecture
 router.get('/', protect, admin, getUsers); // Only admins can see all users
 router.post('/admin/create', protect, admin, createUserByAdmin); // Admin route to create users
+router.get('/:id', protect, admin, getUserById); // Get specific user by ID
 
 // Routes to get users filtered by role - accessible by admin, teachers and secretaries
 router.get('/role/:role', protect, getUsersByRole); // Get users by role (student, teacher, etc.)

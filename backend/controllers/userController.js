@@ -705,6 +705,57 @@ const getUsersByRole = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get user by ID
+// @route   GET /api/users/:id
+// @access  Private/Admin
+const getUserById = asyncHandler(async (req, res) => {
+  console.log(`getUserById endpoint called for ID: ${req.params.id}`);
+  
+  try {
+    // Check if id is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      console.error(`Invalid user ID format: ${req.params.id}`);
+      res.status(400);
+      throw new Error('Invalid user ID format');
+    }
+    
+    // Find the user with multi-tenancy filtering for regular admins
+    // Superadmins can access any user
+    const query = { _id: req.params.id };
+    
+    // If not superadmin, restrict to users in the same school
+    if (req.user.role !== 'superadmin') {
+      query.schoolId = req.user.schoolId;
+    }
+    
+    console.log(`Searching for user with query:`, query);
+    
+    // Find user with populated fields
+    const user = await User.findOne(query)
+      .select('-password')
+      .populate('school', 'name domain')
+      .populate('direction', 'name')
+      .populate('schools', 'name domain')
+      .populate('directions', 'name')
+      .populate('subjects', 'name');
+    
+    if (!user) {
+      console.error(`User not found with ID: ${req.params.id}`);
+      res.status(404);
+      throw new Error('User not found');
+    }
+    
+    console.log(`Found user: ${user.name} (${user.email})`);
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(`Error retrieving user by ID:`, error);
+    if (!res.statusCode || res.statusCode === 200) {
+      res.status(500);
+    }
+    throw error;
+  }
+});
+
 // Export functions
 module.exports = {
   registerUser,
@@ -713,6 +764,7 @@ module.exports = {
   getMe,
   updateProfile,
   getUsers,
+  getUserById,
   createUserByAdmin,
   getUsersByRole,
   generateToken,

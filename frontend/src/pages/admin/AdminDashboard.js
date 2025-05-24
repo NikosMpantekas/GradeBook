@@ -229,8 +229,15 @@ const AdminDashboard = () => {
     );
   }
   
-  // Show error state with retry button
-  if (hasError) {
+  // Only show error state with retry button if ALL data is missing
+  // If we have at least some data, we'll show what we have
+  const allDataMissing = 
+    (!Array.isArray(users) || users.length === 0) &&
+    (!Array.isArray(schools) || schools.length === 0) &&
+    (!Array.isArray(subjects) || subjects.length === 0) &&
+    (!Array.isArray(directions) || directions.length === 0);
+    
+  if (hasError && allDataMissing) {
     return (
       <Box sx={{ width: '100%' }}>
         <Typography variant="h4" gutterBottom>
