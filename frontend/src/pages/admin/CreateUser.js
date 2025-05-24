@@ -44,26 +44,52 @@ const CreateUser = (props) => {
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.users);
   const { schools } = useSelector((state) => state.schools);
 
-  // Get admin's school domain for email addresses
-  const [schoolDomain, setSchoolDomain] = useState("");
-
-  // Find the admin's school domain for automatic email domain population
+  // Get admin's school for automatic email generation
+  const [adminSchoolInfo, setAdminSchoolInfo] = useState({
+    id: "",
+    name: "",
+    domain: ""
+  });
+  
+  // Username part of the email (before the @)
+  const [usernamePrefix, setUsernamePrefix] = useState("");
+  
+  // CRITICAL FIX: Automatically determine school and domain from admin account
   useEffect(() => {
-    if (user && user.schoolId && schools && schools.length > 0) {
-      const adminSchool = schools.find(school => school._id === user.schoolId);
-      if (adminSchool && adminSchool.domain) {
-        console.log(`Found admin school domain: ${adminSchool.domain}`);
-        setSchoolDomain(adminSchool.domain);
+    if (user && schools && schools.length > 0) {
+      let adminSchool;
+      
+      // First try to get school from schoolId
+      if (user.schoolId) {
+        adminSchool = schools.find(school => school._id === user.schoolId);
+      }
+      
+      // If that fails, check if user has schools array and take the first one
+      if (!adminSchool && user.schools && user.schools.length > 0) {
+        const schoolId = typeof user.schools[0] === 'object' ? user.schools[0]._id : user.schools[0];
+        adminSchool = schools.find(school => school._id === schoolId);
+      }
+      
+      if (adminSchool) {
+        // Create derived domain from school name if none exists
+        const derivedDomain = adminSchool.domain || 
+          adminSchool.name.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com";
+        
+        console.log(`Setting admin school: ${adminSchool.name} with domain: ${derivedDomain}`);
+        
+        setAdminSchoolInfo({
+          id: adminSchool._id,
+          name: adminSchool.name,
+          domain: derivedDomain
+        });
+        
+        // Set the school for students automatically
+        setFormData(prev => ({
+          ...prev,
+          school: adminSchool._id
+        }));
       } else {
-        // Try to create a domain from the school name if no domain is set
-        if (adminSchool && adminSchool.name) {
-          // Convert school name to lowercase, remove spaces and special characters
-          const derivedDomain = adminSchool.name
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, "") + ".com";
-          console.log(`Created derived domain from school name: ${derivedDomain}`);
-          setSchoolDomain(derivedDomain);
-        }
+        console.warn('Could not determine admin school');
       }
     }
   }, [user, schools]);
@@ -141,6 +167,30 @@ const CreateUser = (props) => {
     directions: '',
     subjects: '',
   });
+  
+  // Update email when name changes - automatically generate email address
+  useEffect(() => {
+    if (formData.name && adminSchoolInfo.domain) {
+      // Generate username from name (lowercase, no spaces)
+      const username = formData.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+      
+      // Set the username prefix for the email
+      setUsernamePrefix(username);
+      
+      // Set the full email address with school domain
+      const autoEmail = `${username}@${adminSchoolInfo.domain}`;
+      
+      console.log(`Auto-generating email: ${autoEmail}`);
+      
+      // Update the email field in the form
+      setFormData(prev => ({
+        ...prev,
+        email: autoEmail
+      }));
+    }
+  }, [formData.name, adminSchoolInfo.domain]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -759,17 +809,21 @@ const CreateUser = (props) => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="User ID (Login Email) *"
+                variant="outlined"
+                type="email"
+                label="Email (Auto-generated)"
                 name="email"
-                type="text"
                 value={formData.email}
-                onChange={handleChange}
-                error={!!formErrors.email}
-                helperText={formErrors.email || (schoolDomain ? `Email will be [username]@${schoolDomain}` : 'This will be the username used to log in')}
                 InputProps={{
+                  readOnly: true,
                   endAdornment: (
                     <InputAdornment position="end">
-                      {schoolDomain ? `@${schoolDomain}` : ''}
+                      <Chip 
+                        size="small" 
+                        color="primary" 
+                        label="Auto" 
+                        sx={{ fontSize: '0.7rem' }}
+                      />
                     </InputAdornment>
                   ),
                 }}

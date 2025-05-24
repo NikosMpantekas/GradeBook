@@ -27,6 +27,8 @@ import {
   IconButton,
   Tooltip,
   Grid,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -47,6 +49,8 @@ ChartJS.register(ArcElement, ChartTooltip, Legend, CategoryScale, LinearScale, P
 const StudentGrades = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   const { user } = useSelector((state) => state.auth);
   const { grades, isLoading } = useSelector((state) => state.grades);
@@ -80,6 +84,8 @@ const StudentGrades = () => {
   }, [grades, searchTerm, subjectFilter]);
 
   const applyFilters = () => {
+    if (!grades) return;
+    
     let filtered = [...grades];
     
     // Apply subject filter
@@ -93,7 +99,7 @@ const StudentGrades = () => {
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter((grade) => 
-        (grade.subject && grade.subject.name.toLowerCase().includes(search)) ||
+        (grade.subject && grade.subject.name && grade.subject.name.toLowerCase().includes(search)) ||
         (grade.description && grade.description.toLowerCase().includes(search)) ||
         (grade.teacher && grade.teacher.name && grade.teacher.name.toLowerCase().includes(search))
       );
@@ -191,18 +197,26 @@ const StudentGrades = () => {
 
   // Prepare data for Pie chart
   const pieData = {
-    labels: Object.keys(gradeStats.gradeDistribution),
+    labels: Object.keys(gradeStats.gradeDistribution || {}),
     datasets: [
       {
         label: 'Grade Distribution',
-        data: Object.values(gradeStats.gradeDistribution),
+        data: Object.values(gradeStats.gradeDistribution || {}),
         backgroundColor: [
           'rgba(75, 192, 192, 0.6)',
           'rgba(54, 162, 235, 0.6)',
           'rgba(153, 102, 255, 0.6)',
-          'rgba(255, 206, 86, 0.6)',
+          'rgba(255, 205, 86, 0.6)',
           'rgba(255, 159, 64, 0.6)',
           'rgba(255, 99, 132, 0.6)',
+        ],
+        borderColor: [
+          'rgba(75, 192, 192, 1)',
+          'rgba(54, 162, 235, 1)',
+          'rgba(153, 102, 255, 1)',
+          'rgba(255, 205, 86, 1)',
+          'rgba(255, 159, 64, 1)',
+          'rgba(255, 99, 132, 1)',
         ],
         borderWidth: 1,
       },
@@ -211,14 +225,15 @@ const StudentGrades = () => {
 
   // Prepare data for Line chart
   const lineData = {
-    labels: gradeStats.progressOverTime.map(data => data.month),
+    labels: gradeStats.progressOverTime ? gradeStats.progressOverTime.map(item => item.month) : [],
     datasets: [
       {
         label: 'Average Grade',
-        data: gradeStats.progressOverTime.map(data => data.average),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-        tension: 0.3,
+        data: gradeStats.progressOverTime ? gradeStats.progressOverTime.map(item => item.average) : [],
+        fill: false,
+        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        tension: 0.4,
       },
     ],
   };
@@ -230,8 +245,7 @@ const StudentGrades = () => {
         position: 'top',
       },
       title: {
-        display: true,
-        text: 'Grade Progress Over Time',
+        display: false,
       },
     },
     scales: {
@@ -242,319 +256,464 @@ const StudentGrades = () => {
     },
   };
 
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
         My Grades
       </Typography>
       
-      {/* Stats Cards */}
-      {grades && grades.length > 0 && (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="text.secondary" gutterBottom>
-                  Overall Average
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                  {gradeStats.average}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="text.secondary" gutterBottom>
-                  Highest Grade
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                  {gradeStats.highestGrade}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="text.secondary" gutterBottom>
-                  Lowest Grade
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                  {gradeStats.lowestGrade}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="text.secondary" gutterBottom>
-                  Passing Rate
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'info.main' }}>
-                  {gradeStats.passingRate}%
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
-      
-      {/* Charts Section */}
-      {grades && grades.length > 0 && (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 2, borderRadius: 2, height: '100%' }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                Grade Distribution
-              </Typography>
-              <Box sx={{ height: 300, display: 'flex', justifyContent: 'center' }}>
-                <Pie data={pieData} />
-              </Box>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 2, borderRadius: 2, height: '100%' }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                Progress Over Time
-              </Typography>
-              <Box sx={{ height: 300 }}>
-                <Line options={lineOptions} data={lineData} />
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-      )}
-      
-      {/* Filters Section */}
-      <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Search by subject or description"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="subject-filter-label">Filter by Subject</InputLabel>
-              <Select
-                labelId="subject-filter-label"
-                id="subject-filter"
-                value={subjectFilter}
-                onChange={handleSubjectFilterChange}
-                label="Filter by Subject"
-              >
-                <MenuItem value="">
-                  <em>All Subjects</em>
-                </MenuItem>
-                {subjects && subjects.map((subject) => (
-                  <MenuItem key={subject._id} value={subject._id}>
-                    {subject.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Paper>
-      
-      {/* Grades Table - Responsive Design */}
-      <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
-        <Box sx={{ display: { xs: 'block', md: 'none' }, px: 1, py: 2 }}>
-          {/* Enhanced Mobile Vertical Card Layout */}
-          {displayedGrades.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((grade) => (
-            <Card 
-              key={grade._id} 
-              sx={{ 
-                mb: 2,
-                borderRadius: 2,
-                overflow: 'hidden',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': { 
-                  transform: 'translateY(-2px)', 
-                  boxShadow: '0 8px 16px rgba(0,0,0,0.1)', 
-                  cursor: 'pointer' 
-                }
-              }}
-              onClick={() => handleViewGrade(grade._id)}
-            >
-              <CardHeader
-                title={
-                  <Typography variant="h6" sx={{ fontWeight: 500, fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-                    {grade.subject?.name || 'Unknown Subject'}
-                  </Typography>
-                }
-                avatar={
-                  <Avatar sx={{ 
-                    bgcolor: grade.value >= 80 ? 'success.main' : 
-                             grade.value >= 60 ? 'info.main' : 'error.main'
-                  }}>
-                    {grade.value}
-                  </Avatar>
-                }
-                action={
-                  <Tooltip title="View Details">
-                    <IconButton aria-label="view details">
-                      <VisibilityIcon />
-                    </IconButton>
-                  </Tooltip>
-                }
-                sx={{ pb: 1 }}
-              />
-              <Divider />
-              <CardContent sx={{ pt: 2, pb: 1 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Date
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500, display: 'flex', alignItems: 'center' }}>
-                        <CalendarTodayIcon sx={{ mr: 0.5, fontSize: '0.9rem', color: 'primary.main' }} />
-                        {grade.date ? format(new Date(grade.date), 'dd/MM/yyyy') : 'N/A'}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Teacher
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500, display: 'flex', alignItems: 'center' }}>
-                        <PersonIcon sx={{ mr: 0.5, fontSize: '0.9rem', color: 'primary.main' }} />
-                        {grade.teacher?.name || 'Unknown'}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  
-                  {grade.description && (
-                    <Grid item xs={12}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Description
-                      </Typography>
-                      <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'background.default' }}>
-                        <Typography variant="body2">
-                          {grade.description}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  )}
-                </Grid>
-              </CardContent>
-            </Card>
-          ))}
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 5 }}>
+          <CircularProgress />
         </Box>
-        
-        {/* Desktop Table Layout */}
-        <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
-          <Table stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell>Subject</TableCell>
-                <TableCell>Grade</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell>Teacher</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Action</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredGrades.length > 0 ? (
-                filteredGrades
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((grade) => (
-                    <TableRow 
-                      hover 
-                      key={grade._id}
-                      sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+      ) : displayedGrades.length === 0 ? (
+        <Paper sx={{ p: 4, borderRadius: 2, textAlign: 'center' }}>
+          <Typography variant="h6" color="textSecondary">
+            No grades found
+          </Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+            There are no grades available for your account or with the current filters.
+          </Typography>
+        </Paper>
+      ) : (
+        <>
+          {/* Grade Stats Summary Cards - MOBILE OPTIMIZED */}
+          {grades && grades.length > 0 && (
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={6} sm={3}>
+                <Card sx={{ 
+                  height: '100%',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  borderRadius: 2,
+                  p: { xs: 1, sm: 2 }, // Smaller padding on mobile
+                }}>
+                  <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+                    <Typography 
+                      color="text.secondary" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
                     >
-                      <TableCell component="th" scope="row">
-                        {grade.subject ? grade.subject.name : 'Unknown Subject'}
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      Average
+                    </Typography>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ 
+                        fontWeight: 'bold', 
+                        color: 'primary.main',
+                        fontSize: { xs: '1.25rem', sm: '1.5rem' } 
+                      }}
+                    >
+                      {gradeStats.average}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={6} sm={3}>
+                <Card sx={{ 
+                  height: '100%', 
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  borderRadius: 2,
+                  p: { xs: 1, sm: 2 }, // Smaller padding on mobile
+                }}>
+                  <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+                    <Typography 
+                      color="text.secondary" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                    >
+                      Highest
+                    </Typography>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ 
+                        fontWeight: 'bold', 
+                        color: 'success.main',
+                        fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                      }}
+                    >
+                      {gradeStats.highestGrade}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={6} sm={3}>
+                <Card sx={{ 
+                  height: '100%',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  borderRadius: 2,
+                  p: { xs: 1, sm: 2 }, // Smaller padding on mobile
+                }}>
+                  <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+                    <Typography 
+                      color="text.secondary" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                    >
+                      Lowest
+                    </Typography>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ 
+                        fontWeight: 'bold', 
+                        color: 'error.main',
+                        fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                      }}
+                    >
+                      {gradeStats.lowestGrade}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={6} sm={3}>
+                <Card sx={{ 
+                  height: '100%',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  borderRadius: 2,
+                  p: { xs: 1, sm: 2 }, // Smaller padding on mobile
+                }}>
+                  <CardContent sx={{ p: { xs: 1, sm: 2 } }}>
+                    <Typography 
+                      color="text.secondary" 
+                      gutterBottom
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                    >
+                      Passing Rate
+                    </Typography>
+                    <Typography 
+                      variant="h5" 
+                      sx={{ 
+                        fontWeight: 'bold', 
+                        color: 'info.main',
+                        fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                      }}
+                    >
+                      {gradeStats.passingRate}%
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          )}
+          
+          {/* Charts Section - MOBILE OPTIMIZED */}
+          {grades && grades.length > 0 && (
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} md={6}>
+                <Paper 
+                  elevation={2} 
+                  sx={{ 
+                    p: { xs: 1, sm: 2 }, 
+                    borderRadius: 2, 
+                    height: '100%',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <Typography 
+                    variant="h6" 
+                    sx={{ 
+                      mb: 1, 
+                      fontWeight: 'bold',
+                      fontSize: { xs: '0.9rem', sm: '1.25rem' }
+                    }}
+                  >
+                    Grade Distribution
+                  </Typography>
+                  <Box sx={{ 
+                    height: { xs: 200, sm: 300 }, 
+                    display: 'flex', 
+                    justifyContent: 'center',
+                    width: '100%',
+                    margin: '0 auto'
+                  }}>
+                    <Pie data={pieData} />
+                  </Box>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Paper 
+                  elevation={2} 
+                  sx={{ 
+                    p: { xs: 1, sm: 2 }, 
+                    borderRadius: 2, 
+                    height: '100%',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <Typography 
+                    variant="h6" 
+                    sx={{ 
+                      mb: 1, 
+                      fontWeight: 'bold',
+                      fontSize: { xs: '0.9rem', sm: '1.25rem' }
+                    }}
+                  >
+                    Progress Over Time
+                  </Typography>
+                  <Box sx={{ 
+                    height: { xs: 200, sm: 300 },
+                    width: '100%'
+                  }}>
+                    <Line options={lineOptions} data={lineData} />
+                  </Box>
+                </Paper>
+              </Grid>
+            </Grid>
+          )}
+          
+          {/* Filters Section - MOBILE OPTIMIZED */}
+          <Paper sx={{ p: { xs: 1, sm: 2 }, mb: 2, borderRadius: 2 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Search by subject or description"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  size={isMobile ? "small" : "medium"}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize={isMobile ? "small" : "medium"} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth variant="outlined" size={isMobile ? "small" : "medium"}>
+                  <InputLabel id="subject-filter-label">Filter by Subject</InputLabel>
+                  <Select
+                    labelId="subject-filter-label"
+                    id="subject-filter"
+                    value={subjectFilter}
+                    onChange={handleSubjectFilterChange}
+                    label="Filter by Subject"
+                  >
+                    <MenuItem value="">
+                      <em>All Subjects</em>
+                    </MenuItem>
+                    {subjects && subjects.map((subject) => (
+                      <MenuItem key={subject._id} value={subject._id}>
+                        {subject.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Paper>
+          
+          {/* Grades Table - COMPLETELY REDESIGNED MOBILE VIEW */}
+          <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
+            {/* Mobile View */}
+            <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+              {displayedGrades.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((grade) => (
+                <Card 
+                  key={grade._id} 
+                  sx={{ 
+                    mb: 2,
+                    borderRadius: 2,
+                    overflow: 'visible',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    '&:hover': { 
+                      transform: 'translateY(-2px)', 
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)', 
+                      cursor: 'pointer' 
+                    }
+                  }}
+                  onClick={() => handleViewGrade(grade._id)}
+                >
+                  <Box sx={{ 
+                    p: 1, 
+                    bgcolor: 'primary.main', 
+                    color: 'white',
+                    borderTopLeftRadius: 8,
+                    borderTopRightRadius: 8,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
+                      {grade.subject && typeof grade.subject === 'object' ? grade.subject.name : 'Unknown Subject'}
+                    </Typography>
+                    <Chip 
+                      label={grade.value} 
+                      sx={{
+                        bgcolor: 
+                          grade.value >= 90 ? 'success.main' : 
+                          grade.value >= 50 ? 'warning.main' : 
+                          'error.main',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        fontSize: '0.8rem',
+                        height: 24
+                      }}
+                    />
+                  </Box>
+                  
+                  <Box sx={{ p: 2 }}>
+                    <Grid container spacing={1}>
+                      <Grid item xs={12}>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            mb: 1, 
+                            lineHeight: 1.3,
+                            fontSize: '0.8rem',
+                            color: 'text.secondary'
+                          }}
+                        >
+                          {grade.description || 'No description provided'}
+                        </Typography>
+                      </Grid>
+                      
+                      <Grid item xs={6}>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <CalendarTodayIcon sx={{ fontSize: '0.8rem', mr: 0.5, color: 'text.secondary' }} />
                           <Typography 
-                            variant="body1" 
-                            sx={{ 
-                              fontWeight: 'bold',
-                              color: grade.value >= 50 ? 'success.main' : 'error.main',
-                            }}
+                            variant="caption" 
+                            color="text.secondary"
+                            sx={{ fontSize: '0.75rem' }}
                           >
-                            {grade.value}
+                            {grade.date ? format(new Date(grade.date), 'MM/dd/yyyy') : 'No date'}
                           </Typography>
-                          {grade.value >= 90 ? (
-                            <TrendingUpIcon color="success" fontSize="small" />
-                          ) : grade.value < 50 ? (
-                            <TrendingDownIcon color="error" fontSize="small" />
-                          ) : null}
                         </Box>
-                      </TableCell>
-                      <TableCell>{grade.description || '-'}</TableCell>
-                      <TableCell>{grade.teacher ? grade.teacher.name : 'Unknown'}</TableCell>
-                      <TableCell>{format(new Date(grade.date), 'PP')}</TableCell>
-                      <TableCell>
+                      </Grid>
+                      
+                      <Grid item xs={6}>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <PersonIcon sx={{ fontSize: '0.8rem', mr: 0.5, color: 'text.secondary' }} />
+                          <Typography 
+                            variant="caption" 
+                            color="text.secondary"
+                            sx={{ fontSize: '0.75rem' }}
+                          >
+                            {grade.teacher?.name || 'Unknown'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      
+                      <Grid item xs={12} sx={{ mt: 1 }}>
                         <Chip 
-                          label={grade.value >= 50 ? 'Passed' : 'Failed'} 
-                          color={grade.value >= 50 ? 'success' : 'error'} 
+                          icon={<VisibilityIcon sx={{ fontSize: '0.8rem' }} />}
+                          label="View Details" 
                           size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          icon={<VisibilityIcon />}
-                          label="View"
+                          sx={{ fontSize: '0.7rem', height: 24 }}
                           variant="outlined"
-                          size="small"
-                          onClick={() => handleViewGrade(grade._id)}
-                          sx={{ cursor: 'pointer' }}
                         />
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </Card>
+              ))}
+            </Box>
+            
+            {/* Desktop Table Layout */}
+            <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Subject</TableCell>
+                    <TableCell align="center">Grade</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Teacher</TableCell>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {displayedGrades.length > 0 ? (
+                    displayedGrades
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((grade) => (
+                        <TableRow 
+                          key={grade._id}
+                          hover
+                          sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                        >
+                          <TableCell component="th" scope="row">
+                            {grade.subject && typeof grade.subject === 'object' ? grade.subject.name : 'Unknown Subject'}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Typography 
+                                variant="body1" 
+                                sx={{ 
+                                  fontWeight: 'bold',
+                                  color: 
+                                    grade.value >= 90 ? 'success.main' : 
+                                    grade.value < 50 ? 'error.main' : 
+                                    'text.primary'
+                                }}
+                              >
+                                {grade.value}
+                              </Typography>
+                              {grade.value >= 90 ? (
+                                <TrendingUpIcon color="success" fontSize="small" />
+                              ) : grade.value < 50 ? (
+                                <TrendingDownIcon color="error" fontSize="small" />
+                              ) : null}
+                            </Box>
+                          </TableCell>
+                          <TableCell>{grade.description || '-'}</TableCell>
+                          <TableCell>{grade.teacher ? grade.teacher.name : 'Unknown'}</TableCell>
+                          <TableCell>{format(new Date(grade.date), 'PP')}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={grade.value >= 50 ? 'Passed' : 'Failed'} 
+                              color={grade.value >= 50 ? 'success' : 'error'} 
+                              size="small"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              icon={<VisibilityIcon />}
+                              label="View"
+                              variant="outlined"
+                              size="small"
+                              onClick={() => handleViewGrade(grade._id)}
+                              sx={{ cursor: 'pointer' }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center">
+                        No grades found
                       </TableCell>
                     </TableRow>
-                  ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                    {grades && grades.length > 0 ? 'No grades match the filter criteria.' : 'No grades found.'}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        {/* Unified pagination for both mobile and desktop views */}
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={displayedGrades.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </Paper>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={filteredGrades.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              sx={{ 
+                '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                  fontSize: { xs: '0.7rem', sm: '0.875rem' }
+                },
+                '.MuiTablePagination-select': {
+                  fontSize: { xs: '0.7rem', sm: '0.875rem' }
+                }
+              }}
+            />
+          </Paper>
+        </>
+      )}
     </Box>
   );
 };

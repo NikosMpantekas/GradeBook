@@ -123,12 +123,28 @@ const PushNotificationManager = () => {
         applicationServerKey: convertedPublicKey
       });
       
+      console.log('[Push] Successfully created subscription');
       setPushSubscription(newSubscription);
       
-      // Send subscription to server
+      // CRITICAL FIX: The server expects direct subscription properties, not a nested subscription object
+      const subscriptionData = {
+        endpoint: newSubscription.endpoint,
+        expirationTime: newSubscription.expirationTime,
+        keys: {
+          p256dh: newSubscription.keys.p256dh,
+          auth: newSubscription.keys.auth
+        }
+      };
+      
+      console.log('[Push] Sending properly formatted subscription data to server');
       await axios.post('/api/notifications/subscription', 
-        { subscription: newSubscription },
-        { headers: { Authorization: `Bearer ${user.token}` } }
+        subscriptionData,
+        { 
+          headers: { 
+            'Authorization': `Bearer ${user.token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
       
       setNotification({
