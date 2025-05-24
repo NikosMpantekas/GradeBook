@@ -120,6 +120,18 @@ const createNotification = asyncHandler(async (req, res) => {
       // Send push notifications
       const pushPromises = subscriptions.map(async (subscription) => {
         try {
+          // Validate subscription has the required keys before trying to send
+          if (!subscription.endpoint || !subscription.p256dh || !subscription.auth) {
+            console.warn(`Incomplete subscription for user ${subscription.user}. Missing:`, {
+              endpoint: !subscription.endpoint,
+              p256dh: !subscription.p256dh,
+              auth: !subscription.auth
+            });
+            // Remove invalid subscription
+            await Subscription.findByIdAndDelete(subscription._id);
+            return null;
+          }
+          
           const pushSubscription = {
             endpoint: subscription.endpoint,
             keys: {
@@ -420,11 +432,63 @@ const getNotificationById = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Delete a notification
+// @route   DELETE /api/notifications/:id
+// @access  Private/Teacher Admin
+const deleteNotification = asyncHandler(async (req, res) => {
+  console.log(`Attempting to delete notification ${req.params.id}`);
+
+  try {
+    const notification = await Notification.findById(req.params.id);
+
+    if (!notification) {
+      console.log(`Notification not found: ${req.params.id}`);
+      res.status(404);
+      throw new Error('Notification not found');
+    }
+
+    // Verify the notification belongs to the user's school (multi-tenancy security)
+    if (notification.schoolId && notification.schoolId.toString() !== req.user.schoolId.toString()) {
+      console.log(`School mismatch: notification school ${notification.schoolId}, user school ${req.user.schoolId}`);
+      res.status(404); // Use 404 instead of 403 to prevent school ID enumeration
+      throw new Error('Notification not found');
+    }
+
+    // Check if user is allowed to delete this notification
+    const isOwner = notification.sender.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      console.log(`Not authorized: user ${req.user._id} attempted to delete notification ${notification._id} created by ${notification.sender}`);
+      res.status(403);
+      throw new Error('Not authorized to delete this notification');
+    }
+
+    console.log(`Deleting notification ${notification._id}`);
+    await Notification.findByIdAndDelete(req.params.id);
+    
+    console.log(`Notification ${notification._id} successfully deleted`);
+    res.status(200).json({ 
+      success: true,
+      message: 'Notification successfully removed' 
+    });
+  } catch (error) {
+    console.error(`Error deleting notification:`, error);
+    if (!res.statusCode || res.statusCode === 200) {
+      res.status(500);
+    }
+    throw error;
+  }
+});
+
 module.exports = {
   createNotification,
   getAllNotifications,
   getMyNotifications,
   getSentNotifications,
   markNotificationRead,
-  getNotificationById
+  getNotificationById,
+  deleteNotification,
+  getVapidPublicKey,
+  createPushSubscription
 };

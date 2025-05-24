@@ -7,6 +7,7 @@ const {
   getSentNotifications,
   markNotificationRead,
   getNotificationById,
+  deleteNotification,
 } = require('../controllers/notificationController');
 const { protect, admin, teacher, canSendNotifications } = require('../middleware/authMiddleware');
 
@@ -30,8 +31,8 @@ router.post('/', protect, (req, res, next) => {
 // Update notification route removed - not supported in current version
 // Implementation can be added in future if needed
 
-// Delete notification route removed - not supported in current version
-// Implementation can be added in future if needed
+// Delete notification route
+router.delete('/:id', protect, deleteNotification);
 
 // Admin routes (with secretary support where appropriate)
 router.get('/', protect, canSendNotifications, getAllNotifications);

@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.42'; // CRITICAL FIX: Fixed push notifications on mobile + notification recipient selection
+const APP_VERSION = '1.4.43'; // CRITICAL FIX: Fixed push notification encryption + notification deletion
 
 /**
  * Safely store app version in localStorage with error handling
