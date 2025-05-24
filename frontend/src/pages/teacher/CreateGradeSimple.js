@@ -192,7 +192,7 @@ const CreateGradeSimple = () => {
     
     // If we have a selected direction, make a dedicated API call for it
     const loadDirectionSubjects = async () => {
-      if (!user?.token) return;
+      if (!user?.token || !isMounted.current) return;
       
       setLoading(true);
       try {
@@ -202,7 +202,9 @@ const CreateGradeSimple = () => {
           }
         };
         
-        const response = await axios.get(`/api/subjects/direction/${selectedDirection}`, config);
+        // Add a cache buster to prevent unnecessary cached responses
+        const timestamp = new Date().getTime();
+        const response = await axios.get(`/api/subjects/direction/${selectedDirection}?_t=${timestamp}`, config);
         
         if (isMounted.current && Array.isArray(response.data)) {
           setFilteredSubjects(response.data);
@@ -242,7 +244,10 @@ const CreateGradeSimple = () => {
     };
     
     loadDirectionSubjects();
-  }, [selectedDirection, user]);
+    
+    // This effect should only run when selectedDirection changes, not on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDirection]);
   
   // Load students when subject changes (only when subject actually changes)
   useEffect(() => {
@@ -255,71 +260,61 @@ const CreateGradeSimple = () => {
         return; // Don't load students if no subject is selected
       }
       
+      if (!user?.token) return;
+      
       setLoading(true);
       try {
-        if (user?.token) {
-          const config = {
-            headers: {
-              Authorization: `Bearer ${user.token}`
-            }
-          };
+        const config = {
+          headers: {
+            Authorization: `Bearer ${user.token}`
+          }
+        };
+        
+        // Try to get students for this specific subject
+        console.log(`[CreateGradeSimple] Loading students for subject: ${formData.subject}`);
+        // Add cache buster to prevent unnecessary API calls
+        const timestamp = new Date().getTime();
+        const response = await axios.get(`/api/students/subject/${formData.subject}?_t=${timestamp}`, config);
+        
+        // Check if this effect is still relevant before updating state
+        if (!isEffectActive) return;
+        
+        if (Array.isArray(response.data)) {
+          // Further filter by direction if one is selected
+          let studentsToShow = response.data;
           
-          // Try to get students for this specific subject
-          console.log(`[CreateGradeSimple] Loading students for subject: ${formData.subject}`);
-          const response = await axios.get(`/api/students/subject/${formData.subject}`, config);
-          
-          // Check if this effect is still relevant before updating state
-          if (!isEffectActive) return;
-          
-          if (Array.isArray(response.data)) {
-            // Further filter by direction if one is selected
-            let studentsToShow = response.data;
-            
-            if (selectedDirection) {
-              studentsToShow = response.data.filter(student => {
-                // Handle both populated and unpopulated direction
-                const studentDirId = typeof student.direction === 'object' 
-                  ? student.direction?._id 
-                  : student.direction;
-                
-                return studentDirId && studentDirId.toString() === selectedDirection;
-              });
+          if (selectedDirection) {
+            studentsToShow = response.data.filter(student => {
+              // Handle both populated and unpopulated direction
+              const studentDirId = typeof student.direction === 'object' 
+                ? student.direction?._id 
+                : student.direction;
               
-              console.log(`[CreateGradeSimple] Filtered to ${studentsToShow.length} students in direction ${selectedDirection}`);
-            }
+              return studentDirId && studentDirId.toString() === selectedDirection;
+            });
             
-            if (isEffectActive) {
-              setFilteredStudents(studentsToShow);
-              console.log(`[CreateGradeSimple] Loaded ${studentsToShow.length} students for subject ${formData.subject}`);
-            }
+            console.log(`[CreateGradeSimple] Filtered to ${studentsToShow.length} students in direction ${selectedDirection}`);
+          }
+          
+          if (isEffectActive) {
+            setFilteredStudents(studentsToShow);
+            console.log(`[CreateGradeSimple] Loaded ${studentsToShow.length} students for subject ${formData.subject}`);
             
-            // Only update if this effect is still relevant
-            if (isEffectActive && formData.student) {
-              // Reset student selection if not in the new list
-              const studentStillValid = studentsToShow.some(s => s._id === formData.student);
-              if (!studentStillValid) {
-                setFormData(prev => ({
-                  ...prev,
-                  student: ''
-                }));
-              }
-            }
-          } else {
-            console.warn('[CreateGradeSimple] Non-array response from students API:', response.data);
-            if (isEffectActive) {
-              setFilteredStudents([]);
+            // Reset student selection if it's not in the new list
+            const studentStillValid = studentsToShow.some(s => s._id === formData.student);
+            if (formData.student && !studentStillValid) {
+              setFormData(prev => ({
+                ...prev,
+                student: ''
+              }));
             }
           }
         }
       } catch (error) {
-        if (!isEffectActive) return;
-        
-        handleAxiosError(error, 'loadStudents');
-        setFilteredStudents([]);
-        
-        // Try to get all students as fallback - but only if the effect is still relevant
-        try {
-          if (user?.token) {
+        if (isEffectActive) {
+          handleAxiosError(error, 'loadStudents');
+          // Try to get all students as fallback
+          try {
             const config = {
               headers: {
                 Authorization: `Bearer ${user.token}`
@@ -349,10 +344,11 @@ const CreateGradeSimple = () => {
                 console.log(`[CreateGradeSimple] Fallback loaded ${allStudents.length} students (all)`);
               }
             }
-          }
-        } catch (fallbackError) {
-          if (isEffectActive) {
-            console.error('[CreateGradeSimple] Fallback error:', fallbackError);
+          } catch (fallbackError) {
+            if (isEffectActive) {
+              console.error('[CreateGradeSimple] Fallback error:', fallbackError);
+              setFilteredStudents([]);
+            }
           }
         }
       } finally {
@@ -369,7 +365,10 @@ const CreateGradeSimple = () => {
     return () => {
       isEffectActive = false;
     };
-  }, [formData.subject, selectedDirection, user]);
+    
+    // Only depend on subject and direction to prevent unnecessary API calls
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.subject, selectedDirection]);
   
   // Handle direction change
   const handleDirectionChange = (e) => {
