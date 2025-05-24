@@ -207,10 +207,16 @@ const CreateUser = () => {
     // Load options for teacher, student, and secretary roles
     if (formData.role === 'teacher' || formData.role === 'student' || formData.role === 'secretary') {
       fetchSchools();
-      fetchDirections();
+      // Use pre-loaded directions data if available, otherwise fetch it
+      if (props.safeDirectionsData && props.safeDirectionsData.length > 0) {
+        console.log('[CreateUser] Using pre-loaded directions data from wrapper');
+        setOptionsData(prev => ({ ...prev, directions: props.safeDirectionsData }));
+      } else {
+        fetchDirections();
+      }
       fetchSubjects();
     }
-  }, [formData.role]);
+  }, [formData.role, props.safeDirectionsData]);
   
   // Functions to fetch reference data
   const fetchSchools = async () => {
@@ -894,21 +900,58 @@ const CreateUser = () => {
                     onChange={handleChange}
                     multiple
                     disabled={loadingOptions.directions}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => {
-                          const direction = optionsData.directions.find(d => d._id === value);
-                          return direction ? direction.name : value;
-                        }).join(', ')}
-                      </Box>
-                    )}
+                    renderValue={(selected) => {
+                      // Safety check for selected being an array
+                      if (!Array.isArray(selected)) {
+                        console.warn('[CreateUser] selected is not an array in directions renderValue:', selected);
+                        return 'Invalid selection';
+                      }
+                      
+                      // Safety check for directions data
+                      if (!Array.isArray(optionsData.directions)) {
+                        console.warn('[CreateUser] directions data is not an array in renderValue');
+                        return selected.join(', ');
+                      }
+                      
+                      return (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => {
+                            try {
+                              const direction = optionsData.directions.find(d => d && d._id === value);
+                              return direction ? direction.name : value;
+                            } catch (error) {
+                              console.error('[CreateUser] Error in directions renderValue:', error);
+                              return value;
+                            }
+                          }).join(', ')}
+                        </Box>
+                      );
+                    }}
                   >
-                    {optionsData.directions && optionsData.directions.map((direction) => (
-                      <MenuItem key={direction._id} value={direction._id}>
-                        <Checkbox checked={formData.directions && formData.directions.indexOf(direction._id) > -1} />
-                        <ListItemText primary={direction.name} />
+                    {/* Safety check to ensure directions exists and is an array */}
+                    {Array.isArray(optionsData.directions) ? optionsData.directions.map((direction) => {
+                      // Skip rendering invalid direction items
+                      if (!direction || !direction._id || !direction.name) {
+                        console.warn('[CreateUser] Invalid direction in list:', direction);
+                        return null;
+                      }
+                      
+                      // Safe check for the formData.directions array
+                      const isChecked = Array.isArray(formData.directions) && 
+                        formData.directions.indexOf(direction._id) > -1;
+                        
+                      return (
+                        <MenuItem key={direction._id} value={direction._id}>
+                          <Checkbox checked={isChecked} />
+                          <ListItemText primary={direction.name} />
+                        </MenuItem>
+                      );
+                    }) : (
+                      // If not an array, render an empty/disabled item
+                      <MenuItem disabled>
+                        <ListItemText primary="No directions available" />
                       </MenuItem>
-                    ))}
+                    )}
                   </Select>
                   <FormHelperText>
                     {formErrors.directions || loadingOptions.directions ? 'Loading directions...' : 'Select directions for this teacher'}

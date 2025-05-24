@@ -45,7 +45,8 @@ import CreateNotification from './pages/teacher/CreateNotification';
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageUsers from './pages/admin/ManageUsers';
-import CreateUser from './pages/admin/CreateUser';
+// CRITICAL FIX: Use error-wrapped version of CreateUser to fix the TypeError in direction selection
+import CreateUserErrorWrapper from './pages/admin/CreateUserErrorWrapper';
 import EditUser from './pages/admin/EditUser';
 import ManageSchools from './pages/admin/ManageSchools';
 import ManageDirections from './pages/admin/ManageDirections';
@@ -373,7 +374,7 @@ function App() {
             } />
             <Route path="/app/admin/users/create" element={
               <AdminRoute>
-                <CreateUser />
+                <CreateUserErrorWrapper />
               </AdminRoute>
             } />
 
