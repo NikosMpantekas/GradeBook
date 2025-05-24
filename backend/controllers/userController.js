@@ -657,6 +657,54 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get users by role (admin, teacher, student, etc.)
+// @route   GET /api/users/role/:role
+// @access  Private/Admin/Teacher
+const getUsersByRole = asyncHandler(async (req, res) => {
+  const { role } = req.params;
+  const validRoles = ['admin', 'teacher', 'student', 'secretary', 'parent'];
+  
+  console.log(`getUsersByRole endpoint called for role: ${role}`);
+  
+  if (!validRoles.includes(role)) {
+    res.status(400);
+    throw new Error(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+  }
+  
+  try {
+    // Check if requesting user is admin, teacher, or secretary
+    const canAccess = ['admin', 'teacher', 'secretary', 'superadmin'].includes(req.user.role);
+    if (!canAccess) {
+      res.status(403);
+      throw new Error('Not authorized to access user list by role');
+    }
+    
+    // Apply schoolId filtering for multi-tenancy (except for superadmin)
+    const filter = { role };
+    if (req.user.role !== 'superadmin' && req.user.schoolId) {
+      filter.schoolId = req.user.schoolId;
+    }
+    
+    console.log(`Fetching ${role}s with filter:`, filter);
+    
+    const users = await User.find(filter)
+      .select('-password')
+      .populate('school', 'name')
+      .populate('direction', 'name')
+      .populate('subjects', 'name')
+      .populate('schools', 'name')
+      .populate('directions', 'name')
+      .lean();
+    
+    console.log(`Found ${users.length} ${role}s`);
+    res.json(users);
+  } catch (error) {
+    console.error(`Error in getUsersByRole (${role}):`, error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || `Error retrieving ${role} list`);
+  }
+});
+
 // Export functions
 module.exports = {
   registerUser,
@@ -666,6 +714,7 @@ module.exports = {
   updateProfile,
   getUsers,
   createUserByAdmin,
+  getUsersByRole,
   generateToken,
   generateRefreshToken
 };
