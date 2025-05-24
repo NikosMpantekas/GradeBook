@@ -195,7 +195,7 @@ const CreateGradeSimple = () => {
     };
     
     loadSubjects();
-  }, [selectedDirection, user, subjects, formData.subject]);
+  }, [selectedDirection, user, subjects]);
   
   // Load students when subject changes
   useEffect(() => {
@@ -291,7 +291,7 @@ const CreateGradeSimple = () => {
     };
     
     loadStudents();
-  }, [formData.subject, selectedDirection, user, formData.student]);
+  }, [formData.subject, selectedDirection, user]);
   
   // Handle direction change
   const handleDirectionChange = (e) => {

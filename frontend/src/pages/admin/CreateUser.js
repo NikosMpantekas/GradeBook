@@ -496,19 +496,15 @@ const CreateUser = (props) => {
       
       console.log('Submitting user data:', userData);
       
-      dispatch(createUser(userData))
-        .unwrap()
-        .then(() => {
-          toast.success('User created successfully!');
-          navigate('/app/admin/users');
-        })
-        .catch((error) => {
-          toast.error(
-            error?.message ||
-              'Error creating user. Please check your information and try again.'
-          );
-          setSubmitting(false);
-        });
+      // Set the submission flag to true
+      hasSubmitted.current = true;
+      
+      // Use the Redux action without manual toast/navigation here
+      // The useEffect will handle success/error states consistently
+      dispatch(createUser(userData));
+      
+      // Don't handle success/error here - let the useEffect do it
+      // to ensure consistent behavior
     } catch (error) {
       console.error('Error submitting form:', error);
       setSubmitting(false);
