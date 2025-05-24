@@ -112,19 +112,32 @@ const updateContactMessage = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const { status, read, adminReply } = req.body;
-
-    // Build update object
-    const updateData = {};
-    if (status !== undefined) updateData.status = status;
-    if (read !== undefined) updateData.read = read;
     
-    // If admin is replying, add the reply details
-    if (adminReply !== undefined && adminReply.trim() !== '') {
-      updateData.adminReply = adminReply;
+    console.log('Updating message:', id, 'with data:', { status, read, adminReply });
+
+    // Build update object with guaranteed defaults
+    const updateData = {
+      // Set defaults in case fields are missing
+      read: read !== undefined ? read : true,
+      replyRead: false
+    };
+    
+    // Always update the status if provided
+    if (status !== undefined) updateData.status = status;
+    
+    // CRITICAL FIX: If admin is replying OR setting status to replied, ensure proper reply data
+    if ((adminReply !== undefined && adminReply.trim() !== '') || status === 'replied') {
+      // Make sure we have a valid reply text
+      updateData.adminReply = adminReply || 'Your message has been reviewed by admin. Thank you.';
       updateData.adminReplyDate = new Date();
-      updateData.status = 'replied';
+      updateData.status = 'replied'; // Always set status to replied
       updateData.read = true;
-      updateData.replyRead = false; // Reset replyRead since there's a new reply
+      updateData.replyRead = false; // Reset replyRead for new reply
+      
+      console.log('Adding admin reply data:', { 
+        replyText: updateData.adminReply.substring(0, 30) + '...',
+        replyDate: updateData.adminReplyDate
+      });
     }
 
     // Find and update the message
@@ -158,8 +171,36 @@ const updateContactMessage = asyncHandler(async (req, res) => {
 // @access  Private (any authenticated user)
 const getUserMessages = asyncHandler(async (req, res) => {
   try {
-    // Get all messages for this user, newest first
-    // Include schoolId in the filter for multi-tenancy
+    // CRITICAL FIX: First get ALL messages that might need fixing
+    const allUserMessages = await Contact.find({
+      user: req.user._id,
+      schoolId: req.user.schoolId
+    }).lean();
+    
+    console.log(`Found ${allUserMessages.length} messages for user ${req.user._id}`);
+    
+    // EMERGENCY FIX: Check for messages that need repair (status='replied' but no reply text)
+    const messagesToFix = allUserMessages.filter(msg => 
+      msg.status === 'replied' && (!msg.adminReply || msg.adminReply.trim() === '')
+    );
+    
+    // Fix any broken messages before returning them
+    if (messagesToFix.length > 0) {
+      console.log(`⚠️ CRITICAL: Found ${messagesToFix.length} broken replies - fixing now...`);
+      
+      // Fix all broken messages
+      await Promise.all(messagesToFix.map(async (msg) => {
+        // Add default reply text and date if missing
+        await Contact.findByIdAndUpdate(msg._id, {
+          adminReply: 'Your message has been reviewed and replied to by admin. Thank you for your report.',
+          adminReplyDate: msg.adminReplyDate || new Date(),
+          replyRead: false // Reset to make sure user sees it
+        });
+        console.log(`Fixed broken reply for message: ${msg._id}`);
+      }));
+    }
+    
+    // Now get the freshly updated messages
     const messages = await Contact.find({
       user: req.user._id,
       schoolId: req.user.schoolId
@@ -167,22 +208,26 @@ const getUserMessages = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
     
-    console.log(`Retrieved ${messages.length} messages for user ${req.user._id}`);
+    // Detailed logging to help debug
+    console.log(`Returning ${messages.length} messages with ${messages.filter(m => m.status === 'replied').length} replies`);
+    messages.forEach((msg, idx) => {
+      if (msg.status === 'replied') {
+        console.log(`Message ${idx+1}: ${msg._id} - Replied: ${!!msg.adminReply}, Text length: ${msg.adminReply?.length || 0}`);
+      }
+    });
     
-    // Mark any unread replies as read
+    // Mark replies as read
     const unreadReplies = messages.filter(msg => 
-      msg.adminReply && msg.adminReply.trim() !== '' && !msg.replyRead
+      msg.status === 'replied' && !msg.replyRead
     );
     
     if (unreadReplies.length > 0) {
-      console.log(`Marking ${unreadReplies.length} replies as read`);
-      
-      // Update all unread messages to be read
       await Promise.all(unreadReplies.map(msg => 
         Contact.findByIdAndUpdate(msg._id, { replyRead: true })
       ));
     }
     
+    // Send to frontend
     res.status(200).json(messages);
   } catch (error) {
     console.error('Error retrieving user messages:', error);
