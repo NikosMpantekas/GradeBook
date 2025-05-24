@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const Notification = require('../models/notificationModel');
 const {
   createNotification,
   getAllNotifications,
@@ -30,8 +31,49 @@ router.post('/', protect, (req, res, next) => {
   throw new Error('Not authorized for this action');
 }, createNotification);
 
-// Update notification route removed - not supported in current version
-// Implementation can be added in future if needed
+// Update notification route
+router.put('/:id', protect, (req, res, next) => {
+  // Only the sender can update their own notification
+  if (req.user.role === 'teacher' || req.user.role === 'admin' || 
+      (req.user.role === 'secretary' && req.user.secretaryPermissions?.canSendNotifications === true)) {
+    return next();
+  }
+  res.status(403);
+  throw new Error('Not authorized to update notifications');
+}, async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    const { title, message, isImportant } = req.body;
+    
+    // Find the notification
+    const notification = await Notification.findById(notificationId);
+    
+    if (!notification) {
+      res.status(404);
+      throw new Error('Notification not found');
+    }
+    
+    // Check ownership - only sender or admin can update
+    if (notification.sender.toString() !== req.user._id.toString() && 
+        req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      res.status(403);
+      throw new Error('Not authorized to update this notification');
+    }
+    
+    // Update the notification
+    notification.title = title || notification.title;
+    notification.message = message || notification.message;
+    notification.isImportant = isImportant !== undefined ? isImportant : notification.isImportant;
+    
+    const updatedNotification = await notification.save();
+    
+    res.status(200).json(updatedNotification);
+  } catch (error) {
+    console.error('Error updating notification:', error);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error updating notification');
+  }
+});
 
 // Delete notification route
 router.delete('/:id', protect, deleteNotification);

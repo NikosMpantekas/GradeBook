@@ -34,6 +34,7 @@ import DiagnosticPage from './pages/DiagnosticPage';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import NotificationDetail from './pages/NotificationDetail';
+import UserContactMessages from './pages/UserContactMessages';
 
 // Student Pages
 import StudentGrades from './pages/student/StudentGrades';
@@ -326,6 +327,8 @@ function App() {
             <Route path="/app/notifications" element={<Notifications />} />
             {/* Notification detail route still available for deep linking */}
             <Route path="/app/notifications/:id" element={<NotificationDetail />} />
+            {/* User contact messages and bug reports */}
+            <Route path="/app/contact-messages" element={<UserContactMessages />} />
             
             {/* Student Routes */}
             <Route path="/app/grades" element={<StudentGrades />} />

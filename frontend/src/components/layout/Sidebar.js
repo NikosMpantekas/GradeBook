@@ -190,6 +190,13 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/profile',
         roles: ['student', 'teacher', 'admin', 'superadmin'],
       },
+      // My Contact Messages is available to all users
+      {
+        text: 'My Messages & Bug Reports',
+        icon: <EmailIcon />,
+        path: '/app/contact-messages',
+        roles: ['student', 'teacher', 'admin', 'superadmin'],
+      },
     ];
 
     // Filter menu items based on user role and permissions
