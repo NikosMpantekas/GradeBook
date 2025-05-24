@@ -125,80 +125,130 @@ const CreateGradeSimple = () => {
     loadDirections();
   }, [user]);
   
-  // Load subjects when direction changes
+  // Reference to track if component is mounted
+  const isMounted = React.useRef(true);
+  
+  // Only load all data once when the component mounts
   useEffect(() => {
-    const loadSubjects = async () => {
-      if (!selectedDirection) {
-        // Load all subjects if no direction is selected
-        try {
-          if (user && user.token) {
-            setLoading(true);
-            const config = {
-              headers: {
-                Authorization: `Bearer ${user.token}`
-              }
-            };
-            
-            const response = await axios.get('/api/subjects', config);
-            if (Array.isArray(response.data)) {
-              setSubjects(response.data);
-              setFilteredSubjects(response.data);
-              console.log(`[CreateGradeSimple] Loaded ${response.data.length} subjects (all)`);
-            }
-          }
-        } catch (error) {
-          handleAxiosError(error, 'loadAllSubjects');
-        } finally {
-          setLoading(false);
-        }
+    // Create a consolidated data loading function
+    const loadInitialData = async () => {
+      if (!user || !user.token) {
+        console.error('[CreateGradeSimple] No user token available');
         return;
       }
       
-      // Load subjects for the selected direction
       setLoading(true);
+      const config = {
+        headers: {
+          Authorization: `Bearer ${user.token}`
+        }
+      };
+      
       try {
-        if (user && user.token) {
-          const config = {
-            headers: {
-              Authorization: `Bearer ${user.token}`
-            }
-          };
-          
-          console.log(`[CreateGradeSimple] Loading subjects for direction: ${selectedDirection}`);
-          const response = await axios.get(`/api/subjects/direction/${selectedDirection}`, config);
-          
-          if (Array.isArray(response.data)) {
-            setFilteredSubjects(response.data);
-            console.log(`[CreateGradeSimple] Loaded ${response.data.length} subjects for direction ${selectedDirection}`);
-            
-            // Reset subject selection if it's not in the new list
-            const subjectStillValid = response.data.some(s => s._id === formData.subject);
-            if (formData.subject && !subjectStillValid) {
-              setFormData(prev => ({
-                ...prev,
-                subject: '',
-                student: '' // Also reset student when subject is reset
-              }));
-            }
-          } else {
-            console.warn('[CreateGradeSimple] Non-array response from subjects API:', response.data);
-            setFilteredSubjects([]);
-          }
+        // 1. Load all directions
+        console.log('[CreateGradeSimple] Loading all directions');
+        const directionsResponse = await axios.get('/api/directions', config);
+        if (isMounted.current && Array.isArray(directionsResponse.data)) {
+          setDirections(directionsResponse.data);
+          console.log(`[CreateGradeSimple] Loaded ${directionsResponse.data.length} directions`);
+        }
+        
+        // 2. Load all subjects
+        console.log('[CreateGradeSimple] Loading all subjects');
+        const subjectsResponse = await axios.get('/api/subjects', config);
+        if (isMounted.current && Array.isArray(subjectsResponse.data)) {
+          setSubjects(subjectsResponse.data);
+          setFilteredSubjects(subjectsResponse.data); // Initially show all subjects
+          console.log(`[CreateGradeSimple] Loaded ${subjectsResponse.data.length} subjects`);
         }
       } catch (error) {
-        handleAxiosError(error, 'loadSubjectsByDirection');
-        // Fallback to all subjects
-        setFilteredSubjects(subjects);
+        if (isMounted.current) {
+          handleAxiosError(error, 'loadInitialData');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     };
     
-    loadSubjects();
-  }, [selectedDirection, user, subjects]);
+    loadInitialData();
+    
+    // Cleanup function to prevent memory leaks and state updates on unmounted component
+    return () => {
+      isMounted.current = false;
+    };
+  }, [user]);
   
-  // Load students when subject changes
+  // Filter subjects when direction changes (no API call)
   useEffect(() => {
+    if (!selectedDirection) {
+      // If no direction is selected, show all subjects
+      setFilteredSubjects(subjects);
+      return;
+    }
+    
+    console.log(`[CreateGradeSimple] Filtering subjects for direction: ${selectedDirection}`);
+    
+    // If we have a selected direction, make a dedicated API call for it
+    const loadDirectionSubjects = async () => {
+      if (!user?.token) return;
+      
+      setLoading(true);
+      try {
+        const config = {
+          headers: {
+            Authorization: `Bearer ${user.token}`
+          }
+        };
+        
+        const response = await axios.get(`/api/subjects/direction/${selectedDirection}`, config);
+        
+        if (isMounted.current && Array.isArray(response.data)) {
+          setFilteredSubjects(response.data);
+          console.log(`[CreateGradeSimple] Loaded ${response.data.length} subjects for direction ${selectedDirection}`);
+          
+          // Reset subject selection if it's not in the new list
+          const subjectStillValid = response.data.some(s => s._id === formData.subject);
+          if (formData.subject && !subjectStillValid) {
+            setFormData(prev => ({
+              ...prev,
+              subject: '',
+              student: '' // Also reset student when subject is reset
+            }));
+          }
+        }
+      } catch (error) {
+        if (isMounted.current) {
+          handleAxiosError(error, 'loadDirectionSubjects');
+          // Filter existing subjects client-side as fallback
+          const filtered = subjects.filter(subject => {
+            // Check if the subject has this direction
+            return subject.directions && 
+                  Array.isArray(subject.directions) && 
+                  subject.directions.some(dir => {
+                    const dirId = typeof dir === 'object' ? dir?._id : dir;
+                    return dirId === selectedDirection;
+                  });
+          });
+          setFilteredSubjects(filtered);
+          console.log(`[CreateGradeSimple] Fallback: filtered ${filtered.length} subjects client-side`);
+        }
+      } finally {
+        if (isMounted.current) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadDirectionSubjects();
+  }, [selectedDirection, user]);
+  
+  // Load students when subject changes (only when subject actually changes)
+  useEffect(() => {
+    // Track if this effect is still relevant
+    let isEffectActive = true;
+    
     const loadStudents = async () => {
       if (!formData.subject) {
         setFilteredStudents([]);
@@ -207,7 +257,7 @@ const CreateGradeSimple = () => {
       
       setLoading(true);
       try {
-        if (user && user.token) {
+        if (user?.token) {
           const config = {
             headers: {
               Authorization: `Bearer ${user.token}`
@@ -217,6 +267,9 @@ const CreateGradeSimple = () => {
           // Try to get students for this specific subject
           console.log(`[CreateGradeSimple] Loading students for subject: ${formData.subject}`);
           const response = await axios.get(`/api/students/subject/${formData.subject}`, config);
+          
+          // Check if this effect is still relevant before updating state
+          if (!isEffectActive) return;
           
           if (Array.isArray(response.data)) {
             // Further filter by direction if one is selected
@@ -235,35 +288,48 @@ const CreateGradeSimple = () => {
               console.log(`[CreateGradeSimple] Filtered to ${studentsToShow.length} students in direction ${selectedDirection}`);
             }
             
-            setFilteredStudents(studentsToShow);
-            console.log(`[CreateGradeSimple] Loaded ${studentsToShow.length} students for subject ${formData.subject}`);
+            if (isEffectActive) {
+              setFilteredStudents(studentsToShow);
+              console.log(`[CreateGradeSimple] Loaded ${studentsToShow.length} students for subject ${formData.subject}`);
+            }
             
-            // Reset student selection if not in the new list
-            const studentStillValid = studentsToShow.some(s => s._id === formData.student);
-            if (formData.student && !studentStillValid) {
-              setFormData(prev => ({
-                ...prev,
-                student: ''
-              }));
+            // Only update if this effect is still relevant
+            if (isEffectActive && formData.student) {
+              // Reset student selection if not in the new list
+              const studentStillValid = studentsToShow.some(s => s._id === formData.student);
+              if (!studentStillValid) {
+                setFormData(prev => ({
+                  ...prev,
+                  student: ''
+                }));
+              }
             }
           } else {
             console.warn('[CreateGradeSimple] Non-array response from students API:', response.data);
-            setFilteredStudents([]);
+            if (isEffectActive) {
+              setFilteredStudents([]);
+            }
           }
         }
       } catch (error) {
+        if (!isEffectActive) return;
+        
         handleAxiosError(error, 'loadStudents');
         setFilteredStudents([]);
         
-        // Try to get all students as fallback
+        // Try to get all students as fallback - but only if the effect is still relevant
         try {
-          if (user && user.token) {
+          if (user?.token) {
             const config = {
               headers: {
                 Authorization: `Bearer ${user.token}`
               }
             };
             const fallbackResponse = await axios.get('/api/students', config);
+            
+            // Check again if this effect is still relevant
+            if (!isEffectActive) return;
+            
             if (Array.isArray(fallbackResponse.data)) {
               // Filter by direction if one is selected
               let allStudents = fallbackResponse.data;
@@ -278,19 +344,31 @@ const CreateGradeSimple = () => {
                 });
               }
               
-              setFilteredStudents(allStudents);
-              console.log(`[CreateGradeSimple] Fallback loaded ${allStudents.length} students (all)`);
+              if (isEffectActive) {
+                setFilteredStudents(allStudents);
+                console.log(`[CreateGradeSimple] Fallback loaded ${allStudents.length} students (all)`);
+              }
             }
           }
         } catch (fallbackError) {
-          console.error('[CreateGradeSimple] Fallback error:', fallbackError);
+          if (isEffectActive) {
+            console.error('[CreateGradeSimple] Fallback error:', fallbackError);
+          }
         }
       } finally {
-        setLoading(false);
+        if (isEffectActive) {
+          setLoading(false);
+        }
       }
     };
     
+    // Only load students when the subject actually changes
     loadStudents();
+    
+    // Cleanup function
+    return () => {
+      isEffectActive = false;
+    };
   }, [formData.subject, selectedDirection, user]);
   
   // Handle direction change

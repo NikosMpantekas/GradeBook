@@ -313,7 +313,13 @@ if (process.env.NODE_ENV === 'production') {
     
     // IMPORTANT: Fix the order of middleware - this must be the LAST middleware registered!
     // For all other routes, serve index.html
-    app.use('*', (req, res) => {
+    app.use('*', (req, res, next) => {
+      // CRITICAL: Don't intercept API routes - they should be handled by their own handlers
+      if (req.originalUrl.startsWith('/api/')) {
+        console.log(`API route detected, skipping catch-all for: ${req.originalUrl}`);
+        return next();
+      }
+      
       console.log(`Serving index.html for client-side route: ${req.originalUrl}`);
       
       if (!fs.existsSync(indexPath)) {
