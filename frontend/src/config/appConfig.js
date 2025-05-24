@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.28'; // Implemented global safety system to prevent all TypeErrors
+const APP_VERSION = '1.4.29'; // Fixed subjects not loading when directions are selected
 
 /**
  * Safely store app version in localStorage with error handling

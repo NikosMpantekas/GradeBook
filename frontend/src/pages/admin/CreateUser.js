@@ -119,6 +119,7 @@ const CreateUser = (props) => {
   
   const handleChange = (e) => {
     const { name, value } = e.target;
+    console.log(`[CreateUser] Field changed: ${name} = ${Array.isArray(value) ? `Array(${value.length})` : value}`);
     
     // Clear the error for this field when it's modified
     if (formErrors[name]) {
@@ -151,6 +152,7 @@ const CreateUser = (props) => {
       
       setFormData(newState);
     } else if (name === 'direction') {
+      console.log(`[CreateUser] Direction changed to: ${value}`);
       // When direction changes for a student, fetch subjects for that direction
       setFormData({
         ...formData,
@@ -161,9 +163,28 @@ const CreateUser = (props) => {
       
       // Fetch subjects for this direction if a valid direction is selected
       if (value && value !== '') {
+        console.log(`[CreateUser] Fetching subjects for direction: ${value}`);
         fetchSubjects(value);
       } else {
         // If no direction is selected, fetch all subjects
+        console.log('[CreateUser] No direction selected, fetching all subjects');
+        fetchSubjects();
+      }
+    } else if (name === 'directions') {
+      console.log(`[CreateUser] Directions (multiple) changed to:`, value);
+      // When directions change for a teacher, update the form and potentially fetch subjects
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+      
+      // If exactly one direction is selected, fetch subjects for that direction
+      if (Array.isArray(value) && value.length === 1) {
+        console.log(`[CreateUser] Single direction selected in multi-select, fetching subjects for: ${value[0]}`);
+        fetchSubjects(value[0]);
+      } else if (Array.isArray(value) && value.length > 1) {
+        // If multiple directions are selected, fetch all subjects
+        console.log(`[CreateUser] Multiple directions selected, fetching all subjects`);
         fetchSubjects();
       }
     } else if (name === 'subjects') {
