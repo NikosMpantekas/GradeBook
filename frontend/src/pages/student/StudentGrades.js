@@ -57,6 +57,7 @@ const StudentGrades = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
   const [filteredGrades, setFilteredGrades] = useState([]);
+  const [displayedGrades, setDisplayedGrades] = useState([]);
   const [gradeStats, setGradeStats] = useState({
     average: 0,
     highestGrade: 0,
@@ -99,6 +100,7 @@ const StudentGrades = () => {
     }
     
     setFilteredGrades(filtered);
+    setDisplayedGrades(filtered);
   };
 
   const calculateStats = () => {
@@ -522,7 +524,7 @@ const StudentGrades = () => {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          icon={<ViewIcon />}
+                          icon={<VisibilityIcon />}
                           label="View"
                           variant="outlined"
                           size="small"
