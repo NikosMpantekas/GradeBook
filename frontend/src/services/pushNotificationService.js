@@ -69,29 +69,46 @@ export const setupPushNotifications = async () => {
     
     console.log('Push notification prerequisites check passed');
     
-    // 2. Ensure service worker is registered and active
+    // 2. Ensure push service worker is registered and active
     let registration;
     try {
-      // Get service worker registration - important for Android
-      registration = await navigator.serviceWorker.getRegistration();
+      // Specifically register the push notification service worker
+      // This is separate from the main service worker to avoid conflicts
+      registration = await navigator.serviceWorker.register('/push-service-worker.js', {
+        scope: '/'
+      });
       
-      if (!registration) {
-        console.log('No service worker found, waiting for registration...');
-        // Wait for service worker to be ready
-        registration = await navigator.serviceWorker.ready;
+      // Wait for the service worker to be activated
+      if (registration.installing) {
+        console.log('Push service worker installing...');
+        const worker = registration.installing;
+        
+        // Wait for the worker to change state to installed or activated
+        await new Promise((resolve) => {
+          worker.addEventListener('statechange', (e) => {
+            if (e.target.state === 'activated') {
+              console.log('Push service worker has been activated');
+              resolve();
+            }
+          });
+        });
+      } else if (registration.waiting) {
+        console.log('Push service worker is waiting');
+        // Force activation
+        registration.waiting.postMessage({type: 'SKIP_WAITING'});
+      } else {
+        console.log('Push service worker is active');
       }
       
       // Force update the service worker to ensure we have the latest version
-      if (registration.updateViaCache) {
-        await registration.update().catch(e => {
-          console.log('Service worker update failed, continuing with existing worker:', e);
-        });
-      }
+      await registration.update().catch(e => {
+        console.log('Push service worker update failed, continuing with existing worker:', e);
+      });
       
-      console.log('Service worker is ready for push subscription');
+      console.log('Push service worker is ready for subscription');
     } catch (swError) {
-      console.error('Error preparing service worker:', swError);
-      throw new Error('Failed to initialize service worker: ' + swError.message);
+      console.error('Error preparing push service worker:', swError);
+      throw new Error('Failed to initialize push service worker: ' + swError.message);
     }
     
     // 3. Check for existing subscription
