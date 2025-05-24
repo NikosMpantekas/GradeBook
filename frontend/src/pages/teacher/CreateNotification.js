@@ -55,7 +55,7 @@ const CreateNotification = () => {
       navigate('/app/teacher/dashboard');
     }
   }, [user, navigate]);
-  const { users, isLoading: isUsersLoading } = useSelector((state) => state.users);
+  const { users, filteredUsers, isLoading: isUsersLoading } = useSelector((state) => state.users);
   const { schools, isLoading: isSchoolsLoading } = useSelector((state) => state.schools);
   const { directions, isLoading: isDirectionsLoading } = useSelector((state) => state.directions);
   const { subjects, isLoading: isSubjectsLoading } = useSelector((state) => state.subjects);
@@ -121,21 +121,21 @@ const CreateNotification = () => {
       });
   }, [dispatch]);
 
-  // Update available users when users data changes or role filter changes
+  // Update available users when filteredUsers data changes or role filter changes
   useEffect(() => {
-    if (users && Array.isArray(users)) {
-      console.log(`Setting ${users.length} users for role ${formData.filterByRole}:`, users);
+    if (filteredUsers && Array.isArray(filteredUsers)) {
+      console.log(`Setting ${filteredUsers.length} users for role ${formData.filterByRole}:`, filteredUsers);
       // Only include users with valid data
-      const validUsers = users.filter(user => 
+      const validUsers = filteredUsers.filter(user => 
         user && user._id && user.name && typeof user.name === 'string'
       );
       setAvailableUsers(validUsers);
     } else {
-      // If users is not available or not an array, set an empty array
-      console.warn('Users data is invalid:', users);
+      // If filteredUsers is not available or not an array, set an empty array
+      console.warn('Filtered users data is invalid:', filteredUsers);
       setAvailableUsers([]);
     }
-  }, [users, formData.filterByRole]);
+  }, [filteredUsers, formData.filterByRole]);
   
   // Reload users when role filter changes
   useEffect(() => {

@@ -6,7 +6,7 @@
 
 // IMPORTANT: Update this version number whenever you deploy a new version
 // This ensures proper update notification on all devices including iOS
-const APP_VERSION = '1.4.40'; // CRITICAL FIX: Added getUsersByRole endpoint for notifications + student API endpoints
+const APP_VERSION = '1.4.41'; // CRITICAL FIX: Fixed notification recipient selection + added getUsersByRole endpoint
 
 /**
  * Safely store app version in localStorage with error handling
