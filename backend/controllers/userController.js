@@ -767,6 +767,68 @@ const getUserById = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Update user by ID (for admin to edit user permissions/details)
+// @route   PUT /api/users/:id
+// @access  Private/Admin
+const updateUser = asyncHandler(async (req, res) => {
+  console.log(`updateUser endpoint called for user ID: ${req.params.id}`);
+  console.log('Update data:', req.body);
+  
+  try {
+    // Find the user by ID
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      console.error(`User with ID ${req.params.id} not found`);
+      res.status(404);
+      throw new Error('User not found');
+    }
+    
+    // Update user fields if provided in the request
+    if (req.body.name) user.name = req.body.name;
+    if (req.body.email) user.email = req.body.email;
+    if (req.body.role) user.role = req.body.role;
+    if (req.body.isActive !== undefined) user.isActive = req.body.isActive;
+    
+    // Handle array fields specially - replacing the entire array if provided
+    if (req.body.schools) {
+      console.log('Updating schools:', req.body.schools);
+      user.schools = req.body.schools;
+    }
+    
+    if (req.body.directions) {
+      console.log('Updating directions:', req.body.directions);
+      user.directions = req.body.directions;
+    }
+    
+    // Only update password if provided and not empty
+    if (req.body.password && req.body.password.trim() !== '') {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(req.body.password, salt);
+    }
+    
+    // Save the updated user
+    const updatedUser = await user.save();
+    
+    // Return the updated user without password
+    res.status(200).json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      isActive: updatedUser.isActive,
+      schools: updatedUser.schools,
+      directions: updatedUser.directions,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500);
+    throw new Error('Failed to update user: ' + error.message);
+  }
+});
+
 // Export functions
 module.exports = {
   registerUser,
@@ -778,6 +840,7 @@ module.exports = {
   getUserById,
   createUserByAdmin,
   getUsersByRole,
+  updateUser,
   generateToken,
   generateRefreshToken
 };

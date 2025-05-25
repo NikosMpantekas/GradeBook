@@ -9,7 +9,8 @@ const {
   getUsers,
   getUserById,
   createUserByAdmin,
-  getUsersByRole
+  getUsersByRole,
+  updateUser
 } = require('../controllers/userController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -26,6 +27,7 @@ router.put('/profile', protect, updateProfile);
 router.get('/', protect, admin, getUsers); // Only admins can see all users
 router.post('/admin/create', protect, admin, createUserByAdmin); // Admin route to create users
 router.get('/:id', protect, admin, getUserById); // Get specific user by ID
+router.put('/:id', protect, admin, updateUser); // Update user by ID - NEW ROUTE
 
 // Routes to get users filtered by role - accessible by admin, teachers and secretaries
 router.get('/role/:role', protect, getUsersByRole); // Get users by role (student, teacher, etc.)
