@@ -12,7 +12,8 @@ import {
   useMediaQuery,
   useTheme,
   IconButton,
-  Tooltip
+  Tooltip,
+  Chip
 } from '@mui/material';
 import {
   ChevronLeft as ChevronLeftIcon,
