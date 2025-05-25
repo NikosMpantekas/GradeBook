@@ -494,8 +494,8 @@ const CreateUser = (props) => {
       let userEmail = formData.email.trim().toLowerCase();
       
       // Check if we need to append the school domain to the email
-      if (schoolDomain && !userEmail.includes('@')) {
-        userEmail = `${userEmail}@${schoolDomain}`;
+      if (adminSchoolInfo.domain && !userEmail.includes('@')) {
+        userEmail = `${userEmail}@${adminSchoolInfo.domain}`;
         console.log(`Appended school domain to email: ${userEmail}`);
       }
       
