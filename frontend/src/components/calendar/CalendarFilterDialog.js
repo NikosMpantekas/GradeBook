@@ -143,24 +143,35 @@ const CalendarFilterDialog = ({ open, onClose, filter, onApply, onClear, events 
               Filter by Audience Type
             </Typography>
             
-            <FormControl fullWidth>
-              <InputLabel id="audience-filter-label">Audience</InputLabel>
-              <Select
-                labelId="audience-filter-label"
-                value={localFilter.audience || ''}
-                onChange={(e) => handleFilterChange('audience', e.target.value || null)}
-                displayEmpty
-              >
-                <MenuItem value="">
-                  <em>All Audiences</em>
-                </MenuItem>
-                {allAudienceTypes.map(type => (
-                  <MenuItem key={type} value={type}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+              <Chip 
+                label="All Audiences"
+                variant={!localFilter.audience ? "filled" : "outlined"}
+                color={!localFilter.audience ? "primary" : "default"}
+                onClick={() => handleFilterChange('audience', null)}
+                sx={{ '&:hover': { opacity: 0.9 } }}
+              />
+              
+              {['all', 'school', 'direction', 'teacher', 'student'].map(audienceType => {
+                const isSelected = localFilter.audience === audienceType;
+                const isAvailable = allAudienceTypes.includes(audienceType);
+                
+                return (
+                  <Chip 
+                    key={audienceType}
+                    label={audienceType.charAt(0).toUpperCase() + audienceType.slice(1)}
+                    variant={isSelected ? "filled" : "outlined"}
+                    color={isSelected ? "primary" : "default"}
+                    disabled={!isAvailable}
+                    onClick={() => handleFilterChange('audience', audienceType)}
+                    sx={{
+                      opacity: isAvailable ? 1 : 0.6,
+                      '&:hover': { opacity: 0.9 }
+                    }}
+                  />
+                );
+              })}
+            </Box>
             
             {allAudienceTypes.length === 0 && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

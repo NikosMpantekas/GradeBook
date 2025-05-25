@@ -117,14 +117,19 @@ const CalendarEventDialog = ({ open, onClose, event, date, canEdit }) => {
       dispatch(reset());
       onClose();
       
-      // Show success message
-      const action = event ? 'updated' : 'created';
-      toast.success(`Event ${action} successfully`);
+      // Only show success message if the user has edit permissions
+      if (userCanEdit()) {
+        const action = event ? 'updated' : 'created';
+        toast.success(`Event ${action} successfully`);
+      }
     }
     
     // Handle errors
     if (isError) {
-      toast.error(message);
+      // Only show error messages to users who can edit
+      if (userCanEdit()) {
+        toast.error(message);
+      }
       dispatch(reset());
     }
   }, [isSuccess, isError, message, dispatch, onClose, event]);
@@ -361,22 +366,44 @@ const CalendarEventDialog = ({ open, onClose, event, date, canEdit }) => {
           </Grid>
           
           <Grid item xs={12} sm={6}>
-            <TextField
-              name="color"
-              label="Event Color"
-              type="color"
-              value={formData.color}
-              onChange={handleChange}
-              fullWidth
-              disabled={isLoading || !userCanEdit()}
-              InputLabelProps={{ shrink: true }}
-              sx={{ '& input': { height: 50 } }}
-            />
+            <Typography variant="subtitle2" gutterBottom>
+              Event Color
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  bgcolor: formData.color,
+                  border: '2px solid #ccc',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  display: 'inline-block',
+                  mr: 2
+                }}
+              />
+              <TextField
+                name="color"
+                type="color"
+                value={formData.color}
+                onChange={handleChange}
+                disabled={isLoading || !userCanEdit()}
+                sx={{
+                  width: 150,
+                  '& input': { cursor: 'pointer', height: 40 },
+                  '& .MuiOutlinedInput-root': {
+                    paddingLeft: 1
+                  }
+                }}
+                variant="outlined"
+                size="small"
+              />
+            </Box>
           </Grid>
           
           {/* Audience selection */}
           <Grid item xs={12}>
-            <Typography variant="subtitle1" gutterBottom>
+            <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
               Target Audience *
             </Typography>
             
@@ -408,11 +435,84 @@ const CalendarEventDialog = ({ open, onClose, event, date, canEdit }) => {
           {/* Specific audience selection (when targetType is 'specific') */}
           {formData.audience.targetType === 'specific' && (
             <>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6}>
                 <Autocomplete
                   multiple
-                  options={users || []}
+                  options={schools || []}
                   getOptionLabel={(option) => option.name}
+                  value={(schools || []).filter(s => 
+                    formData.audience.schools.includes(s._id)
+                  )}
+                  onChange={(e, newValue) => {
+                    // When schools change, update the schools array and reset users
+                    handleAudienceChange('schools', newValue.map(v => v._id));
+                    
+                    // If changing schools, you might want to reset selected users
+                    if (formData.audience.specificUsers.length > 0) {
+                      handleAudienceChange('specificUsers', []);
+                    }
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Step 1: Select Schools"
+                      placeholder="Select schools first"
+                    />
+                  )}
+                  disabled={isLoading || !userCanEdit()}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  multiple
+                  options={directions || []}
+                  getOptionLabel={(option) => option.name}
+                  value={(directions || []).filter(d => 
+                    formData.audience.directions.includes(d._id)
+                  )}
+                  onChange={(e, newValue) => {
+                    // When directions change, update the directions array and reset users
+                    handleAudienceChange('directions', newValue.map(v => v._id));
+                    
+                    // If changing directions, you might want to reset selected users
+                    if (formData.audience.specificUsers.length > 0) {
+                      handleAudienceChange('specificUsers', []);
+                    }
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Step 2: Select Directions"
+                      placeholder="Select directions"
+                    />
+                  )}
+                  disabled={isLoading || !userCanEdit()}
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <Autocomplete
+                  multiple
+                  options={(users || []).filter(user => {
+                    // If no schools or directions selected, show all users
+                    if (formData.audience.schools.length === 0 && formData.audience.directions.length === 0) {
+                      return true;
+                    }
+                    
+                    // Filter users based on selected schools
+                    const matchesSchool = formData.audience.schools.length === 0 || 
+                      (user.schools && user.schools.some(schoolId => 
+                        formData.audience.schools.includes(schoolId)));
+                    
+                    // Filter users based on selected directions
+                    const matchesDirection = formData.audience.directions.length === 0 || 
+                      (user.directions && user.directions.some(directionId => 
+                        formData.audience.directions.includes(directionId)));
+                    
+                    return matchesSchool && matchesDirection;
+                  })}
+                  getOptionLabel={(option) => `${option.name} (${option.role})`}
                   value={(users || []).filter(u => 
                     formData.audience.specificUsers.includes(u._id)
                   )}
@@ -422,55 +522,26 @@ const CalendarEventDialog = ({ open, onClose, event, date, canEdit }) => {
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Specific Users"
-                      placeholder="Select users"
+                      label="Step 3: Select Users"
+                      placeholder="Select specific users"
+                      helperText={formData.audience.schools.length > 0 || formData.audience.directions.length > 0 ? 
+                        "Showing users filtered by selected schools/directions" : 
+                        "Select schools/directions first to filter users"}
                     />
                   )}
                   disabled={isLoading || !userCanEdit()}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={4}>
-                <Autocomplete
-                  multiple
-                  options={schools || []}
-                  getOptionLabel={(option) => option.name}
-                  value={(schools || []).filter(s => 
-                    formData.audience.schools.includes(s._id)
+                  renderOption={(props, option) => (
+                    <li {...props}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="body1">{option.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {option.role.charAt(0).toUpperCase() + option.role.slice(1)}
+                          {option.schools && option.schools.length > 0 && 
+                            ` • ${(schools || []).filter(s => option.schools.includes(s._id)).map(s => s.name).join(', ')}`}
+                        </Typography>
+                      </Box>
+                    </li>
                   )}
-                  onChange={(e, newValue) => {
-                    handleAudienceChange('schools', newValue.map(v => v._id));
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Schools"
-                      placeholder="Select schools"
-                    />
-                  )}
-                  disabled={isLoading || !userCanEdit()}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={4}>
-                <Autocomplete
-                  multiple
-                  options={directions || []}
-                  getOptionLabel={(option) => option.name}
-                  value={(directions || []).filter(d => 
-                    formData.audience.directions.includes(d._id)
-                  )}
-                  onChange={(e, newValue) => {
-                    handleAudienceChange('directions', newValue.map(v => v._id));
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Directions"
-                      placeholder="Select directions"
-                    />
-                  )}
-                  disabled={isLoading || !userCanEdit()}
                 />
               </Grid>
               

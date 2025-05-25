@@ -152,11 +152,13 @@ const CalendarGrid = ({
                       >
                         <Box
                           sx={{
-                            width: 8,
-                            height: 8,
+                            width: 12,
+                            height: 12,
                             borderRadius: '50%',
                             bgcolor: getEventColor(),
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            border: `1px solid ${theme.palette.grey[300]}`,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                           }}
                         />
                       </Tooltip>
