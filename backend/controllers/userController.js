@@ -789,16 +789,68 @@ const updateUser = asyncHandler(async (req, res) => {
     if (req.body.email) user.email = req.body.email;
     if (req.body.role) user.role = req.body.role;
     if (req.body.isActive !== undefined) user.isActive = req.body.isActive;
+    if (req.body.mobilePhone !== undefined) user.mobilePhone = req.body.mobilePhone;
+    if (req.body.personalEmail !== undefined) user.personalEmail = req.body.personalEmail;
     
     // Handle array fields specially - replacing the entire array if provided
     if (req.body.schools) {
       console.log('Updating schools:', req.body.schools);
       user.schools = req.body.schools;
+      // For backward compatibility with older endpoints that might use school (singular)
+      if (user.role === 'teacher' || user.role === 'secretary') {
+        user.school = req.body.schools;
+      } else if (user.role === 'student' && req.body.school) {
+        user.school = req.body.school;
+      }
+    } else if (req.body.school) {
+      // Handle singular school field
+      user.school = req.body.school;
     }
     
     if (req.body.directions) {
       console.log('Updating directions:', req.body.directions);
       user.directions = req.body.directions;
+      // For backward compatibility with older endpoints that might use direction (singular)
+      if (user.role === 'teacher' || user.role === 'secretary') {
+        user.direction = req.body.directions;
+      } else if (user.role === 'student' && req.body.direction) {
+        user.direction = req.body.direction;
+      }
+    } else if (req.body.direction) {
+      // Handle singular direction field
+      user.direction = req.body.direction;
+    }
+    
+    // Update subjects if provided
+    if (req.body.subjects) {
+      console.log('Updating subjects:', req.body.subjects);
+      user.subjects = req.body.subjects;
+    }
+    
+    // CRITICAL FIX: Handle teacher-specific permission fields
+    if (user.role === 'teacher') {
+      console.log('Processing teacher permissions:');
+      
+      // Handle canSendNotifications permission
+      if (req.body.canSendNotifications !== undefined) {
+        console.log(`Setting canSendNotifications to: ${req.body.canSendNotifications}`);
+        user.canSendNotifications = req.body.canSendNotifications;
+      }
+      
+      // Handle canAddGradeDescriptions permission
+      if (req.body.canAddGradeDescriptions !== undefined) {
+        console.log(`Setting canAddGradeDescriptions to: ${req.body.canAddGradeDescriptions}`);
+        user.canAddGradeDescriptions = req.body.canAddGradeDescriptions;
+      }
+    }
+    
+    // Handle secretary permissions if present
+    if (user.role === 'secretary' && req.body.secretaryPermissions) {
+      console.log('Updating secretary permissions:', req.body.secretaryPermissions);
+      user.secretaryPermissions = {
+        ...user.secretaryPermissions, // Keep existing permissions
+        ...req.body.secretaryPermissions // Apply updates
+      };
     }
     
     // Only update password if provided and not empty
@@ -809,6 +861,7 @@ const updateUser = asyncHandler(async (req, res) => {
     
     // Save the updated user
     const updatedUser = await user.save();
+    console.log('User successfully updated with ID:', updatedUser._id);
     
     // Return the updated user without password
     res.status(200).json({
@@ -819,6 +872,12 @@ const updateUser = asyncHandler(async (req, res) => {
       isActive: updatedUser.isActive,
       schools: updatedUser.schools,
       directions: updatedUser.directions,
+      subjects: updatedUser.subjects,
+      canSendNotifications: updatedUser.canSendNotifications,
+      canAddGradeDescriptions: updatedUser.canAddGradeDescriptions,
+      secretaryPermissions: updatedUser.secretaryPermissions,
+      mobilePhone: updatedUser.mobilePhone,
+      personalEmail: updatedUser.personalEmail,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt
     });
