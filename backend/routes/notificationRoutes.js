@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Notification = require('../models/notificationModel');
 const {
   createNotification,
@@ -84,8 +85,30 @@ router.put('/:id', protect, (req, res, next) => {
 // Delete notification route
 router.delete('/:id', protect, deleteNotification);
 
-// Only keep the subscription endpoint here
+// Push notification subscription endpoints
 router.post('/subscription', protect, createPushSubscription);
+
+// Add proper DELETE route for unsubscribing
+router.delete('/subscription', protect, async (req, res) => {
+  try {
+    console.log(`Deleting push subscription for user ${req.user._id}`);
+    
+    // Find and remove subscriptions for this user
+    const Subscription = mongoose.model('Subscription');
+    const result = await Subscription.deleteMany({ user: req.user._id });
+    
+    console.log(`Deleted ${result.deletedCount} subscriptions for user ${req.user._id}`);
+    
+    res.status(200).json({
+      success: true,
+      message: `Successfully unsubscribed from push notifications`
+    });
+  } catch (error) {
+    console.error('Error removing push subscription:', error);
+    res.status(500);
+    throw new Error('Failed to remove push subscription: ' + error.message);
+  }
+});
 
 // Admin routes (with secretary support where appropriate)
 router.get('/', protect, canSendNotifications, getAllNotifications);

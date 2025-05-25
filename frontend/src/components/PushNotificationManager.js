@@ -292,42 +292,65 @@ const PushNotificationManager = () => {
   }
 
   return (
-    <Box sx={{ position: 'fixed', bottom: 20, right: 20, zIndex: 1000 }}>
-      <Tooltip title={pushSubscription ? "Turn off notifications" : "Turn on notifications"}>
-        <Button 
-          variant="contained" 
-          color={pushSubscription ? "secondary" : "primary"}
-          size="medium"
-          disabled={loading}
-          onClick={pushSubscription ? unsubscribeFromPushNotifications : subscribeToPushNotifications}
-          sx={{ 
-            borderRadius: '50%', 
-            minWidth: 0, 
-            width: 56, 
-            height: 56,
-            boxShadow: 3 
-          }}
-        >
-          {loading ? (
-            <CircularProgress size={24} color="inherit" />
-          ) : pushSubscription ? (
-            <NotificationsIcon />
-          ) : (
-            <NotificationsOffIcon />
-          )}
-        </Button>
-      </Tooltip>
+    <>
+      {/* Notification toggle button */}
+      <Box sx={{ position: 'fixed', bottom: 20, right: 20, zIndex: 1000 }}>
+        <Tooltip title={pushSubscription ? "Turn off notifications" : "Turn on notifications"}>
+          <Button 
+            variant="contained" 
+            color={pushSubscription ? "secondary" : "primary"}
+            size="medium"
+            disabled={loading}
+            onClick={pushSubscription ? unsubscribeFromPushNotifications : subscribeToPushNotifications}
+            sx={{ 
+              borderRadius: '50%', 
+              minWidth: 0, 
+              width: 56, 
+              height: 56,
+              boxShadow: 3 
+            }}
+          >
+            {loading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : pushSubscription ? (
+              <NotificationsIcon />
+            ) : (
+              <NotificationsOffIcon />
+            )}
+          </Button>
+        </Tooltip>
+      </Box>
       
+      {/* Centered notification alert */}
       <Snackbar 
         open={notification.open} 
         autoHideDuration={6000} 
         onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{
+          width: '100%',
+          maxWidth: { xs: '90%', sm: '80%', md: '60%' },
+          '& .MuiPaper-root': {
+            width: '100%',
+            borderRadius: 2,
+            boxShadow: 3
+          }
+        }}
       >
-        <Alert onClose={handleCloseNotification} severity={notification.severity}>
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity}
+          variant="filled"
+          sx={{ 
+            width: '100%',
+            alignItems: 'center',
+            fontSize: '1rem'
+          }}
+        >
           {notification.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </>
   );
 };
 
