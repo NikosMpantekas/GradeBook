@@ -115,6 +115,13 @@ const updateContactMessage = asyncHandler(async (req, res) => {
     
     console.log('Updating message:', id, 'with data:', { status, read, adminReply });
 
+    // ENHANCED FIX: First verify the message exists before attempting updates
+    const existingMessage = await Contact.findById(id);
+    if (!existingMessage) {
+      res.status(404);
+      throw new Error('Message not found');
+    }
+
     // Build update object with guaranteed defaults
     const updateData = {
       // Set defaults in case fields are missing
@@ -127,8 +134,8 @@ const updateContactMessage = asyncHandler(async (req, res) => {
     
     // CRITICAL FIX: If admin is replying OR setting status to replied, ensure proper reply data
     if ((adminReply !== undefined && adminReply.trim() !== '') || status === 'replied') {
-      // Make sure we have a valid reply text
-      updateData.adminReply = adminReply || 'Your message has been reviewed by admin. Thank you.';
+      // Make sure we have a valid reply text - use existing reply if present or default message
+      updateData.adminReply = adminReply || existingMessage.adminReply || 'Your message has been reviewed by admin. Thank you.';
       updateData.adminReplyDate = new Date();
       updateData.status = 'replied'; // Always set status to replied
       updateData.read = true;
@@ -140,25 +147,26 @@ const updateContactMessage = asyncHandler(async (req, res) => {
       });
     }
 
-    // Find and update the message
-    const message = await Contact.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true }
-    );
-
-    if (!message) {
-      res.status(404);
-      throw new Error('Message not found');
-    }
-
-    console.log(`Message ${id} updated:`, {
-      status: message.status,
-      hasReply: message.adminReply ? true : false,
-      replyDate: message.adminReplyDate
+    // CRITICAL FIX: Use save instead of findByIdAndUpdate to ensure middleware runs
+    // and all properties are properly updated
+    Object.keys(updateData).forEach(key => {
+      existingMessage[key] = updateData[key];
     });
 
-    res.status(200).json(message);
+    // Save the updated message
+    await existingMessage.save();
+
+    // Reload to make sure we have the latest version
+    const updatedMessage = await Contact.findById(id);
+
+    console.log(`Message ${id} updated:`, {
+      status: updatedMessage.status,
+      hasReply: updatedMessage.adminReply ? true : false,
+      replyText: updatedMessage.adminReply ? updatedMessage.adminReply.substring(0, 30) + '...' : 'No reply',
+      replyDate: updatedMessage.adminReplyDate
+    });
+
+    res.status(200).json(updatedMessage);
   } catch (error) {
     console.error('Error updating contact message:', error);
     res.status(500);

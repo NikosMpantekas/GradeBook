@@ -55,63 +55,117 @@ const CreateUser = (props) => {
   // Username part of the email (before the @)
   const [usernamePrefix, setUsernamePrefix] = useState("");
   
-  // CRITICAL FIX: Automatically determine school and domain from admin account
+  // ENHANCED FIX: Extract domain from admin/secretary email address
   useEffect(() => {
-    if (user && schools && schools.length > 0) {
-      let adminSchool;
+    if (user) {
+      // First try to extract domain from admin's email
+      let extractedDomain = "";
       
-      // First try to get school from schoolId
-      if (user.schoolId) {
-        adminSchool = schools.find(school => school._id === user.schoolId);
+      if (user.email && user.email.includes('@')) {
+        extractedDomain = user.email.split('@')[1];
+        console.log(`Extracted domain from admin's email: ${extractedDomain}`);
       }
       
-      // If that fails, check if user has schools array and take the first one
-      if (!adminSchool && user.schools && user.schools.length > 0) {
-        const schoolId = typeof user.schools[0] === 'object' ? user.schools[0]._id : user.schools[0];
-        adminSchool = schools.find(school => school._id === schoolId);
-      }
-      
-      if (adminSchool) {
-        // Get the actual school name, not empty or undefined
-        const schoolName = adminSchool.name ? adminSchool.name.trim() : "";
+      // If we have an extracted domain, use it directly
+      if (extractedDomain) {
+        let adminSchoolName = "School";
+        let adminSchoolId = "";
         
-        // Make sure we have a valid school name before creating domain
-        if (schoolName) {
-          // Create derived domain from school name if none exists
-          // First ensure we have a valid domain - no spaces, lowercase, with .com
-          const derivedDomain = adminSchool.domain || 
-            schoolName.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com";
+        // Try to find matching school for the domain
+        if (schools && schools.length > 0) {
+          // First try to get school from schoolId
+          let adminSchool;
           
-          console.log(`Setting admin school: ${schoolName} with domain: ${derivedDomain}`);
+          if (user.schoolId) {
+            adminSchool = schools.find(school => school._id === user.schoolId);
+          }
           
-          setAdminSchoolInfo({
-            id: adminSchool._id,
-            name: schoolName,
-            domain: derivedDomain
-          });
+          // If that fails, check if user has schools array and take the first one
+          if (!adminSchool && user.schools && user.schools.length > 0) {
+            const schoolId = typeof user.schools[0] === 'object' ? user.schools[0]._id : user.schools[0];
+            adminSchool = schools.find(school => school._id === schoolId);
+          }
           
-          // Set the school for students automatically
-          setFormData(prev => ({
-            ...prev,
-            school: adminSchool._id
-          }));
-        } else {
-          // Fallback to a default domain if school name is empty
-          setAdminSchoolInfo({
-            id: adminSchool._id,
-            name: "School",
-            domain: "school.com"
-          });
-          console.warn('School name is empty, using default domain');
+          // Get the school name and ID if we found a school
+          if (adminSchool) {
+            adminSchoolName = adminSchool.name || "School";
+            adminSchoolId = adminSchool._id || "";
+            
+            // Set the school for students automatically
+            setFormData(prev => ({
+              ...prev,
+              school: adminSchoolId
+            }));
+          }
         }
-      } else {
-        // Fallback to a default domain if no school found
+        
+        // Set admin school info with extracted domain
         setAdminSchoolInfo({
-          id: "",
-          name: "School",
-          domain: "school.com"
+          id: adminSchoolId,
+          name: adminSchoolName,
+          domain: extractedDomain
         });
-        console.warn('Could not determine admin school, using default domain');
+        
+        console.log(`Using admin's email domain: ${extractedDomain} for new users`);
+      } else {
+        // Fallback to original behavior if domain extraction fails
+        if (schools && schools.length > 0) {
+          let adminSchool;
+          
+          // First try to get school from schoolId
+          if (user.schoolId) {
+            adminSchool = schools.find(school => school._id === user.schoolId);
+          }
+          
+          // If that fails, check if user has schools array and take the first one
+          if (!adminSchool && user.schools && user.schools.length > 0) {
+            const schoolId = typeof user.schools[0] === 'object' ? user.schools[0]._id : user.schools[0];
+            adminSchool = schools.find(school => school._id === schoolId);
+          }
+          
+          if (adminSchool) {
+            // Get the actual school name, not empty or undefined
+            const schoolName = adminSchool.name ? adminSchool.name.trim() : "";
+            
+            // Make sure we have a valid school name before creating domain
+            if (schoolName) {
+              // Create derived domain from school name if none exists
+              // First ensure we have a valid domain - no spaces, lowercase, with .com
+              const derivedDomain = adminSchool.domain || 
+                schoolName.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com";
+              
+              console.log(`Setting admin school: ${schoolName} with domain: ${derivedDomain}`);
+              
+              setAdminSchoolInfo({
+                id: adminSchool._id,
+                name: schoolName,
+                domain: derivedDomain
+              });
+              
+              // Set the school for students automatically
+              setFormData(prev => ({
+                ...prev,
+                school: adminSchool._id
+              }));
+            } else {
+              // Fallback to a default domain if school name is empty
+              setAdminSchoolInfo({
+                id: adminSchool._id,
+                name: "School",
+                domain: "school.com"
+              });
+              console.warn('School name is empty, using default domain');
+            }
+          } else {
+            // Fallback to a default domain if no school found
+            setAdminSchoolInfo({
+              id: "",
+              name: "School",
+              domain: "school.com"
+            });
+            console.warn('Could not determine admin school, using default domain');
+          }
+        }
       }
     }
   }, [user, schools]);
