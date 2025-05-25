@@ -9,9 +9,13 @@ const {
   markNotificationRead,
   getNotificationById,
   deleteNotification,
-  getVapidPublicKey,
   createPushSubscription
 } = require('../controllers/notificationController');
+
+// Import the separate VAPID controller
+const {
+  getVapidPublicKey
+} = require('../controllers/vapidController');
 const { protect, admin, teacher, canSendNotifications } = require('../middleware/authMiddleware');
 
 // Protected routes
@@ -78,8 +82,9 @@ router.put('/:id', protect, (req, res, next) => {
 // Delete notification route
 router.delete('/:id', protect, deleteNotification);
 
-// Push notification routes
-router.get('/vapid-public-key', protect, getVapidPublicKey);
+// CRITICAL FIX: Moved vapid-public-key endpoint BEFORE the /:id route to prevent conflicts
+// The error was happening because /vapid-public-key was being interpreted as an ID
+router.get('/vapid', protect, getVapidPublicKey);
 router.post('/subscription', protect, createPushSubscription);
 
 // Admin routes (with secretary support where appropriate)

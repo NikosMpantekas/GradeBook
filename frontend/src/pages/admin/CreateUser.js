@@ -71,25 +71,46 @@ const CreateUser = (props) => {
       }
       
       if (adminSchool) {
-        // Create derived domain from school name if none exists
-        const derivedDomain = adminSchool.domain || 
-          adminSchool.name.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com";
+        // Get the actual school name, not empty or undefined
+        const schoolName = adminSchool.name ? adminSchool.name.trim() : "";
         
-        console.log(`Setting admin school: ${adminSchool.name} with domain: ${derivedDomain}`);
-        
-        setAdminSchoolInfo({
-          id: adminSchool._id,
-          name: adminSchool.name,
-          domain: derivedDomain
-        });
-        
-        // Set the school for students automatically
-        setFormData(prev => ({
-          ...prev,
-          school: adminSchool._id
-        }));
+        // Make sure we have a valid school name before creating domain
+        if (schoolName) {
+          // Create derived domain from school name if none exists
+          // First ensure we have a valid domain - no spaces, lowercase, with .com
+          const derivedDomain = adminSchool.domain || 
+            schoolName.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com";
+          
+          console.log(`Setting admin school: ${schoolName} with domain: ${derivedDomain}`);
+          
+          setAdminSchoolInfo({
+            id: adminSchool._id,
+            name: schoolName,
+            domain: derivedDomain
+          });
+          
+          // Set the school for students automatically
+          setFormData(prev => ({
+            ...prev,
+            school: adminSchool._id
+          }));
+        } else {
+          // Fallback to a default domain if school name is empty
+          setAdminSchoolInfo({
+            id: adminSchool._id,
+            name: "School",
+            domain: "school.com"
+          });
+          console.warn('School name is empty, using default domain');
+        }
       } else {
-        console.warn('Could not determine admin school');
+        // Fallback to a default domain if no school found
+        setAdminSchoolInfo({
+          id: "",
+          name: "School",
+          domain: "school.com"
+        });
+        console.warn('Could not determine admin school, using default domain');
       }
     }
   }, [user, schools]);
@@ -811,22 +832,27 @@ const CreateUser = (props) => {
                 fullWidth
                 variant="outlined"
                 type="email"
-                label="Email (Auto-generated)"
+                label="Login Email"
                 name="email"
                 value={formData.email}
+                onChange={handleChange}
+                error={!!formErrors.email}
+                helperText={formErrors.email || 'Email is auto-generated but can be edited if needed'}
                 InputProps={{
-                  readOnly: true,
                   endAdornment: (
                     <InputAdornment position="end">
-                      <Chip 
-                        size="small" 
-                        color="primary" 
-                        label="Auto" 
-                        sx={{ fontSize: '0.7rem' }}
-                      />
+                      <Tooltip title="Email is suggested based on name but can be edited">
+                        <Chip 
+                          size="small" 
+                          color="primary" 
+                          label="Editable" 
+                          sx={{ fontSize: '0.7rem' }}
+                        />
+                      </Tooltip>
                     </InputAdornment>
                   ),
                 }}
+                required
               />
             </Grid>
             

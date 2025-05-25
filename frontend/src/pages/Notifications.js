@@ -306,7 +306,23 @@ const Notifications = () => {
         </Box>
         
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs value={tabValue} onChange={handleChangeTab} aria-label="notification tabs">
+          <Tabs 
+            value={tabValue} 
+            onChange={handleChangeTab} 
+            aria-label="notification tabs"
+            variant="fullWidth"
+            centered
+            sx={{
+              '& .MuiTabs-flexContainer': {
+                justifyContent: 'center',
+              },
+              '& .MuiTab-root': {
+                minWidth: { xs: '50%', sm: 'auto' },
+                px: { xs: 1, sm: 2 },
+                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+              }
+            }}
+          >
             <Tab 
               label={
                 <Badge color="error" badgeContent={unreadCount} max={99}>

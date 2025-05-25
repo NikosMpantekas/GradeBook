@@ -94,9 +94,13 @@ const PushNotificationManager = () => {
         }
       }
       
-      // Get VAPID public key from backend
-      const vapidResponse = await axios.get('/api/notifications/vapid-public-key', {
-        headers: { Authorization: `Bearer ${user.token}` }
+      // Get VAPID public key from backend - FIXED ENDPOINT URL
+      console.log('Fetching VAPID public key from fixed endpoint');
+      const vapidResponse = await axios.get('/api/notifications/vapid', {
+        headers: { 
+          'Authorization': `Bearer ${user.token}`,
+          'Cache-Control': 'no-cache'
+        }
       });
       
       const publicKey = vapidResponse.data.vapidPublicKey;

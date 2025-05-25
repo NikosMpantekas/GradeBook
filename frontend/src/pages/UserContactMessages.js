@@ -61,11 +61,23 @@ const UserContactMessages = () => {
             // Clone the message to avoid mutation
             const fixedMsg = { ...msg };
             
-            // If status is 'replied' but no adminReply text, add one
-            if (fixedMsg.status === 'replied' && (!fixedMsg.adminReply || fixedMsg.adminReply.trim() === '')) {
-              console.log(`ADDING MISSING REPLY to message ${fixedMsg._id}`);
-              fixedMsg.adminReply = 'Your message has been reviewed by admin. Thank you for your report.';
-              fixedMsg.adminReplyDate = fixedMsg.adminReplyDate || new Date();
+            // Check and sanitize admin replies
+            if (fixedMsg.status === 'replied') {
+              // If reply is missing or empty, add a default one
+              if (!fixedMsg.adminReply || fixedMsg.adminReply.trim() === '') {
+                console.log(`ADDING MISSING REPLY to message ${fixedMsg._id}`);
+                fixedMsg.adminReply = 'Your message has been reviewed by admin. Thank you for your feedback.';
+                fixedMsg.adminReplyDate = fixedMsg.adminReplyDate || new Date();
+              } 
+              // If reply contains inappropriate content, replace it
+              else if (
+                fixedMsg.adminReply.includes('skata') || 
+                fixedMsg.adminReply.toLowerCase().includes('test') ||
+                fixedMsg.adminReply.length < 5
+              ) {
+                console.log(`REPLACING INAPPROPRIATE REPLY in message ${fixedMsg._id}`);
+                fixedMsg.adminReply = 'Your message has been reviewed. Thank you for your feedback.';
+              }
             }
             
             // Make sure dates are proper Date objects
