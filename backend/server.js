@@ -188,6 +188,7 @@ app.use('/api/notifications', protect, setSchoolContext, require('./routes/notif
 app.use('/api/subjects', protect, setSchoolContext, require('./routes/subjectRoutes')); 
 app.use('/api/directions', protect, setSchoolContext, require('./routes/directionRoutes'));
 app.use('/api/students', protect, setSchoolContext, require('./routes/studentRoutes')); 
+app.use('/api/events', protect, setSchoolContext, require('./routes/eventRoutes')); // Calendar Events API
 
 logger.info('SERVER', 'Routes configured with proper middleware ordering')
 

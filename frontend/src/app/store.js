@@ -9,6 +9,7 @@ import directionReducer from '../features/directions/directionSlice';
 import subjectReducer from '../features/subjects/subjectSlice';
 import uiReducer from '../features/ui/uiSlice';
 import superAdminReducer from '../features/superadmin/superAdminSlice';
+import eventReducer from '../features/events/eventSlice';
 
 export const store = configureStore({
   reducer: {
@@ -22,5 +23,6 @@ export const store = configureStore({
     subjects: subjectReducer,
     ui: uiReducer,
     superAdmin: superAdminReducer,
+    events: eventReducer,
   },
 });

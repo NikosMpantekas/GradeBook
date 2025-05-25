@@ -27,6 +27,7 @@ import {
   Email as EmailIcon,
   AdminPanelSettings as SuperAdminIcon,
   PersonAdd as AddUserIcon,
+  Event as CalendarIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 
@@ -182,6 +183,13 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <EmailIcon />,
         path: '/superadmin/contact',
         roles: ['superadmin'],
+      },
+      // Calendar is available to all users
+      {
+        text: 'Calendar',
+        icon: <CalendarIcon />,
+        path: '/app/calendar',
+        roles: ['student', 'teacher', 'admin', 'secretary', 'superadmin'],
       },
       // Profile is available to all users
       {

@@ -35,6 +35,7 @@ import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import NotificationDetail from './pages/NotificationDetail';
 import UserContactMessages from './pages/UserContactMessages';
+import Calendar from './pages/Calendar';
 
 // Student Pages
 import StudentGrades from './pages/student/StudentGrades';
@@ -329,6 +330,8 @@ function App() {
             <Route path="/app/notifications/:id" element={<NotificationDetail />} />
             {/* User contact messages and bug reports */}
             <Route path="/app/contact-messages" element={<UserContactMessages />} />
+            {/* Calendar for all users */}
+            <Route path="/app/calendar" element={<Calendar />} />
             
             {/* Student Routes */}
             <Route path="/app/grades" element={<StudentGrades />} />
