@@ -98,24 +98,35 @@ const ContactMessages = () => {
   };
 
   // Update message status (new, read, replied)
-  const updateMessageStatus = async (id, status) => {
+  const updateMessageStatus = async (id, status, adminReply = null) => {
     try {
       const config = {
         headers: {
           Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
         },
       };
 
-      await axios.put(`/api/contact/${id}`, { status }, config);
+      // Create request body - include adminReply if provided
+      const requestData = { status };
+      if (adminReply !== null) {
+        requestData.adminReply = adminReply;
+      }
+
+      console.log(`Updating message ${id} with:`, requestData);
+      const response = await axios.put(`/api/contact/${id}`, requestData, config);
       
-      // Update local state
+      // Update local state with ALL returned data, not just status
       setMessages(
         messages.map((msg) =>
-          msg._id === id ? { ...msg, status } : msg
+          msg._id === id ? response.data : msg
         )
       );
+
+      return response.data;
     } catch (err) {
       console.error('Error updating message status:', err);
+      throw err; // Rethrow to allow caller to handle the error
     }
   };
 
@@ -138,14 +149,21 @@ const ContactMessages = () => {
     if (!selectedMessage || !replyText) return;
 
     try {
-      // In a real app, you'd send the reply via email or create a notification
-      // For now, just mark the message as replied
-      await updateMessageStatus(selectedMessage._id, 'replied');
+      // FIXED: Now sending the reply text to be saved in the database
+      console.log('Sending reply:', replyText);
+      await updateMessageStatus(selectedMessage._id, 'replied', replyText);
+      
+      // Show success message
+      alert('Reply sent successfully');
+      
+      // Refresh messages to get the latest data
+      await fetchMessages();
       
       // Close dialog
       handleCloseReply();
     } catch (err) {
       console.error('Error sending reply:', err);
+      alert(`Error sending reply: ${err.message || 'Unknown error'}`);
     }
   };
 

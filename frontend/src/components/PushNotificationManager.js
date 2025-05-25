@@ -130,15 +130,37 @@ const PushNotificationManager = () => {
       console.log('[Push] Successfully created subscription');
       setPushSubscription(newSubscription);
       
-      // CRITICAL FIX: The server expects direct subscription properties, not a nested subscription object
+      // ENHANCED FIX: Defensive coding to prevent a.keys is undefined error
+      console.log('[Push] New subscription object:', newSubscription);
+      
+      // Validate that we have a proper subscription with all required properties
+      if (!newSubscription || !newSubscription.endpoint) {
+        throw new Error('Invalid subscription object: missing endpoint');
+      }
+      
+      // Verify keys exist and have required properties
+      if (!newSubscription.keys || !newSubscription.keys.p256dh || !newSubscription.keys.auth) {
+        console.error('[Push] Invalid subscription keys:', newSubscription.keys);
+        throw new Error('Invalid subscription keys: missing p256dh or auth');
+      }
+      
+      // Now create a properly formatted subscription object for the server
       const subscriptionData = {
         endpoint: newSubscription.endpoint,
-        expirationTime: newSubscription.expirationTime,
+        expirationTime: newSubscription.expirationTime || null,
         keys: {
           p256dh: newSubscription.keys.p256dh,
           auth: newSubscription.keys.auth
         }
       };
+      
+      // Log the subscription data we're sending to verify it's correct
+      console.log('[Push] Subscription data to send:', {
+        endpoint: subscriptionData.endpoint,
+        hasKeys: !!subscriptionData.keys,
+        hasP256dh: !!subscriptionData.keys?.p256dh,
+        hasAuth: !!subscriptionData.keys?.auth
+      });
       
       console.log('[Push] Sending properly formatted subscription data to server');
       await axios.post('/api/notifications/subscription', 
