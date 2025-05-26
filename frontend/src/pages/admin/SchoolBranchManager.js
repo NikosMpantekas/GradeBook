@@ -71,13 +71,18 @@ const SchoolBranchManager = () => {
     phone: '',
     email: '',
     website: '',
-    logo: '',
-    schoolDomain: '', // Brand/cluster name
-    emailDomain: '',
+    // These fields will be auto-populated based on admin's domain
+    schoolDomain: '', // Will be set from admin's email domain
+    emailDomain: '', // Will be set from admin's email domain
     parentCluster: null,
     isClusterSchool: false,
     branchDescription: '',
   });
+  
+  // Get current user's email domain to set domain values automatically
+  const { user } = useSelector((state) => state.auth);
+  const userDomain = user?.email ? user.email.split('@')[1] : '';
+  const schoolDomainBase = userDomain ? userDomain.split('.')[0] : '';
   
   // ID of school to delete
   const [schoolIdToDelete, setSchoolIdToDelete] = useState(null);
@@ -247,12 +252,14 @@ const SchoolBranchManager = () => {
   const handleAddSchool = () => {
     if (!validateForm()) return;
     
-    // Generate default domain values if not provided
-    const sanitizedName = schoolBranch.name.toLowerCase().replace(/\s+/g, '');
+    // Always use admin's domain for new branches
     const schoolData = {
       ...schoolBranch,
-      schoolDomain: schoolBranch.schoolDomain || sanitizedName,
-      emailDomain: schoolBranch.emailDomain || `${sanitizedName}.edu`
+      // Force set domain values based on admin's email domain
+      schoolDomain: schoolDomainBase,
+      emailDomain: userDomain,
+      // Ensure it's created as a branch, not a cluster
+      isClusterSchool: false
     };
     
     dispatch(createSchool(schoolData))
@@ -486,159 +493,73 @@ const SchoolBranchManager = () => {
       </Grid>
       
       {/* Add School Branch Dialog */}
-      <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="md" fullWidth>
+      <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Add New School Branch</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="School Branch Name *"
-                  name="name"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.name}
-                  onChange={handleInputChange}
-                  error={!!formErrors.name}
-                  helperText={formErrors.name}
-                  autoFocus
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="Address *"
-                  name="address"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.address}
-                  onChange={handleInputChange}
-                  error={!!formErrors.address}
-                  helperText={formErrors.address}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="Phone Number"
-                  name="phone"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.phone}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="Email"
-                  name="email"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.email}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  margin="dense"
-                  label="Website"
-                  name="website"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.website}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-            </Grid>
-            
-            <Divider sx={{ my: 3 }} />
-            
-            <Typography variant="subtitle1" color="primary" gutterBottom>
-              School Domain/Brand Information
+            <Typography variant="subtitle2" color="primary" gutterBottom>
+              Creating branch for domain: <strong>{userDomain}</strong>
             </Typography>
             
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="School Domain/Brand Name"
-                  name="schoolDomain"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.schoolDomain}
-                  onChange={handleInputChange}
-                  helperText="The brand name this branch belongs to. If left empty, will be generated from the branch name."
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="Email Domain"
-                  name="emailDomain"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.emailDomain}
-                  onChange={handleInputChange}
-                  helperText="Domain used for validating user emails. If left empty, will be generated from school domain."
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth margin="dense">
-                  <InputLabel id="parent-cluster-label">Parent Cluster</InputLabel>
-                  <Select
-                    labelId="parent-cluster-label"
-                    name="parentCluster"
-                    value={schoolBranch.parentCluster || ''}
-                    onChange={handleInputChange}
-                    label="Parent Cluster"
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {clusterSchools.map((cluster) => (
-                      <MenuItem key={cluster._id} value={cluster._id}>
-                        {cluster.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={schoolBranch.isClusterSchool}
-                      onChange={(e) => {
-                        setSchoolBranch({
-                          ...schoolBranch,
-                          isClusterSchool: e.target.checked,
-                          // If this is a cluster, it can't have a parent cluster
-                          parentCluster: e.target.checked ? null : schoolBranch.parentCluster
-                        });
-                      }}
-                      name="isClusterSchool"
-                    />
-                  }
-                  label="This is a main cluster school (not a branch)"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  margin="dense"
-                  label="Branch Description"
-                  name="branchDescription"
-                  fullWidth
-                  multiline
-                  rows={2}
-                  variant="outlined"
-                  value={schoolBranch.branchDescription}
-                  onChange={handleInputChange}
-                  helperText="Description of this branch's role in the cluster"
-                />
-              </Grid>
-            </Grid>
+            <TextField
+              margin="dense"
+              label="School Branch Name *"
+              name="name"
+              fullWidth
+              variant="outlined"
+              value={schoolBranch.name}
+              onChange={handleInputChange}
+              error={!!formErrors.name}
+              helperText={formErrors.name || "Enter the name of this physical branch location"}
+              autoFocus
+            />
+            
+            <TextField
+              margin="dense"
+              label="Address/Location *"
+              name="address"
+              fullWidth
+              variant="outlined"
+              value={schoolBranch.address}
+              onChange={handleInputChange}
+              error={!!formErrors.address}
+              helperText={formErrors.address || "Enter the physical address of this branch"}
+            />
+            
+            <TextField
+              margin="dense"
+              label="Contact Phone Number"
+              name="phone"
+              fullWidth
+              variant="outlined"
+              value={schoolBranch.phone}
+              onChange={handleInputChange}
+              helperText="Phone number for this specific branch location"
+            />
+            
+            <TextField
+              margin="dense"
+              label="Branch Email (optional)"
+              name="email"
+              fullWidth
+              variant="outlined"
+              value={schoolBranch.email}
+              onChange={handleInputChange}
+              helperText="Contact email specific to this branch"
+            />
+            
+            <TextField
+              margin="dense"
+              label="Branch Description (optional)"
+              name="branchDescription"
+              fullWidth
+              multiline
+              rows={2}
+              variant="outlined"
+              value={schoolBranch.branchDescription}
+              onChange={handleInputChange}
+              helperText="Additional details about this branch location"
+            />
           </Box>
         </DialogContent>
         <DialogActions>
@@ -648,163 +569,73 @@ const SchoolBranchManager = () => {
       </Dialog>
       
       {/* Edit School Branch Dialog */}
-      <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth="md" fullWidth>
+      <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Edit School Branch</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="School Branch Name *"
-                  name="name"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.name}
-                  onChange={handleInputChange}
-                  error={!!formErrors.name}
-                  helperText={formErrors.name}
-                  autoFocus
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="Address *"
-                  name="address"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.address}
-                  onChange={handleInputChange}
-                  error={!!formErrors.address}
-                  helperText={formErrors.address}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="Phone Number"
-                  name="phone"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.phone}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="Email"
-                  name="email"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.email}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  margin="dense"
-                  label="Website"
-                  name="website"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.website}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-            </Grid>
-            
-            <Divider sx={{ my: 3 }} />
-            
-            <Typography variant="subtitle1" color="primary" gutterBottom>
-              School Domain/Brand Information
+            <Typography variant="subtitle2" color="primary" gutterBottom>
+              School Branch for domain: <strong>{userDomain}</strong>
             </Typography>
             
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="School Domain/Brand Name"
-                  name="schoolDomain"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.schoolDomain}
-                  onChange={handleInputChange}
-                  helperText="The brand name this branch belongs to. If left empty, will be generated from the branch name."
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  label="Email Domain"
-                  name="emailDomain"
-                  fullWidth
-                  variant="outlined"
-                  value={schoolBranch.emailDomain}
-                  onChange={handleInputChange}
-                  helperText="Domain used for validating user emails. If left empty, will be generated from school domain."
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth margin="dense">
-                  <InputLabel id="edit-parent-cluster-label">Parent Cluster</InputLabel>
-                  <Select
-                    labelId="edit-parent-cluster-label"
-                    name="parentCluster"
-                    value={schoolBranch.parentCluster || ''}
-                    onChange={handleInputChange}
-                    label="Parent Cluster"
-                    disabled={schoolBranch.isClusterSchool}
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {clusterSchools
-                      .filter(cluster => cluster._id !== schoolBranch._id) // Can't be its own parent
-                      .map((cluster) => (
-                        <MenuItem key={cluster._id} value={cluster._id}>
-                          {cluster.name}
-                        </MenuItem>
-                      ))
-                    }
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={schoolBranch.isClusterSchool}
-                      onChange={(e) => {
-                        setSchoolBranch({
-                          ...schoolBranch,
-                          isClusterSchool: e.target.checked,
-                          // If this is a cluster, it can't have a parent cluster
-                          parentCluster: e.target.checked ? null : schoolBranch.parentCluster
-                        });
-                      }}
-                      name="isClusterSchool"
-                    />
-                  }
-                  label="This is a main cluster school (not a branch)"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  margin="dense"
-                  label="Branch Description"
-                  name="branchDescription"
-                  fullWidth
-                  multiline
-                  rows={2}
-                  variant="outlined"
-                  value={schoolBranch.branchDescription}
-                  onChange={handleInputChange}
-                  helperText="Description of this branch's role in the cluster"
-                />
-              </Grid>
-            </Grid>
+            <TextField
+              margin="dense"
+              label="School Branch Name *"
+              name="name"
+              fullWidth
+              variant="outlined"
+              value={schoolBranch.name}
+              onChange={handleInputChange}
+              error={!!formErrors.name}
+              helperText={formErrors.name || "Name of this physical branch location"}
+              autoFocus
+            />
+            
+            <TextField
+              margin="dense"
+              label="Address/Location *"
+              name="address"
+              fullWidth
+              variant="outlined"
+              value={schoolBranch.address}
+              onChange={handleInputChange}
+              error={!!formErrors.address}
+              helperText={formErrors.address || "Physical address of this branch"}
+            />
+            
+            <TextField
+              margin="dense"
+              label="Contact Phone Number"
+              name="phone"
+              fullWidth
+              variant="outlined"
+              value={schoolBranch.phone}
+              onChange={handleInputChange}
+              helperText="Phone number for this specific branch location"
+            />
+            
+            <TextField
+              margin="dense"
+              label="Branch Email (optional)"
+              name="email"
+              fullWidth
+              variant="outlined"
+              value={schoolBranch.email}
+              onChange={handleInputChange}
+              helperText="Contact email specific to this branch"
+            />
+            
+            <TextField
+              margin="dense"
+              label="Branch Description (optional)"
+              name="branchDescription"
+              fullWidth
+              multiline
+              rows={2}
+              variant="outlined"
+              value={schoolBranch.branchDescription}
+              onChange={handleInputChange}
+              helperText="Additional details about this branch location"
+            />
           </Box>
         </DialogContent>
         <DialogActions>

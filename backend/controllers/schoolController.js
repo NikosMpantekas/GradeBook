@@ -61,42 +61,67 @@ const createSchool = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get all schools
+// @desc    Get all schools/branches belonging to admin's domain
 // @route   GET /api/schools
-// @access  Public
+// @access  Private/Admin
 const getSchools = asyncHandler(async (req, res) => {
   console.log('getSchools endpoint called');
   
   try {
     let schools = [];
     
-    // Check if this is a request from a superadmin
-    if (req.user && req.user.role === 'superadmin') {
-      // Superadmin can see all schools from the database
+    // Check if user is logged in
+    if (!req.user) {
+      res.status(401);
+      throw new Error('Not authorized to access school branches');
+    }
+    
+    // Determine which schools to fetch based on user role
+    if (req.user.role === 'superadmin') {
+      // Superadmin can see all schools
       console.log('Fetching all schools for superadmin');
-      
-      // CRITICAL: Apply PERMANENT FIXED FILTER to remove cluster/primary schools
-      // This ensures primary schools used for database assignment don't appear in the school list
-      // We use a strict multi-condition filter to guarantee cluster schools never appear
-      const filter = { 
-        $and: [
-          // First, explicitly filter out by isClusterSchool flag
-          { $or: [
-              { isClusterSchool: { $exists: false } }, // If flag doesn't exist
-              { isClusterSchool: { $ne: true } }       // Or if flag is not true
-          ]},
-          // Second, filter out by name patterns (absolute block for clusters)
-          { name: { $not: { $regex: /primary|cluster|general|main|central|district|organization/i } } },
-          // Third, filter out any name shorter than 5 chars (likely an acronym for a district)
-          { $expr: { $gt: [{ $strLenCP: "$name" }, 4] } }
-        ]
-      };
-      
-      console.log('FIXED: Applying strict cluster school filter:', JSON.stringify(filter));
-      schools = await School.find(filter);
-      console.log(`FIXED: After filtering, returning ${schools.length} genuine schools (no clusters)`);
+      schools = await School.find({});
     } 
-    // Check if this is a school-specific user
+    else if (req.user.role === 'admin') {
+      // Get the admin's email domain to filter schools
+      const adminEmailParts = req.user.email.split('@');
+      if (adminEmailParts.length !== 2) {
+        res.status(400);
+        throw new Error('Invalid admin email format');
+      }
+      
+      const adminDomain = adminEmailParts[1];
+      console.log(`Filtering schools for admin with domain: ${adminDomain}`);
+      
+      // Find schools that match the admin's domain
+      // This ensures admins only see schools belonging to their domain
+      schools = await School.find({
+        $or: [
+          { emailDomain: adminDomain },
+          { schoolDomain: adminDomain.split('.')[0] } // Match domain without TLD
+        ]
+      });
+      
+      console.log(`Found ${schools.length} schools for admin domain: ${adminDomain}`);
+    }
+    else if (req.user.role === 'secretary' && req.user.secretaryPermissions?.canManageSchools) {
+      // Secretary with school management permission - same filtering as admin
+      const secretaryEmailParts = req.user.email.split('@');
+      if (secretaryEmailParts.length !== 2) {
+        res.status(400);
+        throw new Error('Invalid secretary email format');
+      }
+      
+      const secretaryDomain = secretaryEmailParts[1];
+      console.log(`Filtering schools for secretary with domain: ${secretaryDomain}`);
+      
+      schools = await School.find({
+        $or: [
+          { emailDomain: secretaryDomain },
+          { schoolDomain: secretaryDomain.split('.')[0] }
+        ]
+      });
+    }
     else if (req.school) {
       // In single-database architecture, just return the user's school
       console.log(`Fetching school with ID: ${req.school._id}`);
@@ -107,10 +132,11 @@ const getSchools = asyncHandler(async (req, res) => {
       if (school) {
         schools = [school];
       }
-    } else {
-      // Public access - return basic school info for public display
-      console.log('Fetching basic school info for public access');
-      schools = await School.find({}).select('name address website logo');
+    }
+    else {
+      // For other roles, return no schools
+      console.log('User not authorized to view schools');
+      schools = [];
     }
     
     console.log(`Retrieved ${schools.length} schools`);
@@ -161,15 +187,17 @@ const updateSchool = asyncHandler(async (req, res) => {
 // @route   DELETE /api/schools/:id
 // @access  Private/Admin
 const deleteSchool = asyncHandler(async (req, res) => {
+  // Find school first to verify it exists
   const school = await School.findById(req.params.id);
 
   if (!school) {
     res.status(404);
     throw new Error('School not found');
   }
-
-  await school.remove();
-  res.status(200).json({ message: 'School removed' });
+  
+  // Use findByIdAndDelete instead of remove() method
+  await School.findByIdAndDelete(req.params.id);
+  res.status(200).json({ message: 'School branch removed' });
 });
 
 module.exports = {
