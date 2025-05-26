@@ -17,7 +17,12 @@ import {
   ListItemButton,
   Divider,
   Avatar,
-  Alert
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField
 } from '@mui/material';
 import {
   School as SchoolIcon,
@@ -421,118 +426,147 @@ const AdminDashboard = () => {
         </Grid>
       </Grid>
       
-      {/* Charts and Recent Users */}
+      {/* User Contact Directory - Full Width */}
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              User Distribution
-            </Typography>
-            <Box sx={{ height: 300, display: 'flex', justifyContent: 'center' }}>
-              <Pie data={userRolesData} />
-            </Box>
-          </Paper>
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <Paper elevation={3} sx={{ p: 3, borderRadius: 2, height: '100%', overflow: 'auto' }}>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
               <PeopleAltIcon sx={{ mr: 1 }} />
               User Contact Directory
             </Typography>
             
-            {/* Filtering Options */}
-            <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Button 
-                variant={!userFilter ? "contained" : "outlined"}
-                size="small"
-                onClick={() => setUserFilter(null)}
-              >
-                All Users
-              </Button>
-              <Button 
-                variant={userFilter === 'student' ? "contained" : "outlined"}
-                size="small"
-                color="primary"
-                onClick={() => setUserFilter('student')}
-              >
-                Students
-              </Button>
-              <Button 
-                variant={userFilter === 'teacher' ? "contained" : "outlined"}
-                size="small"
-                color="secondary"
-                onClick={() => setUserFilter('teacher')}
-              >
-                Teachers
-              </Button>
-            </Box>
-            
-            {/* School and Direction Filters */}
-            <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Button 
-                variant={schoolFilter ? "contained" : "outlined"}
-                size="small"
-                color="success"
-                endIcon={schoolFilter ? <CloseIcon /> : undefined}
-                onClick={() => setSchoolFilter(schoolFilter ? null : (schools && schools.length > 0 ? schools[0]._id : null))}
-              >
-                {schoolFilter ? 
-                  `School: ${(schools || []).find(s => s._id === schoolFilter)?.name || 'Unknown'}` : 
-                  'Filter by School'}
-              </Button>
+            {/* Filtering Options as Dropdowns */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={4}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="user-role-filter-label">User Role</InputLabel>
+                  <Select
+                    labelId="user-role-filter-label"
+                    value={userFilter || ''}
+                    onChange={(e) => setUserFilter(e.target.value || null)}
+                    label="User Role"
+                  >
+                    <MenuItem value="">All Users</MenuItem>
+                    <MenuItem value="student">Students</MenuItem>
+                    <MenuItem value="teacher">Teachers</MenuItem>
+                    <MenuItem value="admin">Administrators</MenuItem>
+                    <MenuItem value="secretary">Secretaries</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
               
-              <Button 
-                variant={directionFilter ? "contained" : "outlined"}
-                size="small"
-                color="info"
-                endIcon={directionFilter ? <CloseIcon /> : undefined}
-                onClick={() => setDirectionFilter(directionFilter ? null : (directions && directions.length > 0 ? directions[0]._id : null))}
-              >
-                {directionFilter ? 
-                  `Direction: ${(directions || []).find(d => d._id === directionFilter)?.name || 'Unknown'}` : 
-                  'Filter by Direction'}
-              </Button>
-            </Box>
+              <Grid item xs={12} sm={4}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="school-filter-label">School Branch</InputLabel>
+                  <Select
+                    labelId="school-filter-label"
+                    value={schoolFilter || ''}
+                    onChange={(e) => setSchoolFilter(e.target.value || null)}
+                    label="School Branch"
+                  >
+                    <MenuItem value="">All School Branches</MenuItem>
+                    {(schools || []).map(school => (
+                      <MenuItem key={school._id} value={school._id}>
+                        {school.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={4}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="direction-filter-label">Direction</InputLabel>
+                  <Select
+                    labelId="direction-filter-label"
+                    value={directionFilter || ''}
+                    onChange={(e) => setDirectionFilter(e.target.value || null)}
+                    label="Direction"
+                  >
+                    <MenuItem value="">All Directions</MenuItem>
+                    {(directions || []).map(direction => (
+                      <MenuItem key={direction._id} value={direction._id}>
+                        {direction.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
             
             {/* User Contact List */}
-            <List sx={{ maxHeight: 350, overflow: 'auto' }}>
+            <Typography variant="subtitle1" gutterBottom>Contact Information Directory</Typography>
+            <List sx={{ maxHeight: 500, overflow: 'auto', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 1 }}>
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
                   <ListItem key={user._id} divider>
                     <ListItemIcon>
                       <Avatar sx={{ 
+                        width: 56, 
+                        height: 56,
                         bgcolor: user.role === 'student' ? 'primary.main' : 
                                  user.role === 'teacher' ? 'secondary.main' : 
-                                 user.role === 'admin' ? 'success.main' : 'grey.500'
+                                 user.role === 'admin' ? 'success.main' : 
+                                 user.role === 'secretary' ? 'info.main' : 'grey.500'
                       }}>
                         {user.name ? user.name[0].toUpperCase() : '?'}
                       </Avatar>
                     </ListItemIcon>
                     <ListItemText 
-                      primary={user.name} 
-                      secondary={
-                        <React.Fragment>
-                          <Typography component="span" variant="body2" color="text.primary">
+                      primary={
+                        <Typography variant="subtitle1" component="div">
+                          {user.name} 
+                          <Typography component="span" variant="caption" sx={{ ml: 1, bgcolor: 'rgba(0,0,0,0.05)', p: 0.5, borderRadius: 1 }}>
                             {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                           </Typography>
-                          {user.email && (
-                            <Typography component="span" variant="body2" display="block">
-                              <EmailIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5, fontSize: '1rem' }} />
-                              {user.email}
+                        </Typography>
+                      }
+                      secondary={
+                        <React.Fragment>
+                          {/* Primary Contact Information */}
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                              Contact Details:
                             </Typography>
-                          )}
-                          {user.phone && (
-                            <Typography component="span" variant="body2" display="block">
-                              <PhoneIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5, fontSize: '1rem' }} />
-                              {user.phone}
-                            </Typography>
-                          )}
+                            
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+                              {/* Personal Email */}
+                              <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                <EmailIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />
+                                <Typography variant="body2">
+                                  {user.email || 'No email provided'}
+                                </Typography>
+                              </Box>
+                              
+                              {/* Mobile Phone */}
+                              <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                <PhoneIcon fontSize="small" sx={{ color: 'secondary.main', mr: 1 }} />
+                                <Typography variant="body2">
+                                  {user.phone || 'No phone provided'}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </Box>
+                          
+                          {/* School Branch Information */}
                           {Array.isArray(user.schools) && user.schools.length > 0 && (
-                            <Typography component="span" variant="body2" display="block">
-                              <SchoolIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5, fontSize: '1rem' }} />
-                              {(schools || []).filter(s => user.schools.includes(s._id)).map(s => s.name).join(', ')}
-                            </Typography>
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                Assigned to School Branch(es):
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {(schools || []).filter(s => user.schools.includes(s._id)).map(s => (
+                                  <Chip 
+                                    key={s._id} 
+                                    label={s.name} 
+                                    size="small" 
+                                    icon={<SchoolIcon fontSize="small" />} 
+                                    variant="outlined" 
+                                    color="primary"
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
                           )}
                         </React.Fragment>
                       } 

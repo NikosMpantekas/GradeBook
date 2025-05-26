@@ -111,7 +111,7 @@ const StandaloneDashboard = () => {
     navigate('/app/admin/users/create');
   };
   
-  const navigateToManageSchools = () => {
+  const navigateToManageSchoolBranches = () => {
     console.log('Navigating to: /app/admin/schools');
     navigate('/app/admin/schools');
   };
@@ -318,13 +318,13 @@ const StandaloneDashboard = () => {
                       <Card sx={{ height: '100%' }}>
                         <CardContent>
                           <SchoolIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
-                          <Typography variant="h6">Manage Schools</Typography>
+                          <Typography variant="h6">Manage School Branches</Typography>
                           <Typography variant="body2" color="text.secondary">
-                            Add, edit, and delete schools
+                            Add, edit, and delete school branches and clusters
                           </Typography>
                         </CardContent>
                         <CardActions>
-                          <Button size="small" onClick={navigateToManageSchools}>Manage Schools</Button>
+                          <Button size="small" onClick={navigateToManageSchoolBranches}>Manage School Branches</Button>
                         </CardActions>
                       </Card>
                     </Grid>

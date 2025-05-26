@@ -1,33 +1,44 @@
 const asyncHandler = require('express-async-handler');
 const School = require('../models/schoolModel');
 
-// @desc    Create a new school
+// @desc    Create a new school branch
 // @route   POST /api/schools
 // @access  Private/Admin
 const createSchool = asyncHandler(async (req, res) => {
-  const { name, address, phone, email, website, logo, emailDomain } = req.body;
+  const { 
+    name, 
+    address, 
+    phone, 
+    email, 
+    website, 
+    logo, 
+    schoolDomain, 
+    emailDomain,
+    parentCluster,
+    isClusterSchool,
+    branchDescription 
+  } = req.body;
 
   if (!name || !address) {
     res.status(400);
-    throw new Error('Please provide name and address');
+    throw new Error('Please provide school branch name and address');
   }
   
+  // Prepare the school domain (brand name) - if not provided, derive from name
+  const sanitizedSchoolDomain = schoolDomain || name.toLowerCase().replace(/\s+/g, '');
+  
   // Set a default email domain if not provided
-  const sanitizedEmailDomain = emailDomain || `${name.toLowerCase().replace(/\s+/g, '')}.edu`;
+  const sanitizedEmailDomain = emailDomain || `${sanitizedSchoolDomain}.edu`;
 
-  // Check if school already exists
-  const schoolExists = await School.findOne({ 
-    $or: [
-      { name },
-      { emailDomain: sanitizedEmailDomain }
-    ]
-  });
+  // Check if school branch already exists with this name
+  const schoolExists = await School.findOne({ name });
 
   if (schoolExists) {
     res.status(400);
-    throw new Error('School already exists with this name or email domain');
+    throw new Error('School branch already exists with this name');
   }
 
+  // Create the school branch
   const school = await School.create({
     name,
     address,
@@ -35,7 +46,11 @@ const createSchool = asyncHandler(async (req, res) => {
     email,
     website,
     logo,
+    schoolDomain: sanitizedSchoolDomain,
     emailDomain: sanitizedEmailDomain,
+    parentCluster: parentCluster || null,
+    isClusterSchool: isClusterSchool || false,
+    branchDescription: branchDescription || '',
   });
 
   if (school) {

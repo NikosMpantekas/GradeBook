@@ -55,7 +55,7 @@ import ManageUsers from './pages/admin/ManageUsers';
 // CRITICAL FIX: Use error-wrapped version of CreateUser to fix the TypeError in direction selection
 import CreateUserErrorWrapper from './pages/admin/CreateUserErrorWrapper';
 import EditUser from './pages/admin/EditUser';
-import ManageSchools from './pages/admin/ManageSchools';
+import SchoolBranchManager from './pages/admin/SchoolBranchManager';
 import ManageDirections from './pages/admin/ManageDirections';
 import ManageSubjects from './pages/admin/ManageSubjects';
 import StudentProgress from './pages/admin/StudentProgress';
@@ -410,7 +410,7 @@ function App() {
             } />
             <Route path="/app/admin/schools" element={
               <AdminRoute>
-                <ManageSchools />
+                <SchoolBranchManager />
               </AdminRoute>
             } />
             <Route path="/app/admin/directions" element={

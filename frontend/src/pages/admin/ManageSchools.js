@@ -19,6 +19,9 @@ import {
   CircularProgress,
   Divider,
   InputAdornment,
+  Checkbox,
+  FormControlLabel,
+  Chip,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -50,7 +53,20 @@ const ManageSchools = () => {
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [currentSchool, setCurrentSchool] = useState({ name: '', address: '', phone: '' });
+  // State for the school branch being edited or added
+  const [schoolBranch, setSchoolBranch] = useState({
+    name: '',
+    address: '',
+    phone: '',
+    email: '',
+    website: '',
+    logo: '',
+    schoolDomain: '', // Brand/cluster name
+    emailDomain: '',
+    parentCluster: '',
+    isClusterSchool: false,
+    branchDescription: '',
+  });
   const [schoolIdToDelete, setSchoolIdToDelete] = useState(null);
   
   // Form validation
@@ -302,7 +318,7 @@ const ManageSchools = () => {
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
-        Manage Schools
+        Manage School Branches
       </Typography>
       
       <Grid container spacing={3}>
@@ -331,7 +347,7 @@ const ManageSchools = () => {
                   startIcon={<AddIcon />}
                   onClick={handleOpenAddDialog}
                 >
-                  Add School
+                  Add School Branch
                 </Button>
               </Grid>
             </Grid>
@@ -387,10 +403,7 @@ const ManageSchools = () => {
                 ))
               ) : (
                 <ListItem>
-                  <ListItemText 
-                    primary="No schools found" 
-                    secondary={searchTerm ? "Try a different search term" : "Add a school to get started"}
-                  />
+                  <ListItemText primary="No school branches found" secondary={searchTerm ? "Try a different search term" : "Add a new school branch to get started"} />
                 </ListItem>
               )}
             </List>
@@ -398,14 +411,14 @@ const ManageSchools = () => {
         </Grid>
       </Grid>
       
-      {/* Add School Dialog */}
-      <Dialog open={openAddDialog} onClose={handleCloseAddDialog}>
-        <DialogTitle>Add New School</DialogTitle>
+      {/* Add School Branch Dialog */}
+      <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="md" fullWidth>
+        <DialogTitle>Add New School Branch</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
             <TextField
               margin="dense"
-              label="School Name *"
+              label="School Branch Name *"
               name="name"
               fullWidth
               variant="outlined"
@@ -440,18 +453,18 @@ const ManageSchools = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseAddDialog}>Cancel</Button>
-          <Button onClick={handleAddSchool} variant="contained">Add</Button>
+          <Button onClick={handleAddSchool} variant="contained">Add School Branch</Button>
         </DialogActions>
       </Dialog>
       
-      {/* Edit School Dialog */}
-      <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
-        <DialogTitle>Edit School</DialogTitle>
+      {/* Edit School Branch Dialog */}
+      <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth="md" fullWidth>
+        <DialogTitle>Edit School Branch</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
             <TextField
               margin="dense"
-              label="School Name *"
+              label="School Branch Name *"
               name="name"
               fullWidth
               variant="outlined"
@@ -486,16 +499,16 @@ const ManageSchools = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseEditDialog}>Cancel</Button>
-          <Button onClick={handleEditSchool} variant="contained">Save</Button>
+          <Button onClick={handleEditSchool} variant="contained">Save Changes</Button>
         </DialogActions>
       </Dialog>
       
-      {/* Delete School Dialog */}
+      {/* Delete School Branch Dialog */}
       <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
-        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogTitle>Delete School Branch</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete this school? This action cannot be undone.
+            Are you sure you want to delete this school branch? This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
