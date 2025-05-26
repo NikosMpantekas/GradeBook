@@ -10,6 +10,7 @@ import subjectReducer from '../features/subjects/subjectSlice';
 import uiReducer from '../features/ui/uiSlice';
 import superAdminReducer from '../features/superadmin/superAdminSlice';
 import eventReducer from '../features/events/eventSlice';
+import ratingReducer from '../features/ratings/ratingSlice';
 
 export const store = configureStore({
   reducer: {
@@ -24,5 +25,6 @@ export const store = configureStore({
     ui: uiReducer,
     superAdmin: superAdminReducer,
     events: eventReducer,
+    ratings: ratingReducer,
   },
 });

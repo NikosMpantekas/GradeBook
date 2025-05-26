@@ -28,6 +28,8 @@ import {
   AdminPanelSettings as SuperAdminIcon,
   PersonAdd as AddUserIcon,
   Event as CalendarIcon,
+  Star as RatingIcon,
+  RateReview as RateReviewIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 
@@ -86,6 +88,12 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         text: 'My Grades',
         icon: <GradesIcon />,
         path: '/app/grades',
+        roles: ['student'],
+      },
+      {
+        text: 'Submit Ratings',
+        icon: <RateReviewIcon />,
+        path: '/app/ratings',
         roles: ['student'],
       },
       {
@@ -176,6 +184,13 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/progress',
         roles: ['admin', 'secretary'],
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canAccessStudentProgress),
+      },
+      {
+        text: 'Rating System',
+        icon: <RatingIcon />,
+        path: '/app/admin/ratings',
+        roles: ['admin'],
+        checkPermission: (user) => user.role === 'admin',
       },
 
       {

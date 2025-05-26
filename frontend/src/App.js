@@ -40,6 +40,7 @@ import Calendar from './pages/Calendar';
 // Student Pages
 import StudentGrades from './pages/student/StudentGrades';
 import GradeDetail from './pages/student/GradeDetail';
+import RatingSubmission from './pages/student/RatingSubmission';
 
 // Teacher Pages
 import TeacherGrades from './pages/teacher/TeacherGrades';
@@ -59,6 +60,7 @@ import SchoolBranchManager from './pages/admin/SchoolBranchManager';
 import ManageDirections from './pages/admin/ManageDirections';
 import ManageSubjects from './pages/admin/ManageSubjects';
 import StudentProgress from './pages/admin/StudentProgress';
+import RatingManager from './pages/admin/RatingManager';
 import ContactMessages from './pages/admin/ContactMessages';
 
 // SuperAdmin Pages
@@ -353,6 +355,7 @@ function App() {
             {/* Student Routes */}
             <Route path="/app/grades" element={<StudentGrades />} />
             <Route path="/app/grades/:id" element={<GradeDetail />} />
+            <Route path="/app/ratings" element={<RatingSubmission />} />
             
             {/* Teacher Routes */}
             <Route path="/app/teacher" element={
@@ -438,6 +441,11 @@ function App() {
             <Route path="/app/admin/subjects" element={
               <AdminRoute>
                 <ManageSubjects />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/ratings" element={
+              <AdminRoute>
+                <RatingManager />
               </AdminRoute>
             } />
           </Route>

@@ -104,7 +104,7 @@ const AdminDashboard = () => {
   const [directionFilter, setDirectionFilter] = useState(null);
   
   // Filtered users for contact directory
-  const filteredUsers = React.useMemo(() => {
+  const getFilteredUsers = useCallback(() => {
     if (!Array.isArray(users)) return [];
     
     console.log('Filtering users with:', { userFilter, schoolFilter, directionFilter });
@@ -118,26 +118,58 @@ const AdminDashboard = () => {
       
       // Filter by school - check if user.schools array includes the selected school ID
       if (schoolFilter && schoolFilter !== '') {
-        // Make sure user.schools is an array and contains the school ID
-        const userSchools = Array.isArray(user.schools) ? user.schools : [];
-        // Convert all to strings for reliable comparison
-        const schoolFilterStr = String(schoolFilter);
-        const hasSchool = userSchools.some(school => String(school) === schoolFilterStr);
+        // Enhanced school filtering with proper type checking
+        // Handle both cases: user.schools as array or as single value
+        const userSchools = Array.isArray(user.schools) 
+          ? user.schools 
+          : (user.school ? [user.school] : []);
+          
+        // Also check school._id and school properties for more robust filtering
+        const userSchoolIds = userSchools.map(school => {
+          if (typeof school === 'object' && school !== null) {
+            return String(school._id || school.id || school);
+          }
+          return String(school);
+        });
         
-        if (!hasSchool) {
+        // Log for debugging
+        console.log('School filtering for user:', {
+          userName: user.name,
+          userSchools: userSchoolIds,
+          schoolFilter: String(schoolFilter),
+          match: userSchoolIds.includes(String(schoolFilter))
+        });
+        
+        if (!userSchoolIds.includes(String(schoolFilter))) {
           return false;
         }
       }
       
       // Filter by direction - check if user.directions array includes the selected direction ID
       if (directionFilter && directionFilter !== '') {
-        // Make sure user.directions is an array and contains the direction ID
-        const userDirections = Array.isArray(user.directions) ? user.directions : [];
-        // Convert all to strings for reliable comparison
-        const directionFilterStr = String(directionFilter);
-        const hasDirection = userDirections.some(direction => String(direction) === directionFilterStr);
+        // Enhanced direction filtering with proper type checking
+        // Handle both cases: user.directions as array or as single value
+        const userDirections = Array.isArray(user.directions) 
+          ? user.directions 
+          : (user.direction ? [user.direction] : []);
+          
+        // Also check direction._id and direction properties for more robust filtering
+        const userDirectionIds = userDirections.map(direction => {
+          if (typeof direction === 'object' && direction !== null) {
+            return String(direction._id || direction.id || direction);
+          }
+          return String(direction);
+        });
         
-        if (!hasDirection) {
+        // Log for debugging
+        console.log('Direction filtering for user:', {
+          userName: user.name,
+          userDirections: userDirectionIds,
+          directionFilter: String(directionFilter),
+          match: userDirectionIds.includes(String(directionFilter))
+        });
+        
+        if (!userDirectionIds.includes(String(directionFilter))) {
           return false;
         }
       }
@@ -523,8 +555,8 @@ const AdminDashboard = () => {
             {/* User Contact List */}
             <Typography variant="subtitle1" gutterBottom>Contact Information Directory</Typography>
             <List sx={{ maxHeight: 500, overflow: 'auto', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 1 }}>
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
+              {getFilteredUsers().length > 0 ? (
+                getFilteredUsers().map((user) => (
                   <ListItem key={user._id} divider>
                     <ListItemIcon>
                       <Avatar sx={{ 

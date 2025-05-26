@@ -195,6 +195,7 @@ logger.info('SERVER', 'Routes configured with proper middleware ordering')
 // Routes that may access multiple schools or don't require schoolId filtering
 app.use('/api/schools', require('./routes/schoolRoutes')); // School routes have special handling
 app.use('/api/superadmin', require('./routes/superAdminRoutes')); // Superadmin routes bypass schoolId filtering
+app.use('/api/ratings', require('./routes/ratingRoutes')); // Rating system for teachers and subjects
 
 // Debug middleware to log all requests
 app.use((req, res, next) => {
