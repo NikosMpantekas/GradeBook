@@ -175,11 +175,18 @@ const Profile = () => {
                 required
                 fullWidth
                 id="email"
-                label="Email Address"
+                label="Email Address (Cannot be changed)"
                 name="email"
                 autoComplete="email"
                 value={email}
-                onChange={onChange}
+                disabled
+                helperText="Email cannot be changed for security reasons"
+                InputProps={{
+                  readOnly: true,
+                  startAdornment: (
+                    <EmailIcon color="disabled" sx={{ mr: 1 }} />
+                  ),
+                }}
               />
               
               <Divider sx={{ my: 3 }} />

@@ -124,8 +124,12 @@ const CalendarGrid = ({
                   justifyContent: 'center'
                 }}>
                   {eventsForDay.slice(0, isMobile ? 3 : 5).map((event) => {
-                    // Determine color based on event audience type
+                    // Get the event color, prioritizing custom color if available
                     const getEventColor = () => {
+                      // If event has a custom color, use it
+                      if (event.color) return event.color;
+                      
+                      // Otherwise use audience-based color
                       if (!event.audience || !event.audience.targetType) return theme.palette.primary.main;
                       
                       switch (event.audience.targetType) {
@@ -144,6 +148,15 @@ const CalendarGrid = ({
                       }
                     };
                     
+                    // Get contrast color for border
+                    const getContrastBorderColor = () => {
+                      const color = getEventColor();
+                      // Simple approach to determine if color is light or dark
+                      const isLight = color.match(/^#[0-9A-F]{6}$/i) ? 
+                        parseInt(color.substring(1), 16) > 0xffffff/2 : true;
+                      return isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)';
+                    };
+                    
                     return (
                       <Tooltip 
                         key={event._id} 
@@ -152,13 +165,17 @@ const CalendarGrid = ({
                       >
                         <Box
                           sx={{
-                            width: 12,
-                            height: 12,
+                            width: 16,
+                            height: 16,
                             borderRadius: '50%',
                             bgcolor: getEventColor(),
                             cursor: 'pointer',
-                            border: `1px solid ${theme.palette.grey[300]}`,
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                            border: `1.5px solid ${getContrastBorderColor()}`,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            '&:hover': {
+                              transform: 'scale(1.2)',
+                              transition: 'transform 0.2s ease-in-out'
+                            }
                           }}
                         />
                       </Tooltip>

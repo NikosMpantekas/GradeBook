@@ -66,7 +66,7 @@ const Calendar = () => {
     currentMonth: format(currentMonth, 'MMMM yyyy')
   });
 
-  // Fetch events when month changes
+  // Fetch events when month changes and reset state when component unmounts
   useEffect(() => {
     if (user) {
       const startDate = startOfMonth(currentMonth).toISOString();
@@ -75,7 +75,11 @@ const Calendar = () => {
       dispatch(getEvents({ startDate, endDate }));
     }
     
+    // Clear any success/error states on component mount
+    dispatch(reset());
+    
     return () => {
+      // Clean up when component unmounts
       dispatch(reset());
     };
   }, [user, dispatch, currentMonth]);

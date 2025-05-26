@@ -7,16 +7,19 @@ const School = require('../models/schoolModel');
 const createSchool = asyncHandler(async (req, res) => {
   const { name, address, phone, email, website, logo, emailDomain } = req.body;
 
-  if (!name || !address || !emailDomain) {
+  if (!name || !address) {
     res.status(400);
-    throw new Error('Please provide name, address, and email domain');
+    throw new Error('Please provide name and address');
   }
+  
+  // Set a default email domain if not provided
+  const sanitizedEmailDomain = emailDomain || `${name.toLowerCase().replace(/\s+/g, '')}.edu`;
 
   // Check if school already exists
   const schoolExists = await School.findOne({ 
     $or: [
       { name },
-      { emailDomain }
+      { emailDomain: sanitizedEmailDomain }
     ]
   });
 
@@ -32,7 +35,7 @@ const createSchool = asyncHandler(async (req, res) => {
     email,
     website,
     logo,
-    emailDomain,
+    emailDomain: sanitizedEmailDomain,
   });
 
   if (school) {

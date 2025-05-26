@@ -369,35 +369,76 @@ const CalendarEventDialog = ({ open, onClose, event, date, canEdit }) => {
             <Typography variant="subtitle2" gutterBottom>
               Event Color
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 1,
+              p: 2,
+              borderRadius: 2,
+              bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+            }}>
+              {/* Color preview */}
+              <Box 
                 sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
+                  width: '100%',
+                  height: 60,
+                  borderRadius: theme.shape.borderRadius,
                   bgcolor: formData.color,
-                  border: '2px solid #ccc',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  display: 'inline-block',
-                  mr: 2
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                  transition: 'all 0.3s ease',
+                  border: `1px solid ${theme.palette.divider}`,
                 }}
               />
-              <TextField
-                name="color"
-                type="color"
-                value={formData.color}
-                onChange={handleChange}
-                disabled={isLoading || !userCanEdit()}
-                sx={{
-                  width: 150,
-                  '& input': { cursor: 'pointer', height: 40 },
-                  '& .MuiOutlinedInput-root': {
-                    paddingLeft: 1
-                  }
-                }}
-                variant="outlined"
-                size="small"
-              />
+              
+              {/* Predefined color palette */}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, my: 1, justifyContent: 'center' }}>
+                {['#1976d2', '#2e7d32', '#f44336', '#ff9800', '#9c27b0', '#00acc1', '#ff5722', '#5d4037'].map(color => (
+                  <Box 
+                    key={color}
+                    onClick={() => handleChange({ target: { name: 'color', value: color } })}
+                    sx={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: '50%',
+                      bgcolor: color,
+                      cursor: userCanEdit() ? 'pointer' : 'default',
+                      border: formData.color === color ? '2px solid white' : '1px solid rgba(0,0,0,0.1)',
+                      boxShadow: formData.color === color ? '0 0 0 2px rgba(0,0,0,0.3)' : 'none',
+                      '&:hover': userCanEdit() ? {
+                        transform: 'scale(1.1)',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                      } : {}
+                    }}
+                  />
+                ))}
+              </Box>
+              
+              {/* Custom color picker */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="caption" sx={{ flex: 1 }}>
+                  Custom color:
+                </Typography>
+                <TextField
+                  name="color"
+                  type="color"
+                  value={formData.color}
+                  onChange={handleChange}
+                  disabled={isLoading || !userCanEdit()}
+                  sx={{
+                    width: 120,
+                    '& input': { 
+                      cursor: 'pointer', 
+                      height: 35,
+                      borderRadius: theme.shape.borderRadius,
+                    },
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: theme.shape.borderRadius,
+                    }
+                  }}
+                  variant="outlined"
+                  size="small"
+                />
+              </Box>
             </Box>
           </Grid>
           

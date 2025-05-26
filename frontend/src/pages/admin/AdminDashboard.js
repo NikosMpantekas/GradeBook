@@ -30,7 +30,10 @@ import {
   PeopleAlt as PeopleAltIcon,
   SupervisorAccount as SupervisorAccountIcon,
   Face as FaceIcon,
-  Assessment as AssessmentIcon
+  Assessment as AssessmentIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
@@ -88,6 +91,29 @@ const AdminDashboard = () => {
     totalNotifications: 0,
     recentUsers: []
   });
+  
+  // Filter state for user contact directory
+  const [userFilter, setUserFilter] = useState(null);
+  const [schoolFilter, setSchoolFilter] = useState(null);
+  const [directionFilter, setDirectionFilter] = useState(null);
+  
+  // Filtered users for contact directory
+  const filteredUsers = React.useMemo(() => {
+    if (!Array.isArray(users)) return [];
+    
+    return users.filter(user => {
+      // Filter by role
+      if (userFilter && user.role !== userFilter) return false;
+      
+      // Filter by school
+      if (schoolFilter && (!user.schools || !user.schools.includes(schoolFilter))) return false;
+      
+      // Filter by direction
+      if (directionFilter && (!user.directions || !user.directions.includes(directionFilter))) return false;
+      
+      return true;
+    });
+  }, [users, userFilter, schoolFilter, directionFilter]);
   
   // Update stats when data changes
   useEffect(() => {
@@ -409,13 +435,116 @@ const AdminDashboard = () => {
         </Grid>
         
         <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Entity Statistics
+          <Paper elevation={3} sx={{ p: 3, borderRadius: 2, height: '100%', overflow: 'auto' }}>
+            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+              <PeopleAltIcon sx={{ mr: 1 }} />
+              User Contact Directory
             </Typography>
-            <Box sx={{ height: 300 }}>
-              <Bar options={barOptions} data={entitiesData} />
+            
+            {/* Filtering Options */}
+            <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Button 
+                variant={!userFilter ? "contained" : "outlined"}
+                size="small"
+                onClick={() => setUserFilter(null)}
+              >
+                All Users
+              </Button>
+              <Button 
+                variant={userFilter === 'student' ? "contained" : "outlined"}
+                size="small"
+                color="primary"
+                onClick={() => setUserFilter('student')}
+              >
+                Students
+              </Button>
+              <Button 
+                variant={userFilter === 'teacher' ? "contained" : "outlined"}
+                size="small"
+                color="secondary"
+                onClick={() => setUserFilter('teacher')}
+              >
+                Teachers
+              </Button>
             </Box>
+            
+            {/* School and Direction Filters */}
+            <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Button 
+                variant={schoolFilter ? "contained" : "outlined"}
+                size="small"
+                color="success"
+                endIcon={schoolFilter ? <CloseIcon /> : undefined}
+                onClick={() => setSchoolFilter(schoolFilter ? null : (schools && schools.length > 0 ? schools[0]._id : null))}
+              >
+                {schoolFilter ? 
+                  `School: ${(schools || []).find(s => s._id === schoolFilter)?.name || 'Unknown'}` : 
+                  'Filter by School'}
+              </Button>
+              
+              <Button 
+                variant={directionFilter ? "contained" : "outlined"}
+                size="small"
+                color="info"
+                endIcon={directionFilter ? <CloseIcon /> : undefined}
+                onClick={() => setDirectionFilter(directionFilter ? null : (directions && directions.length > 0 ? directions[0]._id : null))}
+              >
+                {directionFilter ? 
+                  `Direction: ${(directions || []).find(d => d._id === directionFilter)?.name || 'Unknown'}` : 
+                  'Filter by Direction'}
+              </Button>
+            </Box>
+            
+            {/* User Contact List */}
+            <List sx={{ maxHeight: 350, overflow: 'auto' }}>
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <ListItem key={user._id} divider>
+                    <ListItemIcon>
+                      <Avatar sx={{ 
+                        bgcolor: user.role === 'student' ? 'primary.main' : 
+                                 user.role === 'teacher' ? 'secondary.main' : 
+                                 user.role === 'admin' ? 'success.main' : 'grey.500'
+                      }}>
+                        {user.name ? user.name[0].toUpperCase() : '?'}
+                      </Avatar>
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={user.name} 
+                      secondary={
+                        <React.Fragment>
+                          <Typography component="span" variant="body2" color="text.primary">
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          </Typography>
+                          {user.email && (
+                            <Typography component="span" variant="body2" display="block">
+                              <EmailIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5, fontSize: '1rem' }} />
+                              {user.email}
+                            </Typography>
+                          )}
+                          {user.phone && (
+                            <Typography component="span" variant="body2" display="block">
+                              <PhoneIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5, fontSize: '1rem' }} />
+                              {user.phone}
+                            </Typography>
+                          )}
+                          {Array.isArray(user.schools) && user.schools.length > 0 && (
+                            <Typography component="span" variant="body2" display="block">
+                              <SchoolIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5, fontSize: '1rem' }} />
+                              {(schools || []).filter(s => user.schools.includes(s._id)).map(s => s.name).join(', ')}
+                            </Typography>
+                          )}
+                        </React.Fragment>
+                      } 
+                    />
+                  </ListItem>
+                ))
+              ) : (
+                <ListItem>
+                  <ListItemText primary="No users match the current filters" />
+                </ListItem>
+              )}
+            </List>
           </Paper>
         </Grid>
       </Grid>
