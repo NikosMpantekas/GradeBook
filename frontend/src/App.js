@@ -80,7 +80,7 @@ import AndroidInstallPrompt from './components/AndroidInstallPrompt';
 function App() {
   const dispatch = useDispatch();
   const { user, isLoading } = useSelector((state) => state.auth);
-  const { darkMode } = useSelector((state) => state.ui);
+  const { darkMode, themeColor } = useSelector((state) => state.ui);
   const [routingError, setRoutingError] = useState(null);
   const [configInitialized, setConfigInitialized] = useState(false);
   
@@ -197,15 +197,32 @@ function App() {
     }
   }, [user, dispatch]);
 
-  // Create theme based on dark mode preference
+  // Get the primary color based on the selected theme
+  const getThemeColors = () => {
+    switch(themeColor) {
+      case 'green':
+        return { primary: '#2e7d32', secondary: '#f50057' };
+      case 'purple':
+        return { primary: '#9c27b0', secondary: '#ff9800' };
+      case 'pink':
+        return { primary: '#e91e63', secondary: '#2196f3' };
+      case 'blue':
+      default:
+        return { primary: '#1976d2', secondary: '#f50057' };
+    }
+  };
+  
+  const themeColors = getThemeColors();
+  
+  // Create theme based on dark mode preference and selected color theme
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
       primary: {
-        main: '#1976d2',
+        main: themeColors.primary,
       },
       secondary: {
-        main: '#f50057',
+        main: themeColors.secondary,
       },
     },
     typography: {

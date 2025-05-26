@@ -107,15 +107,40 @@ const AdminDashboard = () => {
   const filteredUsers = React.useMemo(() => {
     if (!Array.isArray(users)) return [];
     
+    console.log('Filtering users with:', { userFilter, schoolFilter, directionFilter });
+    console.log('Sample user data:', users.length > 0 ? users[0] : 'No users');
+    
     return users.filter(user => {
       // Filter by role
-      if (userFilter && user.role !== userFilter) return false;
+      if (userFilter && user.role !== userFilter) {
+        return false;
+      }
       
-      // Filter by school
-      if (schoolFilter && (!user.schools || !user.schools.includes(schoolFilter))) return false;
+      // Filter by school - check if user.schools array includes the selected school ID
+      if (schoolFilter && schoolFilter !== '') {
+        // Make sure user.schools is an array and contains the school ID
+        const userSchools = Array.isArray(user.schools) ? user.schools : [];
+        // Convert all to strings for reliable comparison
+        const schoolFilterStr = String(schoolFilter);
+        const hasSchool = userSchools.some(school => String(school) === schoolFilterStr);
+        
+        if (!hasSchool) {
+          return false;
+        }
+      }
       
-      // Filter by direction
-      if (directionFilter && (!user.directions || !user.directions.includes(directionFilter))) return false;
+      // Filter by direction - check if user.directions array includes the selected direction ID
+      if (directionFilter && directionFilter !== '') {
+        // Make sure user.directions is an array and contains the direction ID
+        const userDirections = Array.isArray(user.directions) ? user.directions : [];
+        // Convert all to strings for reliable comparison
+        const directionFilterStr = String(directionFilter);
+        const hasDirection = userDirections.some(direction => String(direction) === directionFilterStr);
+        
+        if (!hasDirection) {
+          return false;
+        }
+      }
       
       return true;
     });
@@ -535,7 +560,15 @@ const AdminDashboard = () => {
                               <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                 <EmailIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />
                                 <Typography variant="body2">
-                                  {user.email || 'No email provided'}
+                                  {user.personalEmail || user.email || 'No email provided'}
+                                  {user.personalEmail && user.personalEmail !== user.email && (
+                                    <Chip 
+                                      size="small" 
+                                      label="Personal" 
+                                      sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
+                                      color="primary"
+                                    />
+                                  )}
                                 </Typography>
                               </Box>
                               
@@ -543,7 +576,15 @@ const AdminDashboard = () => {
                               <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                                 <PhoneIcon fontSize="small" sx={{ color: 'secondary.main', mr: 1 }} />
                                 <Typography variant="body2">
-                                  {user.phone || 'No phone provided'}
+                                  {user.mobilePhone || user.phone || 'No phone provided'}
+                                  {user.mobilePhone && (
+                                    <Chip 
+                                      size="small" 
+                                      label="Mobile" 
+                                      sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
+                                      color="secondary"
+                                    />
+                                  )}
                                 </Typography>
                               </Box>
                             </Box>

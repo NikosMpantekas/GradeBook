@@ -9,8 +9,14 @@ const getInitialDarkMode = () => {
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
+// Get initial theme color from localStorage or use default blue
+const getInitialThemeColor = () => {
+  return localStorage.getItem('themeColor') || 'blue';
+};
+
 const initialState = {
   darkMode: getInitialDarkMode(),
+  themeColor: getInitialThemeColor(),
   sidebarOpen: false,
   loading: false,
   error: null,
@@ -25,6 +31,10 @@ export const uiSlice = createSlice({
     toggleDarkMode: (state) => {
       state.darkMode = !state.darkMode;
       localStorage.setItem('darkMode', JSON.stringify(state.darkMode));
+    },
+    setThemeColor: (state, action) => {
+      state.themeColor = action.payload;
+      localStorage.setItem('themeColor', action.payload);
     },
     toggleSidebar: (state) => {
       state.sidebarOpen = !state.sidebarOpen;
@@ -52,14 +62,6 @@ export const uiSlice = createSlice({
   },
 });
 
-export const {
-  toggleDarkMode,
-  toggleSidebar,
-  setLoading,
-  setError,
-  setSuccess,
-  setMessage,
-  resetUIState,
-} = uiSlice.actions;
+export const { toggleDarkMode, toggleSidebar, setLoading, setError, setSuccess, setMessage, resetUIState, setThemeColor } = uiSlice.actions;
 
 export default uiSlice.reducer;

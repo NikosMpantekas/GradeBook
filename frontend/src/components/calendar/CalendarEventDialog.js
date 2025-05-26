@@ -533,6 +533,7 @@ const CalendarEventDialog = ({ open, onClose, event, date, canEdit }) => {
               </Grid>
               
               <Grid item xs={12}>
+                {/* User selection with improved filtering logic */}
                 <Autocomplete
                   multiple
                   options={(users || []).filter(user => {
@@ -541,15 +542,34 @@ const CalendarEventDialog = ({ open, onClose, event, date, canEdit }) => {
                       return true;
                     }
                     
+                    // Ensure schools and directions are always arrays
+                    const userSchools = Array.isArray(user.schools) ? user.schools : [];
+                    const userDirections = Array.isArray(user.directions) ? user.directions : [];
+                    
+                    // Convert all IDs to strings for reliable comparison
+                    const selectedSchools = formData.audience.schools.map(id => String(id));
+                    const selectedDirections = formData.audience.directions.map(id => String(id));
+                    const userSchoolsStr = userSchools.map(id => String(id));
+                    const userDirectionsStr = userDirections.map(id => String(id));
+                    
                     // Filter users based on selected schools
-                    const matchesSchool = formData.audience.schools.length === 0 || 
-                      (user.schools && user.schools.some(schoolId => 
-                        formData.audience.schools.includes(schoolId)));
+                    const matchesSchool = selectedSchools.length === 0 || 
+                      userSchoolsStr.some(schoolId => selectedSchools.includes(schoolId));
                     
                     // Filter users based on selected directions
-                    const matchesDirection = formData.audience.directions.length === 0 || 
-                      (user.directions && user.directions.some(directionId => 
-                        formData.audience.directions.includes(directionId)));
+                    const matchesDirection = selectedDirections.length === 0 || 
+                      userDirectionsStr.some(directionId => selectedDirections.includes(directionId));
+                    
+                    console.log('User filter check:', {
+                      userName: user.name,
+                      userSchools: userSchoolsStr,
+                      userDirections: userDirectionsStr,
+                      selectedSchools,
+                      selectedDirections,
+                      matchesSchool,
+                      matchesDirection,
+                      result: matchesSchool && matchesDirection
+                    });
                     
                     return matchesSchool && matchesDirection;
                   })}

@@ -30,6 +30,7 @@ import {
   SaveAlt as SaveAltIcon
 } from '@mui/icons-material';
 import { updateProfile, reset } from '../features/auth/authSlice';
+import { setThemeColor } from '../features/ui/uiSlice';
 import ContactDeveloper from '../components/ContactDeveloper';
 import BugReportsPanel from '../components/BugReportsPanel';
 
@@ -47,6 +48,7 @@ const Profile = () => {
     password2: '',
     darkMode: darkMode,
     saveCredentials: false,
+    colorTheme: localStorage.getItem('themeColor') || 'blue', // Default theme color
   });
   
   // Set form data when user data becomes available
@@ -240,6 +242,135 @@ const Profile = () => {
                   />
                   <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 4, mt: -0.5 }}>
                     Keeps you logged in across browser sessions
+                  </Typography>
+                </Grid>
+                
+                {/* Dark Mode Toggle */}
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.darkMode}
+                        onChange={onChange}
+                        name="darkMode"
+                        color="primary"
+                      />
+                    }
+                    label="Dark Mode"
+                  />
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 4, mt: -0.5 }}>
+                    Switch between light and dark theme
+                  </Typography>
+                </Grid>
+                
+                {/* UI Theme Color Picker */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Theme Color
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 1 }}>
+                    {/* Blue Theme (Default) */}
+                    <Box
+                      onClick={() => {
+                        setFormData({ ...formData, colorTheme: 'blue' });
+                        dispatch(setThemeColor('blue'));
+                      }}
+                      sx={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: 2,
+                        backgroundColor: '#1976d2',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        border: formData.colorTheme === 'blue' ? '3px solid #000' : '3px solid transparent',
+                        '&:hover': { transform: 'scale(1.05)' },
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      Blue
+                    </Box>
+                    
+                    {/* Green Theme */}
+                    <Box
+                      onClick={() => {
+                        setFormData({ ...formData, colorTheme: 'green' });
+                        dispatch(setThemeColor('green'));
+                      }}
+                      sx={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: 2,
+                        backgroundColor: '#2e7d32',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        border: formData.colorTheme === 'green' ? '3px solid #000' : '3px solid transparent',
+                        '&:hover': { transform: 'scale(1.05)' },
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      Green
+                    </Box>
+                    
+                    {/* Purple Theme */}
+                    <Box
+                      onClick={() => {
+                        setFormData({ ...formData, colorTheme: 'purple' });
+                        dispatch(setThemeColor('purple'));
+                      }}
+                      sx={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: 2,
+                        backgroundColor: '#9c27b0',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        border: formData.colorTheme === 'purple' ? '3px solid #000' : '3px solid transparent',
+                        '&:hover': { transform: 'scale(1.05)' },
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      Purple
+                    </Box>
+                    
+                    {/* Pink Theme */}
+                    <Box
+                      onClick={() => {
+                        setFormData({ ...formData, colorTheme: 'pink' });
+                        dispatch(setThemeColor('pink'));
+                      }}
+                      sx={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: 2,
+                        backgroundColor: '#e91e63',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        border: formData.colorTheme === 'pink' ? '3px solid #000' : '3px solid transparent',
+                        '&:hover': { transform: 'scale(1.05)' },
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      Pink
+                    </Box>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                    Choose your preferred color theme
                   </Typography>
                 </Grid>
               </Grid>
