@@ -102,13 +102,18 @@ const SchoolBranchManager = () => {
   // Update filtered schools when schools or search term changes
   useEffect(() => {
     if (isError) {
-      toast.error(message);
+      toast.error(message || 'Error loading school branches');
+      console.error('School branches error:', message);
     }
     
     if (schools) {
       applyFilters();
+    } else if (!isLoading && !isError) {
+      // Handle the case where no schools are returned but no error occurred
+      setFilteredSchools([]);
+      console.log('No school branches available for this domain');
     }
-  }, [schools, searchTerm, showClusterSchools, isError, message]);
+  }, [schools, searchTerm, showClusterSchools, isLoading, isError, message]);
   
   // Apply all filters to schools data
   const applyFilters = () => {

@@ -70,8 +70,8 @@ const getSchools = asyncHandler(async (req, res) => {
   try {
     let schools = [];
     
-    // Check if user is logged in
-    if (!req.user) {
+    // Allow access for both req.user and req.school (handles both auth methods)
+    if (!req.user && !req.school) {
       res.status(401);
       throw new Error('Not authorized to access school branches');
     }
