@@ -1,0 +1,277 @@
+﻿
+> gradebook-frontend@0.1.0 build
+> cross-env GENERATE_SOURCEMAP=false CI=false react-scripts build
+
+Creating an optimized production build...
+Compiled with warnings.
+
+[eslint] 
+src\App.js
+  Line 1:38:    'Suspense' is defined but never used                    no-unused-vars
+  Line 14:35:   'safe' is defined but never used                        no-unused-vars
+  Line 14:41:   'safeGet' is defined but never used                     no-unused-vars
+  Line 23:8:    'StudentProgressRoute' is defined but never used        no-unused-vars
+  Line 86:10:   'routingError' is assigned a value but never used       no-unused-vars
+  Line 87:10:   'configInitialized' is assigned a value but never used  no-unused-vars
+  Line 291:11:  'handleReactError' is assigned a value but never used   no-unused-vars
+
+src\components\PushNotificationManager.js
+  Line 3:40:    'Typography' is defined but never used               no-unused-vars
+  Line 14:9:    'dispatch' is assigned a value but never used        no-unused-vars
+  Line 18:10:   'pushPermission' is assigned a value but never used  no-unused-vars
+  Line 21:10:   'error' is assigned a value but never used           no-unused-vars
+  Line 270:17:  Unnecessary escape character: \-                     no-useless-escape
+
+src\components\StudentProgressRoute.js
+  Line 4:45:  'Alert' is defined but never used  no-unused-vars
+
+src\components\calendar\CalendarEventDialog.js
+  Line 135:6:  React Hook useEffect has a missing dependency: 'userCanEdit'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src\components\calendar\CalendarFilterDialog.js
+  Line 10:3:  'FormControl' is defined but never used  no-unused-vars
+  Line 11:3:  'InputLabel' is defined but never used   no-unused-vars
+  Line 12:3:  'Select' is defined but never used       no-unused-vars
+  Line 13:3:  'MenuItem' is defined but never used     no-unused-vars
+
+src\components\calendar\CalendarGrid.js
+  Line 8:3:   'Badge' is defined but never used          no-unused-vars
+  Line 9:3:   'useMediaQuery' is defined but never used  no-unused-vars
+  Line 22:3:  'parseISO' is defined but never used       no-unused-vars
+
+src\components\calendar\DayDetailsDialog.js
+  Line 1:17:  'useState' is defined but never used  no-unused-vars
+
+src\components\layout\ScrollFix.js
+  Line 5:8:  'React' is defined but never used  no-unused-vars
+
+src\components\ratings\RatingStatsViewer.js
+  Line 6:3:  'Paper' is defined but never used    no-unused-vars
+  Line 9:3:  'Divider' is defined but never used  no-unused-vars
+
+src\features\notifications\notificationSlice.js
+  Line 87:13:  'message' is assigned a value but never used  no-unused-vars
+
+src\pages\Calendar.js
+  Line 11:3:  'Alert' is defined but never used              no-unused-vars
+  Line 38:9:  'navigate' is assigned a value but never used  no-unused-vars
+
+src\pages\Dashboard.js
+  Line 19:3:    'Stack' is defined but never used                          no-unused-vars
+  Line 31:10:   'useRef' is defined but never used                         no-unused-vars
+  Line 64:9:    'goToProfile' is assigned a value but never used           no-unused-vars
+  Line 80:9:    'goToGrades' is assigned a value but never used            no-unused-vars
+  Line 88:9:    'goToTeacherDashboard' is assigned a value but never used  no-unused-vars
+  Line 96:9:    'goToAdminDashboard' is assigned a value but never used    no-unused-vars
+  Line 116:10:  'loadingErrors' is assigned a value but never used         no-unused-vars
+
+src\pages\DiagnosticPage.js
+  Line 23:10:  'manualChecks' is assigned a value but never used  no-unused-vars
+
+src\pages\Login.js
+  Line 2:31:  'RouterLink' is defined but never used  no-unused-vars
+  Line 12:3:  'Grid' is defined but never used        no-unused-vars
+  Line 13:3:  'Link' is defined but never used        no-unused-vars
+
+src\pages\Notifications.js
+  Line 1:38:   'useCallback' is defined but never used                                                                                                                                   no-unused-vars
+  Line 12:3:   'ListItemSecondaryAction' is defined but never used                                                                                                                       no-unused-vars
+  Line 35:19:  'AnnouncementIcon' is defined but never used                                                                                                                              no-unused-vars
+  Line 37:17:  'FilterIcon' is defined but never used                                                                                                                                    no-unused-vars
+  Line 38:13:  'SearchIcon' is defined but never used                                                                                                                                    no-unused-vars
+  Line 39:13:  'PersonIcon' is defined but never used                                                                                                                                    no-unused-vars
+  Line 89:6:   React Hook useEffect has missing dependencies: 'isError', 'isLoading', 'notifications', 'tabValue', and 'user?.role'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 156:9:  'handleEditNotification' is assigned a value but never used                                                                                                               no-unused-vars
+
+src\pages\Profile.js
+  Line 25:20:  'ReportProblemIcon' is defined but never used        no-unused-vars
+  Line 26:13:  'PersonIcon' is defined but never used               no-unused-vars
+  Line 27:12:  'PhoneIcon' is defined but never used                no-unused-vars
+  Line 28:13:  'SchoolIcon' is defined but never used               no-unused-vars
+  Line 29:12:  'CloseIcon' is defined but never used                no-unused-vars
+  Line 30:14:  'SaveAltIcon' is defined but never used              no-unused-vars
+  Line 76:9:   'handleEditSave' is assigned a value but never used  no-unused-vars
+
+src\pages\StandaloneDashboard.js
+  Line 17:3:   'Divider' is defined but never used                              no-unused-vars
+  Line 119:9:  'navigateToManageDirections' is assigned a value but never used  no-unused-vars
+  Line 124:9:  'openMenu' is assigned a value but never used                    no-unused-vars
+
+src\pages\UserContactMessages.js
+  Line 8:3:    'List' is defined but never used          no-unused-vars
+  Line 9:3:    'ListItem' is defined but never used      no-unused-vars
+  Line 10:3:   'ListItemText' is defined but never used  no-unused-vars
+  Line 16:3:   'Card' is defined but never used          no-unused-vars
+  Line 17:3:   'CardHeader' is defined but never used    no-unused-vars
+  Line 18:3:   'CardContent' is defined but never used   no-unused-vars
+  Line 19:3:   'IconButton' is defined but never used    no-unused-vars
+  Line 21:3:   'Badge' is defined but never used         no-unused-vars
+  Line 26:3:   'Tooltip' is defined but never used       no-unused-vars
+  Line 32:12:  'ReplyIcon' is defined but never used     no-unused-vars
+
+src\pages\admin\AdminDashboard.js
+  Line 11:3:   'CardHeader' is defined but never used              no-unused-vars
+  Line 18:3:   'ListItemButton' is defined but never used          no-unused-vars
+  Line 19:3:   'Divider' is defined but never used                 no-unused-vars
+  Line 26:3:   'TextField' is defined but never used               no-unused-vars
+  Line 30:12:  'GroupIcon' is defined but never used               no-unused-vars
+  Line 32:20:  'NotificationsIcon' is defined but never used       no-unused-vars
+  Line 35:19:  'ArrowForwardIcon' is defined but never used        no-unused-vars
+  Line 37:24:  'SupervisorAccountIcon' is defined but never used   no-unused-vars
+  Line 38:11:  'FaceIcon' is defined but never used                no-unused-vars
+  Line 39:17:  'AssessmentIcon' is defined but never used          no-unused-vars
+  Line 42:12:  'CloseIcon' is defined but never used               no-unused-vars
+  Line 46:10:  'Pie' is defined but never used                     no-unused-vars
+  Line 46:15:  'Bar' is defined but never used                     no-unused-vars
+  Line 60:11:  'user' is assigned a value but never used           no-unused-vars
+  Line 256:9:  'userRolesData' is assigned a value but never used  no-unused-vars
+  Line 277:9:  'entitiesData' is assigned a value but never used   no-unused-vars
+  Line 291:9:  'barOptions' is assigned a value but never used     no-unused-vars
+
+src\pages\admin\ContactMessages.js
+  Line 16:3:   'Divider' is defined but never used                                                                               no-unused-vars
+  Line 17:3:   'CircularProgress' is defined but never used                                                                      no-unused-vars
+  Line 18:3:   'Alert' is defined but never used                                                                                 no-unused-vars
+  Line 19:3:   'IconButton' is defined but never used                                                                            no-unused-vars
+  Line 29:12:  'EmailIcon' is defined but never used                                                                             no-unused-vars
+  Line 30:18:  'DoneIcon' is defined but never used                                                                              no-unused-vars
+  Line 55:6:   React Hook useEffect has a missing dependency: 'fetchMessages'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 175:6:  React Hook useEffect has a missing dependency: 'fetchMessages'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src\pages\admin\CreateUser.js
+  Line 17:3:    'Alert' is defined but never used                                                                                                no-unused-vars
+  Line 24:3:    'OutlinedInput' is defined but never used                                                                                        no-unused-vars
+  Line 56:10:   'usernamePrefix' is assigned a value but never used                                                                              no-unused-vars
+  Line 196:10:  'optionsError' is assigned a value but never used                                                                                no-unused-vars
+  Line 391:6:   React Hook useEffect has a missing dependency: 'fetchSubjects'. Either include it or remove the dependency array                 react-hooks/exhaustive-deps
+  Line 811:6:   React Hook useEffect has missing dependencies: 'isLoading' and 'submitting'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 924:30:  Unnecessary escape character: \d                                                                                                 no-useless-escape
+  Line 924:32:  Unnecessary escape character: \s                                                                                                 no-useless-escape
+  Line 924:34:  Unnecessary escape character: \-                                                                                                 no-useless-escape
+
+src\pages\admin\EditUser.js
+  Line 51:9:    'initialMount' is assigned a value but never used                                                            no-unused-vars
+  Line 58:10:   'userData' is assigned a value but never used                                                                no-unused-vars
+  Line 67:10:   'subjectsLoading' is assigned a value but never used                                                         no-unused-vars
+  Line 385:6:   React Hook useEffect has a missing dependency: 'formData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 930:30:  Unnecessary escape character: \d                                                                             no-useless-escape
+  Line 930:32:  Unnecessary escape character: \s                                                                             no-useless-escape
+  Line 930:34:  Unnecessary escape character: \-                                                                             no-useless-escape
+
+src\pages\admin\ManageDirections.js
+  Line 22:3:   'FormControl' is defined but never used                                                                          no-unused-vars
+  Line 23:3:   'InputLabel' is defined but never used                                                                           no-unused-vars
+  Line 24:3:   'Select' is defined but never used                                                                               no-unused-vars
+  Line 25:3:   'MenuItem' is defined but never used                                                                             no-unused-vars
+  Line 26:3:   'FormHelperText' is defined but never used                                                                       no-unused-vars
+  Line 47:43:  'isSuccess' is assigned a value but never used                                                                   no-unused-vars
+  Line 82:6:   React Hook useEffect has a missing dependency: 'applyFilters'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src\pages\admin\ManageSubjects.js
+  Line 126:6:  React Hook useEffect has a missing dependency: 'applyFilters'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 130:6:  React Hook useEffect has a missing dependency: 'applyFilters'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 140:9:  'getDirectionNames' is assigned a value but never used                                                           no-unused-vars
+
+src\pages\admin\ManageUsers.js
+  Line 21:3:   'Tooltip' is defined but never used                                                                                         no-unused-vars
+  Line 41:17:  'FilterIcon' is defined but never used                                                                                      no-unused-vars
+  Line 43:17:  'ViewIcon' is defined but never used                                                                                        no-unused-vars
+  Line 49:8:   'LoadingState' is defined but never used                                                                                    no-unused-vars
+  Line 50:8:   'ErrorState' is defined but never used                                                                                      no-unused-vars
+  Line 125:6:  React Hook useEffect has missing dependencies: 'isLoading' and 'users'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 152:6:  React Hook useEffect has a missing dependency: 'applyFilters'. Either include it or remove the dependency array             react-hooks/exhaustive-deps
+
+src\pages\admin\RatingManager.js
+  Line 30:3:   'Card' is defined but never used                      no-unused-vars
+  Line 31:3:   'CardContent' is defined but never used               no-unused-vars
+  Line 33:3:   'CircularProgress' is defined but never used          no-unused-vars
+  Line 42:11:  'HelpIcon' is defined but never used                  no-unused-vars
+  Line 43:15:  'StatsIcon' is defined but never used                 no-unused-vars
+  Line 48:27:  'parseISO' is defined but never used                  no-unused-vars
+  Line 58:3:   'updateRatingQuestion' is defined but never used      no-unused-vars
+  Line 73:11:  'user' is assigned a value but never used             no-unused-vars
+  Line 302:9:  'handleShowStats' is assigned a value but never used  no-unused-vars
+
+src\pages\admin\SchoolBranchManager.js
+  Line 25:3:   'MenuItem' is defined but never used                                                                             no-unused-vars
+  Line 26:3:   'Select' is defined but never used                                                                               no-unused-vars
+  Line 27:3:   'FormControl' is defined but never used                                                                          no-unused-vars
+  Line 28:3:   'InputLabel' is defined but never used                                                                           no-unused-vars
+  Line 53:40:  'isSuccess' is assigned a value but never used                                                                   no-unused-vars
+  Line 116:6:  React Hook useEffect has a missing dependency: 'applyFilters'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 342:9:  'clusterSchools' is assigned a value but never used                                                              no-unused-vars
+
+src\pages\admin\StudentProgress.js
+  Line 1:38:   'Component' is defined but never used                                                                               no-unused-vars
+  Line 12:3:   'CardHeader' is defined but never used                                                                              no-unused-vars
+  Line 43:3:   'ListItemIcon' is defined but never used                                                                            no-unused-vars
+  Line 47:13:  'SchoolIcon' is defined but never used                                                                              no-unused-vars
+  Line 48:15:  'MenuBookIcon' is defined but never used                                                                            no-unused-vars
+  Line 50:17:  'AssessmentIcon' is defined but never used                                                                          no-unused-vars
+  Line 51:17:  'FilterIcon' is defined but never used                                                                              no-unused-vars
+  Line 53:15:  'BarChartIcon' is defined but never used                                                                            no-unused-vars
+  Line 62:10:  'getStudentGrades' is defined but never used                                                                        no-unused-vars
+  Line 708:6:  React Hook useEffect has a missing dependency: 'resetGradeStats'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 844:9:  'safeRender' is assigned a value but never used                                                                     no-unused-vars
+
+src\pages\student\GradeDetail.js
+  Line 32:11:  'user' is assigned a value but never used  no-unused-vars
+
+src\pages\student\RatingSubmission.js
+  Line 12:3:   'CardActions' is defined but never used  no-unused-vars
+  Line 36:18:  'isAfter' is defined but never used      no-unused-vars
+  Line 36:27:  'parseISO' is defined but never used     no-unused-vars
+
+src\pages\student\StudentGrades.js
+  Line 78:6:  React Hook useEffect has missing dependencies: 'applyFilters' and 'calculateStats'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+src\pages\superadmin\SchoolOwnerDetails.js
+  Line 21:43:  'Edit' is defined but never used  no-unused-vars
+
+src\pages\superadmin\SuperAdminDashboard.js
+  Line 15:3:   'List' is defined but never used          no-unused-vars
+  Line 16:3:   'ListItem' is defined but never used      no-unused-vars
+  Line 17:3:   'ListItemText' is defined but never used  no-unused-vars
+  Line 20:3:   'IconButton' is defined but never used    no-unused-vars
+  Line 23:3:   'PersonAdd' is defined but never used     no-unused-vars
+  Line 29:11:  'EditIcon' is defined but never used      no-unused-vars
+
+src\pages\teacher\CreateGradeSimple.js
+  Line 60:10:  'students' is assigned a value but never used     no-unused-vars
+  Line 60:20:  'setStudents' is assigned a value but never used  no-unused-vars
+
+src\pages\teacher\CreateNotification.js
+  Line 25:3:   'Divider' is defined but never used                                                                                       no-unused-vars
+  Line 35:17:  'FilterIcon' is defined but never used                                                                                    no-unused-vars
+  Line 81:9:   'isLoadingOptions' is assigned a value but never used                                                                     no-unused-vars
+  Line 122:6:  React Hook useEffect has a missing dependency: 'formData.filterByRole'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src\services\loggerService.js
+  Line 208:1:  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+src\utils\safetyGuards.js
+  Line 74:3:   Array prototype is read only, properties should not be added  no-extend-native
+  Line 91:3:   Array prototype is read only, properties should not be added  no-extend-native
+  Line 108:3:  Array prototype is read only, properties should not be added  no-extend-native
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+File sizes after gzip:
+
+  384.83 kB  build\static\js\main.03595c71.js
+  2.46 kB    build\static\css\main.7b95ac4e.css
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+

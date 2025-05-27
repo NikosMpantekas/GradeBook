@@ -42,9 +42,8 @@ import {
   Help as HelpIcon,
   BarChart as StatsIcon
 } from '@mui/icons-material';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+// Note: If the project uses an older version of MUI, we'll use TextField for dates
+// and format them manually with date-fns instead of using DateTimePicker
 import { toast } from 'react-toastify';
 import { format, isAfter, parseISO } from 'date-fns';
 
@@ -130,13 +129,39 @@ const RatingManager = () => {
     setActiveTab(newValue);
   };
 
+  // Reset period form function - moved outside handleOpenPeriodDialog for cleaner code
+  const resetPeriodForm = () => {
+    // Create a safe date with error handling
+    const today = new Date();
+    const nextWeek = new Date();
+    try {
+      nextWeek.setDate(today.getDate() + 7);
+    } catch (error) {
+      console.error('Error setting end date:', error);
+      // Fallback to today + 1 day if there's an error
+      nextWeek.setDate(today.getDate() + 1);
+    }
+
+    setPeriodForm({
+      title: '',
+      description: '',
+      startDate: today,
+      endDate: nextWeek,
+      targetType: 'both',
+      isActive: false,
+      schools: [],
+      directions: []
+    });
+  };
+
   // Open period dialog for creating/editing
   const handleOpenPeriodDialog = (period = null) => {
     if (period) {
-      // Edit mode - populate form with period data
+      // Edit mode - populate form
       setPeriodForm({
+        id: period._id,
         title: period.title,
-        description: period.description || '',
+        description: period.description,
         startDate: new Date(period.startDate),
         endDate: new Date(period.endDate),
         targetType: period.targetType,
@@ -146,16 +171,7 @@ const RatingManager = () => {
       });
     } else {
       // Create mode - reset form
-      setPeriodForm({
-        title: '',
-        description: '',
-        startDate: new Date(),
-        endDate: new Date(new Date().setDate(new Date().getDate() + 7)),
-        targetType: 'both',
-        isActive: false,
-        schools: [],
-        directions: []
-      });
+      resetPeriodForm();
     }
     setPeriodDialogOpen(true);
   };
@@ -588,24 +604,24 @@ const RatingManager = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DateTimePicker
-                  label="Start Date"
-                  value={periodForm.startDate}
-                  onChange={(date) => handleDateChange('startDate', date)}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </LocalizationProvider>
+              <TextField
+                fullWidth
+                label="Start Date"
+                type="datetime-local"
+                value={periodForm.startDate ? format(periodForm.startDate, "yyyy-MM-dd'T'HH:mm") : ''}
+                onChange={(e) => handleDateChange('startDate', new Date(e.target.value))}
+                InputLabelProps={{ shrink: true }}
+              />
             </Grid>
             <Grid item xs={12} md={6}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DateTimePicker
-                  label="End Date"
-                  value={periodForm.endDate}
-                  onChange={(date) => handleDateChange('endDate', date)}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </LocalizationProvider>
+              <TextField
+                fullWidth
+                label="End Date"
+                type="datetime-local"
+                value={periodForm.endDate ? format(periodForm.endDate, "yyyy-MM-dd'T'HH:mm") : ''}
+                onChange={(e) => handleDateChange('endDate', new Date(e.target.value))}
+                InputLabelProps={{ shrink: true }}
+              />
             </Grid>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>

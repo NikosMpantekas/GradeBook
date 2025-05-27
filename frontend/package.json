@@ -7,7 +7,7 @@
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.14.3",
     "@mui/material": "^5.14.3",
-    "@mui/x-date-pickers": "^6.11.0",
+    "@mui/x-date-pickers": "^6.20.2",
     "@reduxjs/toolkit": "^1.9.5",
     "axios": "^1.6.0",
     "browser-image-compression": "^2.0.2",
@@ -40,8 +40,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false react-scripts build",
-    "build:win": "set GENERATE_SOURCEMAP=false&&react-scripts build",
+    "build": "cross-env GENERATE_SOURCEMAP=false CI=false react-scripts build",
+    "build:win": "cross-env GENERATE_SOURCEMAP=false CI=false react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -63,5 +63,8 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:5000"
+  "proxy": "http://localhost:5000",
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
 }

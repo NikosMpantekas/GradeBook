@@ -22,19 +22,7 @@ import {
   Tab,
   Tabs
 } from '@mui/material';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
+// Simple charting alternative to recharts using MUI components
 
 import { getRatingStats, getRatingPeriods } from '../../features/ratings/ratingSlice';
 import { getSubjects } from '../../features/subjects/subjectSlice';
@@ -237,19 +225,22 @@ const RatingStatsViewer = ({ targetType, targetId, periodId }) => {
                               / 10 ({question.count} ratings)
                             </Typography>
                           </Box>
-                          <Box sx={{ height: 200 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart
-                                data={formatDistributionData(question.distribution)}
-                                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-                              >
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="value" />
-                                <YAxis />
-                                <Tooltip />
-                                <Bar dataKey="count" name="Count" fill="#8884d8" />
-                              </BarChart>
-                            </ResponsiveContainer>
+                          <Box sx={{ height: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', p: 2 }}>
+                            {formatDistributionData(question.distribution).map((item) => (
+                              <Box key={item.value} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                                <Box 
+                                  sx={{ 
+                                    width: '80%', 
+                                    bgcolor: '#8884d8', 
+                                    height: `${(item.count / Math.max(...formatDistributionData(question.distribution).map(d => d.count || 1)) * 150)}px`,
+                                    minHeight: '5px',
+                                    borderRadius: '4px 4px 0 0',
+                                  }} 
+                                />
+                                <Typography variant="caption">{item.value}</Typography>
+                                <Typography variant="caption" color="text.secondary">{item.count}</Typography>
+                              </Box>
+                            ))}
                           </Box>
                         </CardContent>
                       </Card>
@@ -272,46 +263,50 @@ const RatingStatsViewer = ({ targetType, targetId, periodId }) => {
                       <Typography variant="subtitle2" gutterBottom>
                         Distribution Chart
                       </Typography>
-                      <Box sx={{ height: 300 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={formatDistributionData(
-                                Object.values(stats.questions)
-                                  .filter(q => q.type === 'rating')
-                                  .reduce((acc, q) => {
-                                    Object.entries(q.distribution).forEach(([value, count]) => {
-                                      acc[value] = (acc[value] || 0) + count;
-                                    });
-                                    return acc;
-                                  }, {})
-                              )}
-                              dataKey="count"
-                              nameKey="value"
-                              cx="50%"
-                              cy="50%"
-                              outerRadius={80}
-                              label={({value, percent}) => `${value} (${(percent * 100).toFixed(0)}%)`}
-                            >
-                              {
-                                formatDistributionData(
-                                  Object.values(stats.questions)
-                                    .filter(q => q.type === 'rating')
-                                    .reduce((acc, q) => {
-                                      Object.entries(q.distribution).forEach(([value, count]) => {
-                                        acc[value] = (acc[value] || 0) + count;
-                                      });
-                                      return acc;
-                                    }, {})
-                                ).map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))
-                              }
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
+                      <Box sx={{ height: 300, display: 'flex', flexDirection: 'column', p: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>Rating Distribution</Typography>
+                        {formatDistributionData(
+                          Object.values(stats.questions)
+                            .filter(q => q.type === 'rating')
+                            .reduce((acc, q) => {
+                              Object.entries(q.distribution).forEach(([value, count]) => {
+                                acc[value] = (acc[value] || 0) + count;
+                              });
+                              return acc;
+                            }, {})
+                        ).map((entry, index) => {
+                          const total = formatDistributionData(
+                            Object.values(stats.questions)
+                              .filter(q => q.type === 'rating')
+                              .reduce((acc, q) => {
+                                Object.entries(q.distribution).forEach(([value, count]) => {
+                                  acc[value] = (acc[value] || 0) + count;
+                                });
+                                return acc;
+                              }, {})
+                          ).reduce((sum, item) => sum + item.count, 0);
+                          
+                          const percent = total > 0 ? (entry.count / total * 100).toFixed(1) : 0;
+                          
+                          return (
+                            <Box key={entry.value} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                              <Typography variant="body2" sx={{ width: 40 }}>{entry.value}</Typography>
+                              <Box sx={{ 
+                                flex: 1, 
+                                mx: 1,
+                                height: 20, 
+                                bgcolor: COLORS[index % COLORS.length],
+                                width: `${percent}%`,
+                                minWidth: '5px',
+                                borderRadius: 1,
+                                transition: 'width 0.5s'
+                              }} />
+                              <Typography variant="caption">
+                                {entry.count} ({percent}%)
+                              </Typography>
+                            </Box>
+                          );
+                        })}
                       </Box>
                     </CardContent>
                   </Card>
