@@ -267,7 +267,15 @@ const RatingManager = () => {
     }
 
     if (selectedPeriod) {
-      dispatch(createRatingQuestion(questionForm));
+      dispatch(createRatingQuestion(questionForm))
+        .then((result) => {
+          console.log('Question created, reloading questions', result);
+          // After creating a question, reload the questions for this period
+          dispatch(getRatingQuestions(selectedPeriod._id));
+        })
+        .catch(error => {
+          console.error('Error creating question:', error);
+        });
     }
 
     setQuestionDialogOpen(false);
