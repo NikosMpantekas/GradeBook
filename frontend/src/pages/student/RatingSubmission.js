@@ -39,7 +39,7 @@ import { format, isAfter, parseISO } from 'date-fns';
 import { 
   getActiveRatingPeriods,
   getRatingPeriod,
-  getRatingQuestions,
+  getStudentRatingQuestions,
   getRatingTargets,
   submitRating,
   reset as resetRatings
@@ -85,7 +85,7 @@ const RatingSubmission = () => {
   useEffect(() => {
     if (selectedPeriod) {
       dispatch(getRatingPeriod(selectedPeriod._id));
-      dispatch(getRatingQuestions(selectedPeriod._id));
+      dispatch(getStudentRatingQuestions(selectedPeriod._id));
       dispatch(getRatingTargets(selectedPeriod._id));
     }
   }, [selectedPeriod, dispatch]);

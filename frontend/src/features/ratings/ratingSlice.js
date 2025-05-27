@@ -103,13 +103,27 @@ export const createRatingQuestion = createAsyncThunk(
   }
 );
 
-// Get questions for a rating period
+// Get questions for a rating period (admin version)
 export const getRatingQuestions = createAsyncThunk(
   'ratings/getQuestions',
   async (periodId, thunkAPI) => {
     try {
       const token = thunkAPI.getState().auth.user.token;
       return await ratingService.getRatingQuestions(periodId, token);
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+// Get questions for a rating period (student version)
+export const getStudentRatingQuestions = createAsyncThunk(
+  'ratings/getStudentQuestions',
+  async (periodId, thunkAPI) => {
+    try {
+      const token = thunkAPI.getState().auth.user.token;
+      return await ratingService.getStudentRatingQuestions(periodId, token);
     } catch (error) {
       const message = error.response?.data?.message || error.message || error.toString();
       return thunkAPI.rejectWithValue(message);
@@ -347,7 +361,7 @@ export const ratingSlice = createSlice({
         toast.error(action.payload);
       })
 
-      // Get rating questions
+      // Get rating questions (admin)
       .addCase(getRatingQuestions.pending, (state) => {
         state.isLoading = true;
       })
@@ -357,6 +371,22 @@ export const ratingSlice = createSlice({
         state.questions = action.payload;
       })
       .addCase(getRatingQuestions.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+        toast.error(action.payload);
+      })
+      
+      // Get rating questions (student)
+      .addCase(getStudentRatingQuestions.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getStudentRatingQuestions.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.questions = action.payload;
+      })
+      .addCase(getStudentRatingQuestions.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;

@@ -83,7 +83,7 @@ const createRatingQuestion = async (questionData, token) => {
   }
 };
 
-// Get questions for a rating period
+// Get questions for a rating period (admin version)
 const getRatingQuestions = async (periodId, token) => {
   const config = {
     headers: {
@@ -91,7 +91,21 @@ const getRatingQuestions = async (periodId, token) => {
     }
   };
 
+  console.log('Admin getting questions for period:', periodId);
   const response = await axios.get(API_URL + 'questions/' + periodId, config);
+  return response.data;
+};
+
+// Get questions for a rating period (student version)
+const getStudentRatingQuestions = async (periodId, token) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  };
+
+  console.log('Student getting questions for period:', periodId);
+  const response = await axios.get(API_URL + 'period/' + periodId + '/questions', config);
   return response.data;
 };
 
@@ -192,6 +206,7 @@ const ratingService = {
   deleteRatingPeriod,
   createRatingQuestion,
   getRatingQuestions,
+  getStudentRatingQuestions,
   updateRatingQuestion,
   deleteRatingQuestion,
   submitRating,
