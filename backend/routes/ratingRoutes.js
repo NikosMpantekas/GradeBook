@@ -378,21 +378,59 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
     // Fetch teachers if applicable
     if (ratingPeriod.targetType === 'both' || ratingPeriod.targetType === 'teacher') {
       try {
-        // Start with most basic query to ensure we get results
+        // First get the student's subjects to find associated teachers
+        let subjectQuery = {};
+        if (studentSchool) {
+          subjectQuery.school = studentSchool;
+        }
+        if (studentDirection) {
+          subjectQuery.$or = [
+            { direction: studentDirection },
+            { directions: studentDirection }
+          ];
+        }
+        
+        console.log('Student subjects query:', JSON.stringify(subjectQuery));
+        
+        // Get the student's subjects first
+        const studentSubjects = await Subject.find(subjectQuery)
+          .select('_id teachers');
+        
+        console.log(`Found ${studentSubjects.length} subjects for student`);
+        
+        // Extract teacher IDs from student's subjects
+        const teacherIds = new Set();
+        studentSubjects.forEach(subject => {
+          if (subject.teachers && Array.isArray(subject.teachers)) {
+            subject.teachers.forEach(teacherId => {
+              teacherIds.add(teacherId.toString());
+            });
+          }
+        });
+        
+        console.log(`Found ${teacherIds.size} unique teacher IDs from student subjects`);
+        
+        // If we found teachers from subjects, use them, otherwise get all teachers for the school
         let teacherQuery = { role: 'teacher' };
         
-        // Log the query we're using
+        if (teacherIds.size > 0) {
+          // Filter by the teachers that teach the student's subjects
+          teacherQuery._id = { $in: Array.from(teacherIds) };
+        } else if (studentSchool) {
+          // Fallback to school-based filtering if no teachers found from subjects
+          teacherQuery.$or = [
+            { school: studentSchool },
+            { schools: studentSchool }
+          ];
+        }
+        
         console.log('Teacher query:', JSON.stringify(teacherQuery));
         
-        // Fetch all teachers first - we want to make sure we get something
+        // Fetch teachers based on the query
         const teachers = await User.find(teacherQuery)
           .select('_id name email');
         
         console.log(`Found ${teachers.length} total teachers before filtering rated ones`);
-        console.log('Teacher IDs:', teachers.map(t => t._id.toString()));
-        
-        // Log the rated teacher IDs for debugging
-        console.log('Already rated teacher IDs:', ratedTeacherIds);
         
         // Filter out already rated teachers
         response.teachers = teachers.filter(teacher => 
@@ -410,21 +448,29 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
     // Fetch subjects if applicable
     if (ratingPeriod.targetType === 'both' || ratingPeriod.targetType === 'subject') {
       try {
-        // Start with simplest query to ensure we get results
+        // Get subjects for student's school and direction only
         let subjectQuery = {};
         
-        // Log the query we're using
-        console.log('Subject query:', JSON.stringify(subjectQuery));
+        // Build a more focused query based on student's school and direction
+        if (studentSchool) {
+          subjectQuery.school = studentSchool;
+        }
         
-        // Get all subjects - guarantees we have something to rate
+        if (studentDirection) {
+          // Find subjects that match the student's direction
+          subjectQuery.$or = [
+            { direction: studentDirection },
+            { directions: studentDirection }
+          ];
+        }
+        
+        console.log('Student subject query:', JSON.stringify(subjectQuery));
+        
+        // Get student's subjects
         const subjects = await Subject.find(subjectQuery)
           .select('_id name');
         
-        console.log(`Found ${subjects.length} total subjects before filtering rated ones`);
-        console.log('Subject IDs:', subjects.map(s => s._id.toString()));
-        
-        // Log the rated subject IDs for debugging
-        console.log('Already rated subject IDs:', ratedSubjectIds);
+        console.log(`Found ${subjects.length} total subjects for student before filtering rated ones`);
         
         // Filter out already rated subjects
         response.subjects = subjects.filter(subject => 
@@ -472,24 +518,35 @@ router.get('/check/:periodId/:targetType/:targetId', protect, student, asyncHand
 // Submit a student rating
 router.post('/submit', protect, student, asyncHandler(async (req, res) => {
   try {
-    const { ratingPeriodId, targetType, targetId, answers } = req.body;
+    // Handle both field naming conventions (frontend sends ratingPeriod, but our validation expected ratingPeriodId)
+    const { ratingPeriod, ratingPeriodId, targetType, targetId, answers } = req.body;
+    
+    // Use either ratingPeriod or ratingPeriodId (frontend sends ratingPeriod)
+    const periodId = ratingPeriod || ratingPeriodId;
+    
+    console.log('Rating submission received:', {
+      periodId,
+      targetType,
+      targetId,
+      answersCount: answers?.length || 0
+    });
     
     // Validation
-    if (!ratingPeriodId || !targetType || !targetId || !answers) {
+    if (!periodId || !targetType || !targetId || !answers) {
       res.status(400);
       throw new Error('Missing required fields');
     }
     
     // Check if rating period exists and is active
-    const ratingPeriod = await RatingPeriod.findById(ratingPeriodId);
+    const periodRecord = await RatingPeriod.findById(periodId);
     
-    if (!ratingPeriod) {
+    if (!periodRecord) {
       res.status(404);
       throw new Error('Rating period not found');
     }
     
     const now = new Date();
-    if (!ratingPeriod.isActive || now < ratingPeriod.startDate || now > ratingPeriod.endDate) {
+    if (!periodRecord.isActive || now < periodRecord.startDate || now > periodRecord.endDate) {
       res.status(400);
       throw new Error('Rating period is not active');
     }
@@ -531,30 +588,43 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
     // Process and validate answers
     const processedAnswers = answers.map(answer => {
       // Find the question in the rating period to get its text
-      const question = ratingPeriod.questions.id(answer.questionId);
+      const question = periodRecord.questions.id(answer.question);
       
       if (!question) {
-        throw new Error(`Question with ID ${answer.questionId} not found`);
+        throw new Error(`Question with ID ${answer.question} not found`);
       }
       
       return {
-        questionId: answer.questionId,
+        questionId: answer.question,
         questionText: question.text,
         ratingValue: answer.ratingValue,
         textAnswer: answer.textAnswer
       };
     });
     
+    // Extract school and direction IDs properly like we did in targets endpoint
+    const studentSchool = req.user.school ? 
+      (typeof req.user.school === 'object' ? req.user.school._id || req.user.school : req.user.school) : 
+      (req.user.schools && req.user.schools.length > 0 ? 
+        (typeof req.user.schools[0] === 'object' ? req.user.schools[0]._id || req.user.schools[0] : req.user.schools[0]) : 
+        null);
+        
+    const studentDirection = req.user.direction ? 
+      (typeof req.user.direction === 'object' ? req.user.direction._id || req.user.direction : req.user.direction) : 
+      (req.user.directions && req.user.directions.length > 0 ? 
+        (typeof req.user.directions[0] === 'object' ? req.user.directions[0]._id || req.user.directions[0] : req.user.directions[0]) : 
+        null);
+
     // Create the student rating
     const studentRating = await StudentRating.create({
       student: req.user._id,
-      ratingPeriod: ratingPeriodId,
+      ratingPeriod: periodId,
       targetType,
       targetId,
       targetModel,
       answers: processedAnswers,
-      school: req.user.school || null,
-      direction: req.user.direction || null
+      school: studentSchool,
+      direction: studentDirection
     });
     
     res.status(201).json(studentRating);
@@ -567,11 +637,253 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
 // Get rating statistics for a target
 router.get('/stats/:targetType/:targetId', protect, admin, asyncHandler(async (req, res) => {
   try {
-    // Placeholder for now - will implement statistics calculation
-    res.status(200).json({ totalRatings: 0, ratings: [] });
+    const { targetType, targetId } = req.params;
+    const { periodId } = req.query;
+    
+    console.log(`Getting rating statistics for ${targetType} with ID ${targetId}`);
+    
+    // Build the query
+    const query = {
+      targetType,
+      targetId
+    };
+    
+    // If period ID is provided, filter by that specific period
+    if (periodId) {
+      query.ratingPeriod = periodId;
+      console.log(`Filtering by rating period: ${periodId}`);
+    }
+    
+    // Get all ratings for this target
+    const ratings = await StudentRating.find(query)
+      .populate('student', 'name');
+    
+    console.log(`Found ${ratings.length} ratings for this target`);
+    
+    // Calculate statistics
+    const stats = {
+      totalRatings: ratings.length,
+      averageRating: 0,
+      questionStats: [],
+      textFeedback: [],
+      periodBreakdown: {}
+    };
+    
+    // Group ratings by question
+    const questionMap = new Map();
+    
+    // Process all ratings
+    ratings.forEach(rating => {
+      // Track by period for breakdown
+      const periodId = rating.ratingPeriod.toString();
+      if (!stats.periodBreakdown[periodId]) {
+        stats.periodBreakdown[periodId] = {
+          count: 0,
+          averageRating: 0,
+          totalRatingValue: 0,
+          ratingCount: 0
+        };
+      }
+      stats.periodBreakdown[periodId].count++;
+      
+      // Process each answer in the rating
+      rating.answers.forEach(answer => {
+        const questionId = answer.questionId.toString();
+        
+        // Initialize question stats if not exists
+        if (!questionMap.has(questionId)) {
+          questionMap.set(questionId, {
+            questionId,
+            questionText: answer.questionText,
+            totalRatingValue: 0,
+            ratingCount: 0,
+            averageRating: 0,
+            textAnswers: []
+          });
+        }
+        
+        // Get the question stats object
+        const questionStats = questionMap.get(questionId);
+        
+        // Add rating value if present
+        if (answer.ratingValue) {
+          questionStats.totalRatingValue += answer.ratingValue;
+          questionStats.ratingCount++;
+          
+          // Add to period breakdown
+          stats.periodBreakdown[periodId].totalRatingValue += answer.ratingValue;
+          stats.periodBreakdown[periodId].ratingCount++;
+        }
+        
+        // Add text feedback if present
+        if (answer.textAnswer) {
+          questionStats.textAnswers.push({
+            student: rating.student.name,
+            answer: answer.textAnswer,
+            date: rating.createdAt
+          });
+          
+          // Also add to general text feedback
+          stats.textFeedback.push({
+            question: answer.questionText,
+            student: rating.student.name,
+            answer: answer.textAnswer,
+            date: rating.createdAt
+          });
+        }
+      });
+    });
+    
+    // Calculate averages for each question
+    let totalRatingSum = 0;
+    let totalRatingCount = 0;
+    
+    questionMap.forEach(questionStat => {
+      if (questionStat.ratingCount > 0) {
+        questionStat.averageRating = questionStat.totalRatingValue / questionStat.ratingCount;
+        totalRatingSum += questionStat.totalRatingValue;
+        totalRatingCount += questionStat.ratingCount;
+      }
+    });
+    
+    // Calculate overall average
+    if (totalRatingCount > 0) {
+      stats.averageRating = totalRatingSum / totalRatingCount;
+    }
+    
+    // Calculate period averages
+    Object.keys(stats.periodBreakdown).forEach(periodId => {
+      const periodStats = stats.periodBreakdown[periodId];
+      if (periodStats.ratingCount > 0) {
+        periodStats.averageRating = periodStats.totalRatingValue / periodStats.ratingCount;
+      }
+    });
+    
+    // Convert question map to array
+    stats.questionStats = Array.from(questionMap.values());
+    
+    res.status(200).json(stats);
   } catch (error) {
     console.error('Error fetching rating statistics:', error);
     res.status(400).json({ message: error.message || 'Failed to fetch rating statistics' });
+  }
+}));
+
+// Get rating statistics summary for all targets
+router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
+  try {
+    const { periodId, targetType } = req.query;
+    
+    // Build the query
+    const query = {};
+    
+    // If period ID is provided, filter by that specific period
+    if (periodId) {
+      query.ratingPeriod = periodId;
+    }
+    
+    // If target type is specified, filter by that
+    if (targetType && (targetType === 'teacher' || targetType === 'subject')) {
+      query.targetType = targetType;
+    }
+    
+    console.log('Rating stats summary query:', query);
+    
+    // Get all ratings matching the criteria
+    const ratings = await StudentRating.find(query);
+    console.log(`Found ${ratings.length} total ratings`);
+    
+    // Group ratings by target
+    const targetsMap = new Map();
+    
+    // Process all ratings
+    ratings.forEach(rating => {
+      const targetKey = `${rating.targetType}-${rating.targetId.toString()}`;
+      
+      // Initialize target stats if not exists
+      if (!targetsMap.has(targetKey)) {
+        targetsMap.set(targetKey, {
+          targetId: rating.targetId,
+          targetType: rating.targetType,
+          totalRatingValue: 0,
+          ratingCount: 0,
+          averageRating: 0,
+          totalRatings: 0,
+          name: null // Will be populated later
+        });
+      }
+      
+      // Get the target stats object
+      const targetStats = targetsMap.get(targetKey);
+      targetStats.totalRatings++;
+      
+      // Process each answer in the rating
+      rating.answers.forEach(answer => {
+        if (answer.ratingValue) {
+          targetStats.totalRatingValue += answer.ratingValue;
+          targetStats.ratingCount++;
+        }
+      });
+    });
+    
+    // Calculate averages for each target
+    targetsMap.forEach(targetStat => {
+      if (targetStat.ratingCount > 0) {
+        targetStat.averageRating = targetStat.totalRatingValue / targetStat.ratingCount;
+      }
+    });
+    
+    // Convert targets map to array
+    const targetsArray = Array.from(targetsMap.values());
+    
+    // Get names for teachers and subjects
+    const teacherIds = targetsArray
+      .filter(target => target.targetType === 'teacher')
+      .map(target => target.targetId);
+      
+    const subjectIds = targetsArray
+      .filter(target => target.targetType === 'subject')
+      .map(target => target.targetId);
+    
+    // Get teacher names
+    if (teacherIds.length > 0) {
+      const teachers = await User.find({ _id: { $in: teacherIds } })
+        .select('_id name');
+      
+      teachers.forEach(teacher => {
+        const targetKey = `teacher-${teacher._id.toString()}`;
+        if (targetsMap.has(targetKey)) {
+          targetsMap.get(targetKey).name = teacher.name;
+        }
+      });
+    }
+    
+    // Get subject names
+    if (subjectIds.length > 0) {
+      const subjects = await Subject.find({ _id: { $in: subjectIds } })
+        .select('_id name');
+      
+      subjects.forEach(subject => {
+        const targetKey = `subject-${subject._id.toString()}`;
+        if (targetsMap.has(targetKey)) {
+          targetsMap.get(targetKey).name = subject.name;
+        }
+      });
+    }
+    
+    // Convert targets map to array again with names
+    const resultsArray = Array.from(targetsMap.values());
+    
+    // Sort by average rating (highest first)
+    resultsArray.sort((a, b) => b.averageRating - a.averageRating);
+    
+    res.status(200).json({
+      totalRatings: ratings.length,
+      targets: resultsArray
+    });
+  } catch (error) {
+    console.error('Error fetching rating statistics summary:', error);
+    res.status(400).json({ message: error.message || 'Failed to fetch rating statistics summary' });
   }
 }));
 
