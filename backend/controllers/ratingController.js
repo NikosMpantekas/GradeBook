@@ -187,7 +187,7 @@ const deleteRatingPeriod = asyncHandler(async (req, res) => {
   await StudentRating.deleteMany({ ratingPeriod: req.params.id });
   
   // Delete the rating period
-  await ratingPeriod.remove();
+  await RatingPeriod.deleteOne({ _id: ratingPeriod._id });
 
   res.status(200).json({ message: 'Rating period removed' });
 });
@@ -276,26 +276,29 @@ const deleteRatingQuestion = asyncHandler(async (req, res) => {
     throw new Error('Rating question not found');
   }
 
-  // Delete the rating question
-  await ratingQuestion.remove();
+  // Delete the rating question using deleteOne instead of deprecated remove()
+  await RatingQuestion.deleteOne({ _id: ratingQuestion._id });
 
   res.status(200).json({ message: 'Rating question removed' });
 });
 
-// @desc    Submit student ratings
+// NOTE: Removed duplicate submitRating function as it's already defined below
+
+// @desc    Submit a rating for a teacher or subject
 // @route   POST /api/ratings/submit
 // @access  Private (Student only)
 const submitRating = asyncHandler(async (req, res) => {
   const { ratingPeriod, targetType, targetId, answers, school, direction } = req.body;
 
   // Validation
-  if (!ratingPeriod || !targetType || !targetId || !answers || answers.length === 0) {
+  if (!ratingPeriod || !targetType || !targetId || !answers || !Array.isArray(answers)) {
     res.status(400);
     throw new Error('Please provide all required fields');
   }
 
   // Check if rating period exists and is active
   const period = await RatingPeriod.findById(ratingPeriod);
+
   if (!period) {
     res.status(404);
     throw new Error('Rating period not found');
@@ -422,6 +425,8 @@ const submitRating = asyncHandler(async (req, res) => {
     throw new Error('Failed to submit rating');
   }
 });
+
+// NOTE: The getActiveRatingPeriods, getRatingTargets, and checkStudentRating functions are defined later in this file.
 
 // @desc    Get rating statistics for a teacher or subject
 // @route   GET /api/ratings/stats/:targetType/:targetId
