@@ -754,5 +754,3 @@ module.exports = {
   getRatingTargets,
   checkStudentRating
 };
-/ /   A d d i n g   a   c o m m e n t   t o   f o r c e   G i t   t o   r e c o g n i z e   c h a n g e s  
- 
