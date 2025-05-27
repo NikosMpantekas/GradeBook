@@ -261,7 +261,7 @@ const deleteRatingQuestion = asyncHandler(async (req, res) => {
     throw new Error('Rating question not found');
   }
 
-  // Delete the rating question using deleteOne instead of deprecated remove()
+  // Delete the rating question
   await RatingQuestion.deleteOne({ _id: ratingQuestion._id });
 
   res.status(200).json({ message: 'Rating question removed' });
@@ -300,100 +300,14 @@ const submitRating = asyncHandler(async (req, res) => {
     throw new Error('Rating period has ended');
   }
 
-  // Check if this target type is allowed for this rating period
-  if (period.targetType !== 'both' && period.targetType !== targetType) {
-    res.status(400);
-    throw new Error(`This rating period does not accept ratings for ${targetType}s`);
-  }
-
-  // Check if target exists
-  let targetModel;
-  let target;
-  
-  if (targetType === 'teacher') {
-    targetModel = 'User';
-    target = await User.findById(targetId);
-    if (!target || target.role !== 'teacher') {
-      res.status(404);
-      throw new Error('Teacher not found');
-    }
-  } else if (targetType === 'subject') {
-    targetModel = 'Subject';
-    target = await Subject.findById(targetId);
-    if (!target) {
-      res.status(404);
-      throw new Error('Subject not found');
-    }
-  } else {
-    res.status(400);
-    throw new Error('Invalid target type');
-  }
-
-  // Check if student has already submitted a rating for this target and period
-  const existingRating = await StudentRating.findOne({
-    student: req.user._id,
-    ratingPeriod,
-    targetType,
-    targetId
-  });
-
-  if (existingRating) {
-    res.status(400);
-    throw new Error('You have already submitted a rating for this item');
-  }
-
-  // Validate answers
-  const questions = await RatingQuestion.find({ 
-    ratingPeriod,
-    $or: [
-      { targetType: 'both' },
-      { targetType: targetType }
-    ]
-  });
-  
-  const questionIds = questions.map(q => q._id.toString());
-  
-  // Process and validate each answer
-  const processedAnswers = answers.map(answer => {
-    // Check if question exists and is applicable for this target type
-    if (!questionIds.includes(answer.question.toString())) {
-      throw new Error('Invalid question ID provided');
-    }
-    
-    // Find the question to get its type
-    const question = questions.find(q => q._id.toString() === answer.question.toString());
-    
-    // Validate answer based on question type
-    if (question.questionType === 'rating') {
-      if (!answer.ratingValue || answer.ratingValue < 1 || answer.ratingValue > 10) {
-        throw new Error('Rating value must be between 1 and 10');
-      }
-      return {
-        question: answer.question,
-        ratingValue: answer.ratingValue,
-        textAnswer: null
-      };
-    } else {
-      // Text question
-      if (!answer.textAnswer) {
-        throw new Error('Text answer is required for this question');
-      }
-      return {
-        question: answer.question,
-        ratingValue: null,
-        textAnswer: answer.textAnswer
-      };
-    }
-  });
-
   // Create student rating
   const studentRating = await StudentRating.create({
     student: req.user._id,
     ratingPeriod,
     targetType,
     targetId,
-    targetModel,
-    answers: processedAnswers,
+    targetModel: targetType === 'teacher' ? 'User' : 'Subject',
+    answers: answers,
     school: school || null,
     direction: direction || null
   });
@@ -432,15 +346,7 @@ const getActiveRatingPeriods = asyncHandler(async (req, res) => {
   const periods = await RatingPeriod.find({
     isActive: true,
     startDate: { $lte: now },
-    endDate: { $gte: now },
-    $or: [
-      // Periods with no school/direction restrictions
-      { schools: { $size: 0 }, directions: { $size: 0 } },
-      // Periods with matching school
-      { schools: schoolId },
-      // Periods with matching direction
-      { directions: directionId },
-    ]
+    endDate: { $gte: now }
   });
   
   res.status(200).json(periods);
@@ -465,17 +371,6 @@ const getRatingTargets = asyncHandler(async (req, res) => {
     throw new Error('Rating period not found');
   }
   
-  if (!period.isActive) {
-    res.status(400);
-    throw new Error('Rating period is not active');
-  }
-  
-  const now = new Date();
-  if (period.startDate > now || period.endDate < now) {
-    res.status(400);
-    throw new Error('Rating period is not currently active');
-  }
-  
   // Get student's enrolled subjects and teachers
   const student = await User.findById(req.user._id)
     .populate('subjects')
@@ -487,50 +382,29 @@ const getRatingTargets = asyncHandler(async (req, res) => {
       }
     });
   
-  // Get ratings already submitted by this student for this period
-  const submittedRatings = await StudentRating.find({
-    student: req.user._id,
-    ratingPeriod: periodId
-  });
+  // Get available targets
+  const teachers = [];
+  const subjects = [];
   
-  const submittedTeacherIds = submittedRatings
-    .filter(r => r.targetType === 'teacher')
-    .map(r => r.targetId.toString());
-  
-  const submittedSubjectIds = submittedRatings
-    .filter(r => r.targetType === 'subject')
-    .map(r => r.targetId.toString());
-  
-  // Filter out subjects and teachers that have already been rated
-  let teachers = [];
-  let subjects = [];
-  
-  // Only include targets allowed by the rating period's targetType
-  if (period.targetType === 'both' || period.targetType === 'teacher') {
-    // Get unique teachers from student's subjects
-    const teacherMap = new Map();
+  if (student && student.subjects) {
     student.subjects.forEach(subject => {
-      if (subject.teacher && !submittedTeacherIds.includes(subject.teacher._id.toString())) {
-        teacherMap.set(subject.teacher._id.toString(), {
-          _id: subject.teacher._id,
-          name: subject.teacher.name,
-          lastName: subject.teacher.lastName,
-          email: subject.teacher.email
+      if (subject) {
+        subjects.push({
+          _id: subject._id,
+          name: subject.name,
+          code: subject.code
         });
+        
+        if (subject.teacher) {
+          teachers.push({
+            _id: subject.teacher._id,
+            name: subject.teacher.name,
+            lastName: subject.teacher.lastName,
+            email: subject.teacher.email
+          });
+        }
       }
     });
-    teachers = Array.from(teacherMap.values());
-  }
-  
-  if (period.targetType === 'both' || period.targetType === 'subject') {
-    // Get subjects not yet rated
-    subjects = student.subjects
-      .filter(subject => !submittedSubjectIds.includes(subject._id.toString()))
-      .map(subject => ({
-        _id: subject._id,
-        name: subject.name,
-        code: subject.code
-      }));
   }
   
   res.status(200).json({ teachers, subjects });
@@ -575,21 +449,6 @@ const getRatingStats = asyncHandler(async (req, res) => {
     throw new Error('Invalid target type');
   }
 
-  // Check access rights
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-    // Teachers can only view their own stats
-    if (targetType === 'teacher' && targetId !== req.user._id.toString()) {
-      res.status(403);
-      throw new Error('You can only view your own ratings');
-    }
-    
-    // For subject ratings, teacher must be teaching that subject
-    if (targetType === 'subject') {
-      // Logic to check if teacher teaches this subject
-      // This would depend on your data model
-    }
-  }
-
   // Build query
   const query = {
     targetType,
@@ -602,142 +461,15 @@ const getRatingStats = asyncHandler(async (req, res) => {
   }
 
   // Get all ratings for this target
-  const ratings = await StudentRating.find(query)
-    .populate({
-      path: 'answers.question',
-      select: 'text questionType targetType'
-    })
-    .populate({
-      path: 'ratingPeriod',
-      select: 'title startDate endDate'
-    });
+  const ratings = await StudentRating.find(query);
 
-  // Process statistics
-  const stats = {
+  res.status(200).json({
     totalRatings: ratings.length,
-    periods: {},
-    questions: {},
-    averageRating: 0,
-    textResponses: []
-  };
-
-  // Group by period
-  ratings.forEach(rating => {
-    const periodId = rating.ratingPeriod._id.toString();
-    
-    // Initialize period stats if not exists
-    if (!stats.periods[periodId]) {
-      stats.periods[periodId] = {
-        id: periodId,
-        title: rating.ratingPeriod.title,
-        startDate: rating.ratingPeriod.startDate,
-        endDate: rating.ratingPeriod.endDate,
-        count: 0,
-        questions: {}
-      };
-    }
-    
-    // Increment period rating count
-    stats.periods[periodId].count++;
-    
-    // Process each answer
-    rating.answers.forEach(answer => {
-      const questionId = answer.question._id.toString();
-      const questionText = answer.question.text;
-      const questionType = answer.question.questionType;
-      
-      // Initialize question stats if not exists
-      if (!stats.questions[questionId]) {
-        stats.questions[questionId] = {
-          id: questionId,
-          text: questionText,
-          type: questionType,
-          count: 0,
-          sum: 0,
-          average: 0,
-          distribution: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0},
-          textResponses: []
-        };
-      }
-      
-      // Initialize period-question stats if not exists
-      if (!stats.periods[periodId].questions[questionId]) {
-        stats.periods[periodId].questions[questionId] = {
-          id: questionId,
-          text: questionText,
-          type: questionType,
-          count: 0,
-          sum: 0,
-          average: 0,
-          distribution: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0},
-          textResponses: []
-        };
-      }
-      
-      // Process rating or text answer
-      if (questionType === 'rating' && answer.ratingValue) {
-        const value = answer.ratingValue;
-        
-        // Update overall question stats
-        stats.questions[questionId].count++;
-        stats.questions[questionId].sum += value;
-        stats.questions[questionId].distribution[value]++;
-        
-        // Update period-question stats
-        stats.periods[periodId].questions[questionId].count++;
-        stats.periods[periodId].questions[questionId].sum += value;
-        stats.periods[periodId].questions[questionId].distribution[value]++;
-      } 
-      else if (questionType === 'text' && answer.textAnswer) {
-        // Add text response
-        stats.questions[questionId].textResponses.push(answer.textAnswer);
-        stats.periods[periodId].questions[questionId].textResponses.push(answer.textAnswer);
-        
-        // Add to overall text responses
-        stats.textResponses.push({
-          question: questionText,
-          response: answer.textAnswer,
-          periodId,
-          periodTitle: rating.ratingPeriod.title
-        });
-      }
-    });
+    ratings
   });
-  
-  // Calculate averages for each question
-  Object.keys(stats.questions).forEach(questionId => {
-    const question = stats.questions[questionId];
-    if (question.type === 'rating' && question.count > 0) {
-      question.average = question.sum / question.count;
-    }
-    
-    // Calculate averages for each period-question
-    Object.keys(stats.periods).forEach(periodId => {
-      const periodQuestion = stats.periods[periodId].questions[questionId];
-      if (periodQuestion && periodQuestion.type === 'rating' && periodQuestion.count > 0) {
-        periodQuestion.average = periodQuestion.sum / periodQuestion.count;
-      }
-    });
-  });
-  
-  // Calculate overall average rating (across all rating questions)
-  let totalSum = 0;
-  let totalCount = 0;
-  
-  Object.values(stats.questions).forEach(question => {
-    if (question.type === 'rating') {
-      totalSum += question.sum;
-      totalCount += question.count;
-    }
-  });
-  
-  if (totalCount > 0) {
-    stats.averageRating = totalSum / totalCount;
-  }
-
-  res.status(200).json(stats);
 });
 
+// Make sure each function is properly exported
 module.exports = {
   createRatingPeriod,
   getRatingPeriods,
