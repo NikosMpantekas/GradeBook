@@ -1,6 +1,32 @@
 const mongoose = require('mongoose');
 
-// Rating Period Schema - Defines when ratings are open
+// Rating Question Schema - Embedded directly within Rating Period
+const RatingQuestionSchema = mongoose.Schema(
+  {
+    text: {
+      type: String,
+      required: [true, 'Please provide the question text'],
+      trim: true
+    },
+    questionType: {
+      type: String,
+      enum: ['rating', 'text'],
+      default: 'rating'
+    },
+    targetType: {
+      type: String,
+      enum: ['teacher', 'subject', 'both'],
+      default: 'both'
+    },
+    order: {
+      type: Number,
+      default: 0
+    }
+  },
+  { _id: true }
+);
+
+// Rating Period Schema - Now includes questions directly
 const RatingPeriodSchema = mongoose.Schema(
   {
     title: {
@@ -37,44 +63,8 @@ const RatingPeriodSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Direction'
     }],
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    }
-  },
-  {
-    timestamps: true
-  }
-);
-
-// Rating Question Schema - The questions students will answer
-const RatingQuestionSchema = mongoose.Schema(
-  {
-    text: {
-      type: String,
-      required: [true, 'Please provide the question text'],
-      trim: true
-    },
-    questionType: {
-      type: String,
-      enum: ['rating', 'text'],
-      default: 'rating'
-    },
-    targetType: {
-      type: String,
-      enum: ['teacher', 'subject', 'both'],
-      default: 'both'
-    },
-    order: {
-      type: Number,
-      default: 0
-    },
-    ratingPeriod: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'RatingPeriod',
-      required: true
-    },
+    // Questions embedded directly in the period
+    questions: [RatingQuestionSchema],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -116,9 +106,12 @@ const StudentRatingSchema = mongoose.Schema(
     },
     answers: [
       {
-        question: {
+        questionId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: 'RatingQuestion',
+          required: true
+        },
+        questionText: {
+          type: String,
           required: true
         },
         ratingValue: {
@@ -164,11 +157,10 @@ RatingPeriodSchema.pre('save', function(next) {
 });
 
 const RatingPeriod = mongoose.model('RatingPeriod', RatingPeriodSchema);
-const RatingQuestion = mongoose.model('RatingQuestion', RatingQuestionSchema);
 const StudentRating = mongoose.model('StudentRating', StudentRatingSchema);
 
+// Export only what we need - removed RatingQuestion as a separate model
 module.exports = {
   RatingPeriod,
-  RatingQuestion,
   StudentRating
 };
