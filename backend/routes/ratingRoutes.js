@@ -546,38 +546,53 @@ router.delete('/questions/:questionId', protect, admin, asyncHandler(async (req,
 // Create a new rating question (endpoint matching frontend API call pattern)
 router.post('/questions', protect, admin, asyncHandler(async (req, res) => {
   try {
+    console.log('POST /questions request received with body:', req.body);
     const { text, questionType, targetType, order, ratingPeriod: periodId } = req.body;
     
     // Validation
-    if (!text || !periodId) {
+    if (!text) {
+      console.log('Question text is missing');
       res.status(400);
-      throw new Error('Question text and rating period ID are required');
+      throw new Error('Question text is required');
     }
     
+    if (!periodId) {
+      console.log('Rating period ID is missing');
+      res.status(400);
+      throw new Error('Rating period ID is required');
+    }
+    
+    console.log(`Looking for rating period with ID: ${periodId}`);
     const ratingPeriod = await RatingPeriod.findById(periodId);
     
     if (!ratingPeriod) {
+      console.log(`Rating period not found with ID: ${periodId}`);
       res.status(404);
       throw new Error('Rating period not found');
     }
+    
+    console.log('Found rating period:', ratingPeriod.title);
     
     // Create the new question
     const newQuestion = {
       text,
       questionType: questionType || 'rating',
       targetType: targetType || 'both',
-      order: order || ratingPeriod.questions.length
+      order: order !== undefined ? order : ratingPeriod.questions.length
     };
+    
+    console.log('Adding new question:', newQuestion);
     
     // Add to the questions array
     ratingPeriod.questions.push(newQuestion);
     
     // Save the updated rating period
-    await ratingPeriod.save();
+    const updatedPeriod = await ratingPeriod.save();
     
     // Return the newly created question (the last one in the array)
-    const createdQuestion = ratingPeriod.questions[ratingPeriod.questions.length - 1];
+    const createdQuestion = updatedPeriod.questions[updatedPeriod.questions.length - 1];
     
+    console.log('Successfully created question:', createdQuestion);
     res.status(201).json(createdQuestion);
   } catch (error) {
     console.error('Error adding question to rating period:', error);

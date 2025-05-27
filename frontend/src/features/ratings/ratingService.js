@@ -70,8 +70,17 @@ const createRatingQuestion = async (questionData, token) => {
     }
   };
 
-  const response = await axios.post(API_URL + 'questions', questionData, config);
-  return response.data;
+  // Debug logs
+  console.log('Creating rating question with data:', JSON.stringify(questionData));
+  
+  try {
+    const response = await axios.post(API_URL + 'questions', questionData, config);
+    console.log('Rating question created successfully:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating rating question:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // Get questions for a rating period
