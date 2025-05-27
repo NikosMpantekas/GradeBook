@@ -315,8 +315,104 @@ router.get('/active', protect, student, asyncHandler(async (req, res) => {
 // Get rating targets (teachers/subjects) for a student
 router.get('/targets', protect, student, asyncHandler(async (req, res) => {
   try {
-    // Placeholder for now - will implement with actual teacher/subject fetching
-    res.status(200).json({ teachers: [], subjects: [] });
+    const { periodId } = req.query;
+    
+    if (!periodId) {
+      res.status(400);
+      throw new Error('Period ID is required');
+    }
+    
+    // Get the rating period to check its target type
+    const ratingPeriod = await RatingPeriod.findById(periodId);
+    
+    if (!ratingPeriod) {
+      res.status(404);
+      throw new Error('Rating period not found');
+    }
+    
+    // Check if the period is active
+    const now = new Date();
+    if (!ratingPeriod.isActive || now < ratingPeriod.startDate || now > ratingPeriod.endDate) {
+      res.status(403);
+      throw new Error('Rating period is not active');
+    }
+    
+    // Get student's school and direction
+    const studentSchool = req.user.school || req.user.schools?.[0];
+    const studentDirection = req.user.direction || req.user.directions?.[0];
+    
+    // Find ratings the student has already submitted for this period
+    const existingRatings = await StudentRating.find({
+      student: req.user._id,
+      ratingPeriod: periodId
+    });
+    
+    // Extract the IDs of already rated targets
+    const ratedTeacherIds = existingRatings
+      .filter(rating => rating.targetType === 'teacher')
+      .map(rating => rating.targetId.toString());
+      
+    const ratedSubjectIds = existingRatings
+      .filter(rating => rating.targetType === 'subject')
+      .map(rating => rating.targetId.toString());
+    
+    // Initialize response object
+    const response = {
+      teachers: [],
+      subjects: []
+    };
+    
+    // Fetch teachers if applicable
+    if (ratingPeriod.targetType === 'both' || ratingPeriod.targetType === 'teacher') {
+      // Get teachers for the student's school and direction
+      let teacherQuery = { role: 'teacher' };
+      
+      // Add school filter if student has a school
+      if (studentSchool) {
+        teacherQuery.$or = [
+          { school: studentSchool },
+          { schools: studentSchool }
+        ];
+      }
+      
+      const teachers = await User.find(teacherQuery)
+        .select('_id name email');
+      
+      // Filter out already rated teachers
+      response.teachers = teachers.filter(teacher => 
+        !ratedTeacherIds.includes(teacher._id.toString())
+      );
+    }
+    
+    // Fetch subjects if applicable
+    if (ratingPeriod.targetType === 'both' || ratingPeriod.targetType === 'subject') {
+      // Get subjects for the student's school and direction
+      let subjectQuery = {};
+      
+      // Add school filter if student has a school
+      if (studentSchool) {
+        subjectQuery.school = studentSchool;
+      }
+      
+      // Add direction filter if student has a direction
+      if (studentDirection) {
+        subjectQuery.$or = [
+          { direction: studentDirection },
+          { directions: studentDirection }
+        ];
+      }
+      
+      const subjects = await Subject.find(subjectQuery)
+        .select('_id name');
+      
+      // Filter out already rated subjects
+      response.subjects = subjects.filter(subject => 
+        !ratedSubjectIds.includes(subject._id.toString())
+      );
+    }
+    
+    console.log(`Found ${response.teachers.length} teachers and ${response.subjects.length} subjects available for rating`);
+    res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching rating targets:', error);
     res.status(400).json({ message: error.message || 'Failed to fetch rating targets' });
