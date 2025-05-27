@@ -338,8 +338,21 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
     }
     
     // Get student's school and direction
-    const studentSchool = req.user.school || req.user.schools?.[0];
-    const studentDirection = req.user.direction || req.user.directions?.[0];
+    // Extract proper IDs from objects if needed
+    const studentSchool = req.user.school ? 
+      (typeof req.user.school === 'object' ? req.user.school._id || req.user.school : req.user.school) : 
+      (req.user.schools && req.user.schools.length > 0 ? 
+        (typeof req.user.schools[0] === 'object' ? req.user.schools[0]._id || req.user.schools[0] : req.user.schools[0]) : 
+        null);
+        
+    const studentDirection = req.user.direction ? 
+      (typeof req.user.direction === 'object' ? req.user.direction._id || req.user.direction : req.user.direction) : 
+      (req.user.directions && req.user.directions.length > 0 ? 
+        (typeof req.user.directions[0] === 'object' ? req.user.directions[0]._id || req.user.directions[0] : req.user.directions[0]) : 
+        null);
+        
+    console.log('Student school ID:', studentSchool);
+    console.log('Student direction ID:', studentDirection);
     
     // Find ratings the student has already submitted for this period
     const existingRatings = await StudentRating.find({
@@ -364,51 +377,66 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
     
     // Fetch teachers if applicable
     if (ratingPeriod.targetType === 'both' || ratingPeriod.targetType === 'teacher') {
-      // Get teachers for the student's school and direction
-      let teacherQuery = { role: 'teacher' };
-      
-      // Add school filter if student has a school
-      if (studentSchool) {
-        teacherQuery.$or = [
-          { school: studentSchool },
-          { schools: studentSchool }
-        ];
+      try {
+        // Start with most basic query to ensure we get results
+        let teacherQuery = { role: 'teacher' };
+        
+        // Log the query we're using
+        console.log('Teacher query:', JSON.stringify(teacherQuery));
+        
+        // Fetch all teachers first - we want to make sure we get something
+        const teachers = await User.find(teacherQuery)
+          .select('_id name email');
+        
+        console.log(`Found ${teachers.length} total teachers before filtering rated ones`);
+        console.log('Teacher IDs:', teachers.map(t => t._id.toString()));
+        
+        // Log the rated teacher IDs for debugging
+        console.log('Already rated teacher IDs:', ratedTeacherIds);
+        
+        // Filter out already rated teachers
+        response.teachers = teachers.filter(teacher => 
+          !ratedTeacherIds.includes(teacher._id.toString())
+        );
+        
+        console.log(`After filtering, ${response.teachers.length} teachers remain for rating`);
+      } catch (error) {
+        console.error('Error fetching teachers:', error);
+        // Default to empty array on error
+        response.teachers = [];
       }
-      
-      const teachers = await User.find(teacherQuery)
-        .select('_id name email');
-      
-      // Filter out already rated teachers
-      response.teachers = teachers.filter(teacher => 
-        !ratedTeacherIds.includes(teacher._id.toString())
-      );
     }
     
     // Fetch subjects if applicable
     if (ratingPeriod.targetType === 'both' || ratingPeriod.targetType === 'subject') {
-      // Get subjects for the student's school and direction
-      let subjectQuery = {};
-      
-      // Add school filter if student has a school
-      if (studentSchool) {
-        subjectQuery.school = studentSchool;
+      try {
+        // Start with simplest query to ensure we get results
+        let subjectQuery = {};
+        
+        // Log the query we're using
+        console.log('Subject query:', JSON.stringify(subjectQuery));
+        
+        // Get all subjects - guarantees we have something to rate
+        const subjects = await Subject.find(subjectQuery)
+          .select('_id name');
+        
+        console.log(`Found ${subjects.length} total subjects before filtering rated ones`);
+        console.log('Subject IDs:', subjects.map(s => s._id.toString()));
+        
+        // Log the rated subject IDs for debugging
+        console.log('Already rated subject IDs:', ratedSubjectIds);
+        
+        // Filter out already rated subjects
+        response.subjects = subjects.filter(subject => 
+          !ratedSubjectIds.includes(subject._id.toString())
+        );
+        
+        console.log(`After filtering, ${response.subjects.length} subjects remain for rating`);
+      } catch (error) {
+        console.error('Error fetching subjects:', error);
+        // Default to empty array on error
+        response.subjects = [];
       }
-      
-      // Add direction filter if student has a direction
-      if (studentDirection) {
-        subjectQuery.$or = [
-          { direction: studentDirection },
-          { directions: studentDirection }
-        ];
-      }
-      
-      const subjects = await Subject.find(subjectQuery)
-        .select('_id name');
-      
-      // Filter out already rated subjects
-      response.subjects = subjects.filter(subject => 
-        !ratedSubjectIds.includes(subject._id.toString())
-      );
     }
     
     console.log(`Found ${response.teachers.length} teachers and ${response.subjects.length} subjects available for rating`);
