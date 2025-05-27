@@ -53,70 +53,36 @@ const createRatingPeriod = asyncHandler(async (req, res) => {
 // @route   GET /api/ratings/periods
 // @access  Private (Admin only)
 const getRatingPeriods = asyncHandler(async (req, res) => {
-  // Get user domain for filtering
-  const adminEmail = req.user.email;
-  const adminEmailParts = adminEmail.split('@');
+  // If admin, get all periods associated with their schools
+  const schoolIds = req.user.schools?.map(s => typeof s === 'object' ? s._id : s) || [];
   
-  // Only return periods that are for schools in the admin's domain
-  const adminDomain = adminEmailParts[1];
-
-  // Get schools in the admin's domain
-  const schools = await School.find({
-    $or: [
-      { emailDomain: adminDomain },
-      { schoolDomain: adminDomain.split('.')[0] }
-    ]
-  });
-  
-  const schoolIds = schools.map(school => school._id);
-  
-  // Find periods for these schools
+  // Find rating periods for this admin's schools or global periods
   const ratingPeriods = await RatingPeriod.find({
     $or: [
       { schools: { $in: schoolIds } },
-      { 'schools.0': { $exists: false } } // Include periods with no schools specified
+      { 'schools.0': { $exists: false } }
     ]
   })
-    .sort({ createdAt: -1 })
-    .populate('createdBy', 'name email')
     .populate('schools', 'name')
-    .populate('directions', 'name');
+    .populate('directions', 'name')
+    .populate('createdBy', 'name email')
+    .sort({ createdAt: -1 });
 
   res.status(200).json(ratingPeriods);
 });
 
-// @desc    Get single rating period
+// @desc    Get a single rating period
 // @route   GET /api/ratings/periods/:id
 // @access  Private
 const getRatingPeriod = asyncHandler(async (req, res) => {
   const ratingPeriod = await RatingPeriod.findById(req.params.id)
-    .populate('createdBy', 'name email')
     .populate('schools', 'name')
-    .populate('directions', 'name');
+    .populate('directions', 'name')
+    .populate('createdBy', 'name email');
 
   if (!ratingPeriod) {
     res.status(404);
     throw new Error('Rating period not found');
-  }
-
-  // Check if user has access to this rating period
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-    // For students and teachers, check if they belong to the specified schools/directions
-    const userSchools = req.user.schools || [];
-    const userDirections = req.user.directions || [];
-    
-    const periodSchools = ratingPeriod.schools.map(s => s._id.toString());
-    const periodDirections = ratingPeriod.directions.map(d => d._id.toString());
-    
-    // Check if any of the user's schools/directions match the period's schools/directions
-    const hasMatchingSchool = userSchools.some(s => periodSchools.includes(s.toString()));
-    const hasMatchingDirection = userDirections.some(d => periodDirections.includes(d.toString()));
-    
-    // If no matching schools/directions, deny access
-    if (!hasMatchingSchool && !hasMatchingDirection) {
-      res.status(403);
-      throw new Error('You do not have access to this rating period');
-    }
   }
 
   res.status(200).json(ratingPeriod);
@@ -128,7 +94,6 @@ const getRatingPeriod = asyncHandler(async (req, res) => {
 const updateRatingPeriod = asyncHandler(async (req, res) => {
   const { title, description, startDate, endDate, isActive, targetType, schools, directions } = req.body;
 
-  // Find rating period
   const ratingPeriod = await RatingPeriod.findById(req.params.id);
 
   if (!ratingPeriod) {
@@ -137,17 +102,17 @@ const updateRatingPeriod = asyncHandler(async (req, res) => {
   }
 
   // Convert dates from strings if needed
-  let start = startDate ? new Date(startDate) : ratingPeriod.startDate;
-  let end = endDate ? new Date(endDate) : ratingPeriod.endDate;
-
+  const start = startDate ? new Date(startDate) : ratingPeriod.startDate;
+  const end = endDate ? new Date(endDate) : ratingPeriod.endDate;
+  
   // Validate date range
   if (start >= end) {
     res.status(400);
     throw new Error('End date must be after start date');
   }
 
-  // Update rating period
-  ratingPeriod.title = title || ratingPeriod.title;
+  // Update the rating period
+  ratingPeriod.title = title !== undefined ? title : ratingPeriod.title;
   ratingPeriod.description = description !== undefined ? description : ratingPeriod.description;
   ratingPeriod.startDate = start;
   ratingPeriod.endDate = end;
@@ -199,14 +164,26 @@ const createRatingQuestion = asyncHandler(async (req, res) => {
   const { text, questionType, targetType, ratingPeriod, order } = req.body;
 
   // Validation
-  if (!text || !ratingPeriod) {
+  if (!text || !questionType || !targetType || !ratingPeriod) {
     res.status(400);
-    throw new Error('Please provide question text and rating period');
+    throw new Error('Please provide all required fields');
+  }
+
+  // Validate questionType
+  if (!['rating', 'text'].includes(questionType)) {
+    res.status(400);
+    throw new Error('Question type must be either "rating" or "text"');
+  }
+
+  // Validate targetType
+  if (!['teacher', 'subject', 'both'].includes(targetType)) {
+    res.status(400);
+    throw new Error('Target type must be either "teacher", "subject", or "both"');
   }
 
   // Check if rating period exists
-  const periodExists = await RatingPeriod.findById(ratingPeriod);
-  if (!periodExists) {
+  const period = await RatingPeriod.findById(ratingPeriod);
+  if (!period) {
     res.status(404);
     throw new Error('Rating period not found');
   }
@@ -214,8 +191,8 @@ const createRatingQuestion = asyncHandler(async (req, res) => {
   // Create rating question
   const ratingQuestion = await RatingQuestion.create({
     text,
-    questionType: questionType || 'rating',
-    targetType: targetType || 'both',
+    questionType,
+    targetType,
     ratingPeriod,
     order: order || 0,
     createdBy: req.user._id
@@ -229,15 +206,24 @@ const createRatingQuestion = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get questions for a rating period
+// @desc    Get rating questions for a period
 // @route   GET /api/ratings/questions/:periodId
 // @access  Private
 const getRatingQuestions = asyncHandler(async (req, res) => {
-  const ratingQuestions = await RatingQuestion.find({ ratingPeriod: req.params.periodId })
-    .sort({ order: 1, createdAt: 1 })
-    .populate('createdBy', 'name');
+  const { periodId } = req.params;
 
-  res.status(200).json(ratingQuestions);
+  // Check if rating period exists
+  const period = await RatingPeriod.findById(periodId);
+  if (!period) {
+    res.status(404);
+    throw new Error('Rating period not found');
+  }
+
+  // Get questions for this period
+  const questions = await RatingQuestion.find({ ratingPeriod: periodId })
+    .sort({ order: 1, createdAt: 1 });
+
+  res.status(200).json(questions);
 });
 
 // @desc    Update a rating question
@@ -246,7 +232,6 @@ const getRatingQuestions = asyncHandler(async (req, res) => {
 const updateRatingQuestion = asyncHandler(async (req, res) => {
   const { text, questionType, targetType, order } = req.body;
 
-  // Find rating question
   const ratingQuestion = await RatingQuestion.findById(req.params.id);
 
   if (!ratingQuestion) {
@@ -281,8 +266,6 @@ const deleteRatingQuestion = asyncHandler(async (req, res) => {
 
   res.status(200).json({ message: 'Rating question removed' });
 });
-
-// NOTE: Removed duplicate submitRating function as it's already defined below
 
 // @desc    Submit a rating for a teacher or subject
 // @route   POST /api/ratings/submit
@@ -426,7 +409,158 @@ const submitRating = asyncHandler(async (req, res) => {
   }
 });
 
-// NOTE: The getActiveRatingPeriods, getRatingTargets, and checkStudentRating functions are defined later in this file.
+// @desc    Get active rating periods for students
+// @route   GET /api/ratings/active
+// @access  Private (Student only)
+const getActiveRatingPeriods = asyncHandler(async (req, res) => {
+  const now = new Date();
+  
+  // Get student's school and direction
+  const student = await User.findById(req.user._id)
+    .populate('school')
+    .populate('direction');
+  
+  if (!student) {
+    res.status(404);
+    throw new Error('Student not found');
+  }
+  
+  const schoolId = student.school ? student.school._id : null;
+  const directionId = student.direction ? student.direction._id : null;
+  
+  // Find active rating periods for the student's school/direction
+  const periods = await RatingPeriod.find({
+    isActive: true,
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+    $or: [
+      // Periods with no school/direction restrictions
+      { schools: { $size: 0 }, directions: { $size: 0 } },
+      // Periods with matching school
+      { schools: schoolId },
+      // Periods with matching direction
+      { directions: directionId },
+    ]
+  });
+  
+  res.status(200).json(periods);
+});
+
+// @desc    Get available rating targets (teachers/subjects) for a student
+// @route   GET /api/ratings/targets
+// @access  Private (Student only)
+const getRatingTargets = asyncHandler(async (req, res) => {
+  const { periodId } = req.query;
+  
+  if (!periodId) {
+    res.status(400);
+    throw new Error('Rating period ID is required');
+  }
+  
+  // Check if rating period exists and is active
+  const period = await RatingPeriod.findById(periodId);
+  
+  if (!period) {
+    res.status(404);
+    throw new Error('Rating period not found');
+  }
+  
+  if (!period.isActive) {
+    res.status(400);
+    throw new Error('Rating period is not active');
+  }
+  
+  const now = new Date();
+  if (period.startDate > now || period.endDate < now) {
+    res.status(400);
+    throw new Error('Rating period is not currently active');
+  }
+  
+  // Get student's enrolled subjects and teachers
+  const student = await User.findById(req.user._id)
+    .populate('subjects')
+    .populate({
+      path: 'subjects',
+      populate: {
+        path: 'teacher',
+        select: 'name lastName email'
+      }
+    });
+  
+  // Get ratings already submitted by this student for this period
+  const submittedRatings = await StudentRating.find({
+    student: req.user._id,
+    ratingPeriod: periodId
+  });
+  
+  const submittedTeacherIds = submittedRatings
+    .filter(r => r.targetType === 'teacher')
+    .map(r => r.targetId.toString());
+  
+  const submittedSubjectIds = submittedRatings
+    .filter(r => r.targetType === 'subject')
+    .map(r => r.targetId.toString());
+  
+  // Filter out subjects and teachers that have already been rated
+  let teachers = [];
+  let subjects = [];
+  
+  // Only include targets allowed by the rating period's targetType
+  if (period.targetType === 'both' || period.targetType === 'teacher') {
+    // Get unique teachers from student's subjects
+    const teacherMap = new Map();
+    student.subjects.forEach(subject => {
+      if (subject.teacher && !submittedTeacherIds.includes(subject.teacher._id.toString())) {
+        teacherMap.set(subject.teacher._id.toString(), {
+          _id: subject.teacher._id,
+          name: subject.teacher.name,
+          lastName: subject.teacher.lastName,
+          email: subject.teacher.email
+        });
+      }
+    });
+    teachers = Array.from(teacherMap.values());
+  }
+  
+  if (period.targetType === 'both' || period.targetType === 'subject') {
+    // Get subjects not yet rated
+    subjects = student.subjects
+      .filter(subject => !submittedSubjectIds.includes(subject._id.toString()))
+      .map(subject => ({
+        _id: subject._id,
+        name: subject.name,
+        code: subject.code
+      }));
+  }
+  
+  res.status(200).json({ teachers, subjects });
+});
+
+// @desc    Check if student has already rated a target
+// @route   GET /api/ratings/check/:periodId/:targetType/:targetId
+// @access  Private (Student only)
+const checkStudentRating = asyncHandler(async (req, res) => {
+  const { periodId, targetType, targetId } = req.params;
+  
+  // Validate parameters
+  if (!periodId || !targetType || !targetId) {
+    res.status(400);
+    throw new Error('All parameters are required');
+  }
+  
+  // Check if rating exists
+  const rating = await StudentRating.findOne({
+    student: req.user._id,
+    ratingPeriod: periodId,
+    targetType,
+    targetId
+  });
+  
+  res.status(200).json({
+    hasRated: !!rating,
+    ratingId: rating ? rating._id : null
+  });
+});
 
 // @desc    Get rating statistics for a teacher or subject
 // @route   GET /api/ratings/stats/:targetType/:targetId
@@ -602,159 +736,6 @@ const getRatingStats = asyncHandler(async (req, res) => {
   }
 
   res.status(200).json(stats);
-});
-
-// @desc    Get active rating periods for a student
-// @route   GET /api/ratings/active
-// @access  Private (Student only)
-const getActiveRatingPeriods = asyncHandler(async (req, res) => {
-  // Only for students
-  if (req.user.role !== 'student') {
-    res.status(403);
-    throw new Error('Only students can access this endpoint');
-  }
-
-  const now = new Date();
-  
-  // Get student's schools and directions
-  const studentSchools = req.user.schools || [];
-  const studentDirections = req.user.directions || [];
-  
-  // Find active rating periods for this student's schools and directions
-  const activePeriods = await RatingPeriod.find({
-    isActive: true,
-    startDate: { $lte: now },
-    endDate: { $gte: now },
-    $or: [
-      { schools: { $in: studentSchools } },
-      { directions: { $in: studentDirections } },
-      { 'schools.0': { $exists: false }, 'directions.0': { $exists: false } } // No specific schools/directions = all
-    ]
-  })
-    .sort({ endDate: 1 }) // Ending soonest first
-    .populate('schools', 'name')
-    .populate('directions', 'name');
-
-  res.status(200).json(activePeriods);
-});
-
-// @desc    Get ratable teachers and subjects for a student
-// @route   GET /api/ratings/targets
-// @access  Private (Student only)
-const getRatingTargets = asyncHandler(async (req, res) => {
-  const { periodId } = req.query;
-  
-  // Validation
-  if (!periodId) {
-    res.status(400);
-    throw new Error('Rating period ID is required');
-  }
-  
-  // Only for students
-  if (req.user.role !== 'student') {
-    res.status(403);
-    throw new Error('Only students can access this endpoint');
-  }
-  
-  // Get the rating period
-  const period = await RatingPeriod.findById(periodId);
-  if (!period) {
-    res.status(404);
-    throw new Error('Rating period not found');
-  }
-  
-  // Check if period is active
-  if (!period.isActive) {
-    res.status(400);
-    throw new Error('Rating period is not active');
-  }
-  
-  // Get student's schools and directions
-  const studentSchools = req.user.schools || [];
-  const studentDirections = req.user.directions || [];
-  
-  // Get targets that the student can rate based on their schools and directions
-  const results = {
-    teachers: [],
-    subjects: []
-  };
-  
-  // Get teachers this student can rate
-  if (period.targetType === 'teacher' || period.targetType === 'both') {
-    // Find teachers who teach in the student's schools and directions
-    const teachers = await User.find({
-      role: 'teacher',
-      $or: [
-        { schools: { $in: studentSchools } },
-        { directions: { $in: studentDirections } }
-      ]
-    })
-      .select('name email')
-      .lean();
-    
-    // Check which teachers the student has already rated
-    const ratedTeachers = await StudentRating.find({
-      student: req.user._id,
-      ratingPeriod: periodId,
-      targetType: 'teacher'
-    }).select('targetId');
-    
-    const ratedTeacherIds = ratedTeachers.map(r => r.targetId.toString());
-    
-    // Filter out already rated teachers
-    results.teachers = teachers.filter(t => !ratedTeacherIds.includes(t._id.toString()));
-  }
-  
-  // Get subjects this student can rate
-  if (period.targetType === 'subject' || period.targetType === 'both') {
-    // Find subjects for the student's directions
-    const subjects = await Subject.find({
-      direction: { $in: studentDirections }
-    })
-      .select('name direction')
-      .populate('direction', 'name')
-      .lean();
-    
-    // Check which subjects the student has already rated
-    const ratedSubjects = await StudentRating.find({
-      student: req.user._id,
-      ratingPeriod: periodId,
-      targetType: 'subject'
-    }).select('targetId');
-    
-    const ratedSubjectIds = ratedSubjects.map(r => r.targetId.toString());
-    
-    // Filter out already rated subjects
-    results.subjects = subjects.filter(s => !ratedSubjectIds.includes(s._id.toString()));
-  }
-  
-  res.status(200).json(results);
-});
-
-// @desc    Check if student has rated a specific target
-// @route   GET /api/ratings/check/:periodId/:targetType/:targetId
-// @access  Private (Student only)
-const checkStudentRating = asyncHandler(async (req, res) => {
-  const { periodId, targetType, targetId } = req.params;
-  
-  // Only for students
-  if (req.user.role !== 'student') {
-    res.status(403);
-    throw new Error('Only students can access this endpoint');
-  }
-  
-  // Check if rating exists
-  const rating = await StudentRating.findOne({
-    student: req.user._id,
-    ratingPeriod: periodId,
-    targetType,
-    targetId
-  });
-  
-  res.status(200).json({
-    hasRated: !!rating,
-    ratingId: rating ? rating._id : null
-  });
 });
 
 module.exports = {
