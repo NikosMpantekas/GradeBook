@@ -3,6 +3,18 @@ const mongoose = require('mongoose');
 // Single Database Connection for Multi-Tenant Architecture
 const connectDB = async () => {
   try {
+    // Check if MONGO_URI exists
+    if (!process.env.MONGO_URI) {
+      console.warn('Warning: MONGO_URI is not defined. Using fallback connection string.'.yellow);
+      // Use a fallback connection string for local development
+      process.env.MONGO_URI = 'mongodb://localhost:27017/gradebook';
+    }
+    
+    // Validate that MONGO_URI is a string
+    if (typeof process.env.MONGO_URI !== 'string') {
+      throw new Error('MONGO_URI must be a string');
+    }
+
     // Connect to a single MongoDB database
     const conn = await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
