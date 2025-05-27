@@ -469,6 +469,80 @@ router.get('/questions/:periodId', protect, admin, asyncHandler(async (req, res)
   }
 }));
 
+// Update a question (endpoint matching frontend API call pattern)
+router.put('/questions/:questionId', protect, admin, asyncHandler(async (req, res) => {
+  try {
+    const { text, questionType, targetType, order, ratingPeriod: periodId } = req.body;
+    
+    if (!periodId) {
+      res.status(400);
+      throw new Error('Rating period ID is required');
+    }
+    
+    const ratingPeriod = await RatingPeriod.findById(periodId);
+    
+    if (!ratingPeriod) {
+      res.status(404);
+      throw new Error('Rating period not found');
+    }
+    
+    // Find the question by its ID
+    const questionIndex = ratingPeriod.questions.findIndex(
+      q => q._id.toString() === req.params.questionId
+    );
+    
+    if (questionIndex === -1) {
+      res.status(404);
+      throw new Error('Question not found in this rating period');
+    }
+    
+    // Update the question
+    if (text) ratingPeriod.questions[questionIndex].text = text;
+    if (questionType) ratingPeriod.questions[questionIndex].questionType = questionType;
+    if (targetType) ratingPeriod.questions[questionIndex].targetType = targetType;
+    if (order !== undefined) ratingPeriod.questions[questionIndex].order = order;
+    
+    // Save the updated rating period
+    await ratingPeriod.save();
+    
+    // Return the updated question
+    res.status(200).json(ratingPeriod.questions[questionIndex]);
+  } catch (error) {
+    console.error('Error updating question:', error);
+    res.status(400).json({ message: error.message || 'Failed to update question' });
+  }
+}));
+
+// Delete a question (endpoint matching frontend API call pattern)
+router.delete('/questions/:questionId', protect, admin, asyncHandler(async (req, res) => {
+  try {
+    // We need to find which rating period contains this question
+    const ratingPeriods = await RatingPeriod.find({
+      'questions._id': req.params.questionId
+    });
+    
+    if (ratingPeriods.length === 0) {
+      res.status(404);
+      throw new Error('Question not found');
+    }
+    
+    const ratingPeriod = ratingPeriods[0];
+    
+    // Filter out the question to be removed
+    ratingPeriod.questions = ratingPeriod.questions.filter(
+      q => q._id.toString() !== req.params.questionId
+    );
+    
+    // Save the updated rating period
+    await ratingPeriod.save();
+    
+    res.status(200).json({ message: 'Question removed successfully' });
+  } catch (error) {
+    console.error('Error deleting question:', error);
+    res.status(400).json({ message: error.message || 'Failed to delete question' });
+  }
+}));
+
 // Create a new rating question (endpoint matching frontend API call pattern)
 router.post('/questions', protect, admin, asyncHandler(async (req, res) => {
   try {
