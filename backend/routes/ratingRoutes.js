@@ -451,5 +451,23 @@ router.get('/stats/:targetType/:targetId', protect, admin, asyncHandler(async (r
   }
 }));
 
+// Get questions for a rating period (endpoint matching frontend API call pattern)
+router.get('/questions/:periodId', protect, admin, asyncHandler(async (req, res) => {
+  try {
+    const ratingPeriod = await RatingPeriod.findById(req.params.periodId);
+    
+    if (!ratingPeriod) {
+      res.status(404);
+      throw new Error('Rating period not found');
+    }
+    
+    // Return the questions array from the rating period
+    res.status(200).json(ratingPeriod.questions);
+  } catch (error) {
+    console.error('Error fetching questions for rating period:', error);
+    res.status(400).json({ message: error.message || 'Failed to fetch questions' });
+  }
+}));
+
 module.exports = router;
 // End of file
