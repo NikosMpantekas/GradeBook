@@ -451,10 +451,10 @@ router.get('/stats/:targetType/:targetId', protect, admin, asyncHandler(async (r
   }
 }));
 
-// Get questions for a rating period (endpoint matching frontend API call pattern)
+// Get questions for a rating period (admin access - for management)
 router.get('/questions/:periodId', protect, admin, asyncHandler(async (req, res) => {
   try {
-    console.log(`Getting questions for period ID: ${req.params.periodId}`);
+    console.log(`Admin getting questions for period ID: ${req.params.periodId}`);
     const ratingPeriod = await RatingPeriod.findById(req.params.periodId);
     
     if (!ratingPeriod) {
@@ -475,6 +475,41 @@ router.get('/questions/:periodId', protect, admin, asyncHandler(async (req, res)
     res.status(200).json(questionsWithPeriodId);
   } catch (error) {
     console.error('Error fetching questions for rating period:', error);
+    res.status(400).json({ message: error.message || 'Failed to fetch questions' });
+  }
+}));
+
+// Get questions for a rating period (student access - for submitting ratings)
+router.get('/period/:periodId/questions', protect, student, asyncHandler(async (req, res) => {
+  try {
+    console.log(`Student getting questions for period ID: ${req.params.periodId}`);
+    const ratingPeriod = await RatingPeriod.findById(req.params.periodId);
+    
+    if (!ratingPeriod) {
+      res.status(404);
+      throw new Error('Rating period not found');
+    }
+    
+    // Check if the rating period is active
+    const now = new Date();
+    if (!ratingPeriod.isActive || now < ratingPeriod.startDate || now > ratingPeriod.endDate) {
+      res.status(403);
+      throw new Error('Rating period is not active');
+    }
+    
+    // Add ratingPeriod property to each question for proper filtering in frontend
+    const questionsWithPeriodId = ratingPeriod.questions.map(question => {
+      const questionObj = question.toObject();
+      questionObj.ratingPeriod = ratingPeriod._id;
+      return questionObj;
+    });
+    
+    console.log(`Student found ${questionsWithPeriodId.length} questions for period ${ratingPeriod.title}`);
+    
+    // Return the questions array with added ratingPeriod property
+    res.status(200).json(questionsWithPeriodId);
+  } catch (error) {
+    console.error('Error fetching questions for rating period (student):', error);
     res.status(400).json({ message: error.message || 'Failed to fetch questions' });
   }
 }));
