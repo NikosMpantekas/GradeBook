@@ -75,7 +75,8 @@ const RatingManager = () => {
   const { schools } = useSelector(state => state.schools);
   const { directions } = useSelector(state => state.directions);
 
-  // Local state - removed tabs
+  // Local state
+  const [activeTab, setActiveTab] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
   const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
@@ -123,7 +124,10 @@ const RatingManager = () => {
     }
   }, [selectedPeriod, dispatch]);
 
-  // Tab functionality removed
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
 
   // Reset period form function - moved outside handleOpenPeriodDialog for cleaner code
   const resetPeriodForm = () => {
@@ -317,8 +321,8 @@ const RatingManager = () => {
     setStatsDialogOpen(true);
   };
 
-  // Render periods with their questions (Google Forms style)
-  const renderPeriodsWithQuestions = () => {
+  // Render period list
+  const renderPeriodList = () => {
     if (!periods || periods.length === 0) {
       return (
         <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -338,205 +342,212 @@ const RatingManager = () => {
     }
 
     return (
-      <Box>
-        {periods.map(period => {
-          const isPeriodSelected = selectedPeriod && selectedPeriod._id === period._id;
-          const periodQuestions = questions.filter(q => q.ratingPeriod === period._id);
-          
-          return (
-            <Paper 
-              key={period._id} 
-              elevation={isPeriodSelected ? 3 : 1}
-              sx={{ 
-                mb: 3, 
-                p: 0,
-                borderRadius: 2,
-                border: '1px solid',
-                borderColor: isPeriodSelected ? 'primary.main' : 'divider',
-                overflow: 'hidden'
-              }}
-            >
-              {/* Period Header */}
-              <Box 
-                sx={{ 
-                  p: 2, 
-                  backgroundColor: isPeriodSelected ? 'primary.light' : 'grey.100',
-                  borderBottom: '1px solid',
-                  borderColor: 'divider',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-                onClick={() => handleSelectPeriod(period)}
-              >
-                <Box sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 'medium' }}>
-                      {period.title}
-                    </Typography>
-                    <Chip 
-                      size="small"
-                      label={period.isActive ? 'Active' : 'Inactive'}
-                      color={period.isActive ? 'success' : 'default'}
-                      sx={{ ml: 2 }}
-                    />
-                  </Box>
-                  <Box sx={{ mt: 0.5 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {format(new Date(period.startDate), 'MMM d, yyyy')} - {format(new Date(period.endDate), 'MMM d, yyyy')}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Target: {period.targetType === 'both' 
-                        ? 'Teachers & Subjects' 
-                        : period.targetType === 'teacher' ? 'Teachers Only' : 'Subjects Only'}
-                    </Typography>
-                  </Box>
-                </Box>
-                <Box>
-                  <IconButton 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTogglePeriodActive(period);
-                    }}
-                    color={period.isActive ? 'error' : 'success'}
-                    title={period.isActive ? 'Deactivate' : 'Activate'}
-                  >
-                    {period.isActive ? <StopIcon /> : <StartIcon />}
-                  </IconButton>
-                  <IconButton 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenPeriodDialog(period);
-                    }}
-                    color="primary"
-                    title="Edit"
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeletePeriod(period._id);
-                    }}
-                    color="error"
-                    title="Delete"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Box>
-              </Box>
-              
-              {/* Questions Section (shown when period is selected) */}
-              {isPeriodSelected && (
-                <Box sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" sx={{ mb: 2 }}>
-                    Questions ({periodQuestions.length})
+      <List>
+        {periods.map(period => (
+          <ListItem 
+            key={period._id} 
+            button 
+            selected={selectedPeriod && selectedPeriod._id === period._id}
+            onClick={() => handleSelectPeriod(period)}
+            sx={{ 
+              mb: 1, 
+              borderRadius: 1,
+              border: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: selectedPeriod && selectedPeriod._id === period._id 
+                ? 'action.selected' 
+                : 'background.paper'
+            }}
+          >
+            <ListItemText
+              primary={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+                    {period.title}
                   </Typography>
-                  
-                  {/* Questions list */}
-                  {periodQuestions.length > 0 ? (
-                    <List sx={{ mb: 2 }}>
-                      {periodQuestions.map((question, index) => (
-                        <ListItem 
-                          key={question._id}
-                          sx={{ 
-                            mb: 1, 
-                            borderRadius: 1,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            backgroundColor: 'background.paper'
-                          }}
-                        >
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            width: '100%',
-                            mr: 2
-                          }}>
-                            <Typography 
-                              variant="body1" 
-                              sx={{ 
-                                fontWeight: 'medium',
-                                minWidth: '24px',
-                                bgcolor: 'primary.main',
-                                color: 'primary.contrastText',
-                                borderRadius: '50%',
-                                width: 28,
-                                height: 28,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                mr: 2
-                              }}
-                            >
-                              {index + 1}
-                            </Typography>
-                            <Box sx={{ flexGrow: 1 }}>
-                              <Typography variant="body1">
-                                {question.text}
-                              </Typography>
-                              <Box sx={{ display: 'flex', mt: 0.5 }}>
-                                <Chip 
-                                  size="small"
-                                  label={question.questionType === 'rating' ? 'Rating (1-10)' : 'Text Answer'}
-                                  color={question.questionType === 'rating' ? 'primary' : 'secondary'}
-                                  sx={{ mr: 1 }}
-                                />
-                                {question.targetType !== 'both' && (
-                                  <Chip 
-                                    size="small"
-                                    label={question.targetType === 'teacher' ? 'Teachers Only' : 'Subjects Only'}
-                                    variant="outlined"
-                                  />
-                                )}
-                              </Box>
-                            </Box>
-                          </Box>
-                          <IconButton 
-                            edge="end" 
-                            onClick={() => handleDeleteQuestion(question._id)}
-                            color="error"
-                            title="Delete"
-                            sx={{ ml: 'auto' }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </ListItem>
-                      ))}
-                    </List>
-                  ) : (
-                    <Box sx={{ textAlign: 'center', py: 2, bgcolor: 'grey.50', borderRadius: 1, mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        No questions added yet
-                      </Typography>
-                    </Box>
-                  )}
-                  
-                  {/* Add question button */}
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={() => handleOpenQuestionDialog()}
-                    fullWidth
-                    sx={{ 
-                      borderStyle: 'dashed', 
-                      py: 1.5,
-                      borderRadius: 2,
-                      '&:hover': { borderStyle: 'dashed' }
-                    }}
-                  >
-                    Add Question
-                  </Button>
+                  <Chip 
+                    size="small"
+                    label={period.isActive ? 'Active' : 'Inactive'}
+                    color={period.isActive ? 'success' : 'default'}
+                    sx={{ ml: 2 }}
+                  />
                 </Box>
-              )}
-            </Paper>
-          );
-        })}
-      </Box>
+              }
+              secondary={
+                <Box sx={{ mt: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {format(new Date(period.startDate), 'MMM d, yyyy')} - {format(new Date(period.endDate), 'MMM d, yyyy')}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Target: {period.targetType === 'both' 
+                      ? 'Teachers & Subjects' 
+                      : period.targetType === 'teacher' ? 'Teachers Only' : 'Subjects Only'}
+                  </Typography>
+                </Box>
+              }
+            />
+            <ListItemSecondaryAction>
+              <IconButton 
+                edge="end" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTogglePeriodActive(period);
+                }}
+                color={period.isActive ? 'error' : 'success'}
+                title={period.isActive ? 'Deactivate' : 'Activate'}
+              >
+                {period.isActive ? <StopIcon /> : <StartIcon />}
+              </IconButton>
+              <IconButton 
+                edge="end" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenPeriodDialog(period);
+                }}
+                color="primary"
+                title="Edit"
+              >
+                <EditIcon />
+              </IconButton>
+              <IconButton 
+                edge="end" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeletePeriod(period._id);
+                }}
+                color="error"
+                title="Delete"
+              >
+                <DeleteIcon />
+              </IconButton>
+            </ListItemSecondaryAction>
+          </ListItem>
+        ))}
+      </List>
     );
   };
 
-    // This function is no longer needed as we've integrated questions directly into the period cards
+  // Render question list - improved Google Forms style
+  const renderQuestionList = () => {
+    if (!selectedPeriod) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="body1" color="text.secondary">
+            Please select a rating period to manage questions
+          </Typography>
+        </Box>
+      );
+    }
+
+    const periodQuestions = questions.filter(q => q.ratingPeriod === selectedPeriod._id);
+
+    if (!periodQuestions || periodQuestions.length === 0) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="body1" color="text.secondary">
+            No questions found for this rating period
+          </Typography>
+          <Button 
+            startIcon={<AddIcon />} 
+            variant="contained" 
+            sx={{ mt: 2 }}
+            onClick={() => handleOpenQuestionDialog()}
+          >
+            Add Your First Question
+          </Button>
+        </Box>
+      );
+    }
+
+    return (
+      <List>
+        {periodQuestions.map((question, index) => (
+          <ListItem 
+            key={question._id}
+            sx={{ 
+              mb: 1, 
+              borderRadius: 1,
+              border: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: 'background.paper'
+            }}
+          >
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              width: '100%'
+            }}>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  fontWeight: 'medium',
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: 28,
+                  height: 28,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 2
+                }}
+              >
+                {index + 1}
+              </Typography>
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography variant="body1">
+                  {question.text}
+                </Typography>
+                <Box sx={{ display: 'flex', mt: 0.5 }}>
+                  <Chip 
+                    size="small"
+                    label={question.questionType === 'rating' ? 'Rating (1-10)' : 'Text Answer'}
+                    color={question.questionType === 'rating' ? 'primary' : 'secondary'}
+                    sx={{ mr: 1 }}
+                  />
+                  {question.targetType !== 'both' && (
+                    <Chip 
+                      size="small"
+                      label={question.targetType === 'teacher' ? 'Teachers Only' : 'Subjects Only'}
+                      variant="outlined"
+                    />
+                  )}
+                </Box>
+              </Box>
+            </Box>
+            <ListItemSecondaryAction>
+              <IconButton 
+                edge="end" 
+                onClick={() => handleDeleteQuestion(question._id)}
+                color="error"
+                title="Delete"
+              >
+                <DeleteIcon />
+              </IconButton>
+            </ListItemSecondaryAction>
+          </ListItem>
+        ))}
+        
+        {/* Google Forms style add button */}
+        <Box sx={{ mt: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenQuestionDialog()}
+            fullWidth
+            sx={{ 
+              borderStyle: 'dashed', 
+              py: 1.5,
+              borderRadius: 2,
+              '&:hover': { borderStyle: 'dashed' }
+            }}
+          >
+            Add Question
+          </Button>
+        </Box>
+      </List>
+    );
+  };
 
   // If loading
   if (isLoading) {
@@ -558,17 +569,53 @@ const RatingManager = () => {
           Create and manage rating periods and questions for students to rate teachers and subjects.
         </Typography>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenPeriodDialog()}
-          >
-            Create Rating Period
-          </Button>
-        </Box>
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          indicatorColor="primary"
+          textColor="primary"
+          sx={{ mb: 3 }}
+        >
+          <Tab label="Rating Periods" />
+          <Tab label="Questions" />
+        </Tabs>
 
-        {renderPeriodsWithQuestions()}
+        <Divider sx={{ mb: 3 }} />
+
+        {activeTab === 0 && (
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenPeriodDialog()}
+              >
+                Create Rating Period
+              </Button>
+            </Box>
+            {renderPeriodList()}
+          </Box>
+        )}
+
+        {activeTab === 1 && (
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="subtitle1">
+                {selectedPeriod ? `Questions for: ${selectedPeriod.title}` : 'Select a rating period'}
+              </Typography>
+              {selectedPeriod && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenQuestionDialog()}
+                >
+                  Add Question
+                </Button>
+              )}
+            </Box>
+            {renderQuestionList()}
+          </Box>
+        )}
       </Paper>
 
       {/* Rating Period Dialog */}
