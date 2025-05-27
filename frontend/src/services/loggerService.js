@@ -205,7 +205,7 @@ const logError = (category, message, error) => {
 };
 
 // Export all logging functions
-export default {
+const loggerService = {
   debug,
   info,
   warn,
@@ -217,3 +217,5 @@ export default {
   clearLogs,
   configure
 };
+
+export default loggerService;

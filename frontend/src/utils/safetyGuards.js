@@ -69,53 +69,56 @@ export const applyGlobalSafetyGuards = () => {
  * Patch Array prototype methods to be more resilient to undefined/null
  */
 function patchArrayMethods() {
-  // Safely patch the find method to handle null values
-  const originalFind = Array.prototype.find;
-  Array.prototype.find = function(callback, thisArg) {
+  // Instead of modifying Array.prototype, we'll create safe utility functions
+  // and expose them globally
+  
+  // Define safeFind as a global function
+  window.safeFind = function(array, callback, thisArg) {
+    if (!array || !Array.isArray(array)) return undefined;
     if (!callback || typeof callback !== 'function') {
-      console.warn('[SafetyGuard] Array.find called with invalid callback');
+      console.warn('[SafetyGuard] safeFind called with invalid callback');
       return undefined;
     }
     
     try {
-      return originalFind.call(this, callback, thisArg);
+      return Array.prototype.find.call(array, callback, thisArg);
     } catch (error) {
-      console.warn('[SafetyGuard] Error in Array.find, returning undefined:', error);
-      trackError(error, 'SafeArray.find');
+      console.warn('[SafetyGuard] Error in safeFind, returning undefined:', error);
+      trackError(error, 'safeFind');
       return undefined;
     }
   };
   
-  // Safely patch the map method to handle null values
-  const originalMap = Array.prototype.map;
-  Array.prototype.map = function(callback, thisArg) {
+  // Define safeMap as a global function
+  window.safeMap = function(array, callback, thisArg) {
+    if (!array || !Array.isArray(array)) return [];
     if (!callback || typeof callback !== 'function') {
-      console.warn('[SafetyGuard] Array.map called with invalid callback');
+      console.warn('[SafetyGuard] safeMap called with invalid callback');
       return [];
     }
     
     try {
-      return originalMap.call(this, callback, thisArg);
+      return Array.prototype.map.call(array, callback, thisArg);
     } catch (error) {
-      console.warn('[SafetyGuard] Error in Array.map, returning empty array:', error);
-      trackError(error, 'SafeArray.map');
+      console.warn('[SafetyGuard] Error in safeMap, returning empty array:', error);
+      trackError(error, 'safeMap');
       return [];
     }
   };
   
-  // Safely patch the filter method to handle null values
-  const originalFilter = Array.prototype.filter;
-  Array.prototype.filter = function(callback, thisArg) {
+  // Define safeFilter as a global function
+  window.safeFilter = function(array, callback, thisArg) {
+    if (!array || !Array.isArray(array)) return [];
     if (!callback || typeof callback !== 'function') {
-      console.warn('[SafetyGuard] Array.filter called with invalid callback');
+      console.warn('[SafetyGuard] safeFilter called with invalid callback');
       return [];
     }
     
     try {
-      return originalFilter.call(this, callback, thisArg);
+      return Array.prototype.filter.call(array, callback, thisArg);
     } catch (error) {
-      console.warn('[SafetyGuard] Error in Array.filter, returning empty array:', error);
-      trackError(error, 'SafeArray.filter');
+      console.warn('[SafetyGuard] Error in safeFilter, returning empty array:', error);
+      trackError(error, 'safeFilter');
       return [];
     }
   };
