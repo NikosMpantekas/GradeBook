@@ -57,7 +57,7 @@ const CreateGradeSimple = () => {
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [subjects, setSubjects] = useState([]);
-  const [students, setStudents] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [directions, setDirections] = useState([]);
   const [selectedDirection, setSelectedDirection] = useState('');
   const [filteredSubjects, setFilteredSubjects] = useState([]);

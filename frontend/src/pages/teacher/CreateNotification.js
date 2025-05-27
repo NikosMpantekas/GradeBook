@@ -22,7 +22,7 @@ import {
   FormControlLabel,
   Switch,
   CircularProgress,
-  Divider,
+  // Divider, // Unused import
   Chip,
   ListItemText,
   Checkbox,
@@ -31,8 +31,8 @@ import {
 import { 
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
-  Notifications as NotificationsIcon,
-  FilterList as FilterIcon
+  Notifications as NotificationsIcon
+  // FilterList as FilterIcon // Unused import
 } from '@mui/icons-material';
 
 // Import our custom components
@@ -78,6 +78,7 @@ const CreateNotification = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Loading state for all reference data
+  // eslint-disable-next-line no-unused-vars
   const isLoadingOptions = isSchoolsLoading || isDirectionsLoading || isSubjectsLoading || isUsersLoading;
   
   // Fetch all required data when component mounts
