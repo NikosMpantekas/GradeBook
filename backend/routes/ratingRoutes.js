@@ -469,5 +469,47 @@ router.get('/questions/:periodId', protect, admin, asyncHandler(async (req, res)
   }
 }));
 
+// Create a new rating question (endpoint matching frontend API call pattern)
+router.post('/questions', protect, admin, asyncHandler(async (req, res) => {
+  try {
+    const { text, questionType, targetType, order, ratingPeriod: periodId } = req.body;
+    
+    // Validation
+    if (!text || !periodId) {
+      res.status(400);
+      throw new Error('Question text and rating period ID are required');
+    }
+    
+    const ratingPeriod = await RatingPeriod.findById(periodId);
+    
+    if (!ratingPeriod) {
+      res.status(404);
+      throw new Error('Rating period not found');
+    }
+    
+    // Create the new question
+    const newQuestion = {
+      text,
+      questionType: questionType || 'rating',
+      targetType: targetType || 'both',
+      order: order || ratingPeriod.questions.length
+    };
+    
+    // Add to the questions array
+    ratingPeriod.questions.push(newQuestion);
+    
+    // Save the updated rating period
+    await ratingPeriod.save();
+    
+    // Return the newly created question (the last one in the array)
+    const createdQuestion = ratingPeriod.questions[ratingPeriod.questions.length - 1];
+    
+    res.status(201).json(createdQuestion);
+  } catch (error) {
+    console.error('Error adding question to rating period:', error);
+    res.status(400).json({ message: error.message || 'Failed to add question' });
+  }
+}));
+
 module.exports = router;
 // End of file
