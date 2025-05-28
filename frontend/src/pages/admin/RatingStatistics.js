@@ -40,7 +40,8 @@ const RatingStatistics = () => {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
 
-  const { userInfo } = useSelector((state) => state.userLogin);
+  // Add defensive coding for Redux state access
+  const { userInfo } = useSelector((state) => state?.userLogin || {});
 
   // Fetch rating periods on component mount
   useEffect(() => {
@@ -69,9 +70,11 @@ const RatingStatistics = () => {
       const data = response?.data || [];
       setPeriods(data);
       
-      // Set the first period as selected if available
-      if (data.length > 0) {
+      // Set the first period as selected if available - with extra null checking
+      if (Array.isArray(data) && data.length > 0 && data[0] && data[0]._id) {
         setSelectedPeriod(data[0]._id);
+      } else {
+        console.log('No valid rating periods found or period data structure is unexpected');
       }
     } catch (error) {
       setError('Failed to fetch rating periods. Please try again.');
@@ -84,6 +87,13 @@ const RatingStatistics = () => {
   };
 
   const fetchStats = async () => {
+    // Guard clause - return early if critical data is missing
+    if (!userInfo?.token || !selectedPeriod) {
+      setError('Missing authentication token or period selection');
+      console.error('Cannot fetch stats: token or periodId missing');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     
@@ -94,15 +104,30 @@ const RatingStatistics = () => {
         },
       };
 
-      // Build query parameters
-      let queryParams = `?periodId=${selectedPeriod}`;
-      if (selectedTargetType !== 'all') {
-        queryParams += `&targetType=${selectedTargetType}`;
+      // Build query parameters with safety checks
+      let queryParams = `?periodId=${encodeURIComponent(selectedPeriod)}`;
+      if (selectedTargetType && selectedTargetType !== 'all') {
+        queryParams += `&targetType=${encodeURIComponent(selectedTargetType)}`;
       }
 
+      console.log(`Fetching stats with params: ${queryParams}`);
       const response = await axios.get(`/api/ratings/stats${queryParams}`, config);
-      setStats(response?.data || { targets: [] });
+      
+      // Extra validation of the response data
+      if (!response?.data) {
+        console.warn('Received empty response data from ratings stats API');
+        setStats({ targets: [] });
+      } else {
+        // Ensure targets is always an array even if missing in the response
+        const sanitizedData = {
+          ...response.data,
+          targets: Array.isArray(response.data.targets) ? response.data.targets : [],
+          totalRatings: response.data.totalRatings || 0
+        };
+        setStats(sanitizedData);
+      }
     } catch (error) {
+      console.error('Error fetching stats:', error);
       setError('Failed to fetch rating statistics. Please try again.');
       toast.error(
         error?.response?.data?.message || 'Failed to fetch rating statistics'
@@ -112,13 +137,15 @@ const RatingStatistics = () => {
     }
   };
 
-  // Get human-readable target type
+  // Get human-readable target type with defensive coding
   const getTargetTypeText = (type) => {
+    if (!type) return 'Unknown';
     return type === 'teacher' ? 'Teacher' : 'Subject';
   };
 
-  // Get icon for target type
+  // Get icon for target type with defensive coding
   const getTargetTypeIcon = (type) => {
+    if (!type) return <SchoolIcon />;
     return type === 'teacher' ? <PersonIcon /> : <SchoolIcon />;
   };
 
@@ -218,7 +245,7 @@ const RatingStatistics = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {stats.targets.map((target, index) => (
+                  {Array.isArray(stats?.targets) ? stats.targets.map((target, index) => (
                     <TableRow key={index}>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -243,7 +270,11 @@ const RatingStatistics = () => {
                         </Box>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">No target data available</TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
