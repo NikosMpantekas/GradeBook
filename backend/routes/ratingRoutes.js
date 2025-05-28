@@ -934,24 +934,34 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
       
       // Process each answer in the rating
       rating.answers.forEach(answer => {
+        // Convert questionId to string for consistent handling
+        const questionIdStr = answer.questionId.toString();
+        
+        // Track ALL questions including text questions (regardless of rating value)
+        if (!targetStats.questionStats[questionIdStr]) {
+          targetStats.questionStats[questionIdStr] = {
+            questionId: questionIdStr,
+            // Store the question text directly from the answer to ensure we have it
+            questionText: answer.questionText || '', 
+            totalValue: 0,
+            count: 0,
+            average: 0,
+            // Track text answers separately
+            hasTextResponses: answer.textAnswer ? true : false,
+            textResponseCount: answer.textAnswer ? 1 : 0
+          };
+        } else {
+          // If this answer has text, increment the text response counter
+          if (answer.textAnswer) {
+            targetStats.questionStats[questionIdStr].hasTextResponses = true;
+            targetStats.questionStats[questionIdStr].textResponseCount++;
+          }
+        }
+        
+        // Only process rating values for rating questions
         if (answer.ratingValue) {
           targetStats.totalRatingValue += answer.ratingValue;
           targetStats.ratingCount++;
-          
-          // Track per-question statistics
-          // Convert questionId to string for consistent handling
-          const questionIdStr = answer.questionId.toString();
-          
-          if (!targetStats.questionStats[questionIdStr]) {
-            targetStats.questionStats[questionIdStr] = {
-              questionId: questionIdStr,
-              // Store the question text directly from the answer to ensure we have it
-              questionText: answer.questionText || '', 
-              totalValue: 0,
-              count: 0,
-              average: 0
-            };
-          }
           
           const questionStat = targetStats.questionStats[questionIdStr];
           questionStat.totalValue += answer.ratingValue;
@@ -1027,9 +1037,11 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
             qStat.questionType = question.questionType || 'rating';
             qStat.order = question.order || 0;
             
-            // Ensure we have proper text question identification
-            if (question.questionType === 'text') {
-              console.log(`Found text question: ${question.text}`);
+            // CRITICAL: Force detection of text questions based on both model and responses
+            if (question.questionType === 'text' || qStat.hasTextResponses) {
+              qStat.questionType = 'text';
+              console.log(`Identified text question: ${question.text} (id: ${qStat.questionId})`);
+              console.log(`Text responses: ${qStat.textResponseCount || 0}`);
             }
           } else {
             console.log(`Question not found for ID: ${qStat.questionId}`);
