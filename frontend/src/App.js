@@ -63,7 +63,7 @@ import ManageSubjects from './pages/admin/ManageSubjects';
 import SchoolBranchManager from './pages/admin/SchoolBranchManager';
 import RatingManager from './pages/admin/RatingManager';
 import RatingStatistics from './pages/admin/RatingStatistics';
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // SuperAdmin Pages
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
@@ -74,7 +74,7 @@ import SchoolOwnerDetails from './pages/superadmin/SchoolOwnerDetails';
 import { setupPushNotifications } from './services/pushNotificationService';
 import setupAxios from './app/setupAxios';
 import logger from './services/loggerService';
-import ErrorBoundary from './components/common/ErrorBoundary';
+// Using the ErrorBoundary from ./components/ErrorBoundary
 import { APP_VERSION, initAppConfig } from './config/appConfig';
 
 // Custom components
