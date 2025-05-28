@@ -49,9 +49,13 @@ const RatingStatistics = () => {
   // Add defensive coding for Redux state access
   const { userInfo } = useSelector((state) => state?.userLogin || {});
   
-  // Validate token on mount
+  // Validate token on mount - but only take action if definitely invalid
   useEffect(() => {
-    if (!userInfo || !userInfo.token) {
+    // Reset token valid state on first load - assume valid until proven otherwise
+    setTokenValid(true);
+    
+    // Only redirect if we're certain there's no token
+    if (userInfo === null || userInfo === undefined) {
       setTokenValid(false);
       setError('Authentication required. Please log in.');
       // Redirect to login after a short delay
@@ -75,8 +79,8 @@ const RatingStatistics = () => {
   }, [selectedPeriod, selectedTargetType]);
 
   const fetchRatingPeriods = async () => {
-    // Don't attempt to fetch if we don't have a valid token
-    if (!userInfo?.token) {
+    // Only bail completely if we have no userInfo at all
+    if (userInfo === null || userInfo === undefined) {
       setError('Authentication required. Please log in again.');
       setTokenValid(false);
       return;
@@ -139,14 +143,18 @@ const RatingStatistics = () => {
   };
 
   const fetchStats = async () => {
-    // Guard clause - return early if critical data is missing
-    if (!userInfo?.token || !selectedPeriod) {
-      setError('Missing authentication token or period selection');
-      console.error('Cannot fetch stats: token or periodId missing');
-      if (!userInfo?.token) {
-        setTokenValid(false);
-        setTimeout(() => navigate('/login'), 2000);
-      }
+    // Guard clause - only for completely missing userInfo or period
+    if (userInfo === null || userInfo === undefined) {
+      setError('Authentication required. Please try logging in again.');
+      console.error('Cannot fetch stats: userInfo missing');
+      setTokenValid(false);
+      setTimeout(() => navigate('/login'), 2000);
+      return;
+    }
+    
+    if (!selectedPeriod) {
+      setError('Please select a rating period');
+      console.error('Cannot fetch stats: periodId missing');
       return;
     }
     
