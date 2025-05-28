@@ -21,12 +21,19 @@ import {
   TableHead,
   TableBody,
   TableRow,
-  TableCell
+  TableCell,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider,
+  Tooltip
 } from '@mui/material';
 import { 
   Refresh as RefreshIcon,
   School as SchoolIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  ExpandMore as ExpandMoreIcon,
+  QuestionAnswer as QuestionIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -235,30 +242,95 @@ const RatingStatistics = () => {
                 </TableHead>
                 <TableBody>
                   {Array.isArray(stats?.targets) ? stats.targets.map((target, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          {getTargetTypeIcon(target?.targetType)}
-                          <Typography sx={{ ml: 1 }}>
-                            {getTargetTypeText(target?.targetType)}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>{target?.name || 'Unknown'}</TableCell>
-                      <TableCell align="center">{target?.totalRatings || 0}</TableCell>
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Rating
-                            value={target?.averageRating || 0}
-                            precision={0.1}
-                            readOnly
-                          />
-                          <Typography variant="body2" sx={{ ml: 1 }}>
-                            ({(target?.averageRating || 0).toFixed(1)})
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
+                    <React.Fragment key={index}>
+                      <TableRow>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            {getTargetTypeIcon(target?.targetType)}
+                            <Typography sx={{ ml: 1 }}>
+                              {getTargetTypeText(target?.targetType)}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{target?.name || 'Unknown'}</TableCell>
+                        <TableCell align="center">{target?.totalRatings || 0}</TableCell>
+                        <TableCell align="center">
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Rating
+                              value={target?.averageRating || 0}
+                              precision={0.1}
+                              readOnly
+                            />
+                            <Typography variant="body2" sx={{ ml: 1 }}>
+                              ({(target?.averageRating || 0).toFixed(1)})
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                      {Array.isArray(target?.questionStats) && target.questionStats.length > 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} sx={{ py: 0, borderBottom: 'none' }}>
+                            <Accordion sx={{ boxShadow: 0, backgroundColor: 'rgba(0, 0, 0, 0.02)' }}>
+                              <AccordionSummary
+                                expandIcon={<ExpandMoreIcon />}
+                                aria-controls={`panel-${index}-content`}
+                                id={`panel-${index}-header`}
+                                sx={{ 
+                                  borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                                  minHeight: '48px',
+                                  '&.Mui-expanded': {
+                                    minHeight: '48px'
+                                  }
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <QuestionIcon fontSize="small" sx={{ mr: 1 }} />
+                                  <Typography variant="body2">Show ratings by question ({target.questionStats.length})</Typography>
+                                </Box>
+                              </AccordionSummary>
+                              <AccordionDetails sx={{ p: 0 }}>
+                                <Table size="small">
+                                  <TableHead>
+                                    <TableRow>
+                                      <TableCell>Question</TableCell>
+                                      <TableCell align="center">Rating</TableCell>
+                                      <TableCell align="center">Responses</TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {target.questionStats.map((qStat, qIndex) => (
+                                      <TableRow key={qIndex}>
+                                        <TableCell>
+                                          <Tooltip title={qStat.questionText || 'Unknown Question'} placement="top-start">
+                                            <Typography noWrap variant="body2" sx={{ maxWidth: '300px' }}>
+                                              {qStat.questionText || 'Unknown Question'}
+                                            </Typography>
+                                          </Tooltip>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Rating
+                                              value={qStat.average || 0}
+                                              precision={0.1}
+                                              readOnly
+                                              size="small"
+                                            />
+                                            <Typography variant="body2" sx={{ ml: 1 }}>
+                                              ({(qStat.average || 0).toFixed(1)})
+                                            </Typography>
+                                          </Box>
+                                        </TableCell>
+                                        <TableCell align="center">{qStat.count || 0}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </AccordionDetails>
+                            </Accordion>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   )) : (
                     <TableRow>
                       <TableCell colSpan={4} align="center">No target data available</TableCell>

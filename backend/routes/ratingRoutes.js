@@ -874,6 +874,16 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
     
     console.log('Rating stats summary query:', query);
     
+    // Get the rating period to get questions
+    let ratingPeriod = null;
+    let questions = [];
+    if (periodId) {
+      ratingPeriod = await RatingPeriod.findById(periodId);
+      if (ratingPeriod && ratingPeriod.questions) {
+        questions = ratingPeriod.questions;
+      }
+    }
+    
     // Get all ratings matching the criteria
     const ratings = await StudentRating.find(query);
     console.log(`Found ${ratings.length} total ratings`);
@@ -894,7 +904,8 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
           ratingCount: 0,
           averageRating: 0,
           totalRatings: 0,
-          name: null // Will be populated later
+          name: null, // Will be populated later
+          questionStats: {} // For per-question statistics
         });
       }
       
@@ -907,6 +918,21 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
         if (answer.ratingValue) {
           targetStats.totalRatingValue += answer.ratingValue;
           targetStats.ratingCount++;
+          
+          // Track per-question statistics
+          if (!targetStats.questionStats[answer.questionId]) {
+            targetStats.questionStats[answer.questionId] = {
+              questionId: answer.questionId,
+              questionText: '', // Will be populated later
+              totalValue: 0,
+              count: 0,
+              average: 0
+            };
+          }
+          
+          const questionStat = targetStats.questionStats[answer.questionId];
+          questionStat.totalValue += answer.ratingValue;
+          questionStat.count++;
         }
       });
     });
@@ -916,6 +942,16 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
       if (targetStat.ratingCount > 0) {
         targetStat.averageRating = targetStat.totalRatingValue / targetStat.ratingCount;
       }
+      
+      // Calculate per-question averages
+      Object.values(targetStat.questionStats).forEach(qStat => {
+        if (qStat.count > 0) {
+          qStat.average = qStat.totalValue / qStat.count;
+        }
+      });
+      
+      // Convert question stats object to array
+      targetStat.questionStats = Object.values(targetStat.questionStats);
     });
     
     // Convert targets map to array
@@ -956,6 +992,24 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
       });
     }
     
+    // Add question text to each question stat
+    if (questions.length > 0) {
+      targetsArray.forEach(target => {
+        target.questionStats.forEach(qStat => {
+          // Find the question in the rating period
+          const question = questions.find(q => q._id.toString() === qStat.questionId);
+          if (question) {
+            qStat.questionText = question.text || 'Unknown Question';
+            qStat.questionType = question.questionType || 'rating';
+            qStat.order = question.order || 0;
+          }
+        });
+        
+        // Sort question stats by question order
+        target.questionStats.sort((a, b) => (a.order || 0) - (b.order || 0));
+      });
+    }
+    
     // Convert targets map to array again with names
     const resultsArray = Array.from(targetsMap.values());
     
@@ -964,7 +1018,14 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
     
     res.status(200).json({
       totalRatings: ratings.length,
-      targets: resultsArray
+      targets: resultsArray,
+      questions: questions.map(q => ({
+        _id: q._id,
+        text: q.text,
+        questionType: q.questionType,
+        targetType: q.targetType,
+        order: q.order
+      })).sort((a, b) => (a.order || 0) - (b.order || 0))
     });
   } catch (error) {
     console.error('Error fetching rating statistics summary:', error);
