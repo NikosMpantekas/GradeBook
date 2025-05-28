@@ -63,6 +63,7 @@ import ManageSubjects from './pages/admin/ManageSubjects';
 import SchoolBranchManager from './pages/admin/SchoolBranchManager';
 import RatingManager from './pages/admin/RatingManager';
 import RatingStatistics from './pages/admin/RatingStatistics';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // SuperAdmin Pages
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
@@ -451,7 +452,9 @@ function App() {
             } />
             <Route path="/app/admin/rating-statistics" element={
               <AdminRoute>
-                <RatingStatistics />
+                <ErrorBoundary componentName="Rating Statistics">
+                  <RatingStatistics />
+                </ErrorBoundary>
               </AdminRoute>
             } />
           </Route>

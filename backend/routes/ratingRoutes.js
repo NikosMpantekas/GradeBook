@@ -575,10 +575,25 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
       answersCount: answers?.length || 0
     });
     
-    // Validation
-    if (!periodId || !targetType || !targetId || !answers) {
+    // Validation with more detailed errors
+    if (!periodId) {
       res.status(400);
-      throw new Error('Missing required fields');
+      throw new Error('Rating period ID is required');
+    }
+    
+    if (!targetType) {
+      res.status(400);
+      throw new Error('Target type is required');
+    }
+    
+    if (!targetId) {
+      res.status(400);
+      throw new Error('Target ID is required');
+    }
+    
+    if (!answers || !Array.isArray(answers) || answers.length === 0) {
+      res.status(400);
+      throw new Error('At least one answer is required');
     }
     
     // Check if rating period exists and is active
@@ -619,7 +634,7 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
     // Check if student has already submitted a rating for this target in this period
     const existingRating = await StudentRating.findOne({
       student: req.user._id,
-      ratingPeriod: ratingPeriodId,
+      ratingPeriod: periodId, // Use the periodId variable we defined earlier
       targetType,
       targetId
     });
@@ -630,7 +645,21 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
     }
     
     // Process and validate answers
-    const processedAnswers = answers.map(answer => {
+    const processedAnswers = answers.map((answer, index) => {
+      // Validate answer has required fields
+      if (!answer || typeof answer !== 'object') {
+        throw new Error(`Answer at index ${index} is invalid`);
+      }
+      
+      if (!answer.question) {
+        throw new Error(`Answer at index ${index} is missing the question ID`);
+      }
+      
+      // For rating type questions, ensure rating value is provided
+      if (answer.questionType === 'rating' && (answer.ratingValue === undefined || answer.ratingValue === null)) {
+        throw new Error(`Rating value is required for question at index ${index}`);
+      }
+      
       // Find the question in the rating period to get its text
       const question = periodRecord.questions.id(answer.question);
       
@@ -638,11 +667,19 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
         throw new Error(`Question with ID ${answer.question} not found`);
       }
       
+      // For rating questions, ensure the rating value is between 1 and 5
+      if (question.questionType === 'rating' && 
+          (typeof answer.ratingValue !== 'number' || 
+           answer.ratingValue < 1 || 
+           answer.ratingValue > 5)) {
+        throw new Error(`Rating value must be a number between 1 and 5 for question: "${question.text}"`);
+      }
+      
       return {
         questionId: answer.question,
         questionText: question.text,
-        ratingValue: answer.ratingValue,
-        textAnswer: answer.textAnswer
+        ratingValue: answer.ratingValue !== undefined ? answer.ratingValue : null,
+        textAnswer: answer.textAnswer || ""
       };
     });
     
