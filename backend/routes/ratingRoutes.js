@@ -338,12 +338,15 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
     }
     
     // Get student's school and direction
-    // Extract proper IDs from objects if needed
-    const studentSchool = req.user.school ? 
-      (typeof req.user.school === 'object' ? req.user.school._id || req.user.school : req.user.school) : 
-      (req.user.schools && req.user.schools.length > 0 ? 
-        (typeof req.user.schools[0] === 'object' ? req.user.schools[0]._id || req.user.schools[0] : req.user.schools[0]) : 
-        null);
+    // First priority: Use schoolId from token that was set in auth middleware
+    // Second priority: Extract from user object if token school not available
+    const studentSchool = req.schoolId || (
+      req.user.school ? 
+        (typeof req.user.school === 'object' ? req.user.school._id || req.user.school : req.user.school) : 
+        (req.user.schools && req.user.schools.length > 0 ? 
+          (typeof req.user.schools[0] === 'object' ? req.user.schools[0]._id || req.user.schools[0] : req.user.schools[0]) : 
+          null)
+    );
         
     const studentDirection = req.user.direction ? 
       (typeof req.user.direction === 'object' ? req.user.direction._id || req.user.direction : req.user.direction) : 
@@ -603,11 +606,15 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
     });
     
     // Extract school and direction IDs properly like we did in targets endpoint
-    const studentSchool = req.user.school ? 
-      (typeof req.user.school === 'object' ? req.user.school._id || req.user.school : req.user.school) : 
-      (req.user.schools && req.user.schools.length > 0 ? 
-        (typeof req.user.schools[0] === 'object' ? req.user.schools[0]._id || req.user.schools[0] : req.user.schools[0]) : 
-        null);
+    // First priority: Use schoolId from token that was set in auth middleware
+    // Second priority: Extract from user object if token school not available
+    const studentSchool = req.schoolId || (
+      req.user.school ? 
+        (typeof req.user.school === 'object' ? req.user.school._id || req.user.school : req.user.school) : 
+        (req.user.schools && req.user.schools.length > 0 ? 
+          (typeof req.user.schools[0] === 'object' ? req.user.schools[0]._id || req.user.schools[0] : req.user.schools[0]) : 
+          null)
+    );
         
     const studentDirection = req.user.direction ? 
       (typeof req.user.direction === 'object' ? req.user.direction._id || req.user.direction : req.user.direction) : 
