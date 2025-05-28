@@ -192,6 +192,13 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         checkPermission: (user) => user.role === 'admin',
       },
+      {
+        text: 'Rating Statistics',
+        icon: <AssessmentIcon />,
+        path: '/app/admin/rating-statistics',
+        roles: ['admin'],
+        checkPermission: (user) => user.role === 'admin',
+      },
 
       {
         text: 'Contact Messages',

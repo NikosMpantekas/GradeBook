@@ -482,69 +482,46 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
     // Fetch subjects if applicable
     if (ratingPeriod.targetType === 'both' || ratingPeriod.targetType === 'subject') {
       try {
-        // Create a tiered approach with multiple queries to ensure we get some subjects
-        let subjects = [];
-        let queriesUsed = [];
+        // CRITICAL FIX: Only show subjects the student is enrolled in
+        // Get the student's enrolled subjects from their user profile
+        console.log('Checking student enrollment subjects');
         
-        // TIER 1: Try with both school and direction (most specific)
-        if (studentSchool && studentDirection) {
-          const tier1Query = {
-            school: studentSchool,
-            $or: [
-              { direction: studentDirection },
-              { directions: studentDirection }
-            ]
-          };
-          queriesUsed.push('TIER 1: School + Direction');
-          console.log('TIER 1 subject query:', JSON.stringify(tier1Query));
-          const tier1Results = await Subject.find(tier1Query).select('_id name');
-          console.log(`TIER 1 found ${tier1Results.length} subjects`);
-          subjects = [...tier1Results];
+        // Ensure we have the complete user data with the subjects populated
+        const studentWithSubjects = await User.findById(req.user._id)
+          .select('subjects');
+          
+        if (!studentWithSubjects || !studentWithSubjects.subjects || !Array.isArray(studentWithSubjects.subjects)) {
+          console.log('No subject enrollment data found for student');
+          response.subjects = [];
+          return;
         }
         
-        // TIER 2: If no results, try with just school
-        if (subjects.length === 0 && studentSchool) {
-          const tier2Query = { school: studentSchool };
-          queriesUsed.push('TIER 2: School only');
-          console.log('TIER 2 subject query:', JSON.stringify(tier2Query));
-          const tier2Results = await Subject.find(tier2Query).select('_id name');
-          console.log(`TIER 2 found ${tier2Results.length} subjects`);
-          subjects = [...tier2Results];
+        // Get the IDs of subjects the student is enrolled in
+        const enrolledSubjectIds = studentWithSubjects.subjects.map(subjectId => 
+          subjectId.toString()
+        );
+        
+        console.log(`Student is enrolled in ${enrolledSubjectIds.length} subjects: ${JSON.stringify(enrolledSubjectIds)}`);
+        
+        if (enrolledSubjectIds.length === 0) {
+          console.log('Student is not enrolled in any subjects');
+          response.subjects = [];
+          return;
         }
         
-        // TIER 3: If still no results, try with just direction
-        if (subjects.length === 0 && studentDirection) {
-          const tier3Query = {
-            $or: [
-              { direction: studentDirection },
-              { directions: studentDirection }
-            ]
-          };
-          queriesUsed.push('TIER 3: Direction only');
-          console.log('TIER 3 subject query:', JSON.stringify(tier3Query));
-          const tier3Results = await Subject.find(tier3Query).select('_id name');
-          console.log(`TIER 3 found ${tier3Results.length} subjects`);
-          subjects = [...tier3Results];
-        }
+        // Get the full subject data for the enrolled subjects
+        const subjects = await Subject.find({
+          _id: { $in: enrolledSubjectIds }
+        }).select('_id name');
         
-        // TIER 4: If still no results, just get all subjects as a last resort
-        if (subjects.length === 0) {
-          queriesUsed.push('TIER 4: All subjects');
-          console.log('TIER 4: Getting all subjects as fallback');
-          const tier4Results = await Subject.find({}).select('_id name');
-          console.log(`TIER 4 found ${tier4Results.length} subjects`);
-          subjects = [...tier4Results];
-        }
-        
-        console.log(`Used query tiers: ${queriesUsed.join(', ')}`);
-        console.log(`Found ${subjects.length} total subjects for student before filtering rated ones`);
+        console.log(`Found ${subjects.length} enrolled subjects for student`);
         
         // Filter out already rated subjects
         response.subjects = subjects.filter(subject => 
           !ratedSubjectIds.includes(subject._id.toString())
         );
         
-        console.log(`After filtering, ${response.subjects.length} subjects remain for rating`);
+        console.log(`After filtering out rated ones, ${response.subjects.length} subjects remain for rating`);
       } catch (error) {
         console.error('Error fetching subjects:', error);
         // Default to empty array on error

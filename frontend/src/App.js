@@ -56,12 +56,13 @@ import ManageUsers from './pages/admin/ManageUsers';
 // CRITICAL FIX: Use error-wrapped version of CreateUser to fix the TypeError in direction selection
 import CreateUserErrorWrapper from './pages/admin/CreateUserErrorWrapper';
 import EditUser from './pages/admin/EditUser';
-import SchoolBranchManager from './pages/admin/SchoolBranchManager';
+import StudentProgress from './pages/admin/StudentProgress';
+import ContactMessages from './pages/admin/ContactMessages';
 import ManageDirections from './pages/admin/ManageDirections';
 import ManageSubjects from './pages/admin/ManageSubjects';
-import StudentProgress from './pages/admin/StudentProgress';
+import SchoolBranchManager from './pages/admin/SchoolBranchManager';
 import RatingManager from './pages/admin/RatingManager';
-import ContactMessages from './pages/admin/ContactMessages';
+import RatingStatistics from './pages/admin/RatingStatistics';
 
 // SuperAdmin Pages
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
@@ -446,6 +447,11 @@ function App() {
             <Route path="/app/admin/ratings" element={
               <AdminRoute>
                 <RatingManager />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/rating-statistics" element={
+              <AdminRoute>
+                <RatingStatistics />
               </AdminRoute>
             } />
           </Route>
