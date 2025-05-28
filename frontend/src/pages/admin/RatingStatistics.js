@@ -26,7 +26,8 @@ import {
   AccordionSummary,
   AccordionDetails,
   Divider,
-  Tooltip
+  Tooltip,
+  Chip
 } from '@mui/material';
 import { 
   Refresh as RefreshIcon,
