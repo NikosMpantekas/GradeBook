@@ -43,7 +43,6 @@ import {
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import axios from 'axios';
-import PageHeader from '../../components/PageHeader';
 
 const RatingStatistics = () => {
   const [loading, setLoading] = useState(false);
@@ -192,7 +191,7 @@ const RatingStatistics = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <PageHeader title="Rating Statistics" />
+      <Typography variant="h4" gutterBottom>Rating Statistics</Typography>
       
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
