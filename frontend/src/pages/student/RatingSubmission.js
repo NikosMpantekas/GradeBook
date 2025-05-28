@@ -453,11 +453,11 @@ const RatingSubmission = () => {
                                     onChange={(event, newValue) => {
                                       handleRatingChange(question._id, newValue);
                                     }}
-                                    max={10}
+                                    max={5}
                                     size="large"
                                   />
                                 </Box>
-                                <Typography variant="body1">10</Typography>
+                                <Typography variant="body1">5</Typography>
                               </Box>
                               <Typography variant="h6" color="primary" sx={{ mt: 1 }}>
                                 {answer?.ratingValue || 0}

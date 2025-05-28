@@ -293,12 +293,13 @@ const RatingStatistics = () => {
                                   <TableHead>
                                     <TableRow>
                                       <TableCell>Question</TableCell>
-                                      <TableCell align="center">Rating</TableCell>
-                                      <TableCell align="center">Responses</TableCell>
+                                      <TableCell align="center">Type</TableCell>
+                                      <TableCell align="center">Rating/Responses</TableCell>
+                                      <TableCell align="center">Count</TableCell>
                                     </TableRow>
                                   </TableHead>
                                   <TableBody>
-                                    {target.questionStats.map((qStat, qIndex) => (
+                                     {target.questionStats.map((qStat, qIndex) => (
                                       <TableRow key={qIndex}>
                                         <TableCell>
                                           <Tooltip title={qStat.questionText || 'Unknown Question'} placement="top-start">
@@ -308,17 +309,32 @@ const RatingStatistics = () => {
                                           </Tooltip>
                                         </TableCell>
                                         <TableCell align="center">
-                                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Rating
-                                              value={qStat.average || 0}
-                                              precision={0.1}
-                                              readOnly
-                                              size="small"
-                                            />
-                                            <Typography variant="body2" sx={{ ml: 1 }}>
-                                              ({(qStat.average || 0).toFixed(1)})
+                                          <Chip 
+                                            label={qStat.questionType === 'text' ? 'Text' : 'Rating'} 
+                                            size="small" 
+                                            color={qStat.questionType === 'text' ? 'info' : 'primary'}
+                                            variant="outlined"
+                                          />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                          {qStat.questionType === 'text' ? (
+                                            <Typography variant="body2" color="text.secondary">
+                                              Text responses
                                             </Typography>
-                                          </Box>
+                                          ) : (
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                              <Rating
+                                                value={qStat.average || 0}
+                                                precision={0.1}
+                                                readOnly
+                                                max={5}
+                                                size="small"
+                                              />
+                                              <Typography variant="body2" sx={{ ml: 1 }}>
+                                                ({(qStat.average || 0).toFixed(1)})
+                                              </Typography>
+                                            </Box>
+                                          )}
                                         </TableCell>
                                         <TableCell align="center">{qStat.count || 0}</TableCell>
                                       </TableRow>

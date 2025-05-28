@@ -1026,6 +1026,11 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
             qStat.questionText = question.text || 'Unknown Question';
             qStat.questionType = question.questionType || 'rating';
             qStat.order = question.order || 0;
+            
+            // Ensure we have proper text question identification
+            if (question.questionType === 'text') {
+              console.log(`Found text question: ${question.text}`);
+            }
           } else {
             console.log(`Question not found for ID: ${qStat.questionId}`);
             // Include available question IDs for debugging
