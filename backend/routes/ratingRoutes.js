@@ -881,12 +881,29 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
       ratingPeriod = await RatingPeriod.findById(periodId);
       if (ratingPeriod && ratingPeriod.questions) {
         questions = ratingPeriod.questions;
+        console.log(`Found ${questions.length} questions in rating period:`, 
+          questions.map(q => ({ id: q._id.toString(), text: q.text.substring(0, 30) })));
       }
     }
     
     // Get all ratings matching the criteria
     const ratings = await StudentRating.find(query);
     console.log(`Found ${ratings.length} total ratings`);
+    
+    // Log sample of the first rating to understand structure
+    if (ratings.length > 0) {
+      const sampleRating = ratings[0];
+      console.log('Sample rating structure:', {
+        id: sampleRating._id.toString(),
+        targetType: sampleRating.targetType,
+        targetId: sampleRating.targetId.toString(),
+        answers: sampleRating.answers.map(a => ({
+          questionId: a.questionId.toString(),
+          questionText: a.questionText,
+          ratingValue: a.ratingValue
+        }))
+      });
+    }
     
     // Group ratings by target
     const targetsMap = new Map();
@@ -920,17 +937,21 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
           targetStats.ratingCount++;
           
           // Track per-question statistics
-          if (!targetStats.questionStats[answer.questionId]) {
-            targetStats.questionStats[answer.questionId] = {
-              questionId: answer.questionId,
-              questionText: '', // Will be populated later
+          // Convert questionId to string for consistent handling
+          const questionIdStr = answer.questionId.toString();
+          
+          if (!targetStats.questionStats[questionIdStr]) {
+            targetStats.questionStats[questionIdStr] = {
+              questionId: questionIdStr,
+              // Store the question text directly from the answer to ensure we have it
+              questionText: answer.questionText || '', 
               totalValue: 0,
               count: 0,
               average: 0
             };
           }
           
-          const questionStat = targetStats.questionStats[answer.questionId];
+          const questionStat = targetStats.questionStats[questionIdStr];
           questionStat.totalValue += answer.ratingValue;
           questionStat.count++;
         }
@@ -997,11 +1018,16 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
       targetsArray.forEach(target => {
         target.questionStats.forEach(qStat => {
           // Find the question in the rating period
-          const question = questions.find(q => q._id.toString() === qStat.questionId);
+          // Ensure both IDs are strings for proper comparison
+          const question = questions.find(q => q._id.toString() === qStat.questionId.toString());
           if (question) {
             qStat.questionText = question.text || 'Unknown Question';
             qStat.questionType = question.questionType || 'rating';
             qStat.order = question.order || 0;
+          } else {
+            console.log(`Question not found for ID: ${qStat.questionId}`);
+            // Include available question IDs for debugging
+            console.log('Available question IDs:', questions.map(q => q._id.toString()));
           }
         });
         
