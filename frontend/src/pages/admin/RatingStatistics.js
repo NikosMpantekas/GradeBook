@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { 
   Box, 
   Container, 
@@ -39,9 +40,27 @@ const RatingStatistics = () => {
   const [selectedTargetType, setSelectedTargetType] = useState('all');
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
+  const [tokenValid, setTokenValid] = useState(true);
+
+  // Add hooks for navigation and dispatch
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // Add defensive coding for Redux state access
   const { userInfo } = useSelector((state) => state?.userLogin || {});
+  
+  // Validate token on mount
+  useEffect(() => {
+    if (!userInfo || !userInfo.token) {
+      setTokenValid(false);
+      setError('Authentication required. Please log in.');
+      // Redirect to login after a short delay
+      const timer = setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [userInfo, navigate]);
 
   // Fetch rating periods on component mount
   useEffect(() => {
@@ -56,18 +75,39 @@ const RatingStatistics = () => {
   }, [selectedPeriod, selectedTargetType]);
 
   const fetchRatingPeriods = async () => {
+    // Don't attempt to fetch if we don't have a valid token
+    if (!userInfo?.token) {
+      setError('Authentication required. Please log in again.');
+      setTokenValid(false);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     
     try {
+      // Ensure token is valid and in correct format
+      const token = userInfo?.token?.trim();
+      if (!token) {
+        throw new Error('Invalid authentication token');
+      }
+      
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo?.token}`,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
       };
 
+      console.log('Fetching rating periods with auth token');
       const response = await axios.get('/api/ratings/periods', config);
-      const data = response?.data || [];
+      
+      // Validate response
+      if (!response || !response.data) {
+        throw new Error('Invalid response from server');
+      }
+      
+      const data = response.data || [];
       setPeriods(data);
       
       // Set the first period as selected if available - with extra null checking
@@ -77,10 +117,22 @@ const RatingStatistics = () => {
         console.log('No valid rating periods found or period data structure is unexpected');
       }
     } catch (error) {
-      setError('Failed to fetch rating periods. Please try again.');
-      toast.error(
-        error?.response?.data?.message || 'Failed to fetch rating periods'
-      );
+      console.error('Error fetching rating periods:', error);
+      
+      // Check for authentication errors
+      if (error?.response?.status === 401 || 
+          error?.message?.includes('auth') || 
+          error?.message?.includes('token')) {
+        setError('Authentication failed. Please log in again.');
+        setTokenValid(false);
+        // Redirect to login after a short delay
+        setTimeout(() => navigate('/login'), 2000);
+      } else {
+        setError('Failed to fetch rating periods. Please try again.');
+        toast.error(
+          error?.response?.data?.message || 'Failed to fetch rating periods'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -91,6 +143,10 @@ const RatingStatistics = () => {
     if (!userInfo?.token || !selectedPeriod) {
       setError('Missing authentication token or period selection');
       console.error('Cannot fetch stats: token or periodId missing');
+      if (!userInfo?.token) {
+        setTokenValid(false);
+        setTimeout(() => navigate('/login'), 2000);
+      }
       return;
     }
     
@@ -98,9 +154,16 @@ const RatingStatistics = () => {
     setError(null);
     
     try {
+      // Ensure token is valid and in correct format
+      const token = userInfo?.token?.trim();
+      if (!token) {
+        throw new Error('Invalid authentication token');
+      }
+      
       const config = {
         headers: {
-          Authorization: `Bearer ${userInfo?.token}`,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
       };
 
@@ -128,10 +191,21 @@ const RatingStatistics = () => {
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
-      setError('Failed to fetch rating statistics. Please try again.');
-      toast.error(
-        error?.response?.data?.message || 'Failed to fetch rating statistics'
-      );
+      
+      // Check for authentication errors
+      if (error?.response?.status === 401 || 
+          error?.message?.includes('auth') || 
+          error?.message?.includes('token')) {
+        setError('Authentication failed. Please log in again.');
+        setTokenValid(false);
+        // Redirect to login after a short delay
+        setTimeout(() => navigate('/login'), 2000);
+      } else {
+        setError('Failed to fetch rating statistics. Please try again.');
+        toast.error(
+          error?.response?.data?.message || 'Failed to fetch rating statistics'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -153,7 +227,11 @@ const RatingStatistics = () => {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>Rating Statistics</Typography>
       
-      {error && (
+      {!tokenValid ? (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error || 'Your session has expired. Redirecting to login...'}
+        </Alert>
+      ) : error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
