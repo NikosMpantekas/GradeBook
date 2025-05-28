@@ -655,11 +655,6 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
         throw new Error(`Answer at index ${index} is missing the question ID`);
       }
       
-      // For rating type questions, ensure rating value is provided
-      if (answer.questionType === 'rating' && (answer.ratingValue === undefined || answer.ratingValue === null)) {
-        throw new Error(`Rating value is required for question at index ${index}`);
-      }
-      
       // Find the question in the rating period to get its text
       const question = periodRecord.questions.id(answer.question);
       
@@ -667,12 +662,19 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
         throw new Error(`Question with ID ${answer.question} not found`);
       }
       
-      // For rating questions, ensure the rating value is between 1 and 5
-      if (question.questionType === 'rating' && 
-          (typeof answer.ratingValue !== 'number' || 
-           answer.ratingValue < 1 || 
-           answer.ratingValue > 5)) {
-        throw new Error(`Rating value must be a number between 1 and 5 for question: "${question.text}"`);
+      // Validate based on question type
+      if (question.questionType === 'rating') {
+        // For rating questions, ensure rating value is provided and valid
+        if (answer.ratingValue === undefined || answer.ratingValue === null) {
+          throw new Error(`Rating value is required for question: "${question.text}"`);
+        }
+        
+        if (typeof answer.ratingValue !== 'number' || answer.ratingValue < 1 || answer.ratingValue > 5) {
+          throw new Error(`Rating value must be a number between 1 and 5 for question: "${question.text}"`);
+        }
+      } else if (question.questionType === 'text') {
+        // For text questions, no rating value is needed, but can validate text if needed
+        // We could add text validation here if required
       }
       
       return {

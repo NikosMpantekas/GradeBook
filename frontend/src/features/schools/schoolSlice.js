@@ -146,6 +146,11 @@ export const updateSchool = createAsyncThunk(
   'schools/update',
   async ({ id, schoolData }, thunkAPI) => {
     try {
+      // Validate school ID before making the API call
+      if (!id || id === 'undefined') {
+        return thunkAPI.rejectWithValue('School ID is required for update');
+      }
+      
       const token = thunkAPI.getState().auth.user.token;
       return await schoolService.updateSchool(id, schoolData, token);
     } catch (error) {

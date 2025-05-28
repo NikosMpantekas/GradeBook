@@ -166,6 +166,12 @@ const getSchoolById = asyncHandler(async (req, res) => {
 // @route   PUT /api/schools/:id
 // @access  Private/Admin
 const updateSchool = asyncHandler(async (req, res) => {
+  // Validate that id is provided and not undefined
+  if (!req.params.id || req.params.id === 'undefined') {
+    res.status(400);
+    throw new Error('School ID is required');
+  }
+
   const school = await School.findById(req.params.id);
 
   if (!school) {
