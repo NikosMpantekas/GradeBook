@@ -172,9 +172,11 @@ const RatingStatistics = () => {
 
   // Format date from ISO string
   const formatDate = (dateString) => {
+    if (!dateString) return 'No date';
     try {
       return format(new Date(dateString), 'PPP');
     } catch (error) {
+      console.error('Date formatting error:', error);
       return 'Invalid date';
     }
   };
@@ -293,14 +295,14 @@ const RatingStatistics = () => {
                             <TableCell>{target.name || 'Unknown'}</TableCell>
                             <TableCell align="center">{target.totalRatings}</TableCell>
                             <TableCell align="center">
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 <Rating 
-                                  value={target.averageRating} 
+                                  value={target.averageRating || 0} 
                                   precision={0.1} 
                                   readOnly 
                                 />
                                 <Typography sx={{ ml: 1 }}>
-                                  ({target.averageRating.toFixed(1)})
+                                  ({(target.averageRating || 0).toFixed(1)})
                                 </Typography>
                               </Box>
                             </TableCell>
@@ -360,13 +362,13 @@ const RatingStatistics = () => {
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                           <Rating 
-                            value={detailedStats.averageRating} 
+                            value={detailedStats?.averageRating || 0} 
                             precision={0.1} 
                             readOnly 
                             size="large" 
                           />
                           <Typography variant="h6" sx={{ ml: 1 }}>
-                            ({detailedStats.averageRating.toFixed(1)})
+                            ({(detailedStats?.averageRating || 0).toFixed(1)})
                           </Typography>
                         </Box>
                       </Grid>
@@ -378,7 +380,7 @@ const RatingStatistics = () => {
                   Question Ratings
                 </Typography>
                 
-                {detailedStats.questionStats.map((question) => (
+                {detailedStats?.questionStats?.map((question) => (
                   <Accordion key={question.questionId} sx={{ mb: 1 }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Grid container spacing={2} alignItems="center">
@@ -390,26 +392,26 @@ const RatingStatistics = () => {
                         <Grid item xs={4}>
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                             <Rating 
-                              value={question.averageRating} 
+                              value={question?.averageRating || 0} 
                               precision={0.1} 
                               readOnly 
                               size="small" 
                             />
                             <Typography variant="body2" sx={{ ml: 1 }}>
-                              ({question.averageRating.toFixed(1)})
+                              ({(question?.averageRating || 0).toFixed(1)})
                             </Typography>
                           </Box>
                         </Grid>
                       </Grid>
                     </AccordionSummary>
                     <AccordionDetails>
-                      {question.textAnswers && question.textAnswers.length > 0 ? (
+                      {question?.textAnswers && question?.textAnswers?.length > 0 ? (
                         <List>
-                          {question.textAnswers.map((answer, index) => (
-                            <ListItem key={index} divider={index < question.textAnswers.length - 1}>
+                          {(question?.textAnswers || []).map((answer, index) => (
+                            <ListItem key={index} divider={index < (question?.textAnswers?.length || 0) - 1}>
                               <ListItemText
-                                primary={answer.answer}
-                                secondary={`${answer.student} - ${formatDate(answer.date)}`}
+                                primary={answer?.answer || ''}
+                                secondary={`${answer?.student || 'Anonymous'} - ${formatDate(answer?.date || new Date())}`}
                               />
                             </ListItem>
                           ))}
@@ -423,23 +425,23 @@ const RatingStatistics = () => {
                   </Accordion>
                 ))}
                 
-                {detailedStats.textFeedback && detailedStats.textFeedback.length > 0 && (
+                {detailedStats?.textFeedback && detailedStats?.textFeedback?.length > 0 && (
                   <>
                     <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
                       All Text Feedback
                     </Typography>
                     <Paper sx={{ p: 2 }}>
                       <List>
-                        {detailedStats.textFeedback.map((feedback, index) => (
-                          <ListItem key={index} divider={index < detailedStats.textFeedback.length - 1}>
+                        {(detailedStats?.textFeedback || []).map((feedback, index) => (
+                          <ListItem key={index} divider={index < (detailedStats?.textFeedback?.length || 0) - 1}>
                             <ListItemText
-                              primary={feedback.answer}
+                              primary={feedback?.answer || ''}
                               secondary={
                                 <>
                                   <Typography component="span" variant="body2" color="textPrimary">
-                                    {feedback.question}
+                                    {feedback?.question || 'Unknown question'}
                                   </Typography>
-                                  {` - ${feedback.student} (${formatDate(feedback.date)})`}
+                                  {` - ${feedback?.student || 'Anonymous'} (${formatDate(feedback?.date || new Date())})`}
                                 </>
                               }
                             />
