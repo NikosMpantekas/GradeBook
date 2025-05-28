@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { 
   Box, 
   Container, 
@@ -17,7 +16,6 @@ import {
   CircularProgress,
   Rating,
   Alert,
-  Divider,
   TableContainer,
   Table,
   TableHead,
@@ -40,31 +38,9 @@ const RatingStatistics = () => {
   const [selectedTargetType, setSelectedTargetType] = useState('all');
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
-  const [tokenValid, setTokenValid] = useState(true);
 
-  // Add hooks for navigation and dispatch
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-
-  // Add defensive coding for Redux state access
+  // Get user info from Redux store
   const { userInfo } = useSelector((state) => state?.userLogin || {});
-  
-  // Validate token on mount - but only take action if definitely invalid
-  useEffect(() => {
-    // Reset token valid state on first load - assume valid until proven otherwise
-    setTokenValid(true);
-    
-    // Only redirect if we're certain there's no token
-    if (userInfo === null || userInfo === undefined) {
-      setTokenValid(false);
-      setError('Authentication required. Please log in.');
-      // Redirect to login after a short delay
-      const timer = setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [userInfo, navigate]);
 
   // Fetch rating periods on component mount
   useEffect(() => {
@@ -78,83 +54,37 @@ const RatingStatistics = () => {
     }
   }, [selectedPeriod, selectedTargetType]);
 
-  const fetchRatingPeriods = async () => {
-    // Only bail completely if we have no userInfo at all
-    if (userInfo === null || userInfo === undefined) {
-      setError('Authentication required. Please log in again.');
-      setTokenValid(false);
-      return;
-    }
-    
+  const fetchRatingPeriods = async () => {    
     setLoading(true);
     setError(null);
     
     try {
-      // Ensure token is valid and in correct format
-      const token = userInfo?.token?.trim();
-      if (!token) {
-        throw new Error('Invalid authentication token');
-      }
-      
       const config = {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${userInfo?.token}`,
           'Content-Type': 'application/json'
         },
       };
 
-      console.log('Fetching rating periods with auth token');
+      console.log('Fetching rating periods');
       const response = await axios.get('/api/ratings/periods', config);
-      
-      // Validate response
-      if (!response || !response.data) {
-        throw new Error('Invalid response from server');
-      }
-      
-      const data = response.data || [];
+      const data = response?.data || [];
       setPeriods(data);
       
-      // Set the first period as selected if available - with extra null checking
-      if (Array.isArray(data) && data.length > 0 && data[0] && data[0]._id) {
+      // Set the first period as selected if available
+      if (Array.isArray(data) && data.length > 0 && data[0]?._id) {
         setSelectedPeriod(data[0]._id);
-      } else {
-        console.log('No valid rating periods found or period data structure is unexpected');
       }
     } catch (error) {
       console.error('Error fetching rating periods:', error);
-      
-      // Check for authentication errors
-      if (error?.response?.status === 401 || 
-          error?.message?.includes('auth') || 
-          error?.message?.includes('token')) {
-        setError('Authentication failed. Please log in again.');
-        setTokenValid(false);
-        // Redirect to login after a short delay
-        setTimeout(() => navigate('/login'), 2000);
-      } else {
-        setError('Failed to fetch rating periods. Please try again.');
-        toast.error(
-          error?.response?.data?.message || 'Failed to fetch rating periods'
-        );
-      }
+      setError('Failed to fetch rating periods. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const fetchStats = async () => {
-    // Guard clause - only for completely missing userInfo or period
-    if (userInfo === null || userInfo === undefined) {
-      setError('Authentication required. Please try logging in again.');
-      console.error('Cannot fetch stats: userInfo missing');
-      setTokenValid(false);
-      setTimeout(() => navigate('/login'), 2000);
-      return;
-    }
-    
     if (!selectedPeriod) {
-      setError('Please select a rating period');
-      console.error('Cannot fetch stats: periodId missing');
       return;
     }
     
@@ -162,70 +92,47 @@ const RatingStatistics = () => {
     setError(null);
     
     try {
-      // Ensure token is valid and in correct format
-      const token = userInfo?.token?.trim();
-      if (!token) {
-        throw new Error('Invalid authentication token');
-      }
-      
       const config = {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${userInfo?.token}`,
           'Content-Type': 'application/json'
         },
       };
 
-      // Build query parameters with safety checks
-      let queryParams = `?periodId=${encodeURIComponent(selectedPeriod)}`;
-      if (selectedTargetType && selectedTargetType !== 'all') {
-        queryParams += `&targetType=${encodeURIComponent(selectedTargetType)}`;
+      // Build query parameters
+      let queryParams = `?periodId=${selectedPeriod}`;
+      if (selectedTargetType !== 'all') {
+        queryParams += `&targetType=${selectedTargetType}`;
       }
 
-      console.log(`Fetching stats with params: ${queryParams}`);
       const response = await axios.get(`/api/ratings/stats${queryParams}`, config);
       
-      // Extra validation of the response data
-      if (!response?.data) {
-        console.warn('Received empty response data from ratings stats API');
-        setStats({ targets: [] });
-      } else {
-        // Ensure targets is always an array even if missing in the response
+      if (response?.data) {
+        // Ensure targets is always an array
         const sanitizedData = {
           ...response.data,
           targets: Array.isArray(response.data.targets) ? response.data.targets : [],
           totalRatings: response.data.totalRatings || 0
         };
         setStats(sanitizedData);
+      } else {
+        setStats({ targets: [] });
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
-      
-      // Check for authentication errors
-      if (error?.response?.status === 401 || 
-          error?.message?.includes('auth') || 
-          error?.message?.includes('token')) {
-        setError('Authentication failed. Please log in again.');
-        setTokenValid(false);
-        // Redirect to login after a short delay
-        setTimeout(() => navigate('/login'), 2000);
-      } else {
-        setError('Failed to fetch rating statistics. Please try again.');
-        toast.error(
-          error?.response?.data?.message || 'Failed to fetch rating statistics'
-        );
-      }
+      setError('Failed to fetch rating statistics. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Get human-readable target type with defensive coding
+  // Get human-readable target type
   const getTargetTypeText = (type) => {
     if (!type) return 'Unknown';
     return type === 'teacher' ? 'Teacher' : 'Subject';
   };
 
-  // Get icon for target type with defensive coding
+  // Get icon for target type
   const getTargetTypeIcon = (type) => {
     if (!type) return <SchoolIcon />;
     return type === 'teacher' ? <PersonIcon /> : <SchoolIcon />;
@@ -235,11 +142,7 @@ const RatingStatistics = () => {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>Rating Statistics</Typography>
       
-      {!tokenValid ? (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error || 'Your session has expired. Redirecting to login...'}
-        </Alert>
-      ) : error && (
+      {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
