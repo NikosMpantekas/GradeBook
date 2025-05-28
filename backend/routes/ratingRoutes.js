@@ -381,58 +381,89 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
     // Fetch teachers if applicable
     if (ratingPeriod.targetType === 'both' || ratingPeriod.targetType === 'teacher') {
       try {
-        // First get the student's subjects to find associated teachers
-        let subjectQuery = {};
-        if (studentSchool) {
-          subjectQuery.school = studentSchool;
-        }
-        if (studentDirection) {
-          subjectQuery.$or = [
-            { direction: studentDirection },
-            { directions: studentDirection }
-          ];
-        }
+        // Create a tiered approach with multiple queries to ensure we get some teachers
+        let teachers = [];
+        let queriesUsed = [];
+        let teacherIds = new Set();
         
-        console.log('Student subjects query:', JSON.stringify(subjectQuery));
-        
-        // Get the student's subjects first
-        const studentSubjects = await Subject.find(subjectQuery)
-          .select('_id teachers');
-        
-        console.log(`Found ${studentSubjects.length} subjects for student`);
-        
-        // Extract teacher IDs from student's subjects
-        const teacherIds = new Set();
-        studentSubjects.forEach(subject => {
-          if (subject.teachers && Array.isArray(subject.teachers)) {
-            subject.teachers.forEach(teacherId => {
-              teacherIds.add(teacherId.toString());
-            });
+        // TIER 1: First try to get teachers from the student's subjects (most targeted approach)
+        if (studentSchool || studentDirection) {
+          queriesUsed.push('TIER 1: From subjects');
+          // Build subject query based on what we have
+          let subjectQuery = {};
+          if (studentSchool) {
+            subjectQuery.school = studentSchool;
           }
-        });
-        
-        console.log(`Found ${teacherIds.size} unique teacher IDs from student subjects`);
-        
-        // If we found teachers from subjects, use them, otherwise get all teachers for the school
-        let teacherQuery = { role: 'teacher' };
-        
-        if (teacherIds.size > 0) {
-          // Filter by the teachers that teach the student's subjects
-          teacherQuery._id = { $in: Array.from(teacherIds) };
-        } else if (studentSchool) {
-          // Fallback to school-based filtering if no teachers found from subjects
-          teacherQuery.$or = [
-            { school: studentSchool },
-            { schools: studentSchool }
-          ];
+          if (studentDirection) {
+            subjectQuery.$or = [
+              { direction: studentDirection },
+              { directions: studentDirection }
+            ];
+          }
+          
+          console.log('TIER 1 subjects query for teachers:', JSON.stringify(subjectQuery));
+          
+          // Get the student's subjects first
+          const studentSubjects = await Subject.find(subjectQuery)
+            .select('_id teachers');
+          
+          console.log(`TIER 1 found ${studentSubjects.length} subjects for student`);
+          
+          // Extract teacher IDs from student's subjects
+          studentSubjects.forEach(subject => {
+            if (subject.teachers && Array.isArray(subject.teachers)) {
+              subject.teachers.forEach(teacherId => {
+                teacherIds.add(teacherId.toString());
+              });
+            }
+          });
+          
+          console.log(`TIER 1 found ${teacherIds.size} unique teacher IDs from student subjects`);
         }
         
-        console.log('Teacher query:', JSON.stringify(teacherQuery));
+        // TIER 2: If we found teachers from subjects, query those specific teachers
+        if (teacherIds.size > 0) {
+          queriesUsed.push('TIER 2: Specific teachers from subjects');
+          const tier2Query = { 
+            role: 'teacher',
+            _id: { $in: Array.from(teacherIds) }
+          };
+          console.log('TIER 2 teacher query:', JSON.stringify(tier2Query));
+          
+          const tier2Results = await User.find(tier2Query).select('_id name email');
+          console.log(`TIER 2 found ${tier2Results.length} teachers`); 
+          teachers = [...tier2Results];
+        }
         
-        // Fetch teachers based on the query
-        const teachers = await User.find(teacherQuery)
-          .select('_id name email');
+        // TIER 3: If no teachers yet, try with school
+        if (teachers.length === 0 && studentSchool) {
+          queriesUsed.push('TIER 3: School teachers');
+          const tier3Query = { 
+            role: 'teacher',
+            $or: [
+              { school: studentSchool },
+              { schools: studentSchool }
+            ]
+          };
+          console.log('TIER 3 teacher query:', JSON.stringify(tier3Query));
+          
+          const tier3Results = await User.find(tier3Query).select('_id name email');
+          console.log(`TIER 3 found ${tier3Results.length} teachers`);
+          teachers = [...tier3Results];
+        }
         
+        // TIER 4: Last resort - find all teachers
+        if (teachers.length === 0) {
+          queriesUsed.push('TIER 4: All teachers');
+          const tier4Query = { role: 'teacher' };
+          console.log('TIER 4 teacher query:', JSON.stringify(tier4Query));
+          
+          const tier4Results = await User.find(tier4Query).select('_id name email');
+          console.log(`TIER 4 found ${tier4Results.length} teachers`);
+          teachers = [...tier4Results];
+        }
+        
+        console.log(`Used teacher query tiers: ${queriesUsed.join(', ')}`);
         console.log(`Found ${teachers.length} total teachers before filtering rated ones`);
         
         // Filter out already rated teachers
@@ -451,28 +482,61 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
     // Fetch subjects if applicable
     if (ratingPeriod.targetType === 'both' || ratingPeriod.targetType === 'subject') {
       try {
-        // Get subjects for student's school and direction only
-        let subjectQuery = {};
+        // Create a tiered approach with multiple queries to ensure we get some subjects
+        let subjects = [];
+        let queriesUsed = [];
         
-        // Build a more focused query based on student's school and direction
-        if (studentSchool) {
-          subjectQuery.school = studentSchool;
+        // TIER 1: Try with both school and direction (most specific)
+        if (studentSchool && studentDirection) {
+          const tier1Query = {
+            school: studentSchool,
+            $or: [
+              { direction: studentDirection },
+              { directions: studentDirection }
+            ]
+          };
+          queriesUsed.push('TIER 1: School + Direction');
+          console.log('TIER 1 subject query:', JSON.stringify(tier1Query));
+          const tier1Results = await Subject.find(tier1Query).select('_id name');
+          console.log(`TIER 1 found ${tier1Results.length} subjects`);
+          subjects = [...tier1Results];
         }
         
-        if (studentDirection) {
-          // Find subjects that match the student's direction
-          subjectQuery.$or = [
-            { direction: studentDirection },
-            { directions: studentDirection }
-          ];
+        // TIER 2: If no results, try with just school
+        if (subjects.length === 0 && studentSchool) {
+          const tier2Query = { school: studentSchool };
+          queriesUsed.push('TIER 2: School only');
+          console.log('TIER 2 subject query:', JSON.stringify(tier2Query));
+          const tier2Results = await Subject.find(tier2Query).select('_id name');
+          console.log(`TIER 2 found ${tier2Results.length} subjects`);
+          subjects = [...tier2Results];
         }
         
-        console.log('Student subject query:', JSON.stringify(subjectQuery));
+        // TIER 3: If still no results, try with just direction
+        if (subjects.length === 0 && studentDirection) {
+          const tier3Query = {
+            $or: [
+              { direction: studentDirection },
+              { directions: studentDirection }
+            ]
+          };
+          queriesUsed.push('TIER 3: Direction only');
+          console.log('TIER 3 subject query:', JSON.stringify(tier3Query));
+          const tier3Results = await Subject.find(tier3Query).select('_id name');
+          console.log(`TIER 3 found ${tier3Results.length} subjects`);
+          subjects = [...tier3Results];
+        }
         
-        // Get student's subjects
-        const subjects = await Subject.find(subjectQuery)
-          .select('_id name');
+        // TIER 4: If still no results, just get all subjects as a last resort
+        if (subjects.length === 0) {
+          queriesUsed.push('TIER 4: All subjects');
+          console.log('TIER 4: Getting all subjects as fallback');
+          const tier4Results = await Subject.find({}).select('_id name');
+          console.log(`TIER 4 found ${tier4Results.length} subjects`);
+          subjects = [...tier4Results];
+        }
         
+        console.log(`Used query tiers: ${queriesUsed.join(', ')}`);
         console.log(`Found ${subjects.length} total subjects for student before filtering rated ones`);
         
         // Filter out already rated subjects
