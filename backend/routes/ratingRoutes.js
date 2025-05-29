@@ -233,8 +233,16 @@ router.put('/periods/:id', protect, admin, asyncHandler(async (req, res) => {
     ratingPeriod.isActive = isActive !== undefined ? isActive : ratingPeriod.isActive;
     ratingPeriod.targetType = targetType || ratingPeriod.targetType;
     
-    // Only update schools and directions if provided
-    if (schools) ratingPeriod.schools = schools;
+    // SECURITY: School assignment handling with domain isolation
+    if (!req.isSuperadmin) {
+      // For non-superadmins, only allow updating to their own school
+      ratingPeriod.schools = [req.schoolId];
+    } else if (req.body.schools) {
+      // Only superadmins can update to specific schools
+      ratingPeriod.schools = req.body.schools;
+    }
+    
+    // Only update directions if provided
     if (directions) ratingPeriod.directions = directions;
     
     // Update questions if provided
