@@ -60,20 +60,41 @@ router.post('/periods', protect, admin, asyncHandler(async (req, res) => {
 // Get all rating periods
 router.get('/periods', protect, admin, asyncHandler(async (req, res) => {
   try {
-    // If admin, get all periods associated with their schools
-    const schoolIds = req.user.schools?.map(s => typeof s === 'object' ? s._id : s) || [];
+    // CRITICAL SECURITY FIX: Enforce school domain isolation
+    // Always require school context for non-superadmin users
+    if (!req.isSuperadmin && !req.schoolId) {
+      console.log('⛔ SECURITY VIOLATION: Attempted to access rating periods without school context');
+      res.status(403);
+      throw new Error('School context required for accessing rating periods');
+    }
     
-    // Find rating periods for this admin's schools or global periods
-    const ratingPeriods = await RatingPeriod.find({
-      $or: [
-        { schools: { $in: schoolIds } },
-        { 'schools.0': { $exists: false } }
-      ]
-    })
+    console.log(`🔒 SECURITY: Enforcing school domain isolation for rating periods`);
+    
+    // Build query based on school isolation
+    let query = {};
+    
+    if (req.isSuperadmin) {
+      // Superadmins can see all periods
+      console.log('⚠️ SUPERADMIN: Bypassing school isolation for rating periods');
+    } else {
+      // Regular admins can only see periods for their school or global periods
+      query = {
+        $or: [
+          { schools: req.schoolId },  // Periods explicitly for this school
+          { 'schools.0': { $exists: false } }  // Global periods with no schools specified
+        ]
+      };
+      console.log(`🔒 Filtering rating periods for school: ${req.schoolId}`);
+    }
+    
+    // Find rating periods with proper school isolation
+    const ratingPeriods = await RatingPeriod.find(query)
       .populate('schools', 'name')
       .populate('directions', 'name')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
+      
+    console.log(`Found ${ratingPeriods.length} rating periods that match school domain isolation rules`);
 
     res.status(200).json(ratingPeriods);
   } catch (error) {
@@ -85,12 +106,36 @@ router.get('/periods', protect, admin, asyncHandler(async (req, res) => {
 // Get a single rating period with its embedded questions
 router.get('/periods/:id', protect, asyncHandler(async (req, res) => {
   try {
-    const ratingPeriod = await RatingPeriod.findById(req.params.id)
+    // CRITICAL SECURITY FIX: Enforce school domain isolation
+    // Always require school context for non-superadmin users
+    if (!req.isSuperadmin && !req.schoolId) {
+      console.log('⛔ SECURITY VIOLATION: Attempted to access single rating period without school context');
+      res.status(403);
+      throw new Error('School context required for accessing rating periods');
+    }
+    
+    // Build query with security constraints
+    const query = { _id: req.params.id };
+    
+    // Add school isolation for non-superadmins
+    if (!req.isSuperadmin) {
+      query.$or = [
+        { schools: req.schoolId },  // Periods explicitly for this school
+        { 'schools.0': { $exists: false } }  // Global periods
+      ];
+      console.log(`🔒 SECURITY: Enforcing school isolation for single rating period (School: ${req.schoolId})`);
+    } else {
+      console.log('⚠️ SUPERADMIN: Bypassing school isolation for single rating period');
+    }
+    
+    const ratingPeriod = await RatingPeriod.findOne(query)
       .populate('schools', 'name')
       .populate('directions', 'name')
       .populate('createdBy', 'name email');
 
     if (!ratingPeriod) {
+      // Security: Use generic error message to avoid information disclosure
+      console.log(`🚫 ACCESS DENIED: User attempted to access rating period outside their school domain`);
       res.status(404);
       throw new Error('Rating period not found');
     }
