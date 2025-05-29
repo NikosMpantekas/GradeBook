@@ -319,8 +319,18 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
     
     if (!periodId) {
       res.status(400);
-      throw new Error('Period ID is required');
+      throw new Error('Rating period ID is required');
     }
+    
+    // CRITICAL SECURITY FIX: Enforce school domain isolation
+    // Always require school context for all users
+    if (!req.schoolId) {
+      console.log('⛔ SECURITY VIOLATION: Attempted to access rating targets without school context');
+      res.status(403);
+      throw new Error('School context required for accessing rating targets');
+    }
+    
+    console.log(`🔒 SECURITY: Enforcing school isolation for rating targets (School ID: ${req.schoolId})`);
     
     // Get the rating period to check its target type
     const ratingPeriod = await RatingPeriod.findById(periodId);
@@ -559,11 +569,21 @@ router.get('/check/:periodId/:targetType/:targetId', protect, student, asyncHand
   }
 }));
 
-// Submit a student rating
+// Submit a rating
 router.post('/submit', protect, student, asyncHandler(async (req, res) => {
   try {
     // Handle both field naming conventions (frontend sends ratingPeriod, but our validation expected ratingPeriodId)
     const { ratingPeriod, ratingPeriodId, targetType, targetId, answers } = req.body;
+    
+    // CRITICAL SECURITY FIX: Enforce school domain isolation
+    // Always require school context for all users
+    if (!req.schoolId) {
+      console.log('⛔ SECURITY VIOLATION: Attempted to submit rating without school context');
+      res.status(403);
+      throw new Error('School context required for submitting ratings');
+    }
+    
+    console.log(`🔒 SECURITY: Enforcing school isolation for rating submission (School ID: ${req.schoolId})`);
     
     // Use either ratingPeriod or ratingPeriodId (frontend sends ratingPeriod)
     const periodId = ratingPeriod || ratingPeriodId;
@@ -702,15 +722,65 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
         (typeof req.user.directions[0] === 'object' ? req.user.directions[0]._id || req.user.directions[0] : req.user.directions[0]) : 
         null);
 
-    // Create the student rating
+    // SECURITY: Verify the period belongs to the user's school
+    if (!req.isSuperadmin) {
+      const validPeriod = await RatingPeriod.findOne({ 
+        _id: periodId,
+        $or: [
+          { schools: { $in: [req.schoolId] } },
+          { 'schools.0': { $exists: false } } // Global periods
+        ]
+      });
+      
+      if (!validPeriod) {
+        console.log(`🚫 SECURITY BLOCKED: User from school ${req.schoolId} attempted to submit rating for period ${periodId} from another school`);
+        res.status(403);
+        throw new Error('You do not have permission to submit ratings for this period');
+      }
+    }
+
+    // SECURITY: Ensure the target belongs to the user's school
+    if (targetType === 'teacher') {
+      const teacherCheck = await User.findOne({
+        _id: targetId,
+        $or: [
+          { schoolId: req.schoolId },
+          { school: req.schoolId },
+          { schools: { $in: [req.schoolId] } }
+        ]
+      });
+      
+      if (!teacherCheck) {
+        console.log(`🚫 SECURITY BLOCKED: Rating submission for teacher outside school domain`);
+        res.status(403);
+        throw new Error('You do not have permission to rate this teacher');
+      }
+    } else if (targetType === 'subject') {
+      const subjectCheck = await Subject.findOne({
+        _id: targetId,
+        $or: [
+          { schoolId: req.schoolId },
+          { school: req.schoolId }
+        ]
+      });
+      
+      if (!subjectCheck) {
+        console.log(`🚫 SECURITY BLOCKED: Rating submission for subject outside school domain`);
+        res.status(403);
+        throw new Error('You do not have permission to rate this subject');
+      }
+    }
+
+    // Create the new rating with ENFORCED school ID
     const studentRating = await StudentRating.create({
       student: req.user._id,
       ratingPeriod: periodId,
       targetType,
       targetId,
-      targetModel,
+      targetModel: targetType === 'teacher' ? 'User' : 'Subject',
       answers: processedAnswers,
-      school: studentSchool,
+      // CRITICAL SECURITY: Always use req.schoolId to enforce domain isolation
+      school: req.schoolId || studentSchool,
       direction: studentDirection
     });
     
@@ -861,12 +931,44 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
   try {
     const { periodId, targetType } = req.query;
     
-    // Build the query
+    // CRITICAL SECURITY FIX: Enforce school domain isolation
+    // Always require school context for non-superadmin users
+    if (!req.isSuperadmin && !req.schoolId) {
+      res.status(403);
+      throw new Error('School context required for accessing rating statistics');
+    }
+    
+    // Build the query with mandatory school isolation
     const query = {};
+    
+    // SECURITY: Apply school filtering for non-superadmin users
+    if (!req.isSuperadmin) {
+      query.school = req.schoolId;
+      console.log(`🔒 SECURITY: Enforcing school isolation for ratings (School ID: ${req.schoolId})`);
+    } else {
+      console.log('⚠️ SUPERADMIN: Bypassing school isolation for ratings');
+    }
     
     // If period ID is provided, filter by that specific period
     if (periodId) {
       query.ratingPeriod = periodId;
+      
+      // SECURITY: Verify the period belongs to the user's school
+      if (!req.isSuperadmin) {
+        const periodSchoolCheck = await RatingPeriod.findOne({ 
+          _id: periodId,
+          $or: [
+            { schools: { $in: [req.schoolId] } },
+            { 'schools.0': { $exists: false } } // Global periods with no schools specified
+          ]
+        });
+        
+        if (!periodSchoolCheck) {
+          console.log(`🚫 SECURITY BLOCKED: User from school ${req.schoolId} attempted to access period ${periodId} from another school`);
+          res.status(403);
+          throw new Error('You do not have permission to access this rating period');
+        }
+      }
     }
     
     // If target type is specified, filter by that
