@@ -1,0 +1,926 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useSelector } from 'react-redux';
+import { 
+  Box, 
+  Container, 
+  Typography, 
+  Button, 
+  Paper, 
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Card,
+  CardContent,
+  CircularProgress,
+  Rating,
+  Alert,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider,
+  Tooltip,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
+  Badge
+} from '@mui/material';
+import { 
+  Refresh as RefreshIcon,
+  School as SchoolIcon,
+  Person as PersonIcon,
+  ExpandMore as ExpandMoreIcon,
+  QuestionAnswer as QuestionIcon,
+  Print as PrintIcon,
+  FilterAlt as FilterIcon,
+  LocationOn as LocationIcon,
+  Domain as DomainIcon
+} from '@mui/icons-material';
+import { toast } from 'react-toastify';
+import axios from 'axios';
+import { useReactToPrint } from 'react-to-print';
+
+// Component to render the printable report
+const PrintableReport = ({ stats, periodTitle, filters }) => {
+  if (!stats) return null;
+  
+  // Filter targets based on selected filters
+  const filteredTargets = stats.targets?.filter(target => {
+    // Filter by target type
+    if (filters.targetType !== 'all' && target.targetType !== filters.targetType) {
+      return false;
+    }
+    return true;
+  }) || [];
+  
+  return (
+    <div style={{ padding: '20px', maxWidth: '100%', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <h1>Rating Statistics Report</h1>
+        <h2>{periodTitle || 'All Periods'}</h2>
+        <p>Generated on: {new Date().toLocaleString()}</p>
+      </div>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <h3>Summary</h3>
+        <p>Total Ratings: {stats.totalRatings || 0}</p>
+      </div>
+      
+      {filteredTargets.length > 0 && (
+        <div>
+          <h3>Targets Overview</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Type</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Name</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Total Ratings</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Average Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTargets.map((target, index) => (
+                <tr key={index}>
+                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                    {target.targetType === 'teacher' ? 'Teacher' : 'Subject'}
+                  </td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>{target.name || 'Unknown'}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{target.totalRatings || 0}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{(target.averageRating || 0).toFixed(1)}/5</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {filteredTargets.map((target, tIndex) => (
+            <div key={tIndex} style={{ marginBottom: '30px', breakInside: 'avoid' }}>
+              <h3>{target.targetType === 'teacher' ? 'Teacher' : 'Subject'}: {target.name}</h3>
+              
+              <h4>Questions Detail</h4>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                <thead>
+                  <tr>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Question</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Type</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Rating/Responses</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.isArray(target.questionStats) && target.questionStats.map((qStat, qIndex) => (
+                    <tr key={qIndex}>
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>{qStat.questionText || 'Unknown Question'}</td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{qStat.questionType === 'text' ? 'Text' : 'Rating'}</td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                        {qStat.questionType === 'text' ? 
+                          'Text Responses' : 
+                          `${(qStat.average || 0).toFixed(1)}/5`
+                        }
+                      </td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{qStat.count || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* School and Direction Breakdown */}
+              {Array.isArray(target.questionStats) && target.questionStats.some(q => q.schools && Object.keys(q.schools).length > 0) && (
+                <div>
+                  <h4>Response Distribution by School</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Question</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>School</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {target.questionStats.flatMap((qStat, qIndex) => 
+                        qStat.schools ? 
+                          Object.entries(qStat.schools).map(([schoolId, schoolData], sIndex) => (
+                            <tr key={`${qIndex}-${sIndex}`}>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{qStat.questionText}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{schoolData.name}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{schoolData.count}</td>
+                            </tr>
+                          ))
+                        : []
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+import { useSelector } from 'react-redux';
+import { 
+  Box, 
+  Container, 
+  Typography, 
+  Button, 
+  Paper, 
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Card,
+  CardContent,
+  CircularProgress,
+  Rating,
+  Alert,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider,
+  Tooltip,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
+  Badge
+} from '@mui/material';
+import { 
+  Refresh as RefreshIcon,
+  School as SchoolIcon,
+  Person as PersonIcon,
+  ExpandMore as ExpandMoreIcon,
+  QuestionAnswer as QuestionIcon,
+  Print as PrintIcon,
+  FilterAlt as FilterIcon,
+  LocationOn as LocationIcon,
+  Domain as DomainIcon
+} from '@mui/icons-material';
+import { toast } from 'react-toastify';
+import axios from 'axios';
+import { useReactToPrint } from 'react-to-print';
+
+// Component to render the printable report
+const PrintableReport = ({ stats, periodTitle, filters }) => {
+  if (!stats) return null;
+  
+  // Filter targets based on selected filters
+  const filteredTargets = stats.targets?.filter(target => {
+    // Filter by target type
+    if (filters.targetType !== 'all' && target.targetType !== filters.targetType) {
+      return false;
+    }
+    return true;
+  }) || [];
+  
+  return (
+    <div style={{ padding: '20px', maxWidth: '100%', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <h1>Rating Statistics Report</h1>
+        <h2>{periodTitle || 'All Periods'}</h2>
+        <p>Generated on: {new Date().toLocaleString()}</p>
+      </div>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <h3>Summary</h3>
+        <p>Total Ratings: {stats.totalRatings || 0}</p>
+      </div>
+      
+      {filteredTargets.length > 0 && (
+        <div>
+          <h3>Targets Overview</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Type</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Name</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Total Ratings</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Average Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTargets.map((target, index) => (
+                <tr key={index}>
+                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                    {target.targetType === 'teacher' ? 'Teacher' : 'Subject'}
+                  </td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>{target.name || 'Unknown'}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{target.totalRatings || 0}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{(target.averageRating || 0).toFixed(1)}/5</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {filteredTargets.map((target, tIndex) => (
+            <div key={tIndex} style={{ marginBottom: '30px', breakInside: 'avoid' }}>
+              <h3>{target.targetType === 'teacher' ? 'Teacher' : 'Subject'}: {target.name}</h3>
+              
+              <h4>Questions Detail</h4>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                <thead>
+                  <tr>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Question</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Type</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Rating/Responses</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.isArray(target.questionStats) && target.questionStats.map((qStat, qIndex) => (
+                    <tr key={qIndex}>
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>{qStat.questionText || 'Unknown Question'}</td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{qStat.questionType === 'text' ? 'Text' : 'Rating'}</td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                        {qStat.questionType === 'text' ? 
+                          'Text Responses' : 
+                          `${(qStat.average || 0).toFixed(1)}/5`
+                        }
+                      </td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{qStat.count || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* School and Direction Breakdown */}
+              {Array.isArray(target.questionStats) && target.questionStats.some(q => q.schools && Object.keys(q.schools).length > 0) && (
+                <div>
+                  <h4>Response Distribution by School</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Question</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>School</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {target.questionStats.flatMap((qStat, qIndex) => 
+                        qStat.schools ? 
+                          Object.entries(qStat.schools).map(([schoolId, schoolData], sIndex) => (
+                            <tr key={`${qIndex}-${sIndex}`}>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{qStat.questionText}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{schoolData.name}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{schoolData.count}</td>
+                            </tr>
+                          ))
+                        : []
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {Array.isArray(target.questionStats) && target.questionStats.some(q => q.directions && Object.keys(q.directions).length > 0) && (
+                <div>
+                  <h4>Response Distribution by Direction</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Question</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Direction</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {target.questionStats.flatMap((qStat, qIndex) => 
+                        qStat.directions ? 
+                          Object.entries(qStat.directions).map(([dirId, dirData], dIndex) => (
+                            <tr key={`${qIndex}-${dIndex}`}>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{qStat.questionText}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{dirData.name}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{dirData.count}</td>
+                            </tr>
+                          ))
+                        : []
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* Text Responses Section */}
+              {Array.isArray(target.questionStats) && target.questionStats.some(q => q.textResponses && q.textResponses.length > 0) && (
+                <div>
+                  <h4>Text Responses</h4>
+                  {target.questionStats
+                    .filter(q => q.textResponses && q.textResponses.length > 0)
+                    .map((qStat, qIndex) => (
+                      <div key={qIndex} style={{ marginBottom: '15px' }}>
+                        <h5>Question: {qStat.questionText}</h5>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Response</th>
+                              <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Student</th>
+                              <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>School</th>
+                              <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Direction</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {qStat.textResponses.map((response, rIndex) => (
+                              <tr key={rIndex}>
+                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{response.text}</td>
+                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{response.student}</td>
+                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{response.school}</td>
+                                <td style={{ border: '1px solid #ddd', padding: '8px' }}>{response.direction}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const RatingStatistics = () => {
+  const [loading, setLoading] = useState(false);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('');
+  const [selectedTargetType, setSelectedTargetType] = useState('all');
+  const [stats, setStats] = useState(null);
+  const [error, setError] = useState(null);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const [printFilter, setPrintFilter] = useState({
+    targetType: 'all',
+    schoolFilter: 'all',
+    directionFilter: 'all'
+  });
+  const [textResponsesVisible, setTextResponsesVisible] = useState({});
+  
+  // References for printing
+  const printComponentRef = useRef();
+  
+  // Get user info from Redux store
+  const { userInfo } = useSelector((state) => state?.userLogin || {});
+  
+  // Print handler
+  const handlePrint = useReactToPrint({
+    content: () => printComponentRef.current,
+    documentTitle: `Rating Statistics - ${selectedPeriod ? periods.find(p => p._id === selectedPeriod)?.title : 'All Periods'}`,
+    onBeforeGetContent: () => {
+      return new Promise((resolve) => {
+        resolve();
+      });
+    },
+    onAfterPrint: () => {
+      setPrintDialogOpen(false);
+      toast.success('Report printed successfully!');
+    }
+  });
+
+  // Fetch rating periods on component mount
+  useEffect(() => {
+    fetchRatingPeriods();
+  }, []);
+
+  // Fetch stats when period or target type changes
+  useEffect(() => {
+    if (selectedPeriod) {
+      fetchStats();
+    }
+  }, [selectedPeriod, selectedTargetType]);
+  
+  // Reset text responses visibility when stats change
+  useEffect(() => {
+    setTextResponsesVisible({});
+  }, [stats]);
+
+  const fetchRatingPeriods = async () => {    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${userInfo?.token}`,
+          'Content-Type': 'application/json'
+        },
+      };
+
+      console.log('Fetching rating periods');
+      const response = await axios.get('/api/ratings/periods', config);
+      const data = response?.data || [];
+      setPeriods(data);
+      
+      // Set the first period as selected if available
+      if (Array.isArray(data) && data.length > 0 && data[0]?._id) {
+        setSelectedPeriod(data[0]._id);
+      }
+    } catch (error) {
+      console.error('Error fetching rating periods:', error);
+      setError('Failed to fetch rating periods. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    if (!selectedPeriod) {
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${userInfo?.token}`,
+          'Content-Type': 'application/json'
+        },
+      };
+
+      // Build query parameters
+      let queryParams = `?periodId=${selectedPeriod}`;
+      if (selectedTargetType !== 'all') {
+        queryParams += `&targetType=${selectedTargetType}`;
+      }
+
+      const response = await axios.get(`/api/ratings/stats${queryParams}`, config);
+      
+      if (response?.data) {
+        // Ensure targets is always an array
+        const sanitizedData = {
+          ...response.data,
+          targets: Array.isArray(response.data.targets) ? response.data.targets : [],
+          totalRatings: response.data.totalRatings || 0
+        };
+        setStats(sanitizedData);
+      } else {
+        setStats({ targets: [] });
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      setError('Failed to fetch rating statistics. Please try again.');
+    } finally {
+      setLoading(false);
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+      
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth variant="outlined" disabled={loading}>
+              <InputLabel id="period-select-label">Rating Period</InputLabel>
+              <Select
+                labelId="period-select-label"
+                id="period-select"
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                label="Rating Period"
+              >
+                {(periods || []).map((period) => (
+                  <MenuItem key={period?._id} value={period?._id}>
+                    {period?.title || 'Unnamed Period'}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth variant="outlined" disabled={loading}>
+              <InputLabel id="target-type-select-label">Target Type</InputLabel>
+              <Select
+                labelId="target-type-select-label"
+                id="target-type-select"
+                value={selectedTargetType}
+                onChange={(e) => setSelectedTargetType(e.target.value)}
+                label="Target Type"
+              >
+                <MenuItem value="all">All Types</MenuItem>
+                <MenuItem value="teacher">Teachers Only</MenuItem>
+                <MenuItem value="subject">Subjects Only</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} md={4}>
+            <Grid container spacing={1}>
+              <Grid item xs={9}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<RefreshIcon />}
+                  onClick={fetchStats}
+                  disabled={!selectedPeriod || loading}
+                  fullWidth
+                >
+                  Refresh Data
+                </Button>
+              </Grid>
+              <Grid item xs={3}>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<PrintIcon />}
+                  onClick={() => setPrintDialogOpen(true)}
+                  disabled={!stats || loading}
+                  fullWidth
+                >
+                  Print
+                </Button>
+              </Grid>
+            </Grid>
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : stats ? (
+        <>
+          <Box sx={{ mb: 3 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Total Ratings: {stats?.totalRatings || 0}
+                </Typography>
+                {(stats?.totalRatings === 0 || !stats?.targets?.length) && (
+                  <Alert severity="info">
+                    No ratings have been submitted for this period yet.
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
+          
+          {stats?.targets?.length > 0 && (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Type</TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell align="center">Total Ratings</TableCell>
+                    <TableCell align="center">Average Rating</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Array.isArray(stats?.targets) ? stats.targets.map((target, index) => (
+                    <React.Fragment key={index}>
+                      <TableRow>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            {getTargetTypeIcon(target?.targetType)}
+                            <Typography sx={{ ml: 1 }}>
+                              {getTargetTypeText(target?.targetType)}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{target?.name || 'Unknown'}</TableCell>
+                        <TableCell align="center">{target?.totalRatings || 0}</TableCell>
+                        <TableCell align="center">
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Rating
+                              value={target?.averageRating || 0}
+                              precision={0.1}
+                              readOnly
+                            />
+                            <Typography variant="body2" sx={{ ml: 1 }}>
+                              ({(target?.averageRating || 0).toFixed(1)})
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                      {Array.isArray(target?.questionStats) && target.questionStats.length > 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} sx={{ py: 0, borderBottom: 'none' }}>
+                            <Accordion sx={{ boxShadow: 0, backgroundColor: 'rgba(0, 0, 0, 0.02)' }}>
+                              <AccordionSummary
+                                expandIcon={<ExpandMoreIcon />}
+                                aria-controls={`panel-${index}-content`}
+                                id={`panel-${index}-header`}
+                                sx={{ 
+                                  borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                                  minHeight: '48px',
+                                  '&.Mui-expanded': {
+                                    minHeight: '48px'
+                                  }
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <QuestionIcon fontSize="small" sx={{ mr: 1 }} />
+                                  <Typography variant="body2">Show ratings by question ({target.questionStats.length})</Typography>
+                                </Box>
+                              </AccordionSummary>
+                              <AccordionDetails sx={{ p: 0 }}>
+                                <Table size="small">
+                                  <TableHead>
+                                    <TableRow>
+                                      <TableCell>Question</TableCell>
+                                      <TableCell align="center">Type</TableCell>
+                                      <TableCell align="center">Rating/Responses</TableCell>
+                                      <TableCell align="center">Count</TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                     {target.questionStats.map((qStat, qIndex) => (
+                                      <TableRow key={qIndex}>
+                                        <TableCell>
+                                          <Tooltip title={qStat.questionText || 'Unknown Question'} placement="top-start">
+                                            <Typography noWrap variant="body2" sx={{ maxWidth: '300px' }}>
+                                              {qStat.questionText || 'Unknown Question'}
+                                            </Typography>
+                                          </Tooltip>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                          <Chip 
+                                            label={qStat.questionType === 'text' ? 'Text' : 'Rating'} 
+                                            size="small" 
+                                            color={qStat.questionType === 'text' ? 'info' : 'primary'}
+                                            variant="outlined"
+                                          />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                          {qStat.questionType === 'text' ? (
+                                            <Button 
+                                              variant="outlined" 
+                                              size="small" 
+                                              color="info"
+                                              onClick={() => {
+                                                setTextResponsesVisible(prev => ({
+                                                  ...prev,
+                                                  [qStat.questionId]: !prev[qStat.questionId]
+                                                }));
+                                              }}
+                                            >
+                                              Show Text Responses
+                                            </Button>
+                                          ) : (
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                              <Rating
+                                                value={qStat.average || 0}
+                                                precision={0.1}
+                                                readOnly
+                                                max={5}
+                                                size="small"
+                                              />
+                                              <Typography variant="body2" sx={{ ml: 1 }}>
+                                                ({(qStat.average || 0).toFixed(1)})
+                                              </Typography>
+                                            </Box>
+                                          )}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                          {qStat.count || 0}
+                                          {qStat.schools && Object.keys(qStat.schools).length > 0 && (
+                                            <Tooltip 
+                                              title={
+                                                <>
+                                                  <Typography variant="subtitle2">Response Sources:</Typography>
+                                                  <Box component="ul" sx={{ pl: 2, m: 0 }}>
+                                                    {Object.entries(qStat.schools || {}).map(([schoolId, data]) => (
+                                                      <li key={schoolId}>
+                                                        <Typography variant="body2">
+                                                          {data.name}: {data.count} responses
+                                                        </Typography>
+                                                      </li>
+                                                    ))}
+                                                  </Box>
+                                                </>
+                                              }
+                                              placement="right"
+                                            >
+                                              <IconButton size="small">
+                                                <SchoolIcon fontSize="small" color="primary" />
+                                              </IconButton>
+                                            </Tooltip>
+                                          )}
+                                          {qStat.directions && Object.keys(qStat.directions).length > 0 && (
+                                            <Tooltip 
+                                              title={
+                                                <>
+                                                  <Typography variant="subtitle2">Direction Breakdown:</Typography>
+                                                  <Box component="ul" sx={{ pl: 2, m: 0 }}>
+                                                    {Object.entries(qStat.directions || {}).map(([dirId, data]) => (
+                                                      <li key={dirId}>
+                                                        <Typography variant="body2">
+                                                          {data.name}: {data.count} responses
+                                                        </Typography>
+                                                      </li>
+                                                    ))}
+                                                  </Box>
+                                                </>
+                                              }
+                                              placement="right"
+                                            >
+                                              <IconButton size="small">
+                                                <LocationIcon fontSize="small" color="secondary" />
+                                              </IconButton>
+                                            </Tooltip>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                      {textResponsesVisible[qStat.questionId] && qStat.textResponses && qStat.textResponses.length > 0 && (
+                                        <TableRow>
+                                          <TableCell colSpan={4} sx={{ p: 0, borderBottom: 'none' }}>
+                                            <Paper elevation={0} sx={{ p: 2, bgcolor: 'rgba(0, 0, 0, 0.02)', m: 1 }}>
+                                              <Typography variant="subtitle2" gutterBottom>
+                                                Text Responses for: {qStat.questionText}
+                                              </Typography>
+                                              <List dense>
+                                                {qStat.textResponses.map((response, idx) => (
+                                                  <ListItem key={idx} divider={idx < qStat.textResponses.length - 1}>
+                                                    <ListItemText
+                                                      primary={response.text}
+                                                      secondary={
+                                                        <React.Fragment>
+                                                          <Typography variant="caption" component="span" display="block">
+                                                            <strong>Student:</strong> {response.student}
+                                                          </Typography>
+                                                          <Typography variant="caption" component="span" display="block">
+                                                            <SchoolIcon fontSize="inherit" sx={{ mr: 0.5, verticalAlign: 'text-bottom' }} />
+                                                            <strong>School:</strong> {response.school}
+                                                            <LocationIcon fontSize="inherit" sx={{ ml: 1, mr: 0.5, verticalAlign: 'text-bottom' }} />
+                                                            <strong>Direction:</strong> {response.direction}
+                                                          </Typography>
+                                                          {response.date && (
+                                                            <Typography variant="caption" component="span" display="block">
+                                                              <strong>Date:</strong> {new Date(response.date).toLocaleDateString()}
+                                                            </Typography>
+                                                          )}
+                                                        </React.Fragment>
+                                                      }
+                                                    />
+                                                  </ListItem>
+                                                ))}
+                                              </List>
+                                            </Paper>
+                                          </TableCell>
+                                        </TableRow>
+                                      )}
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </AccordionDetails>
+                            </Accordion>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">No target data available</TableCell>
+        </Typography>
+      </Paper>
+    )}
+    
+    {/* Print Dialog */}
+    <Dialog
+      open={printDialogOpen}
+      onClose={() => setPrintDialogOpen(false)}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle>Print Rating Report</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" gutterBottom>
+          Choose filters for your printed report:
+        </Typography>
+        
+        <Grid container spacing={2} sx={{ mt: 1 }}>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Target Type</InputLabel>
+              <Select
+                value={printFilter.targetType}
+                onChange={(e) => setPrintFilter({...printFilter, targetType: e.target.value})}
+                label="Target Type"
+              >
+                <MenuItem value="all">All Targets</MenuItem>
+                <MenuItem value="teacher">Teachers Only</MenuItem>
+                <MenuItem value="subject">Subjects Only</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth size="small">
+              <InputLabel>School Filter</InputLabel>
+              <Select
+                value={printFilter.schoolFilter}
+                onChange={(e) => setPrintFilter({...printFilter, schoolFilter: e.target.value})}
+                label="School Filter"
+              >
+                <MenuItem value="all">All Schools</MenuItem>
+                {stats && stats.targets && stats.targets.map(target => (
+                  target.questionStats && target.questionStats.map(q => (
+                    q.schools && Object.entries(q.schools).map(([schoolId, data]) => (
+                      <MenuItem key={schoolId} value={schoolId}>{data.name}</MenuItem>
+                    ))
+                  ))
+                )).flat().filter((item, i, arr) => 
+                  item && arr.findIndex(t => t && t.key === item.key) === i
+                )}
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
+              The report will include detailed statistics for {selectedPeriod ? periods.find(p => p._id === selectedPeriod)?.title : 'the selected period'}, 
+              including school and direction breakdown for each question.
+            </Typography>
+          </Grid>
+        </Grid>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
+        <Button 
+          variant="contained" 
+          onClick={handlePrint}
+          startIcon={<PrintIcon />}
+        >
+          Print Report
+        </Button>
+      </DialogActions>
+    </Dialog>
+    
+    {/* Hidden component for printing */}
+    <div style={{ display: 'none' }}>
+      <div ref={printComponentRef}>
+        <PrintableReport 
+          stats={stats} 
+          periodTitle={selectedPeriod ? periods.find(p => p._id === selectedPeriod)?.title : ''}
+          filters={printFilter}
+        />
+      </div>
+    </div>
+  </Container>
+);
+
+export default RatingStatistics;

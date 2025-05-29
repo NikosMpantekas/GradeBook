@@ -1138,8 +1138,11 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
       }
     }
     
-    // Get all ratings matching the criteria
-    const ratings = await StudentRating.find(query);
+    // Get all ratings matching the criteria with school and direction information
+    const ratings = await StudentRating.find(query)
+      .populate('school', 'name')
+      .populate('direction', 'name')
+      .populate('student', 'name direction school');
     console.log(`Found ${ratings.length} total ratings`);
     
     // Log sample of the first rating to understand structure
@@ -1198,14 +1201,62 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
             average: 0,
             // Track text answers separately
             hasTextResponses: answer.textAnswer ? true : false,
-            textResponseCount: answer.textAnswer ? 1 : 0
+            textResponseCount: answer.textAnswer ? 1 : 0,
+            // Track which schools and directions the responses come from
+            schools: {},
+            directions: {},
+            // Track the text responses with school and direction info
+            textResponses: answer.textAnswer ? [{
+              text: answer.textAnswer,
+              school: rating.school ? (typeof rating.school === 'object' ? rating.school.name : 'Unknown School') : 'Unknown School',
+              schoolId: rating.school ? (typeof rating.school === 'object' ? rating.school._id : rating.school) : null,
+              direction: rating.direction ? (typeof rating.direction === 'object' ? rating.direction.name : 'Unknown Direction') : 'Unknown Direction',
+              directionId: rating.direction ? (typeof rating.direction === 'object' ? rating.direction._id : rating.direction) : null,
+              student: rating.student ? rating.student.name : 'Anonymous Student',
+              date: rating.createdAt
+            }] : []
           };
         } else {
-          // If this answer has text, increment the text response counter
+          // If this answer has text, increment the text response counter and add the text response
           if (answer.textAnswer) {
             targetStats.questionStats[questionIdStr].hasTextResponses = true;
             targetStats.questionStats[questionIdStr].textResponseCount++;
+            
+            // Add the text response with school and direction info
+            targetStats.questionStats[questionIdStr].textResponses.push({
+              text: answer.textAnswer,
+              school: rating.school ? (typeof rating.school === 'object' ? rating.school.name : 'Unknown School') : 'Unknown School',
+              schoolId: rating.school ? (typeof rating.school === 'object' ? rating.school._id : rating.school) : null,
+              direction: rating.direction ? (typeof rating.direction === 'object' ? rating.direction.name : 'Unknown Direction') : 'Unknown Direction',
+              directionId: rating.direction ? (typeof rating.direction === 'object' ? rating.direction._id : rating.direction) : null,
+              student: rating.student ? rating.student.name : 'Anonymous Student',
+              date: rating.createdAt
+            });
           }
+          
+          // Track school information for this response
+          const schoolId = rating.school ? (typeof rating.school === 'object' ? rating.school._id.toString() : rating.school.toString()) : 'unknown';
+          const schoolName = rating.school ? (typeof rating.school === 'object' ? rating.school.name : 'Unknown School') : 'Unknown School';
+          
+          if (!targetStats.questionStats[questionIdStr].schools[schoolId]) {
+            targetStats.questionStats[questionIdStr].schools[schoolId] = {
+              name: schoolName,
+              count: 0
+            };
+          }
+          targetStats.questionStats[questionIdStr].schools[schoolId].count++;
+          
+          // Track direction information for this response
+          const directionId = rating.direction ? (typeof rating.direction === 'object' ? rating.direction._id.toString() : rating.direction.toString()) : 'unknown';
+          const directionName = rating.direction ? (typeof rating.direction === 'object' ? rating.direction.name : 'Unknown Direction') : 'Unknown Direction';
+          
+          if (!targetStats.questionStats[questionIdStr].directions[directionId]) {
+            targetStats.questionStats[questionIdStr].directions[directionId] = {
+              name: directionName,
+              count: 0
+            };
+          }
+          targetStats.questionStats[questionIdStr].directions[directionId].count++;
         }
         
         // Only process rating values for rating questions
