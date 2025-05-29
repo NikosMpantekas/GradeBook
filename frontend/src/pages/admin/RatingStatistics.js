@@ -358,11 +358,14 @@ const RatingStatistics = () => {
         }
       };
       
-      const url = periodId 
-        ? `${API_URL}/api/ratings/stats?periodId=${periodId}` 
-        : `${API_URL}/api/ratings/stats`;
+      // Using the all/all endpoint format which is the general statistics endpoint
+      // This is based on the pattern seen in the backend: /stats/:targetType/:targetId
+      const url = `${API_URL}/api/ratings/stats/all/all`;
+      // Add period as a query parameter if provided
+      const urlWithParams = periodId ? `${url}?periodId=${periodId}` : url;
       
-      const response = await axios.get(url, config);
+      console.log('Fetching statistics from:', urlWithParams);
+      const response = await axios.get(urlWithParams, config);
       if (response.data) {
         setStatistics(response.data);
       }
@@ -388,12 +391,24 @@ const RatingStatistics = () => {
         }
       };
       
-      const periodParam = selectedPeriod ? `&periodId=${selectedPeriod}` : '';
+      // Construct URL for text responses based on the endpoint pattern seen in logs
+      // Format: /api/ratings/text-responses/:targetType/:targetId/:questionId
+      // Determining target type from the statistics data
+      let targetType = 'subject'; // Default
+      if (statistics && statistics.targets) {
+        const target = statistics.targets.find(t => t.targetId === targetId);
+        if (target) {
+          targetType = target.targetType;
+        }
+      }
       
-      const response = await axios.get(
-        `${API_URL}/api/ratings/text-responses?targetId=${targetId}&questionId=${questionId}${periodParam}`, 
-        config
-      );
+      const url = `${API_URL}/api/ratings/text-responses/${targetType}/${targetId}/${questionId}`;
+      const periodParam = selectedPeriod ? `?periodId=${selectedPeriod}` : '';
+      const urlWithParams = url + periodParam;
+      
+      console.log('Fetching text responses from:', urlWithParams);
+      
+      const response = await axios.get(urlWithParams, config);
       
       if (response.data) {
         // Find the question text from statistics
