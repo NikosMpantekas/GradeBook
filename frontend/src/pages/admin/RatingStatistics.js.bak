@@ -1,0 +1,1079 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Box, 
+  Container, 
+  Typography, 
+  Button, 
+  Paper, 
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Card,
+  CardContent,
+  CircularProgress,
+  Rating,
+  Alert,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Divider,
+  Tooltip,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
+  Badge
+} from '@mui/material';
+import { 
+  Refresh as RefreshIcon,
+  School as SchoolIcon,
+  Person as PersonIcon,
+  ExpandMore as ExpandMoreIcon,
+  QuestionAnswer as QuestionIcon,
+  Print as PrintIcon,
+  FilterAlt as FilterIcon,
+  LocationOn as LocationIcon,
+  Domain as DomainIcon,
+  Info as InfoIcon
+} from '@mui/icons-material';
+import { toast } from 'react-toastify';
+import axios from 'axios';
+import { useReactToPrint } from 'react-to-print';
+import { API_URL } from '../../config/appConfig';
+
+// Component to render the printable report
+const PrintableReport = ({ stats, periodTitle, filters }) => {
+  if (!stats) return null;
+  
+  // Filter targets based on selected filters
+  const filteredTargets = stats.targets?.filter(target => {
+    // Filter by target type
+    if (filters.targetType !== 'all' && target.targetType !== filters.targetType) {
+      return false;
+    }
+    return true;
+  }) || [];
+  
+  return (
+    <div style={{ padding: '20px', maxWidth: '100%', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <h1>Rating Statistics Report</h1>
+        <h2>{periodTitle || 'All Periods'}</h2>
+        <p>Generated on: {new Date().toLocaleString()}</p>
+      </div>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <h3>Summary</h3>
+        <p>Total Ratings: {stats.totalRatings || 0}</p>
+      </div>
+      
+      {filteredTargets.length > 0 && (
+        <div>
+          <h3>Targets Overview</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Type</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Name</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Total Ratings</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Average Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTargets.map((target, index) => (
+                <tr key={index}>
+                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                    {target.targetType === 'teacher' ? 'Teacher' : 'Subject'}
+                  </td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px' }}>{target.name || 'Unknown'}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{target.totalRatings || 0}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{(target.averageRating || 0).toFixed(1)}/5</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {filteredTargets.map((target, tIndex) => (
+            <div key={tIndex} style={{ marginBottom: '30px', breakInside: 'avoid' }}>
+              <h3>{target.targetType === 'teacher' ? 'Teacher' : 'Subject'}: {target.name}</h3>
+              
+              <h4>Questions Detail</h4>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                <thead>
+                  <tr>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Question</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Type</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Rating/Responses</th>
+                    <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.isArray(target.questionStats) && target.questionStats.map((qStat, qIndex) => (
+                    <tr key={qIndex}>
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>{qStat.questionText || 'Unknown Question'}</td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{qStat.questionType === 'text' ? 'Text' : 'Rating'}</td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>
+                        {qStat.questionType === 'text' ? 
+                          'Text Responses' : 
+                          `${(qStat.average || 0).toFixed(1)}/5`
+                        }
+                      </td>
+                      <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{qStat.count || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* School and Direction Breakdown */}
+              {Array.isArray(target.questionStats) && target.questionStats.some(q => q.schools && Object.keys(q.schools).length > 0) && (
+                <div>
+                  <h4>Response Distribution by School</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Question</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>School</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {target.questionStats.flatMap((qStat, qIndex) => 
+                        qStat.schools ? 
+                          Object.entries(qStat.schools).map(([schoolId, schoolData], sIndex) => (
+                            <tr key={`${qIndex}-${sIndex}`}>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{qStat.questionText}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{schoolData.name}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{schoolData.count}</td>
+                            </tr>
+                          ))
+                        : []
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {Array.isArray(target.questionStats) && target.questionStats.some(q => q.directions && Object.keys(q.directions).length > 0) && (
+                <div>
+                  <h4>Response Distribution by Direction</h4>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Question</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Direction</th>
+                        <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {target.questionStats.flatMap((qStat, qIndex) => 
+                        qStat.directions ? 
+                          Object.entries(qStat.directions).map(([directionId, directionData], dIndex) => (
+                            <tr key={`${qIndex}-${dIndex}`}>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{qStat.questionText}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px' }}>{directionData.name}</td>
+                              <td style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }}>{directionData.count}</td>
+                            </tr>
+                          ))
+                        : []
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* Display text responses if available */}
+              {Array.isArray(target.questionStats) && target.questionStats.some(q => q.questionType === 'text' && q.responses && q.responses.length > 0) && (
+                <div>
+                  <h4>Text Responses</h4>
+                  {target.questionStats
+                    .filter(q => q.questionType === 'text' && q.responses && q.responses.length > 0)
+                    .map((qStat, qIndex) => (
+                      <div key={qIndex} style={{ marginBottom: '20px' }}>
+                        <h5>{qStat.questionText}</h5>
+                        <ul style={{ listStyleType: 'none', padding: 0 }}>
+                          {qStat.responses.map((response, rIndex) => (
+                            <li key={rIndex} style={{ marginBottom: '10px', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                              <div><strong>Response:</strong> {response.text}</div>
+                              {response.studentName && <div><strong>Student:</strong> {response.studentName}</div>}
+                              {response.schoolName && <div><strong>School:</strong> {response.schoolName}</div>}
+                              {response.directionName && <div><strong>Direction:</strong> {response.directionName}</div>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Text Response Dialog Component
+const TextResponsesDialog = ({ open, handleClose, responses, question }) => {
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        Text Responses for: {question}
+      </DialogTitle>
+      <DialogContent dividers>
+        {responses && responses.length > 0 ? (
+          <List>
+            {responses.map((response, index) => (
+              <ListItem key={index} divider={index < responses.length - 1}>
+                <ListItemText
+                  primary={response.text}
+                  secondary={
+                    <React.Fragment>
+                      {response.studentName && <Typography component="span" variant="body2">Student: {response.studentName}</Typography>}
+                      {response.schoolName && (
+                        <Typography component="span" variant="body2" sx={{ display: 'block' }}>
+                          <SchoolIcon fontSize="small" /> School: {response.schoolName}
+                        </Typography>
+                      )}
+                      {response.directionName && (
+                        <Typography component="span" variant="body2" sx={{ display: 'block' }}>
+                          <LocationIcon fontSize="small" /> Direction: {response.directionName}
+                        </Typography>
+                      )}
+                    </React.Fragment>
+                  }
+                />
+              </ListItem>
+            ))}
+          </List>
+        ) : (
+          <Typography>No text responses available.</Typography>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>Close</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// Print Report Dialog Component
+const PrintReportDialog = ({ open, handleClose, onPrint, onFilterChange, filters }) => {
+  return (
+    <Dialog open={open} onClose={handleClose}>
+      <DialogTitle>Print Report Options</DialogTitle>
+      <DialogContent>
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Target Type</InputLabel>
+              <Select
+                value={filters.targetType}
+                onChange={(e) => onFilterChange('targetType', e.target.value)}
+                label="Target Type"
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="teacher">Teachers Only</MenuItem>
+                <MenuItem value="subject">Subjects Only</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={onPrint} color="primary" variant="contained" startIcon={<PrintIcon />}>
+          Print Report
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+const RatingStatistics = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('');
+  const [statistics, setStatistics] = useState(null);
+  const [showTextResponses, setShowTextResponses] = useState(false);
+  const [textResponses, setTextResponses] = useState([]);
+  const [currentQuestion, setCurrentQuestion] = useState('');
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const [printFilters, setPrintFilters] = useState({
+    targetType: 'all'
+  });
+  
+  // State for selected target type and ID
+  const [selectedTargetType, setSelectedTargetType] = useState('teacher');
+  const [selectedTargetId, setSelectedTargetId] = useState('');
+
+  // Get user info and token from Redux store
+  const userInfo = useSelector((state) => state.auth?.userInfo);
+  const token = userInfo?.token || '';
+  const navigate = useNavigate();
+  
+  // Validate token and set up axios defaults
+  useEffect(() => {
+    const validateTokenAndInitialize = async () => {
+      // Check if token exists
+      if (!token || token.trim() === '') {
+        console.error('No authentication token available');
+        setError('Authentication required. Please log in again.');
+        setLoading(false);
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+        return;
+      }
+
+      try {
+        // Set up axios with the token
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token.trim()}`;
+        axios.defaults.withCredentials = true;
+        
+        // Test the token with a simple API call
+        try {
+          console.log('Validating token...');
+          await axios.get(`${API_URL}/api/users/validate-token`, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token.trim()}`
+            }
+          });
+          console.log('✅ Token validated successfully');
+        } catch (tokenError) {
+          if (tokenError.response && tokenError.response.status === 401) {
+            throw new Error('Invalid or expired token');
+          }
+          // Continue even if the validation endpoint doesn't exist
+          console.warn('Token validation endpoint not available, continuing with requests');
+        }
+        
+        // If token is valid, initialize component data
+        setLoading(true);
+        setError(null);
+        
+        // First fetch rating periods
+        await fetchRatingPeriods();
+        
+        // Then fetch statistics only if we have a selected period
+        if (selectedPeriod) {
+          await fetchStatistics(selectedPeriod);
+        }
+      } catch (error) {
+        console.error('❌ Error validating token or initializing component:', error);
+        
+        if (error.message === 'Invalid or expired token' || 
+            (error.response && error.response.status === 401)) {
+          setError('Authentication required. Please log in again.');
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+        } else {
+          setError(error.message || 'Failed to initialize component');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    validateTokenAndInitialize();
+    
+    // Clean up function
+    return () => {
+      delete axios.defaults.headers.common['Authorization'];
+      delete axios.defaults.withCredentials;
+    };
+  }, [token, navigate, selectedPeriod]);  // Added selectedPeriod to dependencies
+  
+  // Debug token access and handle missing token
+  useEffect(() => {
+    console.log('Redux auth state available:', !!userInfo);
+    console.log('Token available:', !!token);
+    
+    if (!token || token.trim() === '') {
+      console.warn('No authentication token found in Redux state');
+      setError('Authentication required. Please log in again.');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    }
+  }, [userInfo, token, navigate]);
+  
+  const reportRef = useRef();
+
+  const fetchRatingPeriods = async () => {
+    if (!token || token.trim() === '') {
+      console.error('No token available for fetchRatingPeriods');
+      setError('Authentication required. Please log in again.');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    try {
+      // Use explicit config object for clearer request structure
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token.trim()}`
+        }
+      };
+      
+      console.log('Fetching rating periods with token:', token.substring(0, 10) + '...');
+      const response = await axios.get(`${API_URL}/api/ratings/periods`, config);
+      
+      if (response.data) {
+        console.log(`✅ SUCCESS: Received ${response.data.length} rating periods:`, 
+          response.data.map(p => p.title).join(', '));
+        
+        // Force a UI update with the period data
+        setPeriods([...response.data]);
+        
+        // Log the full periods data for debugging
+        console.log('Full periods data:', JSON.stringify(response.data));
+      } else {
+        console.log('⚠️ No rating periods data received in response');
+      }
+    } catch (err) {
+      console.error('Error fetching rating periods:', err);
+      if (err.response && err.response.status === 401) {
+        setError('Authentication required. Please log in again.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      } else {
+        setError('Failed to fetch rating periods. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStatistics = async (periodId = '') => {
+    if (!token || token.trim() === '') {
+      const errorMsg = 'No authentication token available';
+      console.error(errorMsg);
+      setError('Authentication required. Please log in again.');
+      setLoading(false);
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      return null;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🔑 Fetching statistics with token:', token.substring(0, 10) + '...');
+      
+      // Build the API endpoint with the correct query parameters
+      const endpoint = `${API_URL}/api/ratings/stats`;
+      
+      // Prepare query parameters
+      const params = {};
+      
+      // Add filters to params if they exist
+      if (periodId) params.periodId = periodId;
+      if (selectedTargetType) params.targetType = selectedTargetType;
+      if (selectedTargetId) params.targetId = selectedTargetId;
+      
+      // Make the API request with proper auth token and parameters
+      const config = {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token.trim()}`
+        },
+        withCredentials: true,
+        params
+      };
+      
+      console.log('📡 Sending request to:', endpoint, 'with config:', config);
+      const response = await axios.get(endpoint, config);
+      
+      console.log('📥 Received response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data ? 'Data received' : 'No data'
+      });
+      
+      // Process API response
+      if (response.data) {
+        console.log('✅ Successfully fetched statistics data:', response.data);
+        setStatistics(response.data);
+        return response.data;
+      } else {
+        const errorMsg = 'Empty response received from API';
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching statistics:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      });
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        if (error.response.status === 401) {
+          setError('Authentication required. Please log in again.');
+          // Redirect to login after a brief delay to allow the user to see the message
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+        } else if (error.response.status === 403) {
+          setError('You do not have permission to access these statistics.');
+        } else {
+          setError(`Server error: ${error.response.data?.message || error.message}`);
+        }
+      } else if (error.request) {
+        // The request was made but no response was received
+        setError('Server did not respond. Please check your connection and try again.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        setError(`Error: ${error.message || 'Unknown error occurred'}`);
+      }
+      
+      // Re-throw the error to allow for further handling if needed
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to show text responses from the statistics data
+
+  const showTextResponsesFromStats = (targetId, questionId) => {
+    // Find the target and question in statistics
+    if (!statistics || !statistics.targets) {
+      toast.error('Statistics data not available');
+      return;
+    }
+    
+    const target = statistics.targets.find(t => t.targetId === targetId);
+    if (!target || !target.questionStats) {
+      toast.error('Target not found in statistics');
+      return;
+    }
+    
+    const question = target.questionStats.find(q => q.questionId === questionId);
+    if (!question) {
+      toast.error('Question not found in statistics');
+      return;
+    }
+    
+    // Use the text responses already in the statistics data
+    if (question.textResponses && question.textResponses.length > 0) {
+      // Format the responses for the dialog
+      const formattedResponses = question.textResponses.map(resp => ({
+        text: resp.text,
+        studentName: resp.student || 'Anonymous Student',
+        schoolName: resp.school || 'Unknown School',
+        directionName: resp.direction || 'Unknown Direction',
+        date: resp.date ? new Date(resp.date).toLocaleString() : ''
+      }));
+      
+      setTextResponses(formattedResponses);
+      setCurrentQuestion(question.questionText);
+      setShowTextResponses(true);
+    } else {
+      toast.info('No text responses available for this question');
+    }
+  };
+
+  // Keep this as a fallback in case we need it in the future
+  const fetchTextResponses = async (targetId, questionId) => {
+    setLoading(true);
+    try {
+      // Text responses are now included in the main statistics response
+      // This function is kept as a fallback but should not be needed
+      toast.info('Using statistics data for text responses');
+      showTextResponsesFromStats(targetId, questionId);
+    } catch (err) {
+      console.error('Error handling text responses:', err);
+      toast.error('Failed to show text responses. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePeriodChange = async (e) => {
+    const periodId = e.target.value;
+    setSelectedPeriod(periodId);
+    
+    if (periodId) {
+      try {
+        await fetchStatistics(periodId);
+      } catch (error) {
+        console.error('Error handling period change:', error);
+        // Error is already handled in fetchStatistics
+      }
+    } else {
+      setStatistics(null);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchStatistics(selectedPeriod);
+  };
+  
+  // Fetch statistics when target type or ID changes
+  useEffect(() => {
+    if (selectedTargetType) {
+      fetchStatistics(selectedPeriod);
+    }
+  }, [selectedTargetType, selectedTargetId]);
+
+  const handleShowTextResponses = (targetId, questionId) => {
+    showTextResponsesFromStats(targetId, questionId);
+  };
+  
+  const handleCloseTextResponses = () => {
+    setShowTextResponses(false);
+    setTextResponses([]);
+    setCurrentQuestion('');
+  };
+
+  const handlePrintDialogOpen = () => {
+    setPrintDialogOpen(true);
+  };
+  
+  const handlePrintDialogClose = () => {
+    setPrintDialogOpen(false);
+  };
+  
+  const handlePrintFilterChange = (field, value) => {
+    setPrintFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handlePrint = useReactToPrint({
+    content: () => reportRef.current,
+    documentTitle: `Rating Statistics Report - ${selectedPeriod ? periods.find(p => p._id === selectedPeriod)?.title : 'All Periods'}`,
+    onAfterPrint: () => {
+      setPrintDialogOpen(false);
+      toast.success('Report printed successfully');
+    }
+  });
+
+  // Component initialization effect
+  useEffect(() => {
+
+      // Check if token exists and is valid
+      if (!token) {
+        const errorMsg = 'No authentication token found. Please log in again.';
+        console.error(errorMsg);
+        setError(errorMsg);
+        return;
+      }
+
+      console.log('🔑 Token available, setting up axios defaults...');
+
+      // Set authorization headers
+      axios.defaults.headers.common = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.trim()}`
+      };
+      axios.defaults.withCredentials = true;
+
+      console.log('📋 Step 1: Fetching rating periods...');
+      const periods = await fetchRatingPeriods();
+
+      // Only fetch statistics if we have periods
+      if (periods && periods.length > 0) {
+        console.log('📊 Step 2: Fetching statistics...');
+        await fetchStatistics(selectedPeriod);
+      } else {
+        console.log('ℹ️ No rating periods found. Waiting for period selection.');
+      }
+
+    } catch (error) {
+      console.error('❌ Error during component initialization:', error);
+      // Error messages are already set in the individual fetch functions
+    }
+  };
+
+    }
+    
+    validateTokenAndInitialize();
+    
+    // Clean up function
+    return () => {
+      delete axios.defaults.headers.common['Authorization'];
+      delete axios.defaults.withCredentials;
+    };
+  }, [token, navigate, selectedPeriod]);
+
+// Main component render
+return (
+  <Container maxWidth="xl">
+    <Paper sx={{ p: 3, mb: 3 }}>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Rating Statistics
+        </Typography>
+        <Divider />
+      </Box>
+
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={4}>
+          <FormControl fullWidth>
+            <InputLabel>Filter by Rating Period</InputLabel>
+            <Select
+              value={selectedPeriod || ''}
+              onChange={handlePeriodChange}
+              label="Filter by Rating Period"
+              displayEmpty
+            >
+              <MenuItem value="">All Periods</MenuItem>
+              {Array.isArray(periods) && periods.length > 0 ? (
+                periods.map((period) => (
+                  <MenuItem key={period._id} value={period._id}>
+                    {period.title} {period.isActive && '(Active)'}
+                  </MenuItem>
+                ))
+              ) : (
+                <MenuItem disabled>No rating periods available</MenuItem>
+              )}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <FormControl fullWidth>
+            <InputLabel>Filter by Target Type</InputLabel>
+            <Select
+              value={selectedTargetType}
+              onChange={(e) => {
+                setSelectedTargetType(e.target.value);
+                setSelectedTargetId('');
+              }}
+              label="Filter by Target Type"
+            >
+              <MenuItem value="teacher">Teachers</MenuItem>
+              <MenuItem value="subject">Subjects</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+      </Grid>
+
+      {selectedTargetType && (
+        <>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Rating Statistics
+            </Typography>
+            <Divider />
+          </Box>
+          
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Filter by Rating Period</InputLabel>
+                <Select
+                  value={selectedPeriod || ''}
+                  onChange={handlePeriodChange}
+                  label="Filter by Rating Period"
+                  displayEmpty
+                >
+                  <MenuItem value="">All Periods</MenuItem>
+                  {Array.isArray(periods) && periods.length > 0 ? (
+                    periods.map((period) => (
+                      <MenuItem key={period._id} value={period._id}>
+                        {period.title} {period.isActive && '(Active)'}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>No rating periods available</MenuItem>
+                  )}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Filter by Target Type</InputLabel>
+                <Select
+                  value={selectedTargetType}
+                  onChange={(e) => {
+                    setSelectedTargetType(e.target.value);
+                    setSelectedTargetId('');
+                  }}
+                  label="Filter by Target Type"
+                >
+                  <MenuItem value="teacher">Teachers</MenuItem>
+                  <MenuItem value="subject">Subjects</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            {selectedTargetType && (
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Select {selectedTargetType === 'teacher' ? 'Teacher' : 'Subject'}</InputLabel>
+                  <Select
+                    value={selectedTargetId}
+                    onChange={(e) => setSelectedTargetId(e.target.value)}
+                    label={`Select ${selectedTargetType === 'teacher' ? 'Teacher' : 'Subject'}`}
+                    disabled={!selectedTargetType}
+                  >
+                    <MenuItem value="">All {selectedTargetType === 'teacher' ? 'Teachers' : 'Subjects'}</MenuItem>
+                    {statistics?.targets
+                      ?.filter(target => target.targetType === selectedTargetType)
+                      .map(target => (
+                        <MenuItem key={target.targetId} value={target.targetId}>
+                          {target.name}
+                        </MenuItem>
+                      ))
+                    }
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
+            <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+              <Button 
+                variant="outlined" 
+                startIcon={<RefreshIcon />} 
+                onClick={handleRefresh}
+                sx={{ mr: 1 }}
+              >
+                Refresh
+              </Button>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                startIcon={<PrintIcon />} 
+                onClick={handlePrintDialogOpen}
+              >
+                Print Report
+              </Button>
+            </Grid>
+          </Grid>
+          
+          {error && error !== 'Authentication required. Please log in again.' && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+          
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : statistics ? (
+            <div>
+              <Card sx={{ mb: 4 }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Summary
+                  </Typography>
+                <Typography>
+                  Total Ratings: {statistics.totalRatings || 0}
+                </Typography>
+              </CardContent>
+            </Card>
+            
+            {Array.isArray(statistics.targets) && statistics.targets.length > 0 ? (
+              <div>
+                <Typography variant="h5" sx={{ mb: 2 }}>
+                  Target Details
+                </Typography>
+                
+                {statistics.targets.map((target) => (
+                  <Accordion key={target.targetId} sx={{ mb: 2 }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography sx={{ display: 'flex', alignItems: 'center' }}>
+                        {target.targetType === 'teacher' ? (
+                          <PersonIcon sx={{ mr: 1 }} />
+                        ) : (
+                          <SchoolIcon sx={{ mr: 1 }} />
+                        )}
+                        {target.targetType === 'teacher' ? 'Teacher: ' : 'Subject: '}
+                        <strong>{target.name}</strong>
+                        <Chip 
+                          label={`${target.totalRatings} ratings`} 
+                          size="small" 
+                          sx={{ ml: 2 }} 
+                        />
+                        <Chip 
+                          label={`Avg: ${(target.averageRating || 0).toFixed(1)}/5`} 
+                          color="primary" 
+                          size="small" 
+                          sx={{ ml: 1 }} 
+                        />
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <TableContainer component={Paper} variant="outlined">
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Question</TableCell>
+                              <TableCell align="center">Type</TableCell>
+                              <TableCell align="center">Rating/Responses</TableCell>
+                              <TableCell align="center">Count</TableCell>
+                              <TableCell align="center">Distribution</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {Array.isArray(target.questionStats) && target.questionStats.map((qStat) => (
+                              <TableRow key={qStat.questionId}>
+                                <TableCell>
+                                  {qStat.questionText}
+                                </TableCell>
+                                <TableCell align="center">
+                                  <Chip 
+                                    label={qStat.questionType === 'text' ? 'Text' : 'Rating'} 
+                                    color={qStat.questionType === 'text' ? 'secondary' : 'primary'}
+                                    size="small" 
+                                  />
+                                </TableCell>
+                                <TableCell align="center">
+                                  {qStat.questionType === 'text' ? (
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<QuestionIcon />}
+                                      onClick={() => handleShowTextResponses(target.targetId, qStat.questionId)}
+                                    >
+                                      View {qStat.count || 0} Responses
+                                    </Button>
+                                  ) : (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <Rating value={qStat.average || 0} precision={0.1} readOnly max={5} />
+                                      <Typography variant="body2" sx={{ ml: 1 }}>
+                                        ({(qStat.average || 0).toFixed(1)})
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </TableCell>
+                                <TableCell align="center">
+                                  {qStat.count || 0}
+                                </TableCell>
+                                <TableCell align="center">
+                                  {(qStat.schools && Object.keys(qStat.schools).length > 0) || 
+                                   (qStat.directions && Object.keys(qStat.directions).length > 0) ? (
+                                    <Tooltip
+                                      title={
+                                        <React.Fragment>
+                                          {qStat.schools && Object.keys(qStat.schools).length > 0 && (
+                                            <div>
+                                              <Typography variant="body2">
+                                                <SchoolIcon fontSize="small" /> Schools:
+                                              </Typography>
+                                              {Object.entries(qStat.schools).map(([id, data]) => (
+                                                <Typography key={id} variant="body2" sx={{ pl: 2 }}>
+                                                  {data.name}: {data.count} responses
+                                                </Typography>
+                                              ))}
+                                            </div>
+                                          )}
+                                          
+                                          {qStat.directions && Object.keys(qStat.directions).length > 0 && (
+                                            <div style={{ marginTop: '8px' }}>
+                                              <Typography variant="body2">
+                                                <LocationIcon fontSize="small" /> Directions:
+                                              </Typography>
+                                              {Object.entries(qStat.directions).map(([id, data]) => (
+                                                <Typography key={id} variant="body2" sx={{ pl: 2 }}>
+                                                  {data.name}: {data.count} responses
+                                                </Typography>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </React.Fragment>
+                                      }
+                                    >
+                                      <IconButton size="small">
+                                        <InfoIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                  ) : (
+                                    '—'
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </div>
+            ) : (
+              <Alert severity="info">
+                No rating data available for the selected period.
+              </Alert>
+            )}
+          </div>
+        ) : (
+          <Alert severity="info">
+            Select a rating period to view statistics.
+          </Alert>
+        )}
+      </div>
+    </>
+  )}
+  </Paper>
+      
+      {/* Hidden printable report */}
+      <div style={{ display: 'none' }}>
+        <div ref={reportRef}>
+          <PrintableReport 
+            stats={statistics} 
+            periodTitle={selectedPeriod ? periods.find(p => p._id === selectedPeriod)?.title : 'All Periods'} 
+            filters={printFilters} 
+          />
+        </div>
+      </div>
+      
+      {/* Text responses dialog */}
+      <TextResponsesDialog
+        open={showTextResponses}
+        handleClose={handleCloseTextResponses}
+        responses={textResponses}
+        question={currentQuestion}
+      />
+      
+      {/* Print dialog */}
+      <PrintReportDialog
+        open={printDialogOpen}
+        handleClose={handlePrintDialogClose}
+        onPrint={handlePrint}
+        onFilterChange={handlePrintFilterChange}
+        filters={printFilters}
+      />
+    </Container>
+  );
+};
+
+export default RatingStatistics;
