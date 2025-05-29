@@ -358,9 +358,8 @@ const RatingStatistics = () => {
         }
       };
       
-      // Using the all/all endpoint format which is the general statistics endpoint
-      // This is based on the pattern seen in the backend: /stats/:targetType/:targetId
-      const url = `${API_URL}/api/ratings/stats/all/all`;
+      // Using the general stats endpoint
+      const url = `${API_URL}/api/ratings/stats`;
       // Add period as a query parameter if provided
       const urlWithParams = periodId ? `${url}?periodId=${periodId}` : url;
       
@@ -381,55 +380,55 @@ const RatingStatistics = () => {
     }
   };
 
+  const showTextResponsesFromStats = (targetId, questionId) => {
+    // Find the target and question in statistics
+    if (!statistics || !statistics.targets) {
+      toast.error('Statistics data not available');
+      return;
+    }
+    
+    const target = statistics.targets.find(t => t.targetId === targetId);
+    if (!target || !target.questionStats) {
+      toast.error('Target not found in statistics');
+      return;
+    }
+    
+    const question = target.questionStats.find(q => q.questionId === questionId);
+    if (!question) {
+      toast.error('Question not found in statistics');
+      return;
+    }
+    
+    // Use the text responses already in the statistics data
+    if (question.textResponses && question.textResponses.length > 0) {
+      // Format the responses for the dialog
+      const formattedResponses = question.textResponses.map(resp => ({
+        text: resp.text,
+        studentName: resp.student || 'Anonymous Student',
+        schoolName: resp.school || 'Unknown School',
+        directionName: resp.direction || 'Unknown Direction',
+        date: resp.date ? new Date(resp.date).toLocaleString() : ''
+      }));
+      
+      setTextResponses(formattedResponses);
+      setCurrentQuestion(question.questionText);
+      setShowTextResponses(true);
+    } else {
+      toast.info('No text responses available for this question');
+    }
+  };
+
+  // Keep this as a fallback in case we need it in the future
   const fetchTextResponses = async (targetId, questionId) => {
     setLoading(true);
     try {
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        }
-      };
-      
-      // Construct URL for text responses based on the endpoint pattern seen in logs
-      // Format: /api/ratings/text-responses/:targetType/:targetId/:questionId
-      // Determining target type from the statistics data
-      let targetType = 'subject'; // Default
-      if (statistics && statistics.targets) {
-        const target = statistics.targets.find(t => t.targetId === targetId);
-        if (target) {
-          targetType = target.targetType;
-        }
-      }
-      
-      const url = `${API_URL}/api/ratings/text-responses/${targetType}/${targetId}/${questionId}`;
-      const periodParam = selectedPeriod ? `?periodId=${selectedPeriod}` : '';
-      const urlWithParams = url + periodParam;
-      
-      console.log('Fetching text responses from:', urlWithParams);
-      
-      const response = await axios.get(urlWithParams, config);
-      
-      if (response.data) {
-        // Find the question text from statistics
-        let questionText = '';
-        if (statistics && statistics.targets) {
-          const target = statistics.targets.find(t => t.targetId === targetId);
-          if (target && target.questionStats) {
-            const question = target.questionStats.find(q => q.questionId === questionId);
-            if (question) {
-              questionText = question.questionText;
-            }
-          }
-        }
-        
-        setTextResponses(response.data);
-        setCurrentQuestion(questionText);
-        setShowTextResponses(true);
-      }
+      // Text responses are now included in the main statistics response
+      // This function is kept as a fallback but should not be needed
+      toast.info('Using statistics data for text responses');
+      showTextResponsesFromStats(targetId, questionId);
     } catch (err) {
-      console.error('Error fetching text responses:', err);
-      toast.error('Failed to fetch text responses. Please try again.');
+      console.error('Error handling text responses:', err);
+      toast.error('Failed to show text responses. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -446,7 +445,7 @@ const RatingStatistics = () => {
   };
 
   const handleShowTextResponses = (targetId, questionId) => {
-    fetchTextResponses(targetId, questionId);
+    showTextResponsesFromStats(targetId, questionId);
   };
   
   const handleCloseTextResponses = () => {
