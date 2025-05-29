@@ -316,6 +316,10 @@ const RatingStatistics = () => {
   const [printFilters, setPrintFilters] = useState({
     targetType: 'all'
   });
+  
+  // State for selected target type and ID
+  const [selectedTargetType, setSelectedTargetType] = useState('teacher'); // Default to 'teacher' or another appropriate default
+  const [selectedTargetId, setSelectedTargetId] = useState('');
 
   // Properly access token from Redux state with fallbacks
   const userInfo = useSelector((state) => state.auth?.userInfo);
@@ -381,232 +385,82 @@ const RatingStatistics = () => {
     setError(null);
     
     try {
-      // Check if there's a token - but don't set an error
-      // We'll just use mock data if no token is available
+      // Ensure we have a valid authentication token
       if (!token) {
-        console.log('No token available for statistics fetch, will use mock data');
-        return;  // The component initialization will load mock data
+        console.error('No authentication token available');
+        setError('Authentication token missing. Please log in again.');
+        setLoading(false);
+        return;
       }
       
-      // Try to fetch from API first with all required headers
-      try {
-        const config = {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        };
-        
-        const url = `${API_URL}/api/ratings/stats`;
-        const urlWithParams = periodId ? `${url}?periodId=${periodId}` : url;
-        
-        console.log('Attempting API call to:', urlWithParams);
-        const response = await axios.get(urlWithParams, config);
-        
-        if (response.data) {
-          console.log('Real API data received');
-          setStatistics(response.data);
-          return;
-        }
-      } catch (apiError) {
-        console.error('API call failed, using mock data:', apiError);
+      // Build the API endpoint with the correct query parameters
+      const endpoint = `${API_URL}/api/ratings/stats`;
+      
+      // Create query parameters object with only defined values
+      const params = {};
+      
+      // Only include targetType if it's defined and not empty
+      if (selectedTargetType) {
+        params.targetType = selectedTargetType;
       }
       
-      // FALLBACK: If API call fails, use mock data to ensure component works
-      console.log('Using mock statistics data');
-      const mockData = {
-        totalRatings: 25,
-        targets: [
-          {
-            targetId: 'teacher1',
-            targetType: 'teacher',
-            name: 'John Smith',
-            totalRatings: 15,
-            averageRating: 4.2,
-            questionStats: [
-              {
-                questionId: 'q1',
-                questionText: 'How would you rate this teacher?',
-                questionType: 'rating',
-                count: 15,
-                average: 4.2,
-                textResponseCount: 0,
-                hasTextResponses: false,
-                schools: {
-                  'school1': { name: 'Main School', count: 10 },
-                  'school2': { name: 'Branch School', count: 5 }
-                },
-                directions: {
-                  'dir1': { name: 'Science', count: 8 },
-                  'dir2': { name: 'Arts', count: 7 }
-                }
-              },
-              {
-                questionId: 'q2',
-                questionText: 'Comments about this teacher',
-                questionType: 'text',
-                count: 3,
-                textResponseCount: 3,
-                hasTextResponses: true,
-                textResponses: [
-                  {
-                    text: 'Great teacher, very helpful',
-                    student: 'Student 1',
-                    school: 'Main School',
-                    direction: 'Science'
-                  },
-                  {
-                    text: 'Explains concepts clearly',
-                    student: 'Student 2',
-                    school: 'Branch School',
-                    direction: 'Arts'
-                  },
-                  {
-                    text: 'Very knowledgeable',
-                    student: 'Student 3',
-                    school: 'Main School',
-                    direction: 'Science'
-                  }
-                ],
-                schools: {
-                  'school1': { name: 'Main School', count: 2 },
-                  'school2': { name: 'Branch School', count: 1 }
-                },
-                directions: {
-                  'dir1': { name: 'Science', count: 2 },
-                  'dir2': { name: 'Arts', count: 1 }
-                }
-              }
-            ]
-          },
-          {
-            targetId: 'subject1',
-            targetType: 'subject',
-            name: 'Mathematics',
-            totalRatings: 10,
-            averageRating: 3.8,
-            questionStats: [
-              {
-                questionId: 'q3',
-                questionText: 'How would you rate this subject?',
-                questionType: 'rating',
-                count: 10,
-                average: 3.8,
-                textResponseCount: 0,
-                hasTextResponses: false,
-                schools: {
-                  'school1': { name: 'Main School', count: 6 },
-                  'school2': { name: 'Branch School', count: 4 }
-                },
-                directions: {
-                  'dir1': { name: 'Science', count: 7 },
-                  'dir2': { name: 'Arts', count: 3 }
-                }
-              },
-              {
-                questionId: 'q4',
-                questionText: 'Comments about this subject',
-                questionType: 'text',
-                count: 2,
-                textResponseCount: 2,
-                hasTextResponses: true,
-                textResponses: [
-                  {
-                    text: 'Interesting subject',
-                    student: 'Student 4',
-                    school: 'Main School',
-                    direction: 'Science'
-                  },
-                  {
-                    text: 'Challenging but rewarding',
-                    student: 'Student 5',
-                    school: 'Branch School',
-                    direction: 'Science'
-                  }
-                ],
-                schools: {
-                  'school1': { name: 'Main School', count: 1 },
-                  'school2': { name: 'Branch School', count: 1 }
-                },
-                directions: {
-                  'dir1': { name: 'Science', count: 2 }
-                }
-              }
-            ]
-          }
-        ]
+      // Only include targetId if it's defined and not empty
+      if (selectedTargetId) {
+        params.targetId = selectedTargetId;
+      }
+      
+      // Add period ID filter if specified
+      if (periodId) {
+        params.periodId = periodId;
+      }
+      
+      console.log(`🔍 Fetching statistics with params:`, params);
+      
+      // Make the API request with proper auth token and parameters
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        params
       };
       
-      setStatistics(mockData);
-    } catch (err) {
-      console.error('Error fetching statistics:', err);
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch statistics';
+      const response = await axios.get(endpoint, config);
       
-      // Still use mock data even in case of error to ensure component works
-      console.log('Using fallback mock data due to error');
-      const basicMockData = {
-        totalRatings: 5,
-        targets: [
-          {
-            targetId: 'demo1',
-            targetType: 'teacher',
-            name: 'Demo Teacher',
-            totalRatings: 5,
-            averageRating: 4.0,
-            questionStats: [
-              {
-                questionId: 'demoq1',
-                questionText: 'Sample Rating Question',
-                questionType: 'rating',
-                count: 5,
-                average: 4.0,
-                schools: { 'school1': { name: 'School', count: 5 } },
-                directions: { 'dir1': { name: 'Direction', count: 5 } }
-              },
-              {
-                questionId: 'demoq2',
-                questionText: 'Sample Text Question',
-                questionType: 'text',
-                count: 2,
-                textResponseCount: 2,
-                hasTextResponses: true,
-                textResponses: [
-                  {
-                    text: 'Sample response 1',
-                    student: 'Student',
-                    school: 'School',
-                    direction: 'Direction'
-                  }
-                ],
-                schools: { 'school1': { name: 'School', count: 2 } },
-                directions: { 'dir1': { name: 'Direction', count: 2 } }
-              }
-            ]
-          }
-        ]
-      };
-      
-      setStatistics(basicMockData);
-      
-      // Also set a user-friendly error message
-      if (err.response) {
-        if (err.response.status === 401) {
-          setError('Your session has expired. Please log in again.');
-        } else if (err.response.status === 404) {
-          setError(`API endpoint not found. Using demo data instead.`);
-        } else {
-          setError(`Server error. Using demo data instead.`);
-        }
-      } else if (err.request) {
-        // Request was made but no response received
-        setError('No response from server. Using demo data instead.');
+      // Process API response
+      if (response.data) {
+        console.log('✅ Successfully fetched statistics data');
+        setStatistics(response.data);
       } else {
-        setError(`Error: Using demo data instead.`);
+        throw new Error('Empty response received from API');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching statistics:', error.message);
+      
+      // Check for specific error types
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        if (error.response.status === 401) {
+          setError('Authentication failed. Please log in again.');
+        } else if (error.response.status === 403) {
+          setError('You do not have permission to access these statistics.');
+        } else {
+          setError(`Failed to load statistics: ${error.response.data?.message || error.message}`);
+        }
+      } else if (error.request) {
+        // The request was made but no response was received
+        setError('Server did not respond. Please check your connection and try again.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        setError(`Error preparing request: ${error.message}`);
       }
     } finally {
       setLoading(false);
     }
   };
+
+  // Function to show text responses from the statistics data
 
   const showTextResponsesFromStats = (targetId, questionId) => {
     // Find the target and question in statistics
@@ -671,6 +525,13 @@ const RatingStatistics = () => {
   const handleRefresh = () => {
     fetchStatistics(selectedPeriod);
   };
+  
+  // Fetch statistics when target type or ID changes
+  useEffect(() => {
+    if (selectedTargetType) {
+      fetchStatistics(selectedPeriod);
+    }
+  }, [selectedTargetType, selectedTargetId]);
 
   const handleShowTextResponses = (targetId, questionId) => {
     showTextResponsesFromStats(targetId, questionId);
@@ -713,11 +574,10 @@ const RatingStatistics = () => {
         console.log('🔄 Initializing component...');
         setError(null); // Clear any previous errors
         
-        // CRITICAL FIX: Handle the token access more robustly
+        // Check if token exists
         if (!userInfo || !token) {
-          console.warn('No valid authentication found, using demo data');
-          // Load mock data immediately instead of showing error
-          loadMockData();
+          console.error('No valid authentication found');
+          setError('Authentication required. Please log in again.');
           return;
         }
         
@@ -759,66 +619,11 @@ const RatingStatistics = () => {
         
       } catch (error) {
         console.error('❌ Error during component initialization:', error);
-        // Still show mock data even if initialization fails
-        loadMockData();
+        setError('Failed to load rating statistics. Please try refreshing the page.');
       }
     };
     
-    // Helper function to load mock data
-    const loadMockData = () => {
-      console.log('📊 Loading mock statistics data');
-      const mockData = {
-        totalRatings: 25,
-        targets: [
-          {
-            targetId: 'teacher1',
-            targetType: 'teacher',
-            name: 'John Smith',
-            totalRatings: 15,
-            averageRating: 4.2,
-            questionStats: [
-              {
-                questionId: 'q1',
-                questionText: 'How would you rate this teacher?',
-                questionType: 'rating',
-                count: 15,
-                average: 4.2,
-                schools: { 'school1': { name: 'Main School', count: 15 } },
-                directions: { 'dir1': { name: 'Science', count: 15 } }
-              },
-              {
-                questionId: 'q2',
-                questionText: 'Comments about this teacher',
-                questionType: 'text',
-                count: 3,
-                textResponseCount: 3,
-                hasTextResponses: true,
-                textResponses: [
-                  {
-                    text: 'Great teacher, very helpful',
-                    student: 'Student 1',
-                    school: 'Main School',
-                    direction: 'Science'
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      };
-      
-      setStatistics(mockData);
-      
-      // Also set a demo period
-      setPeriods([{
-        _id: 'demoperiod1',
-        title: 'Demo Rating Period',
-        isActive: true
-      }]);
-      
-      // Clear any error since we're showing demo data
-      setError(null);
-    };
+    // No mock data - we'll only use real data from the API
     
     // Initialize the component
     initializeComponent();
@@ -840,7 +645,7 @@ const RatingStatistics = () => {
         </Box>
         
         <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <FormControl fullWidth>
               <InputLabel>Filter by Rating Period</InputLabel>
               <Select
@@ -862,6 +667,46 @@ const RatingStatistics = () => {
               </Select>
             </FormControl>
           </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Filter by Target Type</InputLabel>
+              <Select
+                value={selectedTargetType}
+                onChange={(e) => {
+                  setSelectedTargetType(e.target.value);
+                  setSelectedTargetId('');
+                }}
+                label="Filter by Target Type"
+              >
+                <MenuItem value="teacher">Teachers</MenuItem>
+                <MenuItem value="subject">Subjects</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          {selectedTargetType && (
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Select {selectedTargetType === 'teacher' ? 'Teacher' : 'Subject'}</InputLabel>
+                <Select
+                  value={selectedTargetId}
+                  onChange={(e) => setSelectedTargetId(e.target.value)}
+                  label={`Select ${selectedTargetType === 'teacher' ? 'Teacher' : 'Subject'}`}
+                  disabled={!selectedTargetType}
+                >
+                  <MenuItem value="">All {selectedTargetType === 'teacher' ? 'Teachers' : 'Subjects'}</MenuItem>
+                  {statistics?.targets
+                    ?.filter(target => target.targetType === selectedTargetType)
+                    .map(target => (
+                      <MenuItem key={target.targetId} value={target.targetId}>
+                        {target.name}
+                      </MenuItem>
+                    ))
+                  }
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
           <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
             <Button 
               variant="outlined" 
