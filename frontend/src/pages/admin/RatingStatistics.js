@@ -329,19 +329,28 @@ const RatingStatistics = () => {
     setLoading(true);
     setError(null);
     try {
-      // Don't use config object, set default headers instead
-      axios.defaults.headers.common['Content-Type'] = 'application/json';
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Use explicit config object for clearer request structure
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      };
       
-      console.log('Fetching rating periods...');
-      const response = await axios.get(`${API_URL}/api/ratings/periods`);
-      console.log('Rating periods response received');
+      console.log('Fetching rating periods with token:', token.substring(0, 10) + '...');
+      const response = await axios.get(`${API_URL}/api/ratings/periods`, config);
       
       if (response.data) {
-        console.log(`Received ${response.data.length} rating periods`);
-        setPeriods(response.data);
+        console.log(`✅ SUCCESS: Received ${response.data.length} rating periods:`, 
+          response.data.map(p => p.title).join(', '));
+        
+        // Force a UI update with the period data
+        setPeriods([...response.data]);
+        
+        // Log the full periods data for debugging
+        console.log('Full periods data:', JSON.stringify(response.data));
       } else {
-        console.log('No rating periods data received');
+        console.log('⚠️ No rating periods data received in response');
       }
     } catch (err) {
       console.error('Error fetching rating periods:', err);
@@ -684,29 +693,47 @@ const RatingStatistics = () => {
     }
   });
 
+  // Initialize with an empty value to force Select to show the placeholder
   useEffect(() => {
-    // This initialization ensures the axios defaults are set before any API calls
-    const initializeAxiosDefaults = () => {
-      if (token) {
-        console.log('Setting global axios defaults...');
-        // Set global defaults for all axios requests
+    const initializeComponent = async () => {
+      if (!token) {
+        console.log('No token available, cannot fetch data');
+        return;
+      }
+      
+      try {
+        console.log('🔄 Initializing component with token:', token ? 'Available' : 'Missing');
+        
+        // Reset headers to ensure clean state
+        delete axios.defaults.headers.common['Authorization'];
+        
+        // Set new headers explicitly for this session
         axios.defaults.headers.common['Content-Type'] = 'application/json';
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        // Add a 2-second delay to ensure token is properly processed by the server
-        setTimeout(() => {
-          fetchRatingPeriods();
-          fetchStatistics();
-        }, 500);
+        
+        // First fetch periods to populate the dropdown
+        console.log('📋 Step 1: Fetching rating periods...');
+        await fetchRatingPeriods();
+        
+        // Then fetch the statistics data
+        console.log('📊 Step 2: Fetching statistics...');
+        await fetchStatistics();
+        
+        console.log('✅ Component initialization complete');
+      } catch (error) {
+        console.error('❌ Error initializing component:', error);
+        setError('Failed to initialize the statistics view. Please try refreshing the page.');
       }
     };
     
-    initializeAxiosDefaults();
+    initializeComponent();
     
     // Clean up function to reset axios defaults when component unmounts
     return () => {
+      console.log('🧹 Cleaning up component, removing authorization headers');
       delete axios.defaults.headers.common['Authorization'];
     };
-  }, [token]);
+  }, [token]); // Only re-run if token changes
 
   return (
     <Container maxWidth="xl">
@@ -723,16 +750,21 @@ const RatingStatistics = () => {
             <FormControl fullWidth>
               <InputLabel>Filter by Rating Period</InputLabel>
               <Select
-                value={selectedPeriod}
+                value={selectedPeriod || ''}
                 onChange={handlePeriodChange}
                 label="Filter by Rating Period"
+                displayEmpty
               >
                 <MenuItem value="">All Periods</MenuItem>
-                {periods.map((period) => (
-                  <MenuItem key={period._id} value={period._id}>
-                    {period.title}
-                  </MenuItem>
-                ))}
+                {Array.isArray(periods) && periods.length > 0 ? (
+                  periods.map((period) => (
+                    <MenuItem key={period._id} value={period._id}>
+                      {period.title} {period.isActive && '(Active)'}
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem disabled>No rating periods available</MenuItem>
+                )}
               </Select>
             </FormControl>
           </Grid>
