@@ -3,7 +3,10 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.5.58';
+const APP_VERSION = '1.5.59';
+
+// API URL
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 // IMMEDIATE SELF-EXECUTING FUNCTION TO NUKE ALL VERSION DATA
 (function() {
@@ -66,6 +69,7 @@ const shouldShowUpdateNotification = () => false;
 // Export bare minimum
 export {
   APP_VERSION,
+  API_URL,
   initAppConfig,
   checkAppVersion,
   shouldShowUpdateNotification
