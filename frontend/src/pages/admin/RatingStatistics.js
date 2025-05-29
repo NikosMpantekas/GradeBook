@@ -91,6 +91,9 @@ const RatingStatistics = () => {
       // Only proceed if component is still mounted
       if (!isMounted) return;
       
+      // Clear any previous errors
+      setError(null);
+      
       // Check if token exists
       if (!token || token.trim() === '') {
         console.error('No authentication token available');
@@ -103,34 +106,23 @@ const RatingStatistics = () => {
       }
 
       try {
-        // Set global axios auth header
+        // Set up axios with auth headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${token.trim()}`;
+        axios.defaults.withCredentials = true;
         
-        // Validate token
-        const isTokenValid = await validateToken(token);
+        console.log('Using token:', token.substring(0, 15) + '...');
         
-        if (!isMounted) return; // Check again after async operation
-        
-        if (!isTokenValid) {
-          console.error('Token validation failed');
-          setError('Authentication required. Please log in again.');
-          setLoading(false);
-          setTimeout(() => {
-            if (isMounted) navigate('/login');
-          }, 2000);
-          return;
-        }
-        
-        console.log('Token is valid, proceeding with data fetching');
+        // Set loading state while we fetch data
         setLoading(true);
         
-        // Fetch periods
+        // Directly fetch periods without additional validation
+        // Server logs show that authentication is working correctly
         const periodsData = await fetchRatingPeriods(token, navigate, setError, setLoading);
         
         if (!isMounted) return; // Check again after async operation
         
         if (periodsData && Array.isArray(periodsData)) {
-          console.log(`Got ${periodsData.length} rating periods`); 
+          console.log(`Got ${periodsData.length} rating periods`);
           setPeriods(periodsData);
           
           // Fetch statistics if period is selected
@@ -152,12 +144,24 @@ const RatingStatistics = () => {
             }
           }
         } else {
+          // Only show warning in console, don't set error for user
           console.warn('No periods data returned or unexpected format');
         }
       } catch (error) {
         if (!isMounted) return; // Don't update state if unmounted
+        
         console.error('Error initializing component:', error);
-        setError('Failed to initialize component. Please try again.');
+        
+        // Only set auth error if we get a 401
+        if (error.response && error.response.status === 401) {
+          setError('Authentication required. Please log in again.');
+          setTimeout(() => {
+            if (isMounted) navigate('/login');
+          }, 2000);
+        } else {
+          // For other errors, show a more general message
+          setError('Unable to load data. Please try again.');
+        }
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -171,6 +175,7 @@ const RatingStatistics = () => {
     return () => {
       isMounted = false;
       delete axios.defaults.headers.common['Authorization'];
+      delete axios.defaults.withCredentials;
     };
   }, [token, navigate, selectedPeriod, selectedTargetType, selectedTargetId]);
 
