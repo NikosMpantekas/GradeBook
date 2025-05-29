@@ -69,6 +69,16 @@ const RatingPeriodSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true
+    },
+    // CRITICAL SECURITY: Track the creating school for strict domain isolation
+    creatingSchool: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School'
+    },
+    // SECURITY: Flag to indicate if this is a global period (available to all schools)
+    isGlobal: {
+      type: Boolean,
+      default: false
     }
   },
   {

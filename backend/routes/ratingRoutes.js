@@ -13,8 +13,16 @@ const Subject = require('../models/subjectModel');
 // Create a rating period with embedded questions
 router.post('/periods', protect, admin, asyncHandler(async (req, res) => {
   try {
-    const { title, description, startDate, endDate, targetType, schools, directions, questions } = req.body;
+    const { title, description, startDate, endDate, targetType, directions, questions } = req.body;
 
+    // CRITICAL SECURITY FIX: Enforce school domain isolation
+    // Always require school context for non-superadmin users
+    if (!req.isSuperadmin && !req.schoolId) {
+      console.log('⛔ SECURITY VIOLATION: Attempted to create rating period without school context');
+      res.status(403);
+      throw new Error('School context required for creating rating periods');
+    }
+    
     // Validation
     if (!title || !startDate || !endDate) {
       res.status(400);
@@ -30,19 +38,36 @@ router.post('/periods', protect, admin, asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error('End date must be after start date');
     }
+    
+    // SECURITY: For non-superadmins, FORCE the school ID to be the user's current school
+    // This prevents creating rating periods for other schools
+    let schoolsToAssign = [];
+    
+    if (!req.isSuperadmin) {
+      // Regular admins: force school to be their current school only
+      schoolsToAssign = [req.schoolId];
+      console.log(`🔒 SECURITY: Forcing school isolation for new rating period (School: ${req.schoolId})`);
+    } else if (req.body.schools && req.body.schools.length > 0) {
+      // Superadmins can specify schools if desired
+      schoolsToAssign = req.body.schools;
+      console.log('⚠️ SUPERADMIN: Setting custom schools for rating period');
+    }
 
-    // Create rating period with embedded questions
+    // Create rating period with embedded questions and ENFORCED school isolation
     const ratingPeriod = await RatingPeriod.create({
       title,
       description,
       startDate: start,
       endDate: end,
       targetType: targetType || 'both',
-      schools: schools || [],
+      // CRITICAL SECURITY: Force the school assignment based on user's context
+      schools: schoolsToAssign,
       directions: directions || [],
       isActive: false, // Default to inactive until explicitly activated
       questions: questions || [], // Include embedded questions from the request
-      createdBy: req.user._id
+      createdBy: req.user._id,
+      // Explicitly track the creating school for additional security
+      creatingSchool: req.schoolId || null
     });
 
     if (ratingPeriod) {
@@ -150,11 +175,42 @@ router.get('/periods/:id', protect, asyncHandler(async (req, res) => {
 // Update a rating period including its questions
 router.put('/periods/:id', protect, admin, asyncHandler(async (req, res) => {
   try {
-    const { title, description, startDate, endDate, isActive, targetType, schools, directions, questions } = req.body;
+    // Destructure but don't use schools directly - we'll handle that specially for security
+    const { title, description, startDate, endDate, isActive, targetType, directions, questions } = req.body;
 
-    const ratingPeriod = await RatingPeriod.findById(req.params.id);
+    // CRITICAL SECURITY FIX: Enforce school domain isolation
+    // Always require school context for non-superadmin users
+    if (!req.isSuperadmin && !req.schoolId) {
+      console.log('⛔ SECURITY VIOLATION: Attempted to update rating period without school context');
+      res.status(403);
+      throw new Error('School context required for managing rating periods');
+    }
+    
+    // Build query with security constraints
+    const query = { _id: req.params.id };
+    
+    // Add school isolation for non-superadmins
+    if (!req.isSuperadmin) {
+      query.$or = [
+        { schools: req.schoolId },  // Periods explicitly for this school
+        { creatingSchool: req.schoolId }, // Periods created by this school
+        // Global periods that don't have any school
+        { $and: [
+            { 'schools.0': { $exists: false } },
+            { isGlobal: true }
+          ]
+        }
+      ];
+      console.log(`🔒 SECURITY: Enforcing school isolation for rating period update (School: ${req.schoolId})`);
+    } else {
+      console.log('⚠️ SUPERADMIN: Bypassing school isolation for rating period update');
+    }
+    
+    const ratingPeriod = await RatingPeriod.findOne(query);
 
     if (!ratingPeriod) {
+      // Security: Use generic error message to avoid information disclosure
+      console.log(`🚫 ACCESS DENIED: User attempted to modify rating period outside their school domain`);
       res.status(404);
       throw new Error('Rating period not found');
     }
@@ -304,9 +360,33 @@ router.delete('/periods/:periodId/questions/:questionId', protect, admin, asyncH
 // Delete a rating period and all its embedded questions
 router.delete('/periods/:id', protect, admin, asyncHandler(async (req, res) => {
   try {
-    const ratingPeriod = await RatingPeriod.findById(req.params.id);
+    // CRITICAL SECURITY FIX: Enforce school domain isolation
+    // Always require school context for non-superadmin users
+    if (!req.isSuperadmin && !req.schoolId) {
+      console.log('⛔ SECURITY VIOLATION: Attempted to delete rating period without school context');
+      res.status(403);
+      throw new Error('School context required for managing rating periods');
+    }
+    
+    // Build query with security constraints
+    const query = { _id: req.params.id };
+    
+    // Add school isolation for non-superadmins
+    if (!req.isSuperadmin) {
+      query.$or = [
+        { schools: req.schoolId },  // Periods explicitly for this school
+        { creatingSchool: req.schoolId }, // Periods created by this school
+      ];
+      console.log(`🔒 SECURITY: Enforcing school isolation for rating period deletion (School: ${req.schoolId})`);
+    } else {
+      console.log('⚠️ SUPERADMIN: Bypassing school isolation for rating period deletion');
+    }
+    
+    const ratingPeriod = await RatingPeriod.findOne(query);
 
     if (!ratingPeriod) {
+      // Security: Use generic error message to avoid information disclosure
+      console.log(`🚫 ACCESS DENIED: User attempted to delete rating period outside their school domain`);
       res.status(404);
       throw new Error('Rating period not found');
     }
@@ -327,26 +407,41 @@ router.delete('/periods/:id', protect, admin, asyncHandler(async (req, res) => {
 // Get active rating periods for students
 router.get('/active', protect, student, asyncHandler(async (req, res) => {
   try {
+    // CRITICAL SECURITY FIX: Enforce school domain isolation
+    // Always require school context for all users
+    if (!req.schoolId) {
+      console.log('⛔ SECURITY VIOLATION: Attempted to access active rating periods without school context');
+      res.status(403);
+      throw new Error('School context required for accessing rating periods');
+    }
+    
+    console.log(`🔒 SECURITY: Enforcing school isolation for active rating periods (School ID: ${req.schoolId})`);
+    
     const now = new Date();
     
     // Get student's school and direction
     const studentSchool = req.user.school ? req.user.school._id || req.user.school : null;
     const studentDirection = req.user.direction ? req.user.direction._id || req.user.direction : null;
     
-    // Find active rating periods applicable to this student
+    // SECURITY: Find active rating periods with strict school isolation
+    // Only show periods for the student's school or global periods
     const activePeriods = await RatingPeriod.find({
       isActive: true,
       startDate: { $lte: now },
       endDate: { $gte: now },
       $or: [
-        { schools: { $in: [studentSchool] } },
-        { schools: { $size: 0 } },
-        { 'schools.0': { $exists: false } }
-      ],
-      $or: [
-        { directions: { $in: [studentDirection] } },
-        { directions: { $size: 0 } },
-        { 'directions.0': { $exists: false } }
+        // CRITICAL SECURITY: Only show periods for student's specific school
+        { schools: req.schoolId },
+        // If student has a direction, include periods for that direction (but still same school)
+        studentDirection ? { 
+          directions: studentDirection,
+          $or: [
+            { schools: req.schoolId },
+            { 'schools.0': { $exists: false } }
+          ]
+        } : { 'a': 'a' },
+        // Global periods that have no schools specified
+        { 'schools.0': { $exists: false }, isGlobal: true }
       ]
     }).sort({ createdAt: -1 });
     
