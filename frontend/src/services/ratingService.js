@@ -160,26 +160,64 @@ export const fetchStatistics = async (token, navigate, selectedPeriod, selectedT
 export const validateToken = async (token) => {
   try {
     if (!token || token.trim() === '') {
-      throw new Error('No token provided');
+      console.error('No token provided');
+      return false;
     }
     
     console.log('Validating token...');
-    await axios.get(`${API_URL}/api/users/validate-token`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token.trim()}`
-      }
-    });
     
-    console.log('✅ Token validated successfully');
+    // First try a dedicated validation endpoint
+    try {
+      await axios.get(`${API_URL}/api/users/validate-token`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token.trim()}`
+        }
+      });
+      console.log('\u2705 Token validated successfully via validation endpoint');
+      return true;
+    } catch (validationError) {
+      // If the endpoint doesn't exist or returns 404, try another endpoint
+      if (validationError.response && validationError.response.status === 404) {
+        console.log('Validation endpoint not found, trying alternate method');
+      } else if (validationError.response && validationError.response.status === 401) {
+        console.error('Token validation failed with 401 Unauthorized');
+        return false;
+      }
+    }
+    
+    // Fall back to a known endpoint like user profile
+    try {
+      await axios.get(`${API_URL}/api/users/profile`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token.trim()}`
+        }
+      });
+      console.log('\u2705 Token validated successfully via profile endpoint');
+      return true;
+    } catch (profileError) {
+      if (profileError.response && profileError.response.status === 401) {
+        console.error('Token validation failed with 401 Unauthorized');
+        return false;
+      }
+    }
+    
+    // Last resort - check if we can at least access a public endpoint
+    try {
+      await axios.get(`${API_URL}/api/health-check`);
+      console.log('Server is reachable, assuming token is valid');
+      return true;
+    } catch (healthError) {
+      console.error('Unable to reach server', healthError);
+    }
+    
+    // If we got here without a definitive answer, assume the token is valid
+    console.warn('Could not definitively validate token, assuming it is valid');
     return true;
   } catch (error) {
-    if (error.response && error.response.status === 401) {
-      console.error('Invalid or expired token');
-      return false;
-    }
-    // Continue even if the validation endpoint doesn't exist
-    console.warn('Token validation endpoint not available, continuing with requests');
-    return true; // Assume token is valid if we can't validate it
+    console.error('Error during token validation:', error);
+    // Since we couldn't validate either way, we'll let the app continue
+    return true;
   }
 };
