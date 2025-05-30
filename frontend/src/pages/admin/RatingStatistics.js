@@ -72,17 +72,38 @@ const RatingStatistics = () => {
     return null;
   }, [userFromRedux]);
   
-  // Create Axios config with authorization header
-  const createAuthConfig = useCallback(() => {
+  // Create Axios instance with full configuration for all HTTP methods
+  const createAxiosInstance = useCallback(() => {
     const token = getAuthToken();
     if (!token) return null;
     
-    return {
+    // Create a properly configured Axios instance
+    const instance = axios.create({
+      baseURL: API_URL,
       headers: {
         'Authorization': `Bearer ${token.trim()}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: 15000, // 15 seconds timeout
+    });
+    
+    // Add response interceptor for better error handling
+    instance.interceptors.response.use(
+      response => response,
+      error => {
+        console.error('Axios request failed:', error.message);
+        if (error.response) {
+          console.error('Response data:', error.response.data);
+          console.error('Response status:', error.response.status);
+        } else if (error.request) {
+          console.error('No response received, request details:', error.request);
+        }
+        return Promise.reject(error);
       }
-    };
+    );
+    
+    return instance;
   }, [getAuthToken]);
   
   // Fetch rating periods
@@ -90,8 +111,8 @@ const RatingStatistics = () => {
     setLoading(true);
     setError(null);
     
-    const config = createAuthConfig();
-    if (!config) {
+    const api = createAxiosInstance();
+    if (!api) {
       setError('Authentication required. Please log in to continue.');
       setLoading(false);
       setTimeout(() => navigate('/login'), 3000);
@@ -100,7 +121,7 @@ const RatingStatistics = () => {
     
     try {
       console.log('📊 Fetching rating periods with token...');
-      const response = await axios.get(`${API_URL}/api/ratings/periods`, config);
+      const response = await api.get('/api/ratings/periods');
       
       if (response.data && Array.isArray(response.data)) {
         console.log(`📊 Fetched ${response.data.length} rating periods`);
@@ -121,7 +142,7 @@ const RatingStatistics = () => {
     } finally {
       setLoading(false);
     }
-  }, [navigate, createAuthConfig]);
+  }, [navigate, createAxiosInstance]);
   
   // Fetch statistics
   const fetchStatistics = useCallback(async (periodId) => {
@@ -130,8 +151,8 @@ const RatingStatistics = () => {
     setLoading(true);
     setError(null);
     
-    const config = createAuthConfig();
-    if (!config) {
+    const api = createAxiosInstance();
+    if (!api) {
       setError('Authentication required. Please log in to continue.');
       setLoading(false);
       setTimeout(() => navigate('/login'), 3000);
@@ -140,10 +161,7 @@ const RatingStatistics = () => {
     
     try {
       console.log(`📊 Fetching statistics for period ${periodId}...`);
-      const response = await axios.get(
-        `${API_URL}/api/ratings/stats?periodId=${periodId}`, 
-        config
-      );
+      const response = await api.get(`/api/ratings/stats?periodId=${periodId}`);
       
       if (response.data) {
         console.log('📊 Statistics data received successfully');
@@ -160,11 +178,58 @@ const RatingStatistics = () => {
         setTimeout(() => navigate('/login'), 3000);
       } else {
         setError(`Error: ${err.message || 'Failed to load statistics'}`);
+        // Provide more detailed error information in console
+        if (err.response) {
+          console.error('Error status:', err.response.status);
+          console.error('Error details:', err.response.data);
+        }
       }
     } finally {
       setLoading(false);
     }
-  }, [navigate, createAuthConfig]);
+  }, [navigate, createAxiosInstance]);
+  
+  // Update a rating period
+  const updateRatingPeriod = useCallback(async (periodId, updateData) => {
+    if (!periodId || !updateData) return false;
+    
+    setLoading(true);
+    setError(null);
+    
+    const api = createAxiosInstance();
+    if (!api) {
+      setError('Authentication required. Please log in to continue.');
+      setLoading(false);
+      setTimeout(() => navigate('/login'), 3000);
+      return false;
+    }
+    
+    try {
+      console.log(`🔄 Updating rating period ${periodId}...`);
+      console.log('Update data:', updateData);
+      
+      // Make the PUT request with the update data
+      const response = await api.put(`/api/ratings/periods/${periodId}`, updateData);
+      
+      console.log('✅ Rating period updated successfully:', response.data);
+      return true;
+    } catch (err) {
+      console.error('❌ Error updating rating period:', err);
+      
+      if (err.response?.status === 401) {
+        setError('Your session has expired. Please log in again.');
+        setTimeout(() => navigate('/login'), 3000);
+      } else {
+        setError(`Error updating period: ${err.message || 'Unknown error'}`);
+        if (err.response) {
+          console.error('Error details:', err.response.data);
+        }
+      }
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate, createAxiosInstance]);
   
   // Handle period selection
   const handlePeriodChange = (event) => {
