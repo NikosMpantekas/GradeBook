@@ -271,6 +271,120 @@ export const fetchStatistics = async (token, navigate, selectedPeriod, selectedT
   }
 };
 
+// Update a rating period (PUT request)
+export const updateRatingPeriod = async (token, periodId, updateData, navigate, setError, setLoading) => {
+  console.log('⏩ FUNCTION ENTRY: updateRatingPeriod');
+  console.log('🔍 UPDATE DATA:', JSON.stringify(updateData));
+  console.log('🔍 PERIOD ID:', periodId);
+  
+  // Defensive token validation
+  if (!token || token.trim() === '') {
+    console.error('❌ ERROR: No token available for updateRatingPeriod');
+    if (setError) setError('Authentication required. Please log in again.');
+    if (navigate) {
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    }
+    return false;
+  }
+  
+  // Validate periodId
+  if (!periodId) {
+    console.error('❌ ERROR: No period ID provided');
+    if (setError) setError('Rating period ID is required');
+    return false;
+  }
+  
+  // Optional parameters handling
+  if (setLoading) setLoading(true);
+  if (setError) setError(null);
+  
+  try {
+    // Create axios config with proper CORS settings
+    const config = {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.trim()}`
+      },
+      withCredentials: true
+    };
+    
+    console.log('📡 NETWORK: Updating rating period...');
+    console.log('🔍 DEBUG: API URL:', `${API_URL}/api/ratings/periods/${periodId}`);
+    console.log('🔍 DEBUG: Token length:', token.length);
+    console.log('🔍 DEBUG: Authorization header:', `Bearer ${token.substring(0, 5)}...${token.substring(token.length - 5)}`);
+    
+    // Make the PUT request
+    const response = await axios.put(
+      `${API_URL}/api/ratings/periods/${periodId}`,
+      updateData,
+      config
+    );
+    
+    // Log detailed response information
+    console.log('🔍 DEBUG: Response status:', response.status);
+    console.log('🔍 DEBUG: Response data:', JSON.stringify(response.data));
+    
+    if (response.data) {
+      console.log('✅ SUCCESS: Rating period updated successfully');
+      return true;
+    } else {
+      console.warn('⚠️ WARNING: No data in response');
+      return false;
+    }
+  } catch (err) {
+    // Enhanced error logging with CORS troubleshooting
+    console.error('❌ ERROR: Failed to update rating period');
+    
+    if (err.response) {
+      // The request was made and the server responded with an error status
+      console.error('🔍 DEBUG: Response status:', err.response.status);
+      console.error('🔍 DEBUG: Response data:', JSON.stringify(err.response.data));
+      console.error('🔍 DEBUG: Response headers:', JSON.stringify(err.response.headers));
+      
+      // Handle specific status codes
+      if (err.response.status === 401) {
+        console.error('❌ ERROR: 401 Unauthorized - Token rejected');
+        if (setError) setError('Authentication required. Please log in again.');
+        if (navigate) {
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+        }
+      } else if (err.response.status === 403) {
+        console.error('❌ ERROR: 403 Forbidden - Insufficient permissions');
+        if (setError) setError('You do not have permission to update this rating period.');
+      } else {
+        console.error(`❌ ERROR: Server returned ${err.response.status}`);
+        if (setError) setError(`Server error (${err.response.status}): ${err.response.data?.message || 'Unknown error'}`);
+      }
+    } else if (err.request) {
+      // The request was made but no response was received
+      console.error('❌ ERROR: No response from server. Possible CORS issue.');
+      console.error('🔍 DEBUG: Request details:', err.request);
+      
+      // Special handling for CORS errors
+      if (err.message && (err.message.includes('Network Error') || err.message.includes('CORS'))) {
+        console.error('❌ ERROR: Possible CORS issue detected');
+        if (setError) setError('Network error: Unable to communicate with the server. This may be a CORS issue.');
+      } else {
+        if (setError) setError('No response from server. Please check your connection.');
+      }
+    } else {
+      // Something happened in setting up the request
+      console.error('❌ ERROR: Error setting up request:', err.message);
+      if (setError) setError(`Request error: ${err.message || 'Unknown error'}`);
+    }
+    
+    return false;
+  } finally {
+    console.log('⏪ FUNCTION EXIT: updateRatingPeriod');
+    if (setLoading) setLoading(false);
+  }
+};
+
 // Validate token with a simple API call
 export const validateToken = async (token) => {
   try {
