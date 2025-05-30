@@ -58,7 +58,7 @@ import ManageUsers from './pages/admin/ManageUsers';
 import CreateUserErrorWrapper from './pages/admin/CreateUserErrorWrapper';
 import EditUser from './pages/admin/EditUser';
 import StudentProgress from './pages/admin/StudentProgress';
-import ContactMessages from './pages/admin/ContactMessages';
+import AdminContactMessages from './pages/admin/ContactMessages';
 import ManageDirections from './pages/admin/ManageDirections';
 import ManageSubjects from './pages/admin/ManageSubjects';
 import SchoolBranchManager from './pages/admin/SchoolBranchManager';
@@ -483,7 +483,7 @@ function App() {
             } />
             <Route path="/superadmin/contact" element={
               <SuperAdminRoute>
-                <ContactMessages />
+                <AdminContactMessages />
               </SuperAdminRoute>
             } />
           </Route>
