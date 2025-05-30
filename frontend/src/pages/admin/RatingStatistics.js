@@ -21,7 +21,16 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Rating
+  Rating,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  TextField,
+  IconButton,
+  Snackbar
 } from '@mui/material';
 
 // API URL from config
@@ -38,6 +47,23 @@ const RatingStatistics = () => {
   const [periods, setPeriods] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState('');
   const [statistics, setStatistics] = useState(null);
+  
+  // Dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingPeriod, setEditingPeriod] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    description: '',
+    startDate: '',
+    endDate: ''
+  });
+  
+  // Notification state
+  const [notification, setNotification] = useState({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
   
   // Navigation hook
   const navigate = useNavigate();
@@ -228,6 +254,95 @@ const RatingStatistics = () => {
     }
   };
   
+  // Open edit dialog for a period
+  const handleOpenEditDialog = (periodId) => {
+    const periodToEdit = periods.find(p => p._id === periodId);
+    if (!periodToEdit) return;
+    
+    setEditingPeriod(periodToEdit);
+    
+    // Format dates for input fields (yyyy-MM-dd)
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    };
+    
+    setEditFormData({
+      title: periodToEdit.title || '',
+      description: periodToEdit.description || '',
+      startDate: periodToEdit.startDate ? formatDate(periodToEdit.startDate) : '',
+      endDate: periodToEdit.endDate ? formatDate(periodToEdit.endDate) : ''
+    });
+    
+    setEditDialogOpen(true);
+  };
+  
+  // Close edit dialog
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
+    setEditingPeriod(null);
+  };
+  
+  // Handle form field changes
+  const handleFormChange = (event) => {
+    const { name, value } = event.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  // Submit period edit
+  const handleSubmitEdit = async () => {
+    if (!editingPeriod) return;
+    
+    // Basic validation
+    if (!editFormData.title) {
+      setNotification({
+        open: true,
+        message: 'Title is required',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for update
+    const updateData = {
+      ...editFormData,
+      // Add any additional fields needed
+    };
+    
+    console.log('Submitting update for period:', editingPeriod._id);
+    console.log('Update data:', updateData);
+    
+    // Submit using our service function
+    const success = await handleRatingPeriodUpdate(editingPeriod._id, updateData);
+    
+    if (success) {
+      // Show success notification
+      setNotification({
+        open: true,
+        message: 'Rating period updated successfully!',
+        severity: 'success'
+      });
+      
+      // Close dialog and refresh data
+      handleCloseEditDialog();
+      fetchPeriods();
+    } else {
+      // Error notification is handled by the update function
+      console.error('Failed to update period');
+    }
+  };
+  
+  // Close notification
+  const handleCloseNotification = () => {
+    setNotification(prev => ({
+      ...prev,
+      open: false
+    }));
+  };
+  
   // Initial data fetch
   useEffect(() => {
     fetchPeriods();
@@ -255,14 +370,71 @@ const RatingStatistics = () => {
     );
   }
   
-  // Main render
+  // Render the component
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
         Rating Statistics
       </Typography>
       
+      {/* Rating Periods management section */}
+      <Paper sx={{ p: 2, mb: 3, display: 'flex', flexDirection: 'column' }}>
+        <Typography variant="h6" gutterBottom>
+          Rating Periods
+        </Typography>
+        
+        {loading ? (
+          <Box display="flex" justifyContent="center" p={2}>
+            <CircularProgress />
+          </Box>
+        ) : periods.length > 0 ? (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Title</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell>Start Date</TableCell>
+                  <TableCell>End Date</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {periods.map((period) => (
+                  <TableRow key={period._id}>
+                    <TableCell>{period.title}</TableCell>
+                    <TableCell>{period.description || 'N/A'}</TableCell>
+                    <TableCell>
+                      {period.startDate ? new Date(period.startDate).toLocaleDateString() : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {period.endDate ? new Date(period.endDate).toLocaleDateString() : 'N/A'}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button 
+                        variant="outlined" 
+                        size="small" 
+                        onClick={() => handleOpenEditDialog(period._id)}
+                      >
+                        Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          <Alert severity="info">No rating periods found</Alert>
+        )}
+      </Paper>
+      
+      {/* Statistics section */}
       <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+        <Typography variant="h6" gutterBottom>
+          View Statistics
+        </Typography>
+        
         {/* Period selection */}
         <Grid container spacing={3} sx={{ mb: 3 }}>
           <Grid item xs={12} md={6}>
@@ -361,6 +533,88 @@ const RatingStatistics = () => {
           </Box>
         )}
       </Paper>
+      
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Rating Period</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Update the details for this rating period.
+          </DialogContentText>
+          
+          <TextField
+            margin="dense"
+            label="Title"
+            name="title"
+            value={editFormData.title}
+            onChange={handleFormChange}
+            fullWidth
+            required
+            sx={{ mb: 2 }}
+          />
+          
+          <TextField
+            margin="dense"
+            label="Description"
+            name="description"
+            value={editFormData.description}
+            onChange={handleFormChange}
+            fullWidth
+            multiline
+            rows={2}
+            sx={{ mb: 2 }}
+          />
+          
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                margin="dense"
+                label="Start Date"
+                name="startDate"
+                type="date"
+                value={editFormData.startDate}
+                onChange={handleFormChange}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                margin="dense"
+                label="End Date"
+                name="endDate"
+                type="date"
+                value={editFormData.endDate}
+                onChange={handleFormChange}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditDialog}>Cancel</Button>
+          <Button onClick={handleSubmitEdit} variant="contained" color="primary">
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity} 
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
