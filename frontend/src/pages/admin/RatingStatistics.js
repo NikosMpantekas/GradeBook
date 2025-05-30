@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -44,11 +44,13 @@ const RatingStatistics = () => {
   // Navigation
   const navigate = useNavigate();
   
-  // Get auth token with comprehensive safeguards
-  const getAuthToken = useCallback(() => {
-    // First check Redux state
-    const authState = useSelector((state) => state.auth);
-    const userInfo = authState?.userInfo;
+  // Get auth token from Redux
+  const authState = useSelector((state) => state.auth);
+  const userInfo = authState?.userInfo;
+  
+  // Get token with comprehensive safeguards
+  const token = useMemo(() => {
+    // First try from Redux
     let token = userInfo?.token || '';
     
     // If no token in Redux, check localStorage as fallback
@@ -65,10 +67,7 @@ const RatingStatistics = () => {
     }
     
     return token;
-  }, []);
-  
-  // Access token
-  const token = getAuthToken();
+  }, [userInfo]);
   
   // Initialize axios with auth headers
   const initializeAxios = useCallback((specificToken = null) => {
