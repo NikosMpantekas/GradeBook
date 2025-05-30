@@ -381,18 +381,10 @@ export const updateRatingPeriod = async (token, periodId, updateData, navigate, 
       }
     }
     
-    // This code is unreachable due to the return statements in the try/catch above
-    // But we'll keep it as a fallback just in case
-    if (response && response.data) {
-      console.log('✅ SUCCESS: Rating period updated successfully');
-      return true;
-    } else if (response) {
-      console.warn('⚠️ WARNING: Response received but no data');
-      return true; // Still consider it a success if we got a response
-    } else {
-      console.warn('⚠️ WARNING: No response received');
-      return false;
-    }
+    // This part of the code should never be reached because of the returns in the try/catch blocks above
+    // Removing the unreachable code that was causing build errors
+    console.warn('⚠️ WARNING: Reached unreachable code in updateRatingPeriod');
+    return false;
   } catch (err) {
     // Enhanced error logging with CORS troubleshooting
     console.error('❌ ERROR: Failed to update rating period');
