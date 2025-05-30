@@ -28,7 +28,13 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
-import ReactMarkdown from 'react-markdown';
+// Try to import ReactMarkdown with a fallback mechanism
+let ReactMarkdown = null;
+try {
+  ReactMarkdown = require('react-markdown');
+} catch (error) {
+  console.warn('react-markdown package not available in PatchNoteEditor, using fallback rendering');
+}
 
 const PatchNoteEditor = ({ user, onPatchNotesChanged }) => {
   const [open, setOpen] = useState(false);
@@ -228,9 +234,16 @@ const PatchNoteEditor = ({ user, onPatchNotesChanged }) => {
                   <Typography variant="h5" gutterBottom>
                     {formData.title || 'Untitled Patch Note'} <Typography component="span" variant="caption" color="text.secondary">v{formData.version || '0.0.0'}</Typography>
                   </Typography>
-                  <ReactMarkdown>
-                    {formData.content || '*No content provided*'}
-                  </ReactMarkdown>
+                  {ReactMarkdown ? (
+                    <ReactMarkdown>
+                      {formData.content || '*No content provided*'}
+                    </ReactMarkdown>
+                  ) : (
+                    /* Fallback rendering when ReactMarkdown isn't available */
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {formData.content || '*No content provided*'}
+                    </Typography>
+                  )}
                 </Paper>
                 <Button
                   variant="outlined"
