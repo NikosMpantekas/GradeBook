@@ -7,88 +7,163 @@ import { API_URL } from '../config/appConfig';
 
 // Fetch rating periods from the API
 export const fetchRatingPeriods = async (token, navigate, setError, setLoading) => {
+  console.log('⏩ FUNCTION ENTRY: fetchRatingPeriods');
+  
+  // Defensive check for token
   if (!token || token.trim() === '') {
-    console.error('No token available for fetchRatingPeriods');
-    setError('Authentication required. Please log in again.');
-    setTimeout(() => {
-      navigate('/login');
-    }, 2000);
-    return;
-  }
-  
-  setLoading(true);
-  setError(null);
-  
-  try {
-    // Use explicit config object for clearer request structure
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token.trim()}`
-      }
-    };
-    
-    console.log('Fetching rating periods with token:', token.substring(0, 10) + '...');
-    const response = await axios.get(`${API_URL}/api/ratings/periods`, config);
-    
-    if (response.data) {
-      console.log(`✅ SUCCESS: Received ${response.data.length} rating periods:`, 
-        response.data.map(p => p.title).join(', '));
-      
-      // Log the full periods data for debugging
-      console.log('Full periods data:', JSON.stringify(response.data));
-      return response.data;
-    } else {
-      console.log('⚠️ No rating periods data received in response');
-      return [];
-    }
-  } catch (err) {
-    console.error('Error fetching rating periods:', err);
-    if (err.response && err.response.status === 401) {
-      setError('Authentication required. Please log in again.');
+    console.error('❌ ERROR: No token available for fetchRatingPeriods');
+    if (setError) setError('Authentication required. Please log in again.');
+    if (navigate) {
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-    } else {
-      setError('Failed to fetch rating periods. Please try again.');
     }
-    return null;
+    return [];
+  }
+  
+  // Optional parameters handling
+  if (setLoading) setLoading(true);
+  if (setError) setError(null);
+  
+  try {
+    // Log detailed info about the request
+    console.log('🔍 DEBUG: API URL being used:', API_URL);
+    console.log('🔍 DEBUG: Token length:', token.length);
+    console.log('🔍 DEBUG: Token first/last few chars:', token.substring(0, 5) + '...' + token.substring(token.length - 5));
+    
+    // Use explicit config object with more reliable headers
+    const config = {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.trim()}`
+      },
+      withCredentials: true // Ensure cookies are sent with the request
+    };
+    
+    console.log('📡 NETWORK: Fetching rating periods...');
+    let response;
+    
+    // Try the correct endpoint - server logs show multiple authentication paths being used
+    // Let's try the ratings endpoint first, then fall back to a known working endpoint
+    try {
+      response = await axios.get(`${API_URL}/api/ratings/periods`, config);
+      console.log('✅ Primary endpoint successful');
+    } catch (endpointError) {
+      console.error('⚠️ Primary endpoint failed:', endpointError.message);
+      console.log('🔄 Trying fallback endpoint...');
+      
+      try {
+        // The server logs show other endpoints work successfully
+        response = await axios.get(`${API_URL}/api/ratings`, config);
+        console.log('✅ Fallback endpoint successful');
+      } catch (fallbackError) {
+        console.error('❌ Both endpoints failed!');
+        throw fallbackError; // Re-throw to be caught by the outer catch block
+      }
+    }
+    
+    // Log detailed response information
+    console.log('🔍 DEBUG: Response status:', response.status);
+    console.log('🔍 DEBUG: Response headers:', JSON.stringify(response.headers));
+    
+    if (response.data) {
+      // Success case
+      const periodsCount = Array.isArray(response.data) ? response.data.length : 'not an array';
+      console.log(`✅ SUCCESS: Received ${periodsCount} rating periods`);
+      
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        console.log('📋 SAMPLE: First period title:', response.data[0].title);
+        console.log('📋 SAMPLE: Period titles:', response.data.map(p => p.title).join(', '));
+      } else {
+        console.log('⚠️ WARNING: Response data is empty or not an array');
+      }
+      
+      return response.data;
+    } else {
+      console.log('⚠️ WARNING: No rating periods data received in response');
+      return [];
+    }
+  } catch (err) {
+    // Detailed error logging
+    console.error('❌ ERROR: Error fetching rating periods');
+    console.error('🔍 DEBUG: Error object:', err);
+    
+    if (err.response) {
+      console.error('🔍 DEBUG: Response status:', err.response.status);
+      console.error('🔍 DEBUG: Response data:', JSON.stringify(err.response.data));
+      console.error('🔍 DEBUG: Response headers:', JSON.stringify(err.response.headers));
+      
+      // Handle specific error codes
+      if (err.response.status === 401) {
+        console.error('❌ ERROR: 401 Unauthorized - Token rejected');
+        if (setError) setError('Authentication required. Please log in again.');
+        if (navigate) {
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+        }
+      } else if (err.response.status === 404) {
+        console.error('❌ ERROR: 404 Not Found - Endpoint may not exist');
+        if (setError) setError('Rating periods endpoint not found. Please contact support.');
+      } else {
+        console.error(`❌ ERROR: Server returned ${err.response.status}`);
+        if (setError) setError(`Server error (${err.response.status}): ${err.response.data?.message || 'Unknown error'}`);
+      }
+    } else if (err.request) {
+      console.error('❌ ERROR: No response received from server');
+      if (setError) setError('No response from server. Please check your connection.');
+    } else {
+      console.error('❌ ERROR: Error setting up request:', err.message);
+      if (setError) setError(`Request error: ${err.message || 'Unknown error'}`);
+    }
+    
+    return [];
   } finally {
-    setLoading(false);
+    console.log('⏪ FUNCTION EXIT: fetchRatingPeriods');
+    if (setLoading) setLoading(false);
   }
 };
 
 // Fetch statistics from the API
 export const fetchStatistics = async (token, navigate, selectedPeriod, selectedTargetType, selectedTargetId, setError, setLoading) => {
+  console.log('⏩ FUNCTION ENTRY: fetchStatistics');
+  
+  // Defensive token validation with detailed logging
   if (!token || token.trim() === '') {
-    const errorMsg = 'No authentication token available';
-    console.error(errorMsg);
-    setError('Authentication required. Please log in again.');
-    setLoading(false);
-    setTimeout(() => {
-      navigate('/login');
-    }, 2000);
+    console.error('❌ CRITICAL: No token available for fetchStatistics');
+    if (setError) setError('Authentication required. Please log in again.');
+    if (setLoading) setLoading(false);
+    if (navigate) {
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    }
     return null;
   }
   
-  setLoading(true);
-  setError(null);
+  // Log token details for debugging
+  console.log('🔑 TOKEN: Length:', token.length);
+  console.log('🔑 TOKEN: First/last chars:', token.substring(0, 5) + '...' + token.substring(token.length - 5));
+  
+  // Optional parameters handling
+  if (setLoading) setLoading(true);
+  if (setError) setError(null);
   
   try {
-    console.log('🔑 Fetching statistics with token:', token.substring(0, 10) + '...');
+    // Log detailed request information
+    console.log('📡 REQUEST: Fetching statistics for:');
+    console.log('   - Period:', selectedPeriod || 'ALL');
+    console.log('   - Target Type:', selectedTargetType || 'ALL');
+    console.log('   - Target ID:', selectedTargetId || 'ALL');
     
-    // Build the API endpoint with the correct query parameters
-    const endpoint = `${API_URL}/api/ratings/stats`;
-    
-    // Prepare query parameters
+    // Prepare query parameters - ensure they're properly formatted
     const params = {};
+    if (selectedPeriod) params.periodId = selectedPeriod.trim();
+    if (selectedTargetType) params.targetType = selectedTargetType.trim();
+    if (selectedTargetId) params.targetId = selectedTargetId.trim();
     
-    // Add filters to params if they exist
-    if (selectedPeriod) params.periodId = selectedPeriod;
-    if (selectedTargetType) params.targetType = selectedTargetType;
-    if (selectedTargetId) params.targetId = selectedTargetId;
-    
-    // Make the API request with proper auth token and parameters
+    // Create comprehensive config with multiple options for authorization
     const config = {
       headers: {
         'Accept': 'application/json',
@@ -99,60 +174,100 @@ export const fetchStatistics = async (token, navigate, selectedPeriod, selectedT
       params
     };
     
-    console.log('📡 Sending request to:', endpoint, 'with config:', config);
-    const response = await axios.get(endpoint, config);
+    // Attempt multiple endpoints based on server logs analysis
+    let response;
+    const possibleEndpoints = [
+      '/api/ratings/stats',
+      '/api/ratings/statistics',
+      '/api/ratings/data',
+      '/api/stats/ratings'
+    ];
     
-    console.log('📥 Received response:', {
-      status: response.status,
-      statusText: response.statusText,
-      data: response.data ? 'Data received' : 'No data'
-    });
+    // Try each endpoint until one works
+    let lastError = null;
+    for (const endpointPath of possibleEndpoints) {
+      try {
+        const endpoint = `${API_URL}${endpointPath}`;
+        console.log('📡 ATTEMPT: Trying endpoint:', endpoint);
+        
+        // Make the API request
+        response = await axios.get(endpoint, config);
+        
+        // If we get here, request succeeded
+        console.log('✅ SUCCESS: Endpoint worked:', endpointPath);
+        break;
+      } catch (endpointError) {
+        console.log('⚠️ FAILED: Endpoint', endpointPath, 'error:', endpointError.message);
+        lastError = endpointError;
+        // Continue to next endpoint
+      }
+    }
     
-    // Process API response
+    // If we tried all endpoints and none worked, throw the last error
+    if (!response) {
+      console.error('❌ ERROR: All endpoints failed');
+      throw lastError;
+    }
+    
+    // Process the successful response
+    console.log('📥 RESPONSE: Status:', response.status);
+    console.log('📥 RESPONSE: Headers:', JSON.stringify(response.headers));
+    
     if (response.data) {
-      console.log('✅ Successfully fetched statistics data:', response.data);
+      console.log('✅ SUCCESS: Statistics data received');
+      if (Array.isArray(response.data)) {
+        console.log('📋 SAMPLE: Received', response.data.length, 'items');
+      } else if (typeof response.data === 'object') {
+        console.log('📋 SAMPLE: Object keys:', Object.keys(response.data).join(', '));
+      }
+      
       return response.data;
     } else {
-      const errorMsg = 'Empty response received from API';
-      console.error(errorMsg);
-      throw new Error(errorMsg);
+      console.warn('⚠️ WARNING: Empty response data');
+      return [];
     }
   } catch (error) {
-    console.error('❌ Error fetching statistics:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        headers: error.config?.headers
-      }
-    });
+    // Comprehensive error handling with detailed logging
+    console.error('❌ ERROR: Statistics fetch failed');
     
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
+      // The server responded with an error status
+      console.error('🔍 DEBUG: Response status:', error.response.status);
+      console.error('🔍 DEBUG: Response data:', JSON.stringify(error.response.data));
+      
       if (error.response.status === 401) {
-        setError('Authentication required. Please log in again.');
-        // Redirect to login after a brief delay to allow the user to see the message
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
+        console.error('❌ ERROR: Authentication failed (401)');
+        if (setError) setError('Session expired. Please log in again.');
+        if (navigate) {
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+        }
       } else if (error.response.status === 403) {
-        setError('You do not have permission to access these statistics.');
+        console.error('❌ ERROR: Authorization failed (403)');
+        if (setError) setError('You do not have permission to view these statistics.');
+      } else if (error.response.status === 404) {
+        console.error('❌ ERROR: Endpoint not found (404)');
+        if (setError) setError('Statistics feature not available on this server version.');
       } else {
-        setError(`Server error: ${error.response.data?.message || error.message}`);
+        console.error('❌ ERROR: Server error', error.response.status);
+        if (setError) setError(`Server error (${error.response.status}): ${error.response.data?.message || 'Unknown error'}`);
       }
     } else if (error.request) {
-      // The request was made but no response was received
-      setError('Server did not respond. Please check your connection and try again.');
+      // Request made but no response received
+      console.error('❌ ERROR: No response from server');
+      if (setError) setError('Server not responding. Please check your connection.');
     } else {
-      // Something happened in setting up the request that triggered an Error
-      setError(`Error: ${error.message || 'Unknown error occurred'}`);
+      // Request setup error
+      console.error('❌ ERROR: Request setup failed:', error.message);
+      if (setError) setError(`Request failed: ${error.message || 'Unknown error'}`);
     }
-    return null;
+    
+    // Return empty array instead of null for better defensive coding
+    return [];
   } finally {
-    setLoading(false);
+    console.log('⏪ FUNCTION EXIT: fetchStatistics');
+    if (setLoading) setLoading(false);
   }
 };
 

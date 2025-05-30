@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import { 
   Box, 
   Container, 
@@ -84,98 +85,146 @@ const RatingStatistics = () => {
   // Reference for printable report
   const reportRef = useRef();
 
-  // Validate token and set up component
+  // Main component initialization and data fetching
   useEffect(() => {
+    console.log('📊 COMPONENT: RatingStatistics initialization');
     let isMounted = true; // Flag to prevent state updates after unmount
+    
     const initializeComponent = async () => {
       // Only proceed if component is still mounted
       if (!isMounted) return;
       
-      // Clear any previous errors
+      // Start with a clean slate
       setError(null);
+      setLoading(true);
       
-      // Check if token exists
+      // Server logs show authentication is actually working
+      // Check if token exists - but don't do extra validation
       if (!token || token.trim() === '') {
-        console.error('No authentication token available');
+        console.error('❌ No authentication token available');
         setError('Authentication required. Please log in again.');
         setLoading(false);
+        toast.error('Session expired. Please log in again.');
         setTimeout(() => {
           if (isMounted) navigate('/login');
         }, 2000);
         return;
       }
-
+      
+      console.log('🔐 Auth token present:', token.substring(0, 10) + '...');
+      
       try {
-        // Set up axios with auth headers
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token.trim()}`;
-        axios.defaults.withCredentials = true;
+        // Configure axios - ensure headers are properly set for all requests
+        const authToken = token.trim();
+        axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
         
-        console.log('Using token:', token.substring(0, 15) + '...');
+        // Debug log to track request lifecycle
+        console.log('📡 Fetching rating periods...');
         
-        // Set loading state while we fetch data
-        setLoading(true);
+        // CRITICAL FIX: Don't set loading false before the request
+        // We'll handle loading in the finally block
+        const periodsData = await fetchRatingPeriods(authToken, navigate, null, null);
         
-        // Directly fetch periods without additional validation
-        // Server logs show that authentication is working correctly
-        const periodsData = await fetchRatingPeriods(token, navigate, setError, setLoading);
-        
-        if (!isMounted) return; // Check again after async operation
+        // Safety check - component may have unmounted during async operation
+        if (!isMounted) return;
         
         if (periodsData && Array.isArray(periodsData)) {
-          console.log(`Got ${periodsData.length} rating periods`);
+          console.log(`✅ Success! Got ${periodsData.length} rating periods`);
           setPeriods(periodsData);
           
           // Fetch statistics if period is selected
           if (selectedPeriod) {
+            console.log('📊 Fetching statistics for period:', selectedPeriod);
             const statsData = await fetchStatistics(
-              token, 
+              authToken, 
               navigate, 
               selectedPeriod, 
               selectedTargetType, 
               selectedTargetId, 
-              setError, 
-              setLoading
+              null, // Don't set error here, we'll handle it locally
+              null  // Don't set loading here, we'll handle it locally
             );
             
-            if (!isMounted) return; // Check again after async operation
+            // Safety check again
+            if (!isMounted) return;
             
-            if (statsData) {
+            if (statsData && (Array.isArray(statsData) || typeof statsData === 'object')) {
+              console.log('✅ Statistics data received successfully');
               setStatistics(statsData);
+            } else {
+              console.warn('⚠️ Statistics data is empty or invalid');
             }
           }
         } else {
-          // Only show warning in console, don't set error for user
-          console.warn('No periods data returned or unexpected format');
+          console.warn('⚠️ No periods data returned or unexpected format');
+          // Show a user-friendly message instead of error
+          toast.info('No rating periods available. Please create some first.');
         }
       } catch (error) {
-        if (!isMounted) return; // Don't update state if unmounted
+        // Don't update state if unmounted
+        if (!isMounted) return;
         
-        console.error('Error initializing component:', error);
+        console.error('❌ Error in RatingStatistics component:', error);
         
-        // Only set auth error if we get a 401
-        if (error.response && error.response.status === 401) {
-          setError('Authentication required. Please log in again.');
-          setTimeout(() => {
-            if (isMounted) navigate('/login');
-          }, 2000);
+        // Determine the appropriate error message based on the error
+        if (error.response) {
+          console.error('   Response status:', error.response.status);
+          console.error('   Response data:', JSON.stringify(error.response.data));
+          
+          // Handle different error types with appropriate messages
+          if (error.response.status === 401) {
+            const errorMsg = 'Your session has expired. Please log in again.';
+            console.error('❌ Authentication error (401):', errorMsg);
+            setError(errorMsg);
+            toast.error(errorMsg);
+            setTimeout(() => {
+              if (isMounted) navigate('/login');
+            }, 2000);
+          } else if (error.response.status === 403) {
+            const errorMsg = 'You do not have permission to view rating statistics.';
+            console.error('❌ Authorization error (403):', errorMsg);
+            setError(errorMsg);
+            toast.error(errorMsg);
+          } else if (error.response.status === 404) {
+            const errorMsg = 'Rating statistics feature not available on this server.';
+            console.error('❌ Not found error (404):', errorMsg);
+            setError(errorMsg);
+            toast.error(errorMsg);
+          } else {
+            const errorMsg = `Server error (${error.response.status}): ${error.response.data?.message || 'Unknown error'}`;
+            console.error('❌ Server error:', errorMsg);
+            setError(errorMsg);
+            toast.error('Error loading rating statistics. Please try again later.');
+          }
+        } else if (error.request) {
+          const errorMsg = 'Server did not respond. Please check your connection.';
+          console.error('❌ Network error:', errorMsg);
+          setError(errorMsg);
+          toast.error(errorMsg);
         } else {
-          // For other errors, show a more general message
-          setError('Unable to load data. Please try again.');
+          const errorMsg = `Error: ${error.message || 'Unknown error occurred'}`;
+          console.error('❌ Application error:', errorMsg);
+          setError(errorMsg);
+          toast.error('Error loading rating statistics. Please try again later.');
         }
       } finally {
+        // Always clean up loading state if component is still mounted
         if (isMounted) {
+          console.log('🏁 Component initialization completed');
           setLoading(false);
         }
       }
     };
     
+    // Start the initialization process
     initializeComponent();
     
-    // Cleanup function to prevent memory leaks
+    // Cleanup function to prevent memory leaks and side effects
     return () => {
+      console.log('🧹 Cleaning up RatingStatistics component');
       isMounted = false;
+      // Clean up axios defaults to prevent affecting other components
       delete axios.defaults.headers.common['Authorization'];
-      delete axios.defaults.withCredentials;
     };
   }, [token, navigate, selectedPeriod, selectedTargetType, selectedTargetId]);
 
