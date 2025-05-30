@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config/appConfig';
+import { makeCrossDomainPutRequest, checkCorsSupport } from '../utils/corsHelper';
 
 /**
  * Service for handling rating-related API calls
@@ -301,14 +302,26 @@ export const updateRatingPeriod = async (token, periodId, updateData, navigate, 
   if (setError) setError(null);
   
   try {
-    // Create axios config with proper CORS settings
+    // CORS DEBUGGING: Log the exact URL we're sending to
+    console.log('💭 CORS DEBUG: Target URL:', `${API_URL}/api/ratings/periods/${periodId}`);
+    console.log('💭 CORS DEBUG: API_URL origin:', new URL(API_URL).origin);
+    console.log('💭 CORS DEBUG: Current window origin:', typeof window !== 'undefined' ? window.location.origin : 'Not in browser');
+    
+    // Create axios config with enhanced CORS settings
     const config = {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token.trim()}`
+        'Authorization': `Bearer ${token.trim()}`,
+        // Try to avoid preflight
+        'X-Requested-With': 'XMLHttpRequest'
       },
-      withCredentials: true
+      withCredentials: true,
+      // Explicitly set the timeout to diagnose hanging requests
+      timeout: 30000, // 30 seconds
+      // Additional CORS settings
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN'
     };
     
     console.log('📡 NETWORK: Updating rating period...');
@@ -316,22 +329,68 @@ export const updateRatingPeriod = async (token, periodId, updateData, navigate, 
     console.log('🔍 DEBUG: Token length:', token.length);
     console.log('🔍 DEBUG: Authorization header:', `Bearer ${token.substring(0, 5)}...${token.substring(token.length - 5)}`);
     
-    // Make the PUT request
-    const response = await axios.put(
-      `${API_URL}/api/ratings/periods/${periodId}`,
-      updateData,
-      config
-    );
+    // First, check if CORS is the issue
+    console.log('💭 CORS DIAGNOSIS: Running browser CORS support check...');
+    const corsSupport = await checkCorsSupport();
     
-    // Log detailed response information
-    console.log('🔍 DEBUG: Response status:', response.status);
-    console.log('🔍 DEBUG: Response data:', JSON.stringify(response.data));
+    // Method 1: Try the specialized CORS helper for PUT requests
+    try {
+      console.log('💭 ATTEMPT 1: Using specialized CORS helper...');
+      
+      // Use the specialized cross-domain PUT request helper
+      const result = await makeCrossDomainPutRequest(
+        `/api/ratings/periods/${periodId}`,
+        updateData,
+        token
+      );
+      
+      // Convert to a response object format
+      const response = {
+        status: 200, // Assume success
+        data: result,
+        headers: {},
+        source: 'corsHelper'
+      };
+      
+      console.log('✅ SUCCESS: Cross-domain PUT successful!');
+      return response;
+    } catch (corsError) {
+      console.error('❌ CORS HELPER FAILED:', corsError.message);
+      console.log('💭 ATTEMPT 2: Falling back to axios...');
+      
+      // Method 2: Try regular axios as fallback
+      try {
+        const response = await axios.put(
+          `${API_URL}/api/ratings/periods/${periodId}`,
+          updateData,
+          config
+        );
+        console.log('✅ SUCCESS: Axios fallback successful!');
+        return response;
+      } catch (axiosError) {
+        console.error('❌ AXIOS FAILED:', axiosError.message);
+        
+        // Both methods failed, throw a comprehensive error
+        const combinedError = new Error(
+          `PUT request failed. CORS helper error: ${corsError.message}. ` +
+          `Axios error: ${axiosError.message}`
+        );
+        combinedError.corsError = corsError;
+        combinedError.axiosError = axiosError;
+        throw combinedError;
+      }
+    }
     
-    if (response.data) {
+    // This code is unreachable due to the return statements in the try/catch above
+    // But we'll keep it as a fallback just in case
+    if (response && response.data) {
       console.log('✅ SUCCESS: Rating period updated successfully');
       return true;
+    } else if (response) {
+      console.warn('⚠️ WARNING: Response received but no data');
+      return true; // Still consider it a success if we got a response
     } else {
-      console.warn('⚠️ WARNING: No data in response');
+      console.warn('⚠️ WARNING: No response received');
       return false;
     }
   } catch (err) {
@@ -363,14 +422,49 @@ export const updateRatingPeriod = async (token, periodId, updateData, navigate, 
     } else if (err.request) {
       // The request was made but no response was received
       console.error('❌ ERROR: No response from server. Possible CORS issue.');
-      console.error('🔍 DEBUG: Request details:', err.request);
+      console.error('🔍 DEBUG: Original error message:', err.message);
+      console.error('🔍 DEBUG: Error name:', err.name);
+      console.error('🔍 DEBUG: Error code:', err.code);
       
-      // Special handling for CORS errors
+      // Attempt to extract more details from the request object
+      if (err.request) {
+        try {
+          console.error('🔍 DEBUG: Request method:', err.request._method || 'unknown');
+          console.error('🔍 DEBUG: Request URL:', err.request._url || 'unknown');
+          console.error('🔍 DEBUG: Request headers:', JSON.stringify(err.request._header || {}));
+          console.error('🔍 DEBUG: Response status:', err.request.status || 'unknown');
+          console.error('🔍 DEBUG: Response text:', err.request.responseText || 'empty');
+          
+          // Extra diagnostics for XMLHttpRequest
+          if (err.request instanceof XMLHttpRequest) {
+            console.error('🔍 DEBUG: XHR ready state:', err.request.readyState);
+            console.error('🔍 DEBUG: XHR status text:', err.request.statusText);
+          }
+        } catch (debugErr) {
+          console.error('🔍 DEBUG: Failed to extract request details:', debugErr.message);
+        }
+      }
+      
+      // Run network diagnostics
+      console.error('🔍 NETWORK DIAGNOSTICS: Running checks...');
+      console.error('🔍 NETWORK: API URL being used:', API_URL);
+      console.error('🔍 NETWORK: Browser navigator online:', navigator.onLine);
+      
+      // Special handling for CORS and Network errors
       if (err.message && (err.message.includes('Network Error') || err.message.includes('CORS'))) {
-        console.error('❌ ERROR: Possible CORS issue detected');
-        if (setError) setError('Network error: Unable to communicate with the server. This may be a CORS issue.');
+        console.error('❌ ERROR: CRITICAL - Network Error or CORS issue detected');
+        console.error('🔍 NETWORK: Current origin:', window.location.origin);
+        console.error('🔍 NETWORK: API origin:', new URL(API_URL).origin);
+        console.error('🔍 NETWORK: Same origin?', window.location.origin === new URL(API_URL).origin ? 'Yes' : 'No');
+        
+        // Create a detailed error message for the user
+        const detailedError = `Network error communicating with the server (${API_URL}). ` +
+          `This may be due to CORS restrictions, network connectivity issues, or server unavailability. ` +
+          `Error details: ${err.message}. Please check your network connection and try again.`;
+        
+        if (setError) setError(detailedError);
       } else {
-        if (setError) setError('No response from server. Please check your connection.');
+        if (setError) setError(`No response from server (${err.message}). Please check your connection.`);
       }
     } else {
       // Something happened in setting up the request
