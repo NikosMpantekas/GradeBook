@@ -20,9 +20,6 @@ import {
   Save as SaveIcon,
   Email as EmailIcon,
   Security as SecurityIcon,
-  Help as HelpIcon,
-  BugReport as BugReportIcon,
-  ReportProblem as ReportProblemIcon,
   Person as PersonIcon,
   Phone as PhoneIcon,
   School as SchoolIcon,
@@ -31,8 +28,6 @@ import {
 } from '@mui/icons-material';
 import { updateProfile, reset } from '../features/auth/authSlice';
 import { setThemeColor } from '../features/ui/uiSlice';
-import ContactDeveloper from '../components/ContactDeveloper';
-import BugReportsPanel from '../components/BugReportsPanel';
 
 const Profile = () => {
   const { user, isLoading, isError, isSuccess, message } = useSelector(
@@ -65,9 +60,6 @@ const Profile = () => {
 
   const { name, email, password, password2, saveCredentials } = formData;
 
-  // Contact Developer dialog state
-  const [contactOpen, setContactOpen] = useState(false);
-
   const dispatch = useDispatch();
 
   // Track if form has been submitted
@@ -75,15 +67,6 @@ const Profile = () => {
   
   const handleEditSave = () => {
     onSubmit();
-  };
-  
-  // Contact Developer handlers
-  const handleOpenContact = () => {
-    setContactOpen(true);
-  };
-  
-  const handleCloseContact = () => {
-    setContactOpen(false);
   };
 
   useEffect(() => {
@@ -376,35 +359,22 @@ const Profile = () => {
               </Grid>
               
               <Divider sx={{ my: 3 }} />
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                <Box display="flex" alignItems="center">
-                  <HelpIcon color="primary" sx={{ mr: 1 }} />
-                  Support
-                </Box>
-              </Typography>
-              
-              <Card variant="outlined" sx={{ mb: 2 }}>
-                <CardContent>
-                  <Box display="flex" alignItems="center" mb={2}>
-                    <BugReportIcon color="secondary" sx={{ mr: 1 }} />
-                    <Typography variant="h6">Need help or found a bug?</Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Contact our development team for assistance with technical issues or to suggest new features.
-                  </Typography>
-                  <Button 
-                    variant="contained" 
-                    color="secondary" 
-                    onClick={handleOpenContact}
-                    startIcon={<EmailIcon />}
-                  >
-                    Contact Developer
-                  </Button>
-                </CardContent>
-              </Card>
-              
-              {/* Bug Reports Panel */}
-              <BugReportsPanel openContactForm={handleOpenContact} />
+              <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px dashed', borderColor: 'primary.main' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  Looking for Support or Want to Report a Bug?
+                </Typography>
+                <Typography variant="body2" paragraph>
+                  Support and bug reporting have been moved to a dedicated page. You can also view patch notes and updates there.
+                </Typography>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  component="a" 
+                  href="/app/contact-messages"
+                >
+                  Go to Support & Messages
+                </Button>
+              </Box>
               
               <Button
                 type="submit"
@@ -424,8 +394,6 @@ const Profile = () => {
           </Grid>
         </Grid>
       </Paper>
-      {/* Contact Developer Dialog */}
-      <ContactDeveloper open={contactOpen} onClose={handleCloseContact} />
     </Container>
   );
 };

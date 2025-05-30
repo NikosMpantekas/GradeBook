@@ -54,13 +54,30 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     }
   }, [isSuperAdminRoute, isAdminRoute]);
   
-  // Make sidebar permanent for admin users or if specified in props
-  const isActuallyPermanent = permanent || isAdmin;
+  // Check if we're on a mobile device
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+  
+  // Make sidebar permanent for admin users or if specified in props, but ONLY on desktop
+  const isActuallyPermanent = (permanent || isAdmin) && !isMobile;
+  
+  // Handle screen size changes
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 600;
+      setIsMobile(mobile);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    // Run once on mount
+    handleResize();
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Debug sidebar state on route changes
   useEffect(() => {
-    console.log(`Sidebar state - Route: ${location.pathname} | Permanent: ${isActuallyPermanent} | Open: ${mobileOpen}`);
-  }, [location.pathname, isActuallyPermanent, mobileOpen]);
+    console.log(`Sidebar state - Route: ${location.pathname} | Permanent: ${isActuallyPermanent} | Open: ${mobileOpen} | Mobile: ${isMobile}`);
+  }, [location.pathname, isActuallyPermanent, mobileOpen, isMobile]);
 
   // Generate menu items based on user role
   const getMenuItems = () => {
@@ -246,7 +263,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
 
   const handleNavigate = (path) => {
     console.log('Navigation to path:', path);
-    console.log('Navigation state before:', { isAdmin, isSuperAdmin, isActuallyPermanent });
+    console.log('Navigation state before:', { isAdmin, isSuperAdmin, isActuallyPermanent, isMobile });
     
     // Check if we're navigating to a special route
     const isNavigatingToSuperAdmin = path.includes('/superadmin/');
@@ -262,16 +279,24 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     // First navigate to the path
     navigate(path);
     
-    // IMPORTANT: NEVER close the drawer for admin/superadmin users or admin routes
-    if (isAdmin || isNavigatingToAdmin || isActuallyPermanent) {
-      console.log('✅ Keeping sidebar open for admin/superadmin navigation');
-      return;
-    }
-    
-    // Only close drawer for regular users on mobile
-    if (window.innerWidth < 600 && mobileOpen && handleDrawerToggle) {
-      console.log('Closing sidebar for mobile navigation');
-      handleDrawerToggle();
+    // Mobile vs Desktop behavior for closing sidebar
+    if (isMobile) {
+      // On mobile, ALWAYS close the drawer after navigation for all user types
+      // This ensures better UX on small screens
+      if (mobileOpen && handleDrawerToggle) {
+        console.log('Mobile device detected, closing sidebar after navigation');
+        handleDrawerToggle();
+      }
+    } else {
+      // On desktop, only close for non-admin users on regular routes
+      if (!isAdmin && !isNavigatingToAdmin && !isActuallyPermanent) {
+        if (mobileOpen && handleDrawerToggle) {
+          console.log('Closing sidebar for regular user on desktop');
+          handleDrawerToggle();
+        }
+      } else {
+        console.log('✅ Keeping sidebar open for admin/superadmin on desktop');
+      }
     }
   };
 

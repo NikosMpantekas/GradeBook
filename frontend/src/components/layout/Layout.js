@@ -9,12 +9,36 @@ import Footer from './Footer';
 
 const Layout = () => {
   const location = useLocation();
-  // Retrieve previous mobileOpen state from localStorage to prevent it from resetting on navigation
+  // Check if we're on a mobile device
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+  
+  // Retrieve previous mobileOpen state from localStorage with smart defaults
   const [mobileOpen, setMobileOpen] = useState(() => {
     const savedState = localStorage.getItem('sidebarOpen');
-    // Default to true for a better UX, especially on first load
-    return savedState ? savedState === 'true' : true;
+    const isMobileDevice = window.innerWidth <= 600;
+    
+    if (savedState !== null) {
+      // Honor saved state if it exists
+      return savedState === 'true';
+    } else {
+      // Default to closed on mobile, open on desktop
+      return !isMobileDevice;
+    }
   });
+  
+  // Handle screen size changes
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 600;
+      setIsMobile(mobile);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    // Run once on mount
+    handleResize();
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const { darkMode } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
@@ -57,13 +81,34 @@ const Layout = () => {
     }
   }, [isSuperAdminRoute, isAdminRoute]);
 
-  // Always ensure sidebar remains open for superadmin/admin users
+  // Always ensure sidebar remains open for superadmin/admin users only on desktop
   useEffect(() => {
-    if ((isSuperAdmin || isAdmin) && !mobileOpen) {
-      console.log('FIXING SIDEBAR: Ensuring sidebar stays open for admin/superadmin');
+    // Check if this is a desktop device (width > 600px)
+    const isDesktop = window.innerWidth > 600;
+    
+    // Only force sidebar open for admin/superadmin on desktop devices
+    if ((isSuperAdmin || isAdmin) && !mobileOpen && isDesktop) {
+      console.log('FIXING SIDEBAR: Ensuring sidebar stays open for admin/superadmin on desktop');
       setMobileOpen(true);
       localStorage.setItem('sidebarOpen', 'true');
     }
+    
+    // For mobile devices, we should respect the user's preference
+    // Add a listener to detect screen size changes
+    const handleResize = () => {
+      const isMobile = window.innerWidth <= 600;
+      // If mobile and sidebar is open, close it for better UX
+      if (isMobile && mobileOpen) {
+        console.log('Mobile device detected, allowing sidebar to be closed');
+        // Don't automatically close here, just allow it to be closed
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    // Run once on mount
+    handleResize();
+    
+    return () => window.removeEventListener('resize', handleResize);
   }, [isSuperAdmin, isAdmin, mobileOpen, location.pathname]);
   
   // Force sidebar open when navigating between admin and superadmin sections
@@ -109,8 +154,9 @@ const Layout = () => {
         drawerWidth={drawerWidth} 
         mobileOpen={mobileOpen}
         handleDrawerToggle={handleDrawerToggle}
-        // Always set permanent=true for admin users for better UX
-        permanent={isAdmin}
+        // Only set permanent=true for admin users on desktop for better UX
+        permanent={isAdmin && !isMobile}
+        isMobile={isMobile}
       />
       <Box
         component="main"

@@ -202,7 +202,23 @@ const Notifications = () => {
   };
 
   const handleMarkAsRead = (notificationId) => {
-    dispatch(markNotificationAsRead(notificationId));
+    dispatch(markNotificationAsRead(notificationId))
+      .unwrap()
+      .then(() => {
+        // Immediately update the UI to show the notification as read
+        setDisplayedNotifications(prev => 
+          prev.map(notification => 
+            notification._id === notificationId 
+              ? { ...notification, isRead: true } 
+              : notification
+          )
+        );
+        console.log(`Notification ${notificationId} marked as read`);
+      })
+      .catch(error => {
+        console.error('Failed to mark notification as read:', error);
+        toast.error('Failed to mark as read. Please try again.');
+      });
   };
 
   const handleDeleteNotification = (id) => {

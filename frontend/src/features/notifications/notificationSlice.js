@@ -325,9 +325,20 @@ export const notificationSlice = createSlice({
       .addCase(markNotificationAsRead.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(markNotificationAsRead.fulfilled, (state) => {
+      .addCase(markNotificationAsRead.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
+        if (state.notifications && state.notifications.length > 0) {
+          state.notifications = state.notifications.map(notification => {
+            if (notification._id === action.payload._id) {
+              return { ...notification, isRead: true };
+            }
+            return notification;
+          });
+        }
+        if (state.notification && state.notification._id === action.payload._id) {
+          state.notification = { ...state.notification, isRead: true };
+        }
       })
       .addCase(markNotificationAsRead.rejected, (state, action) => {
         state.isLoading = false;

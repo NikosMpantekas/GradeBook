@@ -358,21 +358,47 @@ const TeacherNotifications = () => {
   };
 
   const handleMarkAsRead = (id) => {
+    // First update the UI immediately for better user experience
+    setFilteredNotifications(prevNotifications => 
+      prevNotifications.map(notification => {
+        if (notification._id === id) {
+          return { ...notification, isRead: true };
+        }
+        return notification;
+      })
+    );
+    
+    // Then update on the server
     dispatch(markNotificationAsRead(id))
       .unwrap()
       .then(() => {
-        // Update the local state immediately to reflect the read status
-        setFilteredNotifications(prevNotifications => 
-          prevNotifications.map(notification => {
+        console.log(`Notification ${id} marked as read successfully`);
+        
+        // Also update in the global notifications state
+        if (notifications) {
+          const updatedNotifications = notifications.map(notification => {
             if (notification._id === id) {
               return { ...notification, isRead: true };
             }
             return notification;
-          })
-        );
+          });
+          
+          // No need to dispatch as the reducer in notificationSlice will handle this
+        }
       })
       .catch(error => {
+        console.error('Failed to mark notification as read:', error);
         toast.error('Failed to mark notification as read');
+        
+        // Roll back the UI change if the API call fails
+        setFilteredNotifications(prevNotifications => 
+          prevNotifications.map(notification => {
+            if (notification._id === id) {
+              return { ...notification, isRead: false };
+            }
+            return notification;
+          })
+        );
       });
   };
 

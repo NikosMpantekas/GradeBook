@@ -183,6 +183,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 // These routes don't need schoolId context and are safe for superadmin users
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes')); 
 app.use('/api/contact', require('./routes/contactRoutes')); 
+app.use('/api/patch-notes', require('./routes/patchNoteRoutes')); 
 
 // IMPORTANT: Ensure auth middleware runs BEFORE schoolId middleware
 // Routes that need both auth and schoolId context for regular users
