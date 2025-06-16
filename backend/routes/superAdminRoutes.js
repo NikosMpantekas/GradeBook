@@ -8,6 +8,7 @@ const {
   deleteSchoolOwner,
   createFirstSuperAdmin,
   updateSchoolOwnerPermissions,
+  updateSchoolFeaturePermissions,
 } = require('../controllers/superAdminController');
 const { protect, superadmin } = require('../middleware/authMiddleware');
 
@@ -21,5 +22,8 @@ router.get('/school-owners/:id', protect, superadmin, getSchoolOwnerById);
 router.put('/school-owners/:id/status', protect, superadmin, updateSchoolOwnerStatus);
 router.put('/school-owners/:id/permissions', protect, superadmin, updateSchoolOwnerPermissions);
 router.delete('/school-owners/:id', protect, superadmin, deleteSchoolOwner);
+
+// School feature permissions route
+router.put('/schools/:id/features', protect, superadmin, updateSchoolFeaturePermissions);
 
 module.exports = router;

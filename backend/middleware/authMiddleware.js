@@ -368,6 +368,7 @@ const adminOrSecretary = (permissionKey) => {
 
 // School Owner Permission Check Middleware
 // This middleware checks if a school owner (admin) has a specific permission enabled
+// AND if the corresponding school-wide feature is enabled
 const adminWithPermission = (permissionKey) => {
   return asyncHandler(async (req, res, next) => {
     // Superadmins bypass all permission checks
@@ -380,37 +381,86 @@ const adminWithPermission = (permissionKey) => {
       return;
     }
 
+    // Check if user is authenticated
     if (!req.user) {
-      logger.error('AUTH', `Admin permission check (${permissionKey}) - No user object found in request`, {
-        path: req.originalUrl,
-        method: req.method,
+      logger.error('AUTH', `Admin permission check (${permissionKey}) - No user in request`, {
+        path: req.originalUrl
       });
       res.status(401);
       throw new Error('Authentication required - please log in');
     }
-    
-    // Check if user is admin and has the required permission
-    if (req.user.role === 'admin' && 
-        req.user.adminPermissions && 
-        req.user.adminPermissions[permissionKey] === true) {
+
+    // Check if user is admin and has the specific permission
+    if (req.user.role === 'admin') {
+      // Initialize adminPermissions if it doesn't exist
+      req.user.adminPermissions = req.user.adminPermissions || {};
       
-      logger.info('AUTH', `Admin permission ${permissionKey} granted to ${req.user.name}`, {
+      logger.info('AUTH', `Checking admin permission ${permissionKey} for ${req.user.name}`, {
         userId: req.user._id,
-        permission: permissionKey,
-        path: req.originalUrl
+        permissionKey,
+        hasPermission: !!req.user.adminPermissions[permissionKey]
       });
+
+      // First check the admin's individual permission
+      if (!req.user.adminPermissions[permissionKey]) {
+        logger.warn('AUTH', `Admin permission check failed for ${permissionKey}`, {
+          userId: req.user._id,
+          path: req.originalUrl
+        });
+        res.status(403);
+        throw new Error(`You don't have permission to ${permissionKey.replace('can', '').toLowerCase()}`); 
+      }
+      
+      // Then check the school-wide feature permission if applicable
+      // Get the school ID
+      const schoolId = req.user.schoolId || req.user.school;
+      if (schoolId) {
+        try {
+          // Find the school and check its feature permissions
+          const school = await School.findById(schoolId);
+          if (school && school.featurePermissions) {
+            // Map the admin permission to the corresponding school feature
+            let featureKey = null;
+            
+            // Map admin permissions to school feature permissions
+            if (permissionKey === 'canSendNotifications') featureKey = 'enableNotifications';
+            else if (permissionKey === 'canManageGrades') featureKey = 'enableGrades';
+            else if (permissionKey === 'canManageEvents') featureKey = 'enableCalendar';
+            else if (permissionKey === 'canAccessReports') {
+              // Check both rating system and student progress
+              if (!school.featurePermissions.enableRatingSystem && 
+                  !school.featurePermissions.enableStudentProgress) {
+                logger.warn('AUTH', `School feature permission check failed for ${featureKey}`, {
+                  schoolId: school._id,
+                  schoolName: school.name
+                });
+                res.status(403);
+                throw new Error(`This feature is disabled for your school`);
+              }
+            }
+            
+            // If we have a matching feature key, check if it's enabled
+            if (featureKey && school.featurePermissions[featureKey] === false) {
+              logger.warn('AUTH', `School feature permission check failed for ${featureKey}`, {
+                schoolId: school._id,
+                schoolName: school.name
+              });
+              res.status(403);
+              throw new Error(`This feature is disabled for your school`);
+            }
+          }
+        } catch (error) {
+          logger.error('AUTH', `Error checking school feature permissions: ${error.message}`, {
+            schoolId,
+            permissionKey
+          });
+          // We'll continue even if there's an error checking school permissions
+        }
+      }
+      
+      // If we got here, both the admin permission and school feature permission checks passed
+      logger.info('AUTH', `Admin permission and school feature check passed for ${permissionKey}`);
       next();
-    } else if (req.user.role === 'admin') {
-      // User is admin but doesn't have this permission
-      logger.warn('AUTH', `Admin permission ${permissionKey} denied for ${req.user.name}`, {
-        userId: req.user._id,
-        permission: permissionKey,
-        hasPermissions: !!req.user.adminPermissions,
-        permissionValue: req.user.adminPermissions ? req.user.adminPermissions[permissionKey] : 'undefined',
-        path: req.originalUrl
-      });
-      res.status(403);
-      throw new Error(`You don't have permission to ${permissionKey.replace('can', '').toLowerCase()}`);
     } else {
       // User is not an admin
       logger.warn('AUTH', `Non-admin attempting to use admin permission ${permissionKey}`, {

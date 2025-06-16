@@ -312,11 +312,136 @@ const updateSchoolOwnerPermissions = asyncHandler(async (req, res) => {
 
   await user.save();
 
+  // Also update the school's feature permissions if school ID exists
+  if (user.schoolId || user.school) {
+    const schoolId = user.schoolId || user.school;
+    await updateSchoolFeaturePermissionsFromAdmin(schoolId, permissions);
+  }
+
   res.status(200).json({
-    message: 'School owner permissions updated successfully',
+    message: 'School owner permissions updated successfully. These permissions will apply to all users in the school.',
     _id: user.id,
     name: user.name,
     adminPermissions: user.adminPermissions,
+  });
+});
+
+// Helper function to update school feature permissions based on admin permissions
+const updateSchoolFeaturePermissionsFromAdmin = async (schoolId, adminPermissions) => {
+  try {
+    const school = await School.findById(schoolId);
+    if (!school) {
+      console.error(`School not found with ID: ${schoolId}`);
+      return false;
+    }
+
+    // Map admin permissions to school feature permissions
+    const featureUpdates = {};
+    
+    // Map canSendNotifications to enableNotifications
+    if (adminPermissions.canSendNotifications !== undefined) {
+      featureUpdates['featurePermissions.enableNotifications'] = adminPermissions.canSendNotifications;
+    }
+    
+    // Map canManageGrades to enableGrades
+    if (adminPermissions.canManageGrades !== undefined) {
+      featureUpdates['featurePermissions.enableGrades'] = adminPermissions.canManageGrades;
+    }
+
+    // Map other permissions as needed
+    if (adminPermissions.canManageEvents !== undefined) {
+      featureUpdates['featurePermissions.enableCalendar'] = adminPermissions.canManageEvents;
+    }
+
+    if (adminPermissions.canAccessReports !== undefined) {
+      featureUpdates['featurePermissions.enableRatingSystem'] = adminPermissions.canAccessReports;
+      featureUpdates['featurePermissions.enableStudentProgress'] = adminPermissions.canAccessReports;
+    }
+
+    // Only update if there are changes
+    if (Object.keys(featureUpdates).length > 0) {
+      await School.findByIdAndUpdate(schoolId, { $set: featureUpdates });
+      console.log(`Updated school ${school.name} feature permissions:`, featureUpdates);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error updating school feature permissions:', error);
+    return false;
+  }
+};
+
+// @desc    Update school feature permissions directly
+// @route   PUT /api/superadmin/schools/:id/features
+// @access  Private/SuperAdmin
+const updateSchoolFeaturePermissions = asyncHandler(async (req, res) => {
+  const { features } = req.body;
+  const { id } = req.params;
+
+  if (!features) {
+    res.status(400);
+    throw new Error('Please provide feature settings to update');
+  }
+
+  // Find the school
+  const school = await School.findById(id);
+  if (!school) {
+    res.status(404);
+    throw new Error('School not found');
+  }
+
+  // Update school feature permissions
+  school.featurePermissions = {
+    ...school.featurePermissions,
+    ...features
+  };
+
+  await school.save();
+
+  // Find the school owner (admin user) to update their permission flags too
+  const schoolOwner = await User.findOne({ 
+    role: 'admin', 
+    $or: [
+      { schoolId: school._id },
+      { school: school._id }
+    ]
+  });
+
+  if (schoolOwner) {
+    // Map school feature permissions to admin permissions
+    if (features.enableNotifications !== undefined) {
+      schoolOwner.adminPermissions = schoolOwner.adminPermissions || {};
+      schoolOwner.adminPermissions.canSendNotifications = features.enableNotifications;
+    }
+    
+    if (features.enableGrades !== undefined) {
+      schoolOwner.adminPermissions = schoolOwner.adminPermissions || {};
+      schoolOwner.adminPermissions.canManageGrades = features.enableGrades;
+    }
+    
+    if (features.enableCalendar !== undefined) {
+      schoolOwner.adminPermissions = schoolOwner.adminPermissions || {};
+      schoolOwner.adminPermissions.canManageEvents = features.enableCalendar;
+    }
+    
+    if (features.enableRatingSystem !== undefined || features.enableStudentProgress !== undefined) {
+      schoolOwner.adminPermissions = schoolOwner.adminPermissions || {};
+      if (features.enableRatingSystem !== undefined) {
+        schoolOwner.adminPermissions.canAccessReports = features.enableRatingSystem;
+      } else if (features.enableStudentProgress !== undefined) {
+        schoolOwner.adminPermissions.canAccessReports = features.enableStudentProgress;
+      }
+    }
+    
+    await schoolOwner.save();
+  }
+
+  res.status(200).json({
+    message: 'School feature permissions updated successfully. These features will apply to all users in the school.',
+    _id: school._id,
+    name: school.name,
+    featurePermissions: school.featurePermissions,
   });
 });
 
@@ -328,4 +453,5 @@ module.exports = {
   deleteSchoolOwner,
   createFirstSuperAdmin,
   updateSchoolOwnerPermissions,
+  updateSchoolFeaturePermissions,
 };
