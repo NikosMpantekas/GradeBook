@@ -27,7 +27,10 @@ import {
   Block as BlockIcon,
   Add as AddIcon,
   Edit as EditIcon,
-  ArrowForward as ArrowForwardIcon
+  ArrowForward as ArrowForwardIcon,
+  Notifications as NotificationsIcon,
+  Grade as GradeIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { getSchoolOwners, updateSchoolOwnerStatus, reset } from '../../features/superadmin/superAdminSlice';
 import LoadingState from '../../components/common/LoadingState';
@@ -176,6 +179,36 @@ function SuperAdminDashboard() {
                       <School fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />
                       {owner.school ? (typeof owner.school === 'object' ? owner.school.name : 'School ID: ' + owner.school) : 'No School Assigned'}
                     </Typography>
+                    
+                    {owner.adminPermissions && (
+                      <Box sx={{ mt: 1, mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Chip
+                          size="small"
+                          icon={<GradeIcon fontSize="small" />}
+                          label="Grades"
+                          variant={owner.adminPermissions.canManageGrades ? "default" : "outlined"}
+                          color={owner.adminPermissions.canManageGrades ? "primary" : "default"}
+                          sx={{ opacity: owner.adminPermissions.canManageGrades ? 1 : 0.6 }}
+                        />
+                        <Chip
+                          size="small"
+                          icon={<NotificationsIcon fontSize="small" />}
+                          label="Notif."
+                          variant={owner.adminPermissions.canSendNotifications ? "default" : "outlined"}
+                          color={owner.adminPermissions.canSendNotifications ? "primary" : "default"}
+                          sx={{ opacity: owner.adminPermissions.canSendNotifications ? 1 : 0.6 }}
+                        />
+                        <Chip
+                          size="small"
+                          icon={<SettingsIcon fontSize="small" />}
+                          label="Features"
+                          component={RouterLink}
+                          to={`/superadmin/school-owner/${owner._id}`}
+                          clickable
+                          color="secondary"
+                        />
+                      </Box>
+                    )}
                     <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
                       <Button
                         variant="outlined"

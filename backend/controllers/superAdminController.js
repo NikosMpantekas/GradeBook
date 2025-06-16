@@ -286,6 +286,40 @@ const deleteSchoolOwner = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Update school owner permissions
+// @route   PUT /api/superadmin/school-owner/:id/permissions
+// @access  Private/SuperAdmin
+const updateSchoolOwnerPermissions = asyncHandler(async (req, res) => {
+  const { permissions } = req.body;
+
+  if (!permissions) {
+    res.status(400);
+    throw new Error('Please provide permissions to update');
+  }
+
+  const user = await User.findById(req.params.id);
+
+  if (!user || user.role !== 'admin') {
+    res.status(404);
+    throw new Error('School owner not found');
+  }
+
+  // Update admin permissions
+  user.adminPermissions = {
+    ...user.adminPermissions,
+    ...permissions
+  };
+
+  await user.save();
+
+  res.status(200).json({
+    message: 'School owner permissions updated successfully',
+    _id: user.id,
+    name: user.name,
+    adminPermissions: user.adminPermissions,
+  });
+});
+
 module.exports = {
   createSchoolOwner,
   getSchoolOwners,
@@ -293,4 +327,5 @@ module.exports = {
   updateSchoolOwnerStatus,
   deleteSchoolOwner,
   createFirstSuperAdmin,
+  updateSchoolOwnerPermissions,
 };

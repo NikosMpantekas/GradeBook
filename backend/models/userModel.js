@@ -118,6 +118,42 @@ const userSchema = mongoose.Schema(
       },
     },
 
+    // School Owner (admin) permission flags - controlled by superadmin
+    adminPermissions: {
+      canManageGrades: {
+        type: Boolean,
+        default: true,
+      },
+      canSendNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      canManageUsers: {
+        type: Boolean,
+        default: true,
+      },
+      canManageSchools: {
+        type: Boolean,
+        default: true,
+      },
+      canManageDirections: {
+        type: Boolean,
+        default: true,
+      },
+      canManageSubjects: {
+        type: Boolean,
+        default: true,
+      },
+      canAccessReports: {
+        type: Boolean,
+        default: true,
+      },
+      canManageEvents: {
+        type: Boolean,
+        default: true,
+      },
+    },
+
     // For students: single school reference
     school: {
       type: mongoose.Schema.Types.ObjectId,

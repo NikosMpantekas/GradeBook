@@ -366,6 +366,64 @@ const adminOrSecretary = (permissionKey) => {
   });
 };
 
+// School Owner Permission Check Middleware
+// This middleware checks if a school owner (admin) has a specific permission enabled
+const adminWithPermission = (permissionKey) => {
+  return asyncHandler(async (req, res, next) => {
+    // Superadmins bypass all permission checks
+    if (req.user && req.user.role === 'superadmin') {
+      logger.info('AUTH', `Superadmin bypassing ${permissionKey} permission check`, {
+        userId: req.user._id,
+        permissionKey
+      });
+      next();
+      return;
+    }
+
+    if (!req.user) {
+      logger.error('AUTH', `Admin permission check (${permissionKey}) - No user object found in request`, {
+        path: req.originalUrl,
+        method: req.method,
+      });
+      res.status(401);
+      throw new Error('Authentication required - please log in');
+    }
+    
+    // Check if user is admin and has the required permission
+    if (req.user.role === 'admin' && 
+        req.user.adminPermissions && 
+        req.user.adminPermissions[permissionKey] === true) {
+      
+      logger.info('AUTH', `Admin permission ${permissionKey} granted to ${req.user.name}`, {
+        userId: req.user._id,
+        permission: permissionKey,
+        path: req.originalUrl
+      });
+      next();
+    } else if (req.user.role === 'admin') {
+      // User is admin but doesn't have this permission
+      logger.warn('AUTH', `Admin permission ${permissionKey} denied for ${req.user.name}`, {
+        userId: req.user._id,
+        permission: permissionKey,
+        hasPermissions: !!req.user.adminPermissions,
+        permissionValue: req.user.adminPermissions ? req.user.adminPermissions[permissionKey] : 'undefined',
+        path: req.originalUrl
+      });
+      res.status(403);
+      throw new Error(`You don't have permission to ${permissionKey.replace('can', '').toLowerCase()}`);
+    } else {
+      // User is not an admin
+      logger.warn('AUTH', `Non-admin attempting to use admin permission ${permissionKey}`, {
+        userId: req.user._id,
+        role: req.user.role,
+        path: req.originalUrl
+      });
+      res.status(403);
+      throw new Error('Not authorized for this action');
+    }
+  });
+};
+
 // REMOVED DUPLICATE canManageUsers MIDDLEWARE
 
 // Middleware to check if user is teacher or admin
@@ -391,12 +449,23 @@ const canManageDirections = adminOrSecretary('canManageDirections');
 const canManageSubjects = adminOrSecretary('canManageSubjects');
 const canAccessStudentProgress = adminOrSecretary('canAccessStudentProgress');
 
+// Admin/School-Owner specific permission middlewares
+const adminCanManageGrades = adminWithPermission('canManageGrades');
+const adminCanSendNotifications = adminWithPermission('canSendNotifications');
+const adminCanManageUsers = adminWithPermission('canManageUsers');
+const adminCanManageSchools = adminWithPermission('canManageSchools');
+const adminCanManageDirections = adminWithPermission('canManageDirections');
+const adminCanManageSubjects = adminWithPermission('canManageSubjects');
+const adminCanAccessReports = adminWithPermission('canAccessReports');
+const adminCanManageEvents = adminWithPermission('canManageEvents');
+
 // Middleware to check if user is a student
 const student = asyncHandler(async (req, res, next) => {
   if (!req.user) {
     logger.error('AUTH', 'Student role check - No user object found in request', {
       path: req.originalUrl,
-      method: req.method
+      method: req.method,
+      ip: req.ip
     });
     res.status(401);
     throw new Error('Authentication required - please log in');
@@ -465,5 +534,15 @@ module.exports = {
   canManageDirections,
   canManageSubjects,
   canAccessStudentProgress,
-  canManageStudents
+  canManageStudents,
+  // New admin permission middlewares
+  adminWithPermission,
+  adminCanManageGrades,
+  adminCanSendNotifications,
+  adminCanManageUsers,
+  adminCanManageSchools,
+  adminCanManageDirections,
+  adminCanManageSubjects,
+  adminCanAccessReports,
+  adminCanManageEvents
 };
