@@ -57,25 +57,34 @@ const Dashboard = () => {
       return true;
     }
     
+    // Print debug info about schoolFeatures structure
+    logger.info('FEATURE CHECK', `Checking feature: ${featureName}`, {
+      hasSchoolFeatures: !!user?.schoolFeatures,
+      schoolFeaturesType: user?.schoolFeatures ? typeof user.schoolFeatures : 'undefined',
+      featureContent: user?.schoolFeatures ? JSON.stringify(user.schoolFeatures).substring(0, 100) : 'No features'
+    });
+    
     // For other users, check if the feature is enabled at the school level
     if (user && user.schoolFeatures) {
-      switch (featureName) {
-        case 'notifications':
-          return user.schoolFeatures.enableNotifications !== false;
-        case 'grades':
-          return user.schoolFeatures.enableGrades !== false;
-        case 'rating':
-          return user.schoolFeatures.enableRatingSystem !== false;
-        case 'calendar':
-          return user.schoolFeatures.enableCalendar !== false;
-        case 'progress':
-          return user.schoolFeatures.enableStudentProgress !== false;
-        default:
-          return true; // Default to showing if feature check isn't implemented
+      // The backend sends schoolFeatures as an object with boolean properties
+      const featureMap = {
+        'notifications': 'enableNotifications',
+        'grades': 'enableGrades',
+        'rating': 'enableRatingSystem',
+        'calendar': 'enableCalendar',
+        'progress': 'enableStudentProgress'
+      };
+      
+      const propertyName = featureMap[featureName];
+      if (propertyName && propertyName in user.schoolFeatures) {
+        // The feature exists in the schoolFeatures object
+        return user.schoolFeatures[propertyName] === true;
       }
     }
     
-    return true; // Default to showing if no school features data exists
+    // Default to showing if no specific feature permission is found
+    // This maintains backward compatibility with older data structures
+    return true;
   };
   
   // Create a memoized error handler for navigation
