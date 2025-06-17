@@ -30,46 +30,16 @@ const registerSubscription = asyncHandler(async (req, res) => {
     endpoint: endpoint
   });
 
-  if (subscription) {
-    logger.info('SUBSCRIPTION', 'Updating existing subscription', {
-      subscriptionId: subscription._id,
-      userId: req.user._id
-    });
-    
-    // Update existing subscription
-    subscription.expirationTime = expirationTime;
-    subscription.keys.p256dh = keys.p256dh;
-    subscription.keys.auth = keys.auth;
-    
-    // Make sure isSuperadmin flag is set correctly
-    subscription.isSuperadmin = isSuperadmin;
-    
-    // Use updateOne to bypass validation issues
-    await Subscription.updateOne(
-      { _id: subscription._id },
-      {
-        expirationTime,
-        'keys.p256dh': keys.p256dh,
-        'keys.auth': keys.auth,
-        isSuperadmin
-      }
-    );
-    
-    logger.info('SUBSCRIPTION', 'Subscription updated successfully');
-    res.status(200).json({ message: 'Subscription updated' });
-  } else {
-    logger.info('SUBSCRIPTION', 'Creating new subscription', { userId: req.user._id });
-    
+  try {
     // Prepare subscription data
     const subscriptionData = {
-      user: req.user._id, // Use _id instead of id to ensure proper ObjectId reference
-      endpoint,
       expirationTime,
       keys: {
         p256dh: keys.p256dh,
         auth: keys.auth,
       },
-      isSuperadmin // Set flag for superadmin users
+      isSuperadmin, // Set flag for superadmin users
+      lastUpdated: new Date()
     };
     
     // Only set schoolId for non-superadmin users
@@ -77,25 +47,54 @@ const registerSubscription = asyncHandler(async (req, res) => {
       subscriptionData.schoolId = req.user.schoolId;
     }
     
-    try {
-      // Create new subscription
-      subscription = await Subscription.create(subscriptionData);
-      
+    // Use updateOne with upsert: true to create or update subscription
+    // This avoids duplicate key errors by using MongoDB's atomic operations
+    const result = await Subscription.updateOne(
+      { user: req.user._id, endpoint }, // Query conditions
+      { $set: subscriptionData }, // Update data
+      { upsert: true } // Create if not exists
+    );
+    
+    if (result.upsertedCount > 0) {
       logger.info('SUBSCRIPTION', 'New subscription created successfully', {
-        subscriptionId: subscription._id,
+        userId: req.user._id,
+        matchedCount: result.matchedCount,
+        upsertedCount: result.upsertedCount
+      });
+      res.status(201).json({ message: 'Subscription created' });
+    } else if (result.modifiedCount > 0) {
+      logger.info('SUBSCRIPTION', 'Subscription updated successfully', {
+        userId: req.user._id,
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount
+      });
+      res.status(200).json({ message: 'Subscription updated' });
+    } else {
+      logger.info('SUBSCRIPTION', 'Subscription unchanged', {
+        userId: req.user._id,
+        matchedCount: result.matchedCount
+      });
+      res.status(200).json({ message: 'Subscription unchanged' });
+    }
+  } catch (error) {
+    logger.error('SUBSCRIPTION', 'Failed to save subscription', {
+      error: error.message,
+      stack: error.stack,
+      userData: {
+        id: req.user._id,
+        role: req.user.role
+      }
+    });
+    
+    // Handle the error more gracefully
+    if (error.code === 11000) {
+      // This is a duplicate key error - we can safely ignore it
+      logger.warn('SUBSCRIPTION', 'Duplicate subscription detected - this is usually harmless', {
         userId: req.user._id
       });
-      
-      res.status(201).json({ message: 'Subscription saved' });
-    } catch (error) {
-      logger.error('SUBSCRIPTION', 'Failed to create subscription', {
-        error: error.message,
-        stack: error.stack,
-        userData: {
-          id: req.user._id,
-          role: req.user.role
-        }
-      });
+      res.status(200).json({ message: 'Subscription already exists' });
+    } else {
+      // For other errors, return 400 status
       res.status(400);
       throw new Error(`Failed to save subscription: ${error.message}`);
     }
