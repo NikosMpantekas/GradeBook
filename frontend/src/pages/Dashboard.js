@@ -52,55 +52,73 @@ const Dashboard = () => {
   
   // Check if features are enabled based on school settings
   const isFeatureEnabled = (featureName) => {
-    // Superadmin and admin always have access to all features
-    if (user && (user.role === 'superadmin' || user.role === 'admin')) {
-      return true;
-    }
-    
-    // Print debug info about schoolFeatures structure
-    logger.info('FEATURE CHECK', `Checking feature: ${featureName}`, {
-      hasSchoolFeatures: !!user?.schoolFeatures,
-      schoolFeaturesType: user?.schoolFeatures ? typeof user.schoolFeatures : 'undefined',
-      isArray: user?.schoolFeatures ? Array.isArray(user.schoolFeatures) : false,
-      featureContent: user?.schoolFeatures ? JSON.stringify(user.schoolFeatures).substring(0, 100) : 'No features'
-    });
-    
-    // For other users, check if the feature is enabled at the school level
-    if (user && user.schoolFeatures) {
-      // The backend sends schoolFeatures as an array of enabled feature names
-      if (Array.isArray(user.schoolFeatures)) {
-        const featureMap = {
-          'notifications': 'enableNotifications',
-          'grades': 'enableGrades',
-          'rating': 'enableRatingSystem',
-          'calendar': 'enableCalendar',
-          'progress': 'enableStudentProgress'
-        };
-        
-        // Check if the feature name exists in the array
-        return user.schoolFeatures.includes(featureMap[featureName]);
+    try {
+      // Superadmin and admin always have access to all features
+      if (user && (user.role === 'superadmin' || user.role === 'admin')) {
+        logger.info('FEATURE CHECK', `Admin/Superadmin access granted for ${featureName}`);
+        return true;
       }
-      // Legacy support for object format with boolean properties
-      else if (typeof user.schoolFeatures === 'object') {
-        switch (featureName) {
-          case 'notifications':
-            return user.schoolFeatures.enableNotifications === true;
-          case 'grades':
-            return user.schoolFeatures.enableGrades === true;
-          case 'rating':
-            return user.schoolFeatures.enableRatingSystem === true;
-          case 'calendar':
-            return user.schoolFeatures.enableCalendar === true;
-          case 'progress':
-            return user.schoolFeatures.enableStudentProgress === true;
-          default:
-            return true; // Default to showing if feature check isn't implemented
+      
+      // Print debug info about schoolFeatures structure
+      logger.info('FEATURE CHECK', `Checking feature: ${featureName}`, {
+        hasSchoolFeatures: !!user?.schoolFeatures,
+        schoolFeaturesType: user?.schoolFeatures ? typeof user.schoolFeatures : 'undefined',
+        isArray: user?.schoolFeatures ? Array.isArray(user.schoolFeatures) : false,
+        featureContent: user?.schoolFeatures ? JSON.stringify(user.schoolFeatures).substring(0, 100) : 'No features'
+      });
+      
+      // For other users, check if the feature is enabled at the school level
+      if (user && user.schoolFeatures) {
+        // Backend typically sends schoolFeatures as an object with boolean properties
+        if (typeof user.schoolFeatures === 'object' && !Array.isArray(user.schoolFeatures)) {
+          const featureMap = {
+            'notifications': 'enableNotifications',
+            'grades': 'enableGrades',
+            'rating': 'enableRatingSystem',
+            'calendar': 'enableCalendar',
+            'progress': 'enableStudentProgress'
+          };
+          
+          const backendKey = featureMap[featureName];
+          if (!backendKey) {
+            logger.warn('FEATURE CHECK', `Unknown feature name: ${featureName}`);
+            return true; // Default to showing if feature mapping is unknown
+          }
+          
+          const isEnabled = user.schoolFeatures[backendKey] === true;
+          logger.info('FEATURE CHECK', `Feature ${featureName} (${backendKey}) is ${isEnabled ? 'enabled' : 'disabled'}`);
+          return isEnabled;
+        }
+        // Alternative format support - array of enabled feature names
+        else if (Array.isArray(user.schoolFeatures)) {
+          const featureMap = {
+            'notifications': 'enableNotifications',
+            'grades': 'enableGrades',
+            'rating': 'enableRatingSystem',
+            'calendar': 'enableCalendar',
+            'progress': 'enableStudentProgress'
+          };
+          
+          const backendKey = featureMap[featureName];
+          if (!backendKey) {
+            logger.warn('FEATURE CHECK', `Unknown feature name: ${featureName}`);
+            return true;
+          }
+          
+          const isEnabled = user.schoolFeatures.includes(backendKey);
+          logger.info('FEATURE CHECK', `Feature ${featureName} (${backendKey}) is ${isEnabled ? 'enabled' : 'disabled'} [Array format]`);
+          return isEnabled;
         }
       }
+      
+      // Default to showing if no school features data exists
+      logger.info('FEATURE CHECK', `Default to enabled for ${featureName} - no school features data`);
+      return true;
+    } catch (error) {
+      // Safely handle any errors in the permission check to avoid UI crashes
+      logger.error('FEATURE CHECK', `Error checking feature ${featureName}`, { error: error.message });
+      return true; // Default to showing the feature if there's an error
     }
-    
-    // Default to showing if no school features data exists
-    return true;
   };
   
   // Create a memoized error handler for navigation
