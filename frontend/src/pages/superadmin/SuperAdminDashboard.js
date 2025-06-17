@@ -25,7 +25,7 @@ import {
   Notifications as NotificationsIcon,
   Grade as GradeIcon,
   Settings as SettingsIcon,
-  Database as DatabaseIcon
+  Storage as DatabaseIcon
 } from '@mui/icons-material';
 import { getSchoolOwners, updateSchoolOwnerStatus, reset } from '../../features/superadmin/superAdminSlice';
 import LoadingState from '../../components/common/LoadingState';
