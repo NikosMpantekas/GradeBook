@@ -50,7 +50,7 @@ const Dashboard = () => {
     previousPath: window.history?.state?.prev || 'Unknown'
   });
   
-  // Check if features are enabled based on school settings
+  // Check if features are enabled based on school settings from the SchoolPermissions collection
   const isFeatureEnabled = (featureName) => {
     try {
       // Print debug info about schoolFeatures structure
@@ -58,82 +58,78 @@ const Dashboard = () => {
         role: user?.role || 'unknown',
         hasSchoolFeatures: !!user?.schoolFeatures,
         schoolFeaturesType: user?.schoolFeatures ? typeof user.schoolFeatures : 'undefined',
-        isArray: user?.schoolFeatures ? Array.isArray(user.schoolFeatures) : false,
         featureContent: user?.schoolFeatures ? JSON.stringify(user.schoolFeatures).substring(0, 100) : 'No features'
       });
       
-      // Check actual feature toggle state
+      // Check actual feature toggle state from the SchoolPermissions collection
       const getFeatureToggleState = () => {
-        if (user && user.schoolFeatures) {
-          // Backend typically sends schoolFeatures as an object with boolean properties
-          if (typeof user.schoolFeatures === 'object' && !Array.isArray(user.schoolFeatures)) {
-            const featureMap = {
-              'notifications': 'enableNotifications',
-              'grades': 'enableGrades',
-              'rating': 'enableRatingSystem',
-              'calendar': 'enableCalendar',
-              'progress': 'enableStudentProgress'
-            };
-            
-            const backendKey = featureMap[featureName];
-            if (!backendKey) {
-              logger.warn('FEATURE CHECK', `Unknown feature name: ${featureName}`);
-              return true; // Default to showing if feature mapping is unknown
-            }
-            
-            const isEnabled = user.schoolFeatures[backendKey] === true;
-            logger.info('FEATURE CHECK', `Feature ${featureName} (${backendKey}) is ${isEnabled ? 'enabled' : 'disabled'}`);
-            return isEnabled;
-          }
-          // Alternative format support - array of enabled feature names
-          else if (Array.isArray(user.schoolFeatures)) {
-            const featureMap = {
-              'notifications': 'enableNotifications',
-              'grades': 'enableGrades',
-              'rating': 'enableRatingSystem',
-              'calendar': 'enableCalendar',
-              'progress': 'enableStudentProgress'
-            };
-            
-            const backendKey = featureMap[featureName];
-            if (!backendKey) {
-              logger.warn('FEATURE CHECK', `Unknown feature name: ${featureName}`);
-              return true;
-            }
-            
-            const isEnabled = user.schoolFeatures.includes(backendKey);
-            logger.info('FEATURE CHECK', `Feature ${featureName} (${backendKey}) is ${isEnabled ? 'enabled' : 'disabled'} [Array format]`);
-            return isEnabled;
-          }
+        if (!user || !user.schoolFeatures) {
+          logger.warn('FEATURE CHECK', `No school features data available`);
+          return true; // Default to enabled if no data
         }
         
-        // Default to showing if no school features data exists
-        logger.info('FEATURE CHECK', `Default to enabled for ${featureName} - no school features data`);
-        return true;
+        // We expect schoolFeatures to be an object from the SchoolPermissions collection 'features' field
+        const featureMap = {
+          'notifications': 'enableNotifications',
+          'grades': 'enableGrades',
+          'rating': 'enableRatingSystem',
+          'calendar': 'enableCalendar',
+          'progress': 'enableStudentProgress'
+        };
+        
+        const backendKey = featureMap[featureName];
+        if (!backendKey) {
+          logger.warn('FEATURE CHECK', `Unknown feature name: ${featureName}`);
+          return true; // Default to showing if feature mapping is unknown
+        }
+        
+        // Check if the feature is enabled in the school permissions
+        let isEnabled = false;
+        
+        // Handle different possible structures for backward compatibility
+        if (typeof user.schoolFeatures === 'object') {
+          if (user.schoolFeatures.features && typeof user.schoolFeatures.features === 'object') {
+            // New format from SchoolPermissions model (nested 'features' object)
+            isEnabled = user.schoolFeatures.features[backendKey] === true;
+            logger.info('FEATURE CHECK', `New format: Feature ${featureName} (${backendKey}) is ${isEnabled ? 'enabled' : 'disabled'}`);
+          } else {
+            // Legacy direct format
+            isEnabled = user.schoolFeatures[backendKey] === true;
+            logger.info('FEATURE CHECK', `Legacy format: Feature ${featureName} (${backendKey}) is ${isEnabled ? 'enabled' : 'disabled'}`);
+          }
+        } else if (Array.isArray(user.schoolFeatures)) {
+          // Handle array format for maximum backward compatibility
+          isEnabled = user.schoolFeatures.includes(backendKey);
+          logger.info('FEATURE CHECK', `Array format: Feature ${featureName} (${backendKey}) is ${isEnabled ? 'enabled' : 'disabled'}`);
+        }
+        
+        return isEnabled;
       };
       
-      // Get the actual toggle state
+      // Get the actual toggle state - this reflects the true database state
       const featureState = getFeatureToggleState();
       
-      // For rendering the UI - let admins/superadmins see features even if disabled
-      // to allow them to manage feature states, but still reflect the actual state
-      if (user && (user.role === 'superadmin' || user.role === 'admin')) {
-        // For admin screens or toggle state display, return actual state
-        if (window.location.pathname.includes('/admin') || window.location.pathname.includes('/superadmin')) {
-          logger.info('FEATURE CHECK', `Admin/Superadmin interface showing actual state for ${featureName}: ${featureState}`);
-          return featureState;
-        }
-        // For normal navigation, admins can see everything
-        logger.info('FEATURE CHECK', `Admin/Superadmin access granted for ${featureName}`);
-        return true;
+      // Context-aware permission handling
+      // For admin views, we need to show the ACTUAL state to allow toggling
+      const isAdminView = window.location.pathname.includes('/admin') || 
+                          window.location.pathname.includes('/superadmin') || 
+                          window.location.pathname.includes('/settings');
+      
+      // Permissions based on role
+      if (user && (user.role === 'superadmin')) {
+        // Superadmins can access everything, but in admin views we show the actual state
+        return isAdminView ? featureState : true;
+      } else if (user && user.role === 'admin') {
+        // School admins can access everything for their school, but in admin views we show actual state
+        return isAdminView ? featureState : true;
       }
       
-      // For regular users, return the actual feature state
+      // For all other users, apply the actual feature state
       return featureState;
     } catch (error) {
       // Safely handle any errors in the permission check to avoid UI crashes
       logger.error('FEATURE CHECK', `Error checking feature ${featureName}`, { error: error.message });
-      return true; // Default to showing the feature if there's an error
+      return false; // To be safe, default to hiding features if there's an error for regular users
     }
   };
   

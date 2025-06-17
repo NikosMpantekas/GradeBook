@@ -286,17 +286,54 @@ const loginUser = asyncHandler(async (req, res) => {
     // Create a token that includes both user ID and school ID
     const token = generateToken(user._id, user.schoolId);
     
-    // Get school feature permissions for this user's school
+    // Get school feature permissions from the dedicated SchoolPermissions collection
     let schoolFeatures = null;
     if (user.schoolId) {
-      const School = mongoose.model('School');
-      const school = await School.findById(user.schoolId).select('featurePermissions');
-      if (school && school.featurePermissions) {
-        schoolFeatures = school.featurePermissions;
-        
-        logger.info('AUTH', 'School features loaded', {
+      const SchoolPermissions = mongoose.model('SchoolPermissions');
+      
+      // Try to find permissions for this school
+      let permissions = await SchoolPermissions.findOne({ schoolId: user.schoolId });
+      
+      // If no permissions record exists yet, check legacy location and create one
+      if (!permissions) {
+        logger.info('AUTH', 'No dedicated permissions found, checking legacy school model', {
           schoolId: user.schoolId,
-          features: Object.keys(school.featurePermissions)
+        });
+        
+        // Check for legacy permissions in School model
+        const School = mongoose.model('School');
+        const school = await School.findById(user.schoolId).select('featurePermissions');
+        
+        // Create new permissions record using legacy data or defaults
+        const legacyFeatures = school && school.featurePermissions ? school.featurePermissions : {
+          enableNotifications: true,
+          enableGrades: true,
+          enableRatingSystem: true,
+          enableCalendar: true,
+          enableStudentProgress: true
+        };
+        
+        // Create new permissions entry
+        permissions = await SchoolPermissions.create({
+          schoolId: user.schoolId,
+          features: legacyFeatures,
+          lastModifiedBy: user._id
+        });
+        
+        logger.info('AUTH', 'Created new school permissions from legacy data', {
+          schoolId: user.schoolId,
+          features: Object.keys(permissions.features)
+        });
+      }
+      
+      // Use the features from permissions record
+      if (permissions && permissions.features) {
+        schoolFeatures = permissions.features;
+        
+        logger.info('AUTH', 'School features loaded from permissions collection', {
+          schoolId: user.schoolId,
+          features: Object.keys(permissions.features),
+          lastModified: permissions.lastModifiedDate
         });
       }
     }

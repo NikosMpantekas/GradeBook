@@ -2,8 +2,8 @@
  * Application configuration
  */
 
-// App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.5.99';
+// App version (SCHOOL PERMISSIONS SYSTEM COMPLETELY RESTRUCTURED)
+const APP_VERSION = '1.6.0';
 
 // API URL
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
