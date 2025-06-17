@@ -62,7 +62,7 @@ const registerSubscription = asyncHandler(async (req, res) => {
     
     // Prepare subscription data
     const subscriptionData = {
-      user: req.user.id,
+      user: req.user._id, // Use _id instead of id to ensure proper ObjectId reference
       endpoint,
       expirationTime,
       keys: {

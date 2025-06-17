@@ -39,11 +39,15 @@ const migrateSchoolFeatures = async () => {
       logger.info('MIGRATION', `Updated ${updateResult.modifiedCount} schools with default feature permissions`);
     }
 
-    // 3. Find all schools
-    const schools = await School.find({});
-    console.log(`Processing ${schools.length} schools to sync with admins`);
+    // 3. Find all MAIN schools (exclude branches that have a parent cluster)
+    const schools = await School.find({ parentCluster: null });
+    const branchSchools = await School.find({ parentCluster: { $ne: null } });
+    
+    logger.info('MIGRATION', `Found ${schools.length} main schools and ${branchSchools.length} branch schools`);
+    console.log(`Found ${schools.length} main schools and ${branchSchools.length} branch schools`);
+    console.log(`Processing ${schools.length} main schools to sync with admins (branches will be skipped)`);
 
-    // 4. For each school, find its admins and sync permissions
+    // 4. For each main school, find its admins and sync permissions
     const schoolsProcessed = [];
     let totalAdminsUpdated = 0;
 
@@ -158,12 +162,13 @@ const migrateSchoolFeatures = async () => {
     }
 
     // Log summary
-    console.log(`Migration complete: Processed ${schools.length} schools, updated ${totalAdminsUpdated} admin users`);
-    logger.info('MIGRATION', `Migration complete: Processed ${schools.length} schools, updated ${totalAdminsUpdated} admin users`);
+    console.log(`Migration complete: Processed ${schools.length} main schools, updated ${totalAdminsUpdated} admin users`);
+    logger.info('MIGRATION', `Migration complete: Processed ${schools.length} main schools, updated ${totalAdminsUpdated} admin users`);
 
     return {
       success: true,
       totalSchools: schools.length,
+      branchSchoolsSkipped: branchSchools.length,
       totalAdminsUpdated,
       schoolsProcessed
     };
