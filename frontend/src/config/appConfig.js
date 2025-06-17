@@ -3,7 +3,7 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.5.98';
+const APP_VERSION = '1.5.99';
 
 // API URL
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -78,7 +78,7 @@ export {
 // Export other configuration settings
 export const APP_CONFIG = {
   version: APP_VERSION,
-  releaseDate: new Date('2025-05-23'), // Updated to today's date
+  releaseDate: new Date('2025-06-17'), // Updated to today's date
   requireForceUpdate: true, // iOS devices will require updating
   updateCheckIntervalMinutes: 5, // Check for updates every 5 minutes on iOS
 };
