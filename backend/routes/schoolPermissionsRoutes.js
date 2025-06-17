@@ -7,7 +7,7 @@ const {
   migrateSchoolPermissions
 } = require('../controllers/schoolPermissionsController');
 
-const { protect, restrictTo } = require('../middleware/authMiddleware');
+const { protect, superadmin } = require('../middleware/authMiddleware');
 
 // All routes protected by authentication
 router.use(protect);
@@ -16,12 +16,12 @@ router.use(protect);
 router.get('/:schoolId', getSchoolPermissions);
 
 // Update permissions for a school - restricted to superadmin only
-router.put('/:schoolId', restrictTo('superadmin'), updateSchoolPermissions);
+router.put('/:schoolId', superadmin, updateSchoolPermissions);
 
 // Check if a specific feature is enabled for a school
 router.get('/:schoolId/feature/:featureName', checkFeatureEnabled);
 
 // Migration route - for superadmin only
-router.post('/migrate', restrictTo('superadmin'), migrateSchoolPermissions);
+router.post('/migrate', superadmin, migrateSchoolPermissions);
 
 module.exports = router;
