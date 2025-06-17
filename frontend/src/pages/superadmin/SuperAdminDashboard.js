@@ -30,6 +30,7 @@ import {
 import { getSchoolOwners, updateSchoolOwnerStatus, reset } from '../../features/superadmin/superAdminSlice';
 import LoadingState from '../../components/common/LoadingState';
 import MigrationManager from '../../components/superadmin/MigrationManager';
+import SchoolPermissionsMigration from '../../components/superadmin/SchoolPermissionsMigration';
 
 function SuperAdminDashboard() {
   const navigate = useNavigate();
@@ -275,6 +276,16 @@ function SuperAdminDashboard() {
           <Typography variant="body2" color="text.secondary" paragraph>
             This section allows you to manage system-wide maintenance tasks such as database migrations and feature updates.
           </Typography>
+
+          {/* School Feature Permissions Migration */}
+          <Paper elevation={3} sx={{ p: 3, mt: 2, mb: 4 }}>
+            <Typography variant="h6" component="h3" sx={{ mb: 1 }}>School Feature Permissions</Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Updates schools with feature permissions and synchronizes admin permissions. 
+              This migration moves feature toggles from the School collection to the new SchoolPermissions collection.
+            </Typography>
+            <SchoolPermissionsMigration />
+          </Paper>
           
           <MigrationManager />
         </Box>
