@@ -61,29 +61,45 @@ const Dashboard = () => {
     logger.info('FEATURE CHECK', `Checking feature: ${featureName}`, {
       hasSchoolFeatures: !!user?.schoolFeatures,
       schoolFeaturesType: user?.schoolFeatures ? typeof user.schoolFeatures : 'undefined',
+      isArray: user?.schoolFeatures ? Array.isArray(user.schoolFeatures) : false,
       featureContent: user?.schoolFeatures ? JSON.stringify(user.schoolFeatures).substring(0, 100) : 'No features'
     });
     
     // For other users, check if the feature is enabled at the school level
     if (user && user.schoolFeatures) {
-      // The backend sends schoolFeatures as an object with boolean properties
-      const featureMap = {
-        'notifications': 'enableNotifications',
-        'grades': 'enableGrades',
-        'rating': 'enableRatingSystem',
-        'calendar': 'enableCalendar',
-        'progress': 'enableStudentProgress'
-      };
-      
-      const propertyName = featureMap[featureName];
-      if (propertyName && propertyName in user.schoolFeatures) {
-        // The feature exists in the schoolFeatures object
-        return user.schoolFeatures[propertyName] === true;
+      // The backend sends schoolFeatures as an array of enabled feature names
+      if (Array.isArray(user.schoolFeatures)) {
+        const featureMap = {
+          'notifications': 'enableNotifications',
+          'grades': 'enableGrades',
+          'rating': 'enableRatingSystem',
+          'calendar': 'enableCalendar',
+          'progress': 'enableStudentProgress'
+        };
+        
+        // Check if the feature name exists in the array
+        return user.schoolFeatures.includes(featureMap[featureName]);
+      }
+      // Legacy support for object format with boolean properties
+      else if (typeof user.schoolFeatures === 'object') {
+        switch (featureName) {
+          case 'notifications':
+            return user.schoolFeatures.enableNotifications === true;
+          case 'grades':
+            return user.schoolFeatures.enableGrades === true;
+          case 'rating':
+            return user.schoolFeatures.enableRatingSystem === true;
+          case 'calendar':
+            return user.schoolFeatures.enableCalendar === true;
+          case 'progress':
+            return user.schoolFeatures.enableStudentProgress === true;
+          default:
+            return true; // Default to showing if feature check isn't implemented
+        }
       }
     }
     
-    // Default to showing if no specific feature permission is found
-    // This maintains backward compatibility with older data structures
+    // Default to showing if no school features data exists
     return true;
   };
   
