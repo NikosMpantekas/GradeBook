@@ -28,7 +28,7 @@ import {
   UpdateRounded,
   CheckCircleOutline,
   ErrorOutline,
-  PendingOutline,
+  HourglassEmpty,
   ExpandMore,
   ExpandLess,
   SyncProblem,
@@ -70,7 +70,7 @@ const MigrationManager = () => {
       case 'completed':
         return <CheckCircleOutline color="success" />;
       case 'pending':
-        return <PendingOutline color="warning" />;
+        return <HourglassEmpty color="warning" />;
       case 'failed':
         return <ErrorOutline color="error" />;
       default:

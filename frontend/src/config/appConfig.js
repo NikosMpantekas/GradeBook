@@ -3,7 +3,7 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.5.88';
+const APP_VERSION = '1.5.89';
 
 // API URL
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
