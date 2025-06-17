@@ -11,6 +11,7 @@ import uiReducer from '../features/ui/uiSlice';
 import superAdminReducer from '../features/superadmin/superAdminSlice';
 import eventReducer from '../features/events/eventSlice';
 import ratingReducer from '../features/ratings/ratingSlice';
+import migrationsReducer from '../features/migrations/migrationsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -26,5 +27,6 @@ export const store = configureStore({
     superAdmin: superAdminReducer,
     events: eventReducer,
     ratings: ratingReducer,
+    migrations: migrationsReducer,
   },
 });

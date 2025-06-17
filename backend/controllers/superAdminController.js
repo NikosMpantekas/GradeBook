@@ -304,6 +304,25 @@ const updateSchoolOwnerPermissions = asyncHandler(async (req, res) => {
     throw new Error('School owner not found');
   }
 
+  console.log(`PERMISSIONS: Updating school owner ${user.name} (${user._id}) permissions:`, {
+    current: user.adminPermissions || 'none',
+    requested: permissions
+  });
+
+  // Initialize adminPermissions if it doesn't exist
+  if (!user.adminPermissions) {
+    user.adminPermissions = {
+      canManageGrades: true,
+      canSendNotifications: true,
+      canManageUsers: true,
+      canManageSchools: true,
+      canManageDirections: true,
+      canManageSubjects: true,
+      canAccessReports: true,
+      canManageEvents: true
+    };
+  }
+
   // Update admin permissions
   user.adminPermissions = {
     ...user.adminPermissions,
@@ -311,11 +330,52 @@ const updateSchoolOwnerPermissions = asyncHandler(async (req, res) => {
   };
 
   await user.save();
+  console.log(`PERMISSIONS: Updated school owner ${user.name} permissions:`, user.adminPermissions);
 
   // Also update the school's feature permissions if school ID exists
   if (user.schoolId || user.school) {
     const schoolId = user.schoolId || user.school;
-    await updateSchoolFeaturePermissionsFromAdmin(schoolId, permissions);
+    const updateResult = await updateSchoolFeaturePermissionsFromAdmin(schoolId, permissions);
+    console.log(`PERMISSIONS: School features update result:`, updateResult);
+  } else {
+    console.warn(`PERMISSIONS: School owner ${user.name} has no associated school`);
+  }
+
+  // Update all other admin users with the same school to have matching permissions
+  if (user.schoolId || user.school) {
+    const schoolId = user.schoolId || user.school;
+    
+    try {
+      // Find other admin users with the same school
+      const otherAdmins = await User.find({
+        _id: { $ne: user._id }, // Exclude the current user
+        role: 'admin',
+        $or: [
+          { schoolId: schoolId },
+          { school: schoolId }
+        ]
+      });
+      
+      if (otherAdmins.length > 0) {
+        console.log(`PERMISSIONS: Found ${otherAdmins.length} other admins to sync permissions with`);
+        
+        // Update each admin's permissions
+        for (const admin of otherAdmins) {
+          // Initialize adminPermissions if it doesn't exist
+          admin.adminPermissions = admin.adminPermissions || {};
+          
+          // Update only the permissions that were changed
+          for (const [key, value] of Object.entries(permissions)) {
+            admin.adminPermissions[key] = value;
+          }
+          
+          await admin.save();
+          console.log(`PERMISSIONS: Synced permissions for admin ${admin.name} (${admin._id})`);
+        }
+      }
+    } catch (error) {
+      console.error(`PERMISSIONS: Error syncing other admins' permissions:`, error.message);
+    }
   }
 
   res.status(200).json({
@@ -331,44 +391,67 @@ const updateSchoolFeaturePermissionsFromAdmin = async (schoolId, adminPermission
   try {
     const school = await School.findById(schoolId);
     if (!school) {
-      console.error(`School not found with ID: ${schoolId}`);
-      return false;
+      console.error(`PERMISSIONS: School not found with ID: ${schoolId}`);
+      return { success: false, reason: 'school-not-found' };
     }
 
+    console.log(`PERMISSIONS: Updating school ${school.name} (${school._id}) from admin permissions`);
+
+    // Initialize featurePermissions if it doesn't exist
+    if (!school.featurePermissions) {
+      school.featurePermissions = {
+        enableNotifications: true,
+        enableGrades: true,
+        enableRatingSystem: true,
+        enableCalendar: true,
+        enableStudentProgress: true
+      };
+    }
+
+    let isUpdated = false;
+    const previousPermissions = { ...school.featurePermissions };
+    
     // Map admin permissions to school feature permissions
-    const featureUpdates = {};
-    
-    // Map canSendNotifications to enableNotifications
     if (adminPermissions.canSendNotifications !== undefined) {
-      featureUpdates['featurePermissions.enableNotifications'] = adminPermissions.canSendNotifications;
+      school.featurePermissions.enableNotifications = adminPermissions.canSendNotifications;
+      isUpdated = true;
     }
     
-    // Map canManageGrades to enableGrades
     if (adminPermissions.canManageGrades !== undefined) {
-      featureUpdates['featurePermissions.enableGrades'] = adminPermissions.canManageGrades;
+      school.featurePermissions.enableGrades = adminPermissions.canManageGrades;
+      isUpdated = true;
     }
 
-    // Map other permissions as needed
     if (adminPermissions.canManageEvents !== undefined) {
-      featureUpdates['featurePermissions.enableCalendar'] = adminPermissions.canManageEvents;
+      school.featurePermissions.enableCalendar = adminPermissions.canManageEvents;
+      isUpdated = true;
     }
 
     if (adminPermissions.canAccessReports !== undefined) {
-      featureUpdates['featurePermissions.enableRatingSystem'] = adminPermissions.canAccessReports;
-      featureUpdates['featurePermissions.enableStudentProgress'] = adminPermissions.canAccessReports;
+      school.featurePermissions.enableRatingSystem = adminPermissions.canAccessReports;
+      school.featurePermissions.enableStudentProgress = adminPermissions.canAccessReports;
+      isUpdated = true;
     }
 
-    // Only update if there are changes
-    if (Object.keys(featureUpdates).length > 0) {
-      await School.findByIdAndUpdate(schoolId, { $set: featureUpdates });
-      console.log(`Updated school ${school.name} feature permissions:`, featureUpdates);
-      return true;
+    // Only save if there are changes
+    if (isUpdated) {
+      await school.save();
+      console.log(`PERMISSIONS: Updated school ${school.name} feature permissions:`, {
+        before: previousPermissions,
+        after: school.featurePermissions
+      });
+      return { 
+        success: true, 
+        school: school.name, 
+        previousPermissions,
+        currentPermissions: school.featurePermissions
+      };
     }
     
-    return false;
+    return { success: true, message: 'No changes needed' };
   } catch (error) {
-    console.error('Error updating school feature permissions:', error);
-    return false;
+    console.error('PERMISSIONS: Error updating school feature permissions:', error.message);
+    return { success: false, error: error.message };
   }
 };
 
@@ -391,6 +474,24 @@ const updateSchoolFeaturePermissions = asyncHandler(async (req, res) => {
     throw new Error('School not found');
   }
 
+  // Detailed logging before update
+  const previousPermissions = { ...school.featurePermissions };
+  console.log(`PERMISSIONS: Updating school ${school.name} (${school._id}) features:`, {
+    current: previousPermissions || 'none',
+    requested: features
+  });
+
+  // Initialize featurePermissions if it doesn't exist
+  if (!school.featurePermissions) {
+    school.featurePermissions = {
+      enableNotifications: true,
+      enableGrades: true,
+      enableRatingSystem: true,
+      enableCalendar: true,
+      enableStudentProgress: true
+    };
+  }
+
   // Update school feature permissions
   school.featurePermissions = {
     ...school.featurePermissions,
@@ -398,43 +499,62 @@ const updateSchoolFeaturePermissions = asyncHandler(async (req, res) => {
   };
 
   await school.save();
+  
+  console.log(`PERMISSIONS: Updated school ${school.name} features:`, {
+    before: previousPermissions || 'none',
+    after: school.featurePermissions
+  });
 
-  // Find the school owner (admin user) to update their permission flags too
-  const schoolOwner = await User.findOne({ 
-    role: 'admin', 
+  // Find all admin users associated with this school to update their permission flags too
+  const schoolAdmins = await User.find({
+    role: 'admin',
     $or: [
       { schoolId: school._id },
       { school: school._id }
     ]
   });
 
-  if (schoolOwner) {
+  console.log(`PERMISSIONS: Found ${schoolAdmins.length} admin users to update for school ${school.name}`);
+
+  // Update each school admin's permissions
+  for (const admin of schoolAdmins) {
+    // Initialize adminPermissions if it doesn't exist
+    admin.adminPermissions = admin.adminPermissions || {};
+    let adminUpdated = false;
+    
     // Map school feature permissions to admin permissions
     if (features.enableNotifications !== undefined) {
-      schoolOwner.adminPermissions = schoolOwner.adminPermissions || {};
-      schoolOwner.adminPermissions.canSendNotifications = features.enableNotifications;
+      admin.adminPermissions.canSendNotifications = features.enableNotifications;
+      adminUpdated = true;
     }
     
     if (features.enableGrades !== undefined) {
-      schoolOwner.adminPermissions = schoolOwner.adminPermissions || {};
-      schoolOwner.adminPermissions.canManageGrades = features.enableGrades;
+      admin.adminPermissions.canManageGrades = features.enableGrades;
+      adminUpdated = true;
     }
     
     if (features.enableCalendar !== undefined) {
-      schoolOwner.adminPermissions = schoolOwner.adminPermissions || {};
-      schoolOwner.adminPermissions.canManageEvents = features.enableCalendar;
+      admin.adminPermissions.canManageEvents = features.enableCalendar;
+      adminUpdated = true;
     }
     
-    if (features.enableRatingSystem !== undefined || features.enableStudentProgress !== undefined) {
-      schoolOwner.adminPermissions = schoolOwner.adminPermissions || {};
-      if (features.enableRatingSystem !== undefined) {
-        schoolOwner.adminPermissions.canAccessReports = features.enableRatingSystem;
-      } else if (features.enableStudentProgress !== undefined) {
-        schoolOwner.adminPermissions.canAccessReports = features.enableStudentProgress;
+    if (features.enableRatingSystem !== undefined) {
+      admin.adminPermissions.canAccessReports = features.enableRatingSystem;
+      adminUpdated = true;
+    }
+
+    if (features.enableStudentProgress !== undefined && admin.adminPermissions.canAccessReports !== features.enableStudentProgress) {
+      // Only override reports access if rating system wasn't already set
+      if (features.enableRatingSystem === undefined) {
+        admin.adminPermissions.canAccessReports = features.enableStudentProgress;
+        adminUpdated = true;
       }
     }
     
-    await schoolOwner.save();
+    if (adminUpdated) {
+      await admin.save();
+      console.log(`PERMISSIONS: Updated admin ${admin.name} (${admin._id}) permissions to match school settings`);
+    }
   }
 
   res.status(200).json({
@@ -442,6 +562,7 @@ const updateSchoolFeaturePermissions = asyncHandler(async (req, res) => {
     _id: school._id,
     name: school.name,
     featurePermissions: school.featurePermissions,
+    adminsUpdated: schoolAdmins.length
   });
 });
 

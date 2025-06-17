@@ -200,6 +200,9 @@ logger.info('SERVER', 'Routes configured with proper middleware ordering')
 
 // Routes that may access multiple schools or don't require schoolId filtering
 app.use('/api/schools', require('./routes/schoolRoutes')); // School routes have special handling
+
+// Migration routes for superadmins
+app.use('/api/admin/migrations', require('./routes/migrationRoutes')); // Migration system for DB updates
 app.use('/api/superadmin', require('./routes/superAdminRoutes')); // Superadmin routes bypass schoolId filtering
 app.use('/api/ratings', require('./routes/ratingRoutes')); // Rating system for teachers and subjects
 
