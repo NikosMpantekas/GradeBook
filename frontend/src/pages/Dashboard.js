@@ -43,11 +43,40 @@ const Dashboard = () => {
       role: user.role,
       name: user.name,
       hasToken: !!user.token,
-      tokenLength: user.token?.length
+      tokenLength: user.token?.length,
+      hasSchoolFeatures: !!user.schoolFeatures
     } : 'No user',
     currentPath: window.location.pathname,
     previousPath: window.history?.state?.prev || 'Unknown'
   });
+  
+  // Check if features are enabled based on school settings
+  const isFeatureEnabled = (featureName) => {
+    // Superadmin and admin always have access to all features
+    if (user && (user.role === 'superadmin' || user.role === 'admin')) {
+      return true;
+    }
+    
+    // For other users, check if the feature is enabled at the school level
+    if (user && user.schoolFeatures) {
+      switch (featureName) {
+        case 'notifications':
+          return user.schoolFeatures.enableNotifications !== false;
+        case 'grades':
+          return user.schoolFeatures.enableGrades !== false;
+        case 'rating':
+          return user.schoolFeatures.enableRatingSystem !== false;
+        case 'calendar':
+          return user.schoolFeatures.enableCalendar !== false;
+        case 'progress':
+          return user.schoolFeatures.enableStudentProgress !== false;
+        default:
+          return true; // Default to showing if feature check isn't implemented
+      }
+    }
+    
+    return true; // Default to showing if no school features data exists
+  };
   
   // Create a memoized error handler for navigation
   const handleNavigationError = useCallback((destination, error) => {
@@ -598,98 +627,108 @@ const Dashboard = () => {
         </Grid>
 
         {/* Recent Notifications Section */}
-        <Grid item xs={12} md={user?.role === 'student' ? 6 : 12}>
-          <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', borderRadius: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-              Recent Notifications
+        {isFeatureEnabled('notifications') && (
+        <Grid item xs={12} md={6}>
+          <Paper elevation={2} sx={{ p: 2, minHeight: '120px' }}>
+            <Typography variant="h6" gutterBottom>
+              Notifications
             </Typography>
-            <Divider sx={{ mb: 2 }} />
-            {recentNotifications.length > 0 ? (
-              <Grid container spacing={2}>
-                {recentNotifications.map((notification) => (
-                  <Grid item xs={12} key={notification._id}>
-                    <Card variant="outlined">
-                      <CardContent sx={{ py: 1.5 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+            {notificationsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress />
+              </Box>
+            ) : loadingErrors.notifications ? (
+              <Typography color="error">
+                Error loading notifications
+              </Typography>
+            ) : (
+              <>
+                {recentNotifications.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No recent notifications
+                  </Typography>
+                ) : (
+                  <Box>
+                    {recentNotifications.map((notification, index) => (
+                      <Box key={index} sx={{ mb: 1 }}>
+                        <Typography variant="body2" gutterBottom>
                           {notification.title}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" noWrap>
-                          {notification.message}
-                        </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {new Date(notification.createdAt).toLocaleString()}
+                          {new Date(notification.date).toLocaleDateString()}
                         </Typography>
-                      </CardContent>
-                      <CardActions>
-                        <Button 
-                          size="small" 
-                          onClick={() => navigate(`/app/notifications/${notification._id}`)}
-                        >
-                          View
-                        </Button>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <Typography variant="body1" color="text.secondary">
-                No recent notifications.
-              </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<NotificationsIcon />}
+                  onClick={goToNotifications}
+                  sx={{ mt: 2 }}
+                >
+                  View All
+                </Button>
+              </>
             )}
           </Paper>
         </Grid>
+        )}
 
         {/* Recent Grades Section (Students only) */}
-        {user?.role === 'student' && (
-          <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', borderRadius: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                Recent Grades
+        {user?.role === 'student' && isFeatureEnabled('grades') && (
+        <Grid item xs={12} md={6}>
+          <Paper elevation={2} sx={{ p: 2, minHeight: '120px' }}>
+            <Typography variant="h6" gutterBottom>
+              Recent Grades
+            </Typography>
+            {gradesLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress />
+              </Box>
+            ) : loadingErrors.grades ? (
+              <Typography color="error">
+                Error loading grades
               </Typography>
-              <Divider sx={{ mb: 2 }} />
-              {recentGrades.length > 0 ? (
-                <Grid container spacing={2}>
-                  {recentGrades.map((grade) => (
-                    <Grid item xs={12} key={grade._id}>
-                      <Card variant="outlined">
-                        <CardContent sx={{ py: 1.5 }}>
-                          <Grid container alignItems="center">
-                            <Grid item xs={8}>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                                {grade.subject?.name || 'Subject'}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {grade.description || 'No description'}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(grade.date).toLocaleDateString()}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={4} sx={{ textAlign: 'center' }}>
-                              <Typography 
-                                variant="h5" 
-                                sx={{ 
-                                  fontWeight: 'bold',
-                                  color: grade.value >= 50 ? 'success.main' : 'error.main',
-                                }}
-                              >
-                                {grade.value}
-                              </Typography>
-                            </Grid>
-                          </Grid>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : (
-                <Typography variant="body1" color="text.secondary">
-                  No recent grades.
-                </Typography>
-              )}
-            </Paper>
-          </Grid>
+            ) : (
+              <>
+                {recentGrades.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No recent grades
+                  </Typography>
+                ) : (
+                  <Box>
+                    {recentGrades.map((grade, index) => (
+                      <Box key={index} sx={{ mb: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2">
+                            {grade.subject?.name || 'Unknown Subject'}
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                            {grade.value}
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(grade.date).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AssignmentIcon />}
+                  onClick={goToGrades}
+                  sx={{ mt: 2 }}
+                >
+                  View All
+                </Button>
+              </>
+            )}
+          </Paper>
+        </Grid>
         )}
       </Grid>
     </Box>

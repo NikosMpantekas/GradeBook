@@ -278,31 +278,50 @@ const loginUser = asyncHandler(async (req, res) => {
       throw new Error('Invalid credentials');
     }
     
-    // Update login timestamp
+    // Update user's last login timestamp
     user.lastLogin = Date.now();
     user.saveCredentials = req.body.saveCredentials || false;
     await user.save();
     
-    // Generate tokens with schoolId included for multi-tenancy
-    const accessToken = generateToken(user._id, school._id);
-    const userRefreshToken = generateRefreshToken(user._id, school._id);
+    // Create a token that includes both user ID and school ID
+    const token = generateToken(user._id, user.schoolId);
     
-    console.log(`User ${user.name} logged in successfully for school ${school.name}`);
+    // Get school feature permissions for this user's school
+    let schoolFeatures = null;
+    if (user.schoolId) {
+      const School = mongoose.model('School');
+      const school = await School.findById(user.schoolId).select('featurePermissions');
+      if (school && school.featurePermissions) {
+        schoolFeatures = school.featurePermissions;
+        
+        logger.info('AUTH', 'School features loaded', {
+          schoolId: user.schoolId,
+          features: Object.keys(school.featurePermissions)
+        });
+      }
+    }
     
-    // Return user information with tokens
-    return res.json({
-      _id: user.id,
+    logger.info('AUTH', 'Login successful', {
+      userId: user._id,
+      role: user.role,
+      schoolId: user.schoolId,
+      hasToken: true,
+      tokenLength: token.length,
+      hasSchoolFeatures: !!schoolFeatures
+    });
+
+    res.json({
+      _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      schoolId: school._id,
-      school: {
-        _id: school._id,
-        name: school.name
-      },
-      token: accessToken,
-      refreshToken: userRefreshToken,
-      saveCredentials: user.saveCredentials,
+      schoolId: user.schoolId,
+      school: user.school,
+      secretaryPermissions: user.secretaryPermissions,
+      adminPermissions: user.adminPermissions,
+      // Include school feature permissions
+      schoolFeatures,
+      token,
     });
     
   } catch (error) {
