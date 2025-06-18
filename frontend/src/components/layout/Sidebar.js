@@ -62,7 +62,25 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     console.log(`Sidebar state - Route: ${location.pathname} | Permanent: ${isActuallyPermanent} | Open: ${mobileOpen}`);
   }, [location.pathname, isActuallyPermanent, mobileOpen]);
 
-  // Generate menu items based on user role
+  // Check if a specific feature is enabled for the user's school
+  const isFeatureEnabled = (featureName) => {
+    // Superadmins can access everything
+    if (user && user.role === 'superadmin') return true;
+    
+    // Check if user has schoolFeatures from login response
+    if (user && user.schoolFeatures) {
+      // If the feature is explicitly set to false, it's disabled
+      if (user.schoolFeatures[featureName] === false) {
+        console.log(`Feature ${featureName} is disabled for school`);
+        return false;
+      }
+    }
+    
+    // Default to enabled if not explicitly disabled
+    return true;
+  };
+
+  // Generate menu items based on user role and school permissions
   const getMenuItems = () => {
     const menuItems = [
       // SuperAdmin menu items
@@ -89,18 +107,21 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <GradesIcon />,
         path: '/app/grades',
         roles: ['student'],
+        checkPermission: (user) => isFeatureEnabled('enableGrades'),
       },
       {
         text: 'Submit Ratings',
         icon: <RateReviewIcon />,
         path: '/app/ratings',
         roles: ['student'],
+        checkPermission: (user) => isFeatureEnabled('enableRatingSystem'),
       },
       {
         text: 'My Notifications',
         icon: <NotificationsIcon />,
         path: '/app/notifications',
         roles: ['student'],
+        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
       },
       // Teacher specific notifications below
 
@@ -112,36 +133,39 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['teacher', 'admin'],
       },
       {
+        text: 'Student Ratings',
+        icon: <RatingIcon />,
+        path: '/app/teacher/ratings',
+        roles: ['teacher', 'admin'],
+        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher') && 
+                               isFeatureEnabled('enableRatingSystem'),
+      },
+      {
         text: 'Manage Grades',
         icon: <GradesIcon />,
         path: '/app/teacher/grades/manage',
         roles: ['teacher', 'admin', 'secretary'],
-        checkPermission: (user) => user.role === 'admin' || user.role === 'teacher' || (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades),
+        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
+                               (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
+                               isFeatureEnabled('enableGrades'),
       },
       {
         text: 'Add Grade',
         icon: <AddIcon />,
         path: '/app/teacher/grades/create',
         roles: ['teacher', 'admin', 'secretary'],
-        checkPermission: (user) => user.role === 'admin' || user.role === 'teacher' || (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades),
+        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
+                               (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
+                               isFeatureEnabled('enableGrades'),
       },
       {
-        text: 'Notifications',
+        text: 'Send Notifications',
         icon: <NotificationsIcon />,
         path: '/app/teacher/notifications',
         roles: ['teacher', 'admin', 'secretary'],
-        checkPermission: (user) => user.role === 'admin' || 
-                                 (user.role === 'teacher' && user.canSendNotifications !== false) || 
-                                 (user.role === 'secretary' && user.secretaryPermissions?.canSendNotifications)
-      },
-      {
-        text: 'Send Notification',
-        icon: <AddIcon />,
-        path: '/app/teacher/notifications/create',
-        roles: ['teacher', 'admin', 'secretary'],
-        checkPermission: (user) => user.role === 'admin' || 
-                                 (user.role === 'teacher' && user.canSendNotifications !== false) || 
-                                 (user.role === 'secretary' && user.secretaryPermissions?.canSendNotifications)
+        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
+                               (user.role === 'secretary' && user.secretaryPermissions?.canSendNotifications)) && 
+                               isFeatureEnabled('enableNotifications'),
       },
       // Admin and Secretary menu items
       {
@@ -179,11 +203,15 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSubjects),
       },
       {
-        text: 'Student Progress Tracking',
+        text: 'Student Progress',
         icon: <AssessmentIcon />,
         path: '/app/admin/progress',
-        roles: ['admin', 'secretary'],
-        checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canAccessStudentProgress),
+        roles: ['admin', 'teacher', 'secretary'],
+        checkPermission: (user) => {
+          return (user.role === 'admin' || user.role === 'teacher' || 
+                 (user.role === 'secretary' && user.secretaryPermissions?.canAccessStudentProgress)) && 
+                 isFeatureEnabled('enableStudentProgress');
+        },
       },
       {
         text: 'Rating System',
@@ -241,8 +269,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       // Otherwise just return based on role
       return hasRole;
     });
-  };
-
+  };  
+      
   const handleNavigate = (path) => {
     console.log('Navigation to path:', path);
     console.log('Navigation state before:', { isAdmin, isSuperAdmin, isActuallyPermanent });
