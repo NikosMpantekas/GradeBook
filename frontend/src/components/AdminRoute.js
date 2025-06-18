@@ -9,10 +9,7 @@ const AdminRoute = ({ children }) => {
   const location = useLocation();
   
   // Helper function to check if a school feature is enabled
-  const isFeatureEnabled = (featureName, respectToggleForSuperadmin = false) => {
-    // Superadmin bypass most feature checks unless specifically requested to respect them
-    if (user?.role === 'superadmin' && !respectToggleForSuperadmin) return true;
-    
+  const isFeatureEnabled = (featureName) => {
     // Try both possible locations for the feature flag
     if (user?.schoolFeatures && featureName in user.schoolFeatures) {
       return user.schoolFeatures[featureName] === true;
@@ -47,9 +44,17 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" />;
   }
 
-  // CHECK 2: Always allow superadmin access to all routes
+  // CHECK 2: Allow superadmin access to all routes EXCEPT ratings
   if (user.role === 'superadmin') {
-    console.log('✅ AdminRoute - Superadmin access granted');
+    // Block superadmins from ratings-related routes completely
+    if (location.pathname.includes('/app/admin/ratings') || 
+        location.pathname.includes('/app/admin/rating-statistics') ||
+        location.pathname.includes('/app/teacher/ratings') ||
+        location.pathname.includes('/app/ratings')) {
+      return <Navigate to="/app/dashboard" />;
+    }
+    
+    // Grant access to all other routes
     return children;
   }
 
@@ -72,19 +77,21 @@ const AdminRoute = ({ children }) => {
       return <Navigate to="/app/dashboard" />;
     }
     
-    // Check for ratings-related routes
+    // Rating routes check already handled for superadmin
+    
+    // Check for ratings-related routes for other users
     if ((location.pathname.includes('/app/admin/ratings') || 
          location.pathname.includes('/app/admin/rating-statistics') || 
          location.pathname.includes('/app/teacher/ratings') || 
          location.pathname.includes('/app/ratings')) && 
-        !isFeatureEnabled('enableRatingSystem', true)) {
+        !isFeatureEnabled('enableRatingSystem')) {
       return <Navigate to="/app/dashboard" />;
     }
     
     // Check for calendar routes
     if ((location.pathname.includes('/app/calendar') || 
          location.pathname.includes('/app/admin/calendar')) && 
-        !isFeatureEnabled('enableCalendar', true)) {
+        !isFeatureEnabled('enableCalendar')) {
       return <Navigate to="/app/dashboard" />;
     }
     

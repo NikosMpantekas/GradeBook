@@ -230,24 +230,9 @@ export const authSlice = createSlice({
         state.isLoading = false;
         state.isSuccess = true;
         
-        // Log the raw payload structure to debug school features
-        logger.info('AUTH', 'Login payload structure', { 
-          payloadKeys: Object.keys(action.payload),
-          hasSchoolFeatures: !!action.payload.schoolFeatures,
-          schoolFeaturesType: typeof action.payload.schoolFeatures,
-          schoolFeaturesKeys: action.payload.schoolFeatures ? Object.keys(action.payload.schoolFeatures) : 'none'
-        });
-        
+        // Process the user's school features properly
         // Special handling for superadmin users to ensure all required fields exist
         if (action.payload?.role === 'superadmin') {
-          logger.info('AUTH', 'Processing superadmin login response', { 
-            payloadFields: Object.keys(action.payload),
-            hasId: !!action.payload._id || !!action.payload.id,
-            hasName: !!action.payload.name,
-            hasEmail: !!action.payload.email,
-            hasToken: !!action.payload.token
-          });
-          
           // This is CRITICAL to prevent white screens and routing issues
           // Ensure all required fields are present for superadmin
           const superadminUser = {
@@ -260,6 +245,8 @@ export const authSlice = createSlice({
             directions: action.payload.directions || [],
             subjects: action.payload.subjects || [],
             darkMode: action.payload.darkMode || false,
+            // Process school features correctly
+            schoolFeatures: action.payload.schoolFeatures || action.payload.features || {},
             // Ensure these critical fields have fallback values
             _id: action.payload._id || action.payload.id, // Handle possible field name differences
             name: action.payload.name || 'Superadmin',
@@ -267,36 +254,15 @@ export const authSlice = createSlice({
           };
           
           state.user = superadminUser;
-          logger.info('AUTH', 'Superadmin user processed successfully', {
-            id: superadminUser._id,
-            role: superadminUser.role,
-            hasToken: !!superadminUser.token,
-            stateUser: !!state.user
-          });
         } else {
           // Process regular user with special handling for school features
-          // Make sure to properly handle the schoolFeatures object
           const processedUser = {
             ...action.payload,
-            // Make sure schoolFeatures exists and is accessible in the expected format
-            features: action.payload.schoolFeatures || action.payload.features || {}
+            // Make sure school features are properly set from either location
+            schoolFeatures: action.payload.schoolFeatures || action.payload.features || {}
           };
           
-          // Log the processed user object
-          console.log('PROCESSED USER OBJECT:', {
-            hasFeatures: !!processedUser.features,
-            hasSchoolFeatures: !!processedUser.schoolFeatures,
-            featuresKeys: processedUser.features ? Object.keys(processedUser.features) : 'none',
-            schoolFeaturesKeys: processedUser.schoolFeatures ? Object.keys(processedUser.schoolFeatures) : 'none'
-          });
-          
           state.user = processedUser;
-          logger.info('AUTH', 'Regular user login processed with feature check', {
-            id: processedUser._id,
-            role: processedUser.role,
-            hasFeatures: !!processedUser.features,
-            hasSchoolFeatures: !!processedUser.schoolFeatures
-          });
         }
       })
       .addCase(login.rejected, (state, action) => {
