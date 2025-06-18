@@ -62,21 +62,22 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     console.log(`Sidebar state - Route: ${location.pathname} | Permanent: ${isActuallyPermanent} | Open: ${mobileOpen}`);
   }, [location.pathname, isActuallyPermanent, mobileOpen]);
 
-  // Check if a specific feature is enabled for the user's school
-  const isFeatureEnabled = (featureName) => {
-    // Superadmins can access everything
-    if (user && user.role === 'superadmin') return true;
+  // Helper function to check if a school feature is enabled
+  const isFeatureEnabled = (featureName, respectToggleForSuperadmin = false) => {
+    // Superadmin bypass most feature checks unless specifically requested to respect them
+    if (user?.role === 'superadmin' && !respectToggleForSuperadmin) return true;
     
-    // Check if user has schoolFeatures from login response
-    if (user && user.schoolFeatures) {
-      // If the feature is explicitly set to false, it's disabled
-      if (user.schoolFeatures[featureName] === false) {
-        console.log(`Feature ${featureName} is disabled for school`);
-        return false;
-      }
+    // Check if user has schoolFeatures and if the specific feature is enabled
+    if (user?.schoolFeatures && featureName in user.schoolFeatures) {
+      return user.schoolFeatures[featureName] === true;
     }
     
-    // Default to enabled if not explicitly disabled
+    // Try alternative location
+    if (user?.features && featureName in user.features) {
+      return user.features[featureName] === true;
+    }
+    
+    // Default to true if feature toggle not found
     return true;
   };
 
@@ -114,7 +115,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <RateReviewIcon />,
         path: '/app/ratings',
         roles: ['student'],
-        checkPermission: (user) => isFeatureEnabled('enableRatingSystem'),
+        checkPermission: (user) => isFeatureEnabled('enableRatingSystem', true),
       },
       {
         text: 'My Notifications',
@@ -217,15 +218,15 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         text: 'Rating System',
         icon: <RatingIcon />,
         path: '/app/admin/ratings',
-        roles: ['admin'],
-        checkPermission: (user) => user.role === 'admin' && isFeatureEnabled('enableRatingSystem'),
+        roles: ['admin', 'superadmin'],
+        checkPermission: (user) => isFeatureEnabled('enableRatingSystem', true),
       },
       {
         text: 'Rating Statistics',
         icon: <AssessmentIcon />,
         path: '/app/admin/rating-statistics',
-        roles: ['admin'],
-        checkPermission: (user) => user.role === 'admin' && isFeatureEnabled('enableRatingSystem'),
+        roles: ['admin', 'superadmin'],
+        checkPermission: (user) => isFeatureEnabled('enableRatingSystem', true),
       },
       {
         text: 'Contact Messages',
@@ -239,7 +240,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <CalendarIcon />,
         path: '/app/calendar',
         roles: ['student', 'teacher', 'admin', 'secretary', 'superadmin'],
-        checkPermission: (user) => user.role === 'superadmin' || isFeatureEnabled('enableCalendar'),
+        checkPermission: (user) => isFeatureEnabled('enableCalendar', true),
       },
       // Profile is available to all users
       {

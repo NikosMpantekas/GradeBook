@@ -9,56 +9,27 @@ const AdminRoute = ({ children }) => {
   const location = useLocation();
   
   // Helper function to check if a school feature is enabled
-  const isFeatureEnabled = (featureName) => {
-    // Superadmin bypass all feature checks
-    if (user?.role === 'superadmin') {
-      console.log(`Feature check for ${featureName}: SUPERADMIN BYPASS`);
-      return true;
-    }
-    
-    // Log the actual feature check attempts
-    console.log(`Checking feature ${featureName}:`, {
-      path1: user?.schoolFeatures?.[featureName],
-      path2: user?.features?.[featureName]
-    });
+  const isFeatureEnabled = (featureName, respectToggleForSuperadmin = false) => {
+    // Superadmin bypass most feature checks unless specifically requested to respect them
+    if (user?.role === 'superadmin' && !respectToggleForSuperadmin) return true;
     
     // Try both possible locations for the feature flag
     if (user?.schoolFeatures && featureName in user.schoolFeatures) {
-      const enabled = user.schoolFeatures[featureName] === true;
-      console.log(`Feature ${featureName} from schoolFeatures: ${enabled}`);
-      return enabled;
+      return user.schoolFeatures[featureName] === true;
     }
     
     // Try alternative location
     if (user?.features && featureName in user.features) {
-      const enabled = user.features[featureName] === true;
-      console.log(`Feature ${featureName} from features: ${enabled}`);
-      return enabled;
+      return user.features[featureName] === true;
     }
     
-    console.log(`Feature ${featureName} not found in any location, defaulting to TRUE`);
     // Default to true if feature toggle not found
     return true;
   };
 
-  // Enhanced logging for debugging admin access issues
-  console.log('AdminRoute check - User:', user ? {
-    id: user._id,
-    name: user.name,
-    role: user.role,
-    token: user.token ? 'present' : 'missing',
-    schoolId: user.schoolId || 'not set'
-  } : 'No user');
-  
-  // Add detailed logging for school features
-  if (user) {
-    console.log('USER OBJECT KEYS:', Object.keys(user));
-    console.log('SCHOOL FEATURES CHECK:', {
-      hasSchoolFeatures: 'schoolFeatures' in user,
-      schoolFeatures: user.schoolFeatures,
-      directFeatures: user.features,
-      rawData: JSON.stringify(user.schoolFeatures || user.features || {})
-    });
+  // Minimal logging for debugging
+  if (!user) {
+    console.log('AdminRoute - No user found');
   }
 
   if (user && user.role === 'secretary') {
@@ -106,16 +77,14 @@ const AdminRoute = ({ children }) => {
          location.pathname.includes('/app/admin/rating-statistics') || 
          location.pathname.includes('/app/teacher/ratings') || 
          location.pathname.includes('/app/ratings')) && 
-        !isFeatureEnabled('enableRatingSystem')) {
-      console.log('❌ AdminRoute - Rating system feature disabled for this school');
+        !isFeatureEnabled('enableRatingSystem', true)) {
       return <Navigate to="/app/dashboard" />;
     }
     
     // Check for calendar routes
     if ((location.pathname.includes('/app/calendar') || 
          location.pathname.includes('/app/admin/calendar')) && 
-        !isFeatureEnabled('enableCalendar')) {
-      console.log('❌ AdminRoute - Calendar feature disabled for this school');
+        !isFeatureEnabled('enableCalendar', true)) {
       return <Navigate to="/app/dashboard" />;
     }
     
