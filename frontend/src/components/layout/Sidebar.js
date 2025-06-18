@@ -218,14 +218,14 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <RatingIcon />,
         path: '/app/admin/ratings',
         roles: ['admin'],
-        checkPermission: (user) => user.role === 'admin',
+        checkPermission: (user) => user.role === 'admin' && isFeatureEnabled('enableRatingSystem'),
       },
       {
         text: 'Rating Statistics',
         icon: <AssessmentIcon />,
         path: '/app/admin/rating-statistics',
         roles: ['admin'],
-        checkPermission: (user) => user.role === 'admin',
+        checkPermission: (user) => user.role === 'admin' && isFeatureEnabled('enableRatingSystem'),
       },
       {
         text: 'Contact Messages',
@@ -233,12 +233,13 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/superadmin/contact',
         roles: ['superadmin'],
       },
-      // Calendar is available to all users
+      // Calendar is available to all users with the feature enabled
       {
         text: 'Calendar',
         icon: <CalendarIcon />,
         path: '/app/calendar',
         roles: ['student', 'teacher', 'admin', 'secretary', 'superadmin'],
+        checkPermission: (user) => user.role === 'superadmin' || isFeatureEnabled('enableCalendar'),
       },
       // Profile is available to all users
       {

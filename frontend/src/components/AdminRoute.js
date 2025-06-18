@@ -11,13 +11,32 @@ const AdminRoute = ({ children }) => {
   // Helper function to check if a school feature is enabled
   const isFeatureEnabled = (featureName) => {
     // Superadmin bypass all feature checks
-    if (user?.role === 'superadmin') return true;
-    
-    // Check if user has schoolFeatures and if the specific feature is enabled
-    if (user?.schoolFeatures && featureName in user.schoolFeatures) {
-      return user.schoolFeatures[featureName] === true;
+    if (user?.role === 'superadmin') {
+      console.log(`Feature check for ${featureName}: SUPERADMIN BYPASS`);
+      return true;
     }
     
+    // Log the actual feature check attempts
+    console.log(`Checking feature ${featureName}:`, {
+      path1: user?.schoolFeatures?.[featureName],
+      path2: user?.features?.[featureName]
+    });
+    
+    // Try both possible locations for the feature flag
+    if (user?.schoolFeatures && featureName in user.schoolFeatures) {
+      const enabled = user.schoolFeatures[featureName] === true;
+      console.log(`Feature ${featureName} from schoolFeatures: ${enabled}`);
+      return enabled;
+    }
+    
+    // Try alternative location
+    if (user?.features && featureName in user.features) {
+      const enabled = user.features[featureName] === true;
+      console.log(`Feature ${featureName} from features: ${enabled}`);
+      return enabled;
+    }
+    
+    console.log(`Feature ${featureName} not found in any location, defaulting to TRUE`);
     // Default to true if feature toggle not found
     return true;
   };
@@ -30,6 +49,17 @@ const AdminRoute = ({ children }) => {
     token: user.token ? 'present' : 'missing',
     schoolId: user.schoolId || 'not set'
   } : 'No user');
+  
+  // Add detailed logging for school features
+  if (user) {
+    console.log('USER OBJECT KEYS:', Object.keys(user));
+    console.log('SCHOOL FEATURES CHECK:', {
+      hasSchoolFeatures: 'schoolFeatures' in user,
+      schoolFeatures: user.schoolFeatures,
+      directFeatures: user.features,
+      rawData: JSON.stringify(user.schoolFeatures || user.features || {})
+    });
+  }
 
   if (user && user.role === 'secretary') {
     console.log('Secretary permissions:', user.secretaryPermissions || 'none');
@@ -57,9 +87,13 @@ const AdminRoute = ({ children }) => {
     console.log('AdminRoute - Admin role verified, checking feature permissions');
     
     // Check feature permissions based on route
-    if (location.pathname.includes('/app/admin/grades') && !isFeatureEnabled('enableGrades')) {
-      console.log('❌ AdminRoute - Grades feature disabled for this school');
-      return <Navigate to="/app/dashboard" />;
+    if (location.pathname.includes('/app/admin/grades')) {
+      const gradeFeatureEnabled = isFeatureEnabled('enableGrades');
+      console.log(`Grades feature check result: ${gradeFeatureEnabled}`);
+      if (!gradeFeatureEnabled) {
+        console.log('❌ AdminRoute - Grades feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
     }
     
     if (location.pathname.includes('/app/admin/notifications') && !isFeatureEnabled('enableNotifications')) {
@@ -67,7 +101,20 @@ const AdminRoute = ({ children }) => {
       return <Navigate to="/app/dashboard" />;
     }
     
-    if (location.pathname.includes('/app/admin/calendar') && !isFeatureEnabled('enableCalendar')) {
+    // Check for ratings-related routes
+    if ((location.pathname.includes('/app/admin/ratings') || 
+         location.pathname.includes('/app/admin/rating-statistics') || 
+         location.pathname.includes('/app/teacher/ratings') || 
+         location.pathname.includes('/app/ratings')) && 
+        !isFeatureEnabled('enableRatingSystem')) {
+      console.log('❌ AdminRoute - Rating system feature disabled for this school');
+      return <Navigate to="/app/dashboard" />;
+    }
+    
+    // Check for calendar routes
+    if ((location.pathname.includes('/app/calendar') || 
+         location.pathname.includes('/app/admin/calendar')) && 
+        !isFeatureEnabled('enableCalendar')) {
       console.log('❌ AdminRoute - Calendar feature disabled for this school');
       return <Navigate to="/app/dashboard" />;
     }

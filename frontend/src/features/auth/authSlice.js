@@ -230,6 +230,14 @@ export const authSlice = createSlice({
         state.isLoading = false;
         state.isSuccess = true;
         
+        // Log the raw payload structure to debug school features
+        logger.info('AUTH', 'Login payload structure', { 
+          payloadKeys: Object.keys(action.payload),
+          hasSchoolFeatures: !!action.payload.schoolFeatures,
+          schoolFeaturesType: typeof action.payload.schoolFeatures,
+          schoolFeaturesKeys: action.payload.schoolFeatures ? Object.keys(action.payload.schoolFeatures) : 'none'
+        });
+        
         // Special handling for superadmin users to ensure all required fields exist
         if (action.payload?.role === 'superadmin') {
           logger.info('AUTH', 'Processing superadmin login response', { 
@@ -266,11 +274,28 @@ export const authSlice = createSlice({
             stateUser: !!state.user
           });
         } else {
-          // Regular user
-          state.user = action.payload;
-          logger.info('AUTH', 'Regular user login processed', {
-            id: action.payload._id,
-            role: action.payload.role
+          // Process regular user with special handling for school features
+          // Make sure to properly handle the schoolFeatures object
+          const processedUser = {
+            ...action.payload,
+            // Make sure schoolFeatures exists and is accessible in the expected format
+            features: action.payload.schoolFeatures || action.payload.features || {}
+          };
+          
+          // Log the processed user object
+          console.log('PROCESSED USER OBJECT:', {
+            hasFeatures: !!processedUser.features,
+            hasSchoolFeatures: !!processedUser.schoolFeatures,
+            featuresKeys: processedUser.features ? Object.keys(processedUser.features) : 'none',
+            schoolFeaturesKeys: processedUser.schoolFeatures ? Object.keys(processedUser.schoolFeatures) : 'none'
+          });
+          
+          state.user = processedUser;
+          logger.info('AUTH', 'Regular user login processed with feature check', {
+            id: processedUser._id,
+            role: processedUser.role,
+            hasFeatures: !!processedUser.features,
+            hasSchoolFeatures: !!processedUser.schoolFeatures
           });
         }
       })
