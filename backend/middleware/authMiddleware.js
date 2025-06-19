@@ -584,14 +584,14 @@ const canManageSubjects = adminOrSecretary('canManageSubjects');
 const canAccessStudentProgress = adminOrSecretary('canAccessStudentProgress');
 
 // Admin/School-Owner specific permission middlewares
-const adminCanManageGrades = adminWithPermission('canManageGrades');
-const adminCanSendNotifications = adminWithPermission('canSendNotifications');
-const adminCanManageUsers = adminWithPermission('canManageUsers');
-const adminCanManageSchools = adminWithPermission('canManageSchools');
-const adminCanManageDirections = adminWithPermission('canManageDirections');
-const adminCanManageSubjects = adminWithPermission('canManageSubjects');
-const adminCanAccessReports = adminWithPermission('canAccessReports');
-const adminCanManageEvents = adminWithPermission('canManageEvents');
+const adminCanManageGrades = adminWithPermission('grades');
+const adminCanSendNotifications = adminWithPermission('notifications');
+const adminCanManageUsers = adminWithPermission('users');
+const adminCanManageSchools = adminWithPermission('schools');
+const adminCanManageDirections = adminWithPermission('directions');
+const adminCanManageSubjects = adminWithPermission('subjects');
+const adminCanAccessReports = adminWithPermission('reports');
+const adminCanManageEvents = adminWithPermission('events');
 
 // Middleware to check if user is a student
 const student = asyncHandler(async (req, res, next) => {
