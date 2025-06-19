@@ -11,8 +11,21 @@ const schoolPermissionsSchema = mongoose.Schema(
       index: true,
     },
     
-    // Feature toggles - each represents a specific function in the application
+    // Feature toggles - focusing on calendar and rating system as required
     features: {
+      enableCalendar: {
+        type: Boolean,
+        default: true,
+        description: 'Enables the calendar and events module for this school'
+      },
+      enableRatingSystem: {
+        type: Boolean,
+        default: true,
+        description: 'Enables the student rating system for this school'
+      },
+      
+      // Keeping other features but marking them as not configurable by design
+      // to maintain backward compatibility with existing code
       enableNotifications: {
         type: Boolean,
         default: true,
@@ -22,16 +35,6 @@ const schoolPermissionsSchema = mongoose.Schema(
         type: Boolean,
         default: true,
         description: 'Enables the grades management module for this school'
-      },
-      enableRatingSystem: {
-        type: Boolean,
-        default: true,
-        description: 'Enables the student rating system for this school'
-      },
-      enableCalendar: {
-        type: Boolean,
-        default: true,
-        description: 'Enables the calendar and events module for this school'
       },
       enableStudentProgress: {
         type: Boolean,

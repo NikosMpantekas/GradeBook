@@ -1,5 +1,8 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const School = require('../models/schoolModel');
+const SchoolPermissions = require('../models/schoolPermissionsModel');
+const logger = require('../utils/logger');
 
 // @desc    Create a new school branch
 // @route   POST /api/schools
@@ -206,10 +209,184 @@ const deleteSchool = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'School branch removed' });
 });
 
+// @desc    Get feature toggles for current user's school
+// @route   GET /api/schools/features
+// @access  Private (protected by auth middleware)
+const getSchoolFeatures = asyncHandler(async (req, res) => {
+  // Super admin has all features enabled
+  if (req.isSuperadmin) {
+    logger.info('FEATURE', 'Superadmin accessing feature toggles - all enabled');
+    return res.status(200).json({
+      features: {
+        enableCalendar: true,
+        enableRatingSystem: true
+      }
+    });
+  }
+
+  // Regular user needs school context
+  if (!req.user || !req.user.schoolId) {
+    logger.warn('FEATURE', 'User without school context requesting feature toggles');
+    return res.status(200).json({
+      features: {
+        enableCalendar: false,
+        enableRatingSystem: false
+      }
+    });
+  }
+
+  try {
+    // Get school permissions
+    const schoolPermissions = await SchoolPermissions.findOne({
+      schoolId: req.user.schoolId
+    });
+
+    // If permissions don't exist, return all features disabled
+    if (!schoolPermissions) {
+      logger.warn('FEATURE', `No permissions found for school ${req.user.schoolId}`);
+      return res.status(200).json({
+        features: {
+          enableCalendar: false,
+          enableRatingSystem: false
+        }
+      });
+    }
+
+    // Return the feature toggles
+    const features = {
+      enableCalendar: schoolPermissions.features?.enableCalendar === true,
+      enableRatingSystem: schoolPermissions.features?.enableRatingSystem === true
+    };
+
+    logger.info('FEATURE', `Retrieved feature toggles for school ${req.user.schoolId}`, features);
+    res.status(200).json({ features });
+  } catch (error) {
+    logger.error('FEATURE', `Error getting feature toggles: ${error.message}`);
+    res.status(500).json({
+      message: 'Error retrieving feature toggles',
+      features: {
+        enableCalendar: false,
+        enableRatingSystem: false
+      }
+    });
+  }
+});
+
+// @desc    Get school permissions (including feature toggles) for a specific school
+// @route   GET /api/schools/:id/permissions
+// @access  Private/SuperAdmin or Admin of that school
+const getSchoolPermissions = asyncHandler(async (req, res) => {
+  const schoolId = req.params.id;
+  
+  // Validate school ID
+  if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+    res.status(400);
+    throw new Error('Invalid school ID');
+  }
+
+  // Check if user is superadmin or admin of the school
+  if (req.user.role !== 'superadmin' && 
+      req.user.role !== 'admin' && 
+      (!req.user.schoolId || req.user.schoolId.toString() !== schoolId)) {
+    logger.warn('AUTH', `Unauthorized access to school permissions for ${schoolId}`);
+    res.status(403);
+    throw new Error('Not authorized to access this school\'s permissions');
+  }
+
+  try {
+    // Get school permissions
+    const permissions = await SchoolPermissions.findOne({ schoolId });
+    
+    // If no permissions exist yet, create default ones
+    if (!permissions) {
+      const defaultPermissions = new SchoolPermissions({
+        schoolId,
+        features: {
+          enableCalendar: false,
+          enableRatingSystem: false
+        }
+      });
+      
+      await defaultPermissions.save();
+      return res.status(200).json(defaultPermissions);
+    }
+    
+    res.status(200).json(permissions);
+  } catch (error) {
+    logger.error('SCHOOL', `Error getting permissions for school ${schoolId}: ${error.message}`);
+    res.status(500);
+    throw new Error('Error retrieving school permissions');
+  }
+});
+
+// @desc    Update school permissions (including feature toggles) for a specific school
+// @route   PUT /api/schools/:id/permissions
+// @access  Private/SuperAdmin only
+const updateSchoolPermissions = asyncHandler(async (req, res) => {
+  const schoolId = req.params.id;
+  const { features } = req.body;
+  
+  // Validate school ID
+  if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+    res.status(400);
+    throw new Error('Invalid school ID');
+  }
+
+  // Only superadmin can update school permissions
+  if (req.user.role !== 'superadmin') {
+    logger.warn('AUTH', `Unauthorized attempt to update school permissions for ${schoolId}`);
+    res.status(403);
+    throw new Error('Only superadmins can update school permissions');
+  }
+
+  try {
+    // Check if school exists
+    const school = await School.findById(schoolId);
+    if (!school) {
+      res.status(404);
+      throw new Error('School not found');
+    }
+
+    // Find permissions or create new ones
+    let permissions = await SchoolPermissions.findOne({ schoolId });
+    
+    if (!permissions) {
+      permissions = new SchoolPermissions({
+        schoolId,
+        features: {
+          enableCalendar: features?.enableCalendar === true,
+          enableRatingSystem: features?.enableRatingSystem === true
+        }
+      });
+    } else {
+      // Update existing permissions
+      permissions.features = {
+        enableCalendar: features?.enableCalendar === true,
+        enableRatingSystem: features?.enableRatingSystem === true,
+        // Keep other feature toggles that might exist
+        ...permissions.features,
+        enableCalendar: features?.enableCalendar === true,
+        enableRatingSystem: features?.enableRatingSystem === true
+      };
+    }
+    
+    await permissions.save();
+    logger.info('SCHOOL', `Updated permissions for school ${schoolId}`);
+    res.status(200).json(permissions);
+  } catch (error) {
+    logger.error('SCHOOL', `Error updating permissions for school ${schoolId}: ${error.message}`);
+    res.status(500);
+    throw new Error('Error updating school permissions');
+  }
+});
+
 module.exports = {
   createSchool,
   getSchools,
   getSchoolById,
   updateSchool,
   deleteSchool,
+  getSchoolFeatures,
+  getSchoolPermissions,
+  updateSchoolPermissions
 };

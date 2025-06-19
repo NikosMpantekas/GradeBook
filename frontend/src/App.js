@@ -70,6 +70,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import CreateSchoolOwner from './pages/superadmin/CreateSchoolOwner';
 import SchoolOwnerDetails from './pages/superadmin/SchoolOwnerDetails';
+import ManageSchoolFeatures from './pages/superadmin/ManageSchoolFeatures';
 
 // Push notification service
 import { setupPushNotifications } from './services/pushNotificationService';
@@ -77,6 +78,9 @@ import setupAxios from './app/setupAxios';
 import logger from './services/loggerService';
 // Using the ErrorBoundary from ./components/ErrorBoundary
 import { APP_VERSION, initAppConfig } from './config/appConfig';
+
+// Feature toggles context provider
+import { FeatureToggleProvider } from './context/FeatureToggleContext';
 
 // Custom components
 import HomeScreenPrompt from './components/HomeScreenPrompt';
@@ -312,10 +316,11 @@ function App() {
   }, []);
 
   return (
-    <ErrorBoundary componentName="App Root">
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <ScrollFix />
+    <ErrorBoundary onError={handleReactError} fallback={<DiagnosticPage />} componentName="Application Root">
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <ScrollFix /> {/* Fix for Safari elastic scroll */}
+      <FeatureToggleProvider>
         <HomeScreenPrompt />
         <Router>
           <Routes>
@@ -486,6 +491,11 @@ function App() {
                 <AdminContactMessages />
               </SuperAdminRoute>
             } />
+            <Route path="/superadmin/school-features" element={
+              <SuperAdminRoute>
+                <ManageSchoolFeatures />
+              </SuperAdminRoute>
+            } />
           </Route>
           
           {/* 404 Page */}
@@ -497,6 +507,7 @@ function App() {
       <PushNotificationManager />
       {/* Android PWA Installation Prompt */}
       <AndroidInstallPrompt />
+      </FeatureToggleProvider>
     </ThemeProvider>
     </ErrorBoundary>
   );

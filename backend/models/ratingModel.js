@@ -52,16 +52,16 @@ const RatingPeriodSchema = mongoose.Schema(
     },
     targetType: {
       type: String,
-      enum: ['teacher', 'subject', 'both'],
+      enum: ['teacher', 'class', 'both'],
       default: 'both'
     },
     schools: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'School'
     }],
-    directions: [{
+    classes: [{
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Direction'
+      ref: 'Class'
     }],
     // Questions embedded directly in the period
     questions: [RatingQuestionSchema],
@@ -101,7 +101,7 @@ const StudentRatingSchema = mongoose.Schema(
     },
     targetType: {
       type: String,
-      enum: ['teacher', 'subject'],
+      enum: ['teacher', 'class'],
       required: true
     },
     targetId: {
@@ -112,7 +112,7 @@ const StudentRatingSchema = mongoose.Schema(
     targetModel: {
       type: String,
       required: true,
-      enum: ['User', 'Subject']
+      enum: ['User', 'Class']
     },
     answers: [
       {
@@ -141,9 +141,9 @@ const StudentRatingSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'School'
     },
-    direction: {
+    class: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Direction'
+      ref: 'Class'
     }
   },
   {

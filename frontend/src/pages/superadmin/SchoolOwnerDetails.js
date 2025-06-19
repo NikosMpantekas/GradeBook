@@ -43,13 +43,8 @@ function SchoolOwnerDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  // Only initialize the two permissions we're managing
   const [permissions, setPermissions] = useState({
-    canManageGrades: true,
-    canSendNotifications: true,
-    canManageUsers: true,
-    canManageSchools: true,
-    canManageDirections: true,
-    canManageSubjects: true,
     canAccessReports: true,
     canManageEvents: true
   });
@@ -71,9 +66,11 @@ function SchoolOwnerDetails() {
         const response = await axios.get(`/api/superadmin/school-owners/${id}`, config);
         setSchoolOwner(response.data);
         
-        // Initialize permissions from the school owner data if available
+        // Initialize only the two permissions we want to display/manage
         if (response.data.adminPermissions) {
-          setPermissions(response.data.adminPermissions);
+          // Extract only the two permissions we care about
+          const { canAccessReports = true, canManageEvents = true } = response.data.adminPermissions;
+          setPermissions({ canAccessReports, canManageEvents });
         }
         
         setLoading(false);
@@ -302,115 +299,13 @@ function SchoolOwnerDetails() {
           <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
             <FormGroup>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={permissions.canManageGrades}
-                        onChange={() => handlePermissionChange('canManageGrades')}
-                        disabled={updatingPermissions}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Grade sx={{ mr: 1, color: permissions.canManageGrades ? 'primary.main' : 'text.disabled' }} />
-                        <Typography>Manage Grades</Typography>
-                      </Box>
-                    }
-                  />
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                    Enable or disable features for this school owner
+                  </Typography>
                 </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={permissions.canSendNotifications}
-                        onChange={() => handlePermissionChange('canSendNotifications')}
-                        disabled={updatingPermissions}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Notifications sx={{ mr: 1, color: permissions.canSendNotifications ? 'primary.main' : 'text.disabled' }} />
-                        <Typography>Send Notifications</Typography>
-                      </Box>
-                    }
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={permissions.canManageUsers}
-                        onChange={() => handlePermissionChange('canManageUsers')}
-                        disabled={updatingPermissions}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Group sx={{ mr: 1, color: permissions.canManageUsers ? 'primary.main' : 'text.disabled' }} />
-                        <Typography>Manage Users</Typography>
-                      </Box>
-                    }
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={permissions.canManageSchools}
-                        onChange={() => handlePermissionChange('canManageSchools')}
-                        disabled={updatingPermissions}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <School sx={{ mr: 1, color: permissions.canManageSchools ? 'primary.main' : 'text.disabled' }} />
-                        <Typography>Manage Schools</Typography>
-                      </Box>
-                    }
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={permissions.canManageDirections}
-                        onChange={() => handlePermissionChange('canManageDirections')}
-                        disabled={updatingPermissions}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Folder sx={{ mr: 1, color: permissions.canManageDirections ? 'primary.main' : 'text.disabled' }} />
-                        <Typography>Manage Directions</Typography>
-                      </Box>
-                    }
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={permissions.canManageSubjects}
-                        onChange={() => handlePermissionChange('canManageSubjects')}
-                        disabled={updatingPermissions}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <MenuBook sx={{ mr: 1, color: permissions.canManageSubjects ? 'primary.main' : 'text.disabled' }} />
-                        <Typography>Manage Subjects</Typography>
-                      </Box>
-                    }
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
+                {/* Only showing Access Reports and Manage Events as per requirements */}
+                <Grid item xs={12} sm={6}>
                   <FormControlLabel
                     control={
                       <Switch
@@ -428,7 +323,7 @@ function SchoolOwnerDetails() {
                     }
                   />
                 </Grid>
-                <Grid item xs={12} sm={6} md={4}>
+                <Grid item xs={12} sm={6}>
                   <FormControlLabel
                     control={
                       <Switch

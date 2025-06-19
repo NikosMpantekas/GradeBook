@@ -179,22 +179,21 @@ const logger = require('./utils/logger');
 // User routes - No global middleware for auth checking, each route will handle individually
 app.use('/api/users', require('./routes/userRoutes')); 
 
-// Routes requiring auth but NOT schoolId - safe for superadmin
-// These routes don't need schoolId context and are safe for superadmin users
-app.use('/api/subscriptions', require('./routes/subscriptionRoutes')); 
-app.use('/api/contact', require('./routes/contactRoutes')); 
-app.use('/api/patch-notes', require('./routes/patchNoteRoutes')); 
-
-// IMPORTANT: Ensure auth middleware runs BEFORE schoolId middleware
-// Routes that need both auth and schoolId context for regular users
-// But will BYPASS schoolId check for superadmin users
+// Setup global middleware for the main routes - all routes here need auth & school context
 const { protect } = require('./middleware/authMiddleware');
-app.use('/api/grades', protect, setSchoolContext, require('./routes/gradeRoutes')); 
-app.use('/api/notifications', protect, setSchoolContext, require('./routes/notificationRoutes')); 
-app.use('/api/subjects', protect, setSchoolContext, require('./routes/subjectRoutes')); 
-app.use('/api/directions', protect, setSchoolContext, require('./routes/directionRoutes'));
-app.use('/api/students', protect, setSchoolContext, require('./routes/studentRoutes')); 
-app.use('/api/events', protect, setSchoolContext, require('./routes/eventRoutes')); // Calendar Events API
+const { addFeatureFlags, checkCalendarEnabled, checkRatingEnabled } = require('./middleware/featureToggleMiddleware');
+
+// Setup routes that need school context middlewares
+// Add the feature flags middleware to all routes so they have access to feature information
+app.use('/api/contacts', protect, setSchoolContext, addFeatureFlags, require('./routes/contactRoutes')); // Contact form
+app.use('/api/patch-notes', protect, setSchoolContext, addFeatureFlags, require('./routes/patchNoteRoutes')); // Patch notes
+app.use('/api/grades', protect, setSchoolContext, addFeatureFlags, require('./routes/gradeRoutes')); // Grades API
+app.use('/api/classes', protect, setSchoolContext, addFeatureFlags, require('./routes/classRoutes')); // Classes API (new)
+app.use('/api/notifications', protect, setSchoolContext, addFeatureFlags, require('./routes/notificationRoutes')); // Notifications API
+
+// Feature-toggled routes - these routes require specific features to be enabled
+app.use('/api/ratings', protect, setSchoolContext, addFeatureFlags, checkRatingEnabled, require('./routes/ratingRoutes')); // Rating system API
+app.use('/api/events', protect, setSchoolContext, addFeatureFlags, checkCalendarEnabled, require('./routes/eventRoutes')); // Calendar Events API
 
 logger.info('SERVER', 'Routes configured with proper middleware ordering')
 
