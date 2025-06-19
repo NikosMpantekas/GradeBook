@@ -29,6 +29,8 @@ import {
 import {
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { createUser, reset } from '../../features/users/userSlice';

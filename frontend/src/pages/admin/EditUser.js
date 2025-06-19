@@ -54,7 +54,9 @@ const EditUser = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [userData, setUserData] = useState(null);
   
-  // Legacy state for schools, directions, and subjects removed
+  // State for schools data
+  const [schools, setSchools] = useState([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -91,9 +93,40 @@ const EditUser = () => {
     confirmPassword: '',
   });
   
-  // Legacy data fetching for schools, directions, and subjects removed
+  // Fetch schools data
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        setSchoolsLoading(true);
+        // Fetch schools from API
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/schools`, {
+          headers: {
+            Authorization: `Bearer ${currentUser.token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch schools');
+        }
+        
+        const data = await response.json();
+        setSchools(data);
+      } catch (error) {
+        console.error('Error fetching schools:', error);
+        toast.error('Failed to load schools data');
+      } finally {
+        setSchoolsLoading(false);
+      }
+    };
+    
+    fetchSchools();
+  }, [currentUser.token]);
 
-  // Legacy filtering for subjects based on directions removed
+  // Define empty arrays for legacy fields to prevent undefined errors
+  const directions = [];
+  const subjects = [];
+  const filteredSubjects = [];
+  const directionsLoading = false;
 
   // Fetch user data on component mount
   useEffect(() => {
@@ -143,29 +176,27 @@ const EditUser = () => {
           
           // Process schools - handle both array and single value formats
           const processSchoolData = (schoolData) => {
-            if (!schoolData) return [];
             if (Array.isArray(schoolData)) {
-              return schoolData.map(s => (s && typeof s === 'object' ? s._id : s)).filter(Boolean);
+              return schoolData.map(school => typeof school === 'object' ? school._id : school);
             }
-            return [schoolData && typeof schoolData === 'object' ? schoolData._id : schoolData].filter(Boolean);
+            return schoolData ? (typeof schoolData === 'object' ? [schoolData._id] : [schoolData]) : [];
           };
           
           // Process directions - handle both array and single value formats
           const processDirectionData = (directionData) => {
-            if (!directionData) return [];
             if (Array.isArray(directionData)) {
-              return directionData.map(d => (d && typeof d === 'object' ? d._id : d)).filter(Boolean);
+              return directionData.map(direction => typeof direction === 'object' ? direction._id : direction);
             }
-            return [directionData && typeof directionData === 'object' ? directionData._id : directionData].filter(Boolean);
+            return directionData ? (typeof directionData === 'object' ? [directionData._id] : [directionData]) : [];
           };
           
           // Process subjects
           const processSubjectData = (subjectData) => {
             if (!subjectData) return [];
             if (Array.isArray(subjectData)) {
-              return subjectData.map(s => (s && typeof s === 'object' ? s._id : s)).filter(Boolean);
+              return subjectData.map(subject => typeof subject === 'object' ? subject._id : subject);
             }
-            return [subjectData && typeof subjectData === 'object' ? subjectData._id : subjectData].filter(Boolean);
+            return typeof subjectData === 'object' ? [subjectData._id] : [subjectData];
           };
           
           // Process based on role
