@@ -35,9 +35,6 @@ import { toast } from 'react-toastify';
 
 import { getUserById, updateUser, reset } from '../../features/users/userSlice';
 import { updateCurrentUserPermissions } from '../../features/auth/authSlice';
-import { getSchools } from '../../features/schools/schoolSlice';
-import { getDirections } from '../../features/directions/directionSlice';
-import { getSubjects } from '../../features/subjects/subjectSlice';
 
 const EditUser = () => {
   const { id } = useParams();
@@ -57,14 +54,7 @@ const EditUser = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [userData, setUserData] = useState(null);
   
-  // Add state for schools, directions, and subjects
-  const [schools, setSchools] = useState([]);
-  const [directions, setDirections] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [filteredSubjects, setFilteredSubjects] = useState([]);
-  const [schoolsLoading, setSchoolsLoading] = useState(false);
-  const [directionsLoading, setDirectionsLoading] = useState(false);
-  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  // Legacy state for schools, directions, and subjects removed
   
   const [formData, setFormData] = useState({
     name: '',
@@ -72,11 +62,6 @@ const EditUser = () => {
     mobilePhone: '',
     personalEmail: '',
     role: '',
-    school: '', // For students
-    schools: [], // For teachers (multiple schools)
-    direction: '', // For students
-    directions: [], // For teachers (multiple directions)
-    subjects: [],
     changePassword: false,
     password: '',
     confirmPassword: '',
@@ -102,88 +87,13 @@ const EditUser = () => {
     mobilePhone: '',
     personalEmail: '',
     role: '',
-    school: '',
-    schools: '',
-    direction: '',
-    directions: '',
-    subjects: '',
     password: '',
     confirmPassword: '',
   });
   
-  // Fetch schools, directions, and subjects data
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch schools
-        setSchoolsLoading(true);
-        const schoolsData = await dispatch(getSchools()).unwrap();
-        setSchools(schoolsData);
-        setSchoolsLoading(false);
-        
-        // Fetch directions
-        setDirectionsLoading(true);
-        const directionsData = await dispatch(getDirections()).unwrap();
-        setDirections(directionsData);
-        setDirectionsLoading(false);
-        
-        // Fetch subjects
-        setSubjectsLoading(true);
-        const subjectsData = await dispatch(getSubjects()).unwrap();
-        setSubjects(subjectsData);
-        setSubjectsLoading(false);
-      } catch (error) {
-        console.error('Failed to fetch reference data:', error);
-        toast.error('Failed to load some reference data. Please refresh the page.');
-      }
-    };
-    
-    fetchData();
-  }, [dispatch]);
+  // Legacy data fetching for schools, directions, and subjects removed
 
-  // Filter subjects based on selected directions
-  useEffect(() => {
-    // For student: filter based on single direction
-    if (formData.role === 'student') {
-      if (!formData.direction) {
-        setFilteredSubjects(subjects); // Show all subjects if no direction selected
-        return;
-      }
-      
-      // Filter subjects that belong to the selected direction
-      const directionSubjects = subjects.filter(subject => 
-        subject.directions && (
-          (Array.isArray(subject.directions) && subject.directions.includes(formData.direction)) ||
-          (Array.isArray(subject.directions) && subject.directions.some(d => 
-            (typeof d === 'object' && d._id === formData.direction) || d === formData.direction
-          ))
-        )
-      );
-      setFilteredSubjects(directionSubjects);
-    } 
-    // For teacher: filter based on multiple directions
-    else if (formData.role === 'teacher') {
-      if (!formData.directions || formData.directions.length === 0) {
-        setFilteredSubjects(subjects); // Show all subjects if no directions selected
-        return;
-      }
-      
-      // Filter subjects that belong to any of the selected directions
-      const directionSubjects = subjects.filter(subject => 
-        subject.directions && Array.isArray(subject.directions) && (
-          // Check if any of the subject's directions match any of the selected directions
-          subject.directions.some(subjectDir => {
-            const subjectDirId = typeof subjectDir === 'object' ? subjectDir._id : subjectDir;
-            return formData.directions.includes(subjectDirId);
-          })
-        )
-      );
-      setFilteredSubjects(directionSubjects);
-    } else {
-      // For admin or when role is not set yet
-      setFilteredSubjects(subjects);
-    }
-  }, [subjects, formData.direction, formData.directions, formData.role]);
+  // Legacy filtering for subjects based on directions removed
 
   // Fetch user data on component mount
   useEffect(() => {

@@ -196,11 +196,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <ClassIcon />,
         path: '/app/admin/classes',
         roles: ['admin', 'secretary'],
-        checkPermission: (user) => {
-          return user.role === 'admin' ? 
-            user.adminPermissions?.canManageDirections !== false : 
-            user.secretaryPermissions?.canManageDirections === true;
-        },
+        // Always allow admins to access, for secretary require permission
+        checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageDirections === true),
       },
       // Keep legacy Directions option for backward compatibility during migration
       {

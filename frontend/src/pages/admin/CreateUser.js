@@ -29,8 +29,6 @@ import {
 import {
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
-  Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { createUser, reset } from '../../features/users/userSlice';
@@ -182,21 +180,15 @@ const CreateUser = (props) => {
     }
   }, [user]);
 
-  // Additional state for loading schools, directions, and subjects
+  // Additional state for loading options
   const [loadingOptions, setLoadingOptions] = useState({
-    schools: false,
-    directions: false,
-    subjects: false,
+    schools: false
   });
   const [optionsData, setOptionsData] = useState({
-    schools: [],
-    directions: [],
-    subjects: [],
+    schools: []
   });
   const [optionsError, setOptionsError] = useState({
-    schools: null,
-    directions: null,
-    subjects: null,
+    schools: null
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -210,20 +202,13 @@ const CreateUser = (props) => {
     role: '',
     school: '', // For students
     schools: [], // For teachers (multiple schools)
-    direction: '', // For students
-    directions: [], // For teachers (multiple directions)
-    subjects: [],
-    // Teacher permission flags - default to true for backward compatibility
     canSendNotifications: true,
     canAddGradeDescriptions: true,
-    // Secretary permission flags - all default to false
     secretaryPermissions: {
       canManageGrades: false,
       canSendNotifications: false,
       canManageUsers: false,
       canManageSchools: false,
-      canManageDirections: false,
-      canManageSubjects: false,
       canAccessStudentProgress: false,
     },
   });
@@ -239,9 +224,6 @@ const CreateUser = (props) => {
     role: '',
     school: '',
     schools: '',
-    direction: '',
-    directions: '',
-    subjects: '',
   });
   
   // Update email when name changes - automatically generate email address
@@ -282,68 +264,23 @@ const CreateUser = (props) => {
     
     // Special handling for different fields
     if (name === 'role') {
-      // Reset school, direction, and subjects when role changes
+      // Reset school when role changes
       const newState = {
         ...formData,
         [name]: value,
       };
       
-      // If changing to admin, clear school/direction/subjects
+      // If changing to admin, clear school
       if (value === 'admin') {
         newState.school = '';
-        newState.direction = '';
-        newState.subjects = [];
       }
       
       // If changing to secretary, clear student-specific fields
       if (value === 'secretary') {
         newState.school = '';
-        newState.direction = '';
       }
       
       setFormData(newState);
-    } else if (name === 'direction') {
-      console.log(`[CreateUser] Direction changed to: ${value}`);
-      // When direction changes for a student, fetch subjects for that direction
-      setFormData({
-        ...formData,
-        [name]: value,
-        // Reset subjects when direction changes
-        subjects: []
-      });
-      
-      // Fetch subjects for this direction if a valid direction is selected
-      if (value && value !== '') {
-        console.log(`[CreateUser] Fetching subjects for direction: ${value}`);
-        fetchSubjects(value);
-      } else {
-        // If no direction is selected, fetch all subjects
-        console.log('[CreateUser] No direction selected, fetching all subjects');
-        fetchSubjects();
-      }
-    } else if (name === 'directions') {
-      console.log(`[CreateUser] Directions (multiple) changed to:`, value);
-      // When directions change for a teacher, update the form and potentially fetch subjects
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-      
-      // If exactly one direction is selected, fetch subjects for that direction
-      if (Array.isArray(value) && value.length === 1) {
-        console.log(`[CreateUser] Single direction selected in multi-select, fetching subjects for: ${value[0]}`);
-        fetchSubjects(value[0]);
-      } else if (Array.isArray(value) && value.length > 1) {
-        // If multiple directions are selected, fetch all subjects
-        console.log(`[CreateUser] Multiple directions selected, fetching all subjects`);
-        fetchSubjects();
-      }
-    } else if (name === 'subjects') {
-      // Handle multi-select for subjects
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
     } else if (name.startsWith('secretary_')) {
       // Handle secretary permission toggles
       const permissionKey = name.replace('secretary_', '');
@@ -374,21 +311,13 @@ const CreateUser = (props) => {
     e.preventDefault();
   };
   
-  // Fetch schools, directions, and subjects when component mounts
+  // Fetch schools when component mounts
   useEffect(() => {
     // Load options for teacher, student, and secretary roles
     if (formData.role === 'teacher' || formData.role === 'student' || formData.role === 'secretary') {
       fetchSchools();
-      // Use pre-loaded directions data if available, otherwise fetch it
-      if (props.safeDirectionsData && props.safeDirectionsData.length > 0) {
-        console.log('[CreateUser] Using pre-loaded directions data from wrapper');
-        setOptionsData(prev => ({ ...prev, directions: props.safeDirectionsData }));
-      } else {
-        fetchDirections();
-      }
-      fetchSubjects();
     }
-  }, [formData.role, props.safeDirectionsData]);
+  }, [formData.role]);
   
   // Functions to fetch reference data
   const fetchSchools = async () => {
@@ -406,75 +335,6 @@ const CreateUser = (props) => {
       }));
     } finally {
       setLoadingOptions(prev => ({ ...prev, schools: false }));
-    }
-  };
-  
-  const fetchDirections = async () => {
-    try {
-      setLoadingOptions(prev => ({ ...prev, directions: true }));
-      setOptionsError(prev => ({ ...prev, directions: null }));
-      
-      const response = await axios.get('/api/directions');
-      setOptionsData(prev => ({ ...prev, directions: response.data }));
-    } catch (error) {
-      console.error('Error fetching directions:', error);
-      setOptionsError(prev => ({
-        ...prev,
-        directions: 'Failed to fetch directions. Please try again.'
-      }));
-    } finally {
-      setLoadingOptions(prev => ({ ...prev, directions: false }));
-    }
-  };
-  
-  const fetchSubjects = async (directionId = null) => {
-    try {
-      setLoadingOptions(prev => ({ ...prev, subjects: true }));
-      setOptionsError(prev => ({ ...prev, subjects: null }));
-      
-      // CRITICAL FIX: Add proper authorization headers
-      const config = {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-      
-      // If a direction is selected, fetch subjects for that direction
-      let url = '/api/subjects';
-      if (directionId) {
-        url = `/api/subjects/direction/${directionId}`;
-        console.log(`[CreateUser] Fetching subjects for direction: ${directionId}`);
-      } else {
-        console.log('[CreateUser] Fetching all subjects');
-      }
-      
-      const response = await axios.get(url, config);
-      console.log(`[CreateUser] Subjects loaded:`, response.data);
-      setOptionsData(prev => ({ ...prev, subjects: response.data }));
-      
-      // If we had subjects selected but changed direction, reset the selection
-      if (directionId && formData.subjects && formData.subjects.length > 0) {
-        // Filter out subjects that are not in the new direction
-        const validSubjectIds = response.data.map(subject => subject._id);
-        const filteredSubjects = formData.subjects.filter(id => validSubjectIds.includes(id));
-        
-        // Update form data with only valid subjects for this direction
-        if (filteredSubjects.length !== formData.subjects.length) {
-          console.log('[CreateUser] Resetting subject selection due to direction change');
-          setFormData(prev => ({
-            ...prev,
-            subjects: filteredSubjects
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching subjects:', error);
-      setOptionsError(prev => ({
-        ...prev,
-        subjects: 'Failed to fetch subjects. Please try again.'
-      }));
-    } finally {
-      setLoadingOptions(prev => ({ ...prev, subjects: false }));
     }
   };
   
@@ -507,36 +367,13 @@ const CreateUser = (props) => {
       isValid = false;
     }
 
-    if (formData.role === 'student' && !formData.school) {
-      errors.school = 'School is required for students';
-      isValid = false;
-    }
-
-    if ((formData.role === 'teacher' || formData.role === 'secretary') && formData.schools.length === 0) {
-      errors.schools = 'At least one school is required';
-      isValid = false;
-    }
-
-    if (formData.role === 'student' && !formData.direction) {
-      errors.direction = 'Direction is required for students';
-      isValid = false;
-    }
-
-    if ((formData.role === 'teacher' || formData.role === 'secretary') && formData.directions.length === 0) {
-      errors.directions = 'At least one direction is required';
-      isValid = false;
-    }
-
-    // Teachers must have at least one subject
-    if (formData.role === 'teacher' && formData.subjects.length === 0) {
-      errors.subjects = 'At least one subject is required';
-      isValid = false;
-    }
-    
-    // Secretaries don't need to have subjects necessarily
-    if (formData.role === 'secretary' && formData.schools.length === 0) {
-      errors.schools = 'At least one school is required';
-      isValid = false;
+    // Validate required fields based on role
+    if (!formData.role) {
+      errors.role = 'Role is required';
+    } else if (formData.role === 'student') {
+      if (!formData.school) errors.school = 'School is required';
+    } else if (formData.role === 'teacher') {
+      if (!formData.schools || formData.schools.length === 0) errors.schools = 'At least one school is required';
     }
 
     if (!formData.password) {
@@ -595,40 +432,17 @@ const CreateUser = (props) => {
       });
 
       if (formData.role === 'student') {
-        // For students: Include single school and direction
+        // For students: Include single school
         userData.school = formData.school || null;
-        userData.direction = formData.direction || null;
-        
-        // Include subjects if any (though students don't usually have subjects directly assigned)
-        userData.subjects = formData.subjects && formData.subjects.length > 0 
-          ? formData.subjects 
-          : [];
       } else if (formData.role === 'teacher') {
-        // FOR COMPATIBILITY: Use both old and new field names to ensure backward compatibility
-        // This is critical to ensure the data is properly saved in the backend
-        
-        // Process schools array
+        // Process schools array for teachers
         const schoolsArray = formData.schools && formData.schools.length > 0 ? formData.schools : [];
         
-        // Set both field names to the same values for maximum compatibility
-        userData.schools = schoolsArray; // New field name for the updated backend model
-        userData.school = schoolsArray;  // Old field name for backward compatibility
+        // Set schools
+        userData.schools = schoolsArray;
+        userData.school = schoolsArray; // For compatibility
         
         console.log('Teacher schools array being submitted:', schoolsArray);
-        
-        // Process directions array
-        const directionsArray = formData.directions && formData.directions.length > 0 ? formData.directions : [];
-        
-        // Set both field names to the same values for maximum compatibility
-        userData.directions = directionsArray; // New field name for the updated backend model
-        userData.direction = directionsArray;  // Old field name for backward compatibility
-        
-        console.log('Teacher directions array being submitted:', directionsArray);
-        
-        // Always include subjects array
-        userData.subjects = formData.subjects && formData.subjects.length > 0 
-          ? formData.subjects 
-          : [];
         
         // Add teacher permission fields
         userData.canSendNotifications = formData.canSendNotifications;
@@ -637,25 +451,16 @@ const CreateUser = (props) => {
         // For secretary accounts, include the permission flags
         userData.secretaryPermissions = formData.secretaryPermissions;
         
-        // Set schools only (secretaries don't need directions)
+        // Set schools only 
         const schoolsArray = formData.schools && formData.schools.length > 0 ? formData.schools : [];
         userData.schools = schoolsArray;
         userData.school = schoolsArray; // For compatibility
-        
-        // FIX: Secretaries should not have directions assigned
-        // No directions or direction fields for secretaries
-        
-        userData.subjects = formData.subjects && formData.subjects.length > 0 
-          ? formData.subjects 
-          : [];
           
         console.log('Creating secretary account with permissions:', userData.secretaryPermissions);
         console.log('Secretary schools:', schoolsArray);
       } else {
         // For admins, ensure these fields are null/empty
         userData.school = null;
-        userData.direction = null;
-        userData.subjects = [];
       }
       
       console.log('Submitting user data:', userData);
@@ -679,7 +484,7 @@ const CreateUser = (props) => {
   const initialMount = useRef(true);
   const hasSubmitted = useRef(false);
   
-  // Load schools, directions, and subjects data when component mounts
+  // Load schools data when component mounts
   useEffect(() => {
     const fetchSchools = async () => {
       setLoadingOptions(prev => ({ ...prev, schools: true }));
@@ -701,50 +506,10 @@ const CreateUser = (props) => {
       }
     };
 
-    const fetchDirections = async () => {
-      setLoadingOptions(prev => ({ ...prev, directions: true }));
-      try {
-        const config = {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        };
-        const { data } = await axios.get('/api/directions', config);
-        setOptionsData(prev => ({ ...prev, directions: data }));
-        console.log('Directions loaded:', data);
-      } catch (error) {
-        const message = error.response?.data?.message || error.message || 'Failed to load directions';
-        setOptionsError(prev => ({ ...prev, directions: message }));
-        toast.error(`Error loading directions: ${message}`);
-      } finally {
-        setLoadingOptions(prev => ({ ...prev, directions: false }));
-      }
-    };
-
-    const fetchSubjects = async () => {
-      setLoadingOptions(prev => ({ ...prev, subjects: true }));
-      try {
-        const config = {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        };
-        const { data } = await axios.get('/api/subjects', config);
-        setOptionsData(prev => ({ ...prev, subjects: data }));
-        console.log('Subjects loaded:', data);
-      } catch (error) {
-        const message = error.response?.data?.message || error.message || 'Failed to load subjects';
-        setOptionsError(prev => ({ ...prev, subjects: message }));
-        toast.error(`Error loading subjects: ${message}`);
-      } finally {
-        setLoadingOptions(prev => ({ ...prev, subjects: false }));
-      }
-    };
-
-    // Load all data when component mounts
-    fetchSchools();
-    fetchDirections();
-    fetchSubjects();
+    // If the user is admin or secretary, load data
+    if (user && (user.role === 'admin' || user.role === 'secretary')) {
+      fetchSchools();
+    }
   }, [user]);
 
   // Handle API response effects
@@ -1119,104 +884,6 @@ const CreateUser = (props) => {
               </Grid>
             )}
             
-            {/* Direction Selection for Students (Single) */}
-            {formData.role === 'student' && (
-              <Grid item xs={12}>
-                <FormControl fullWidth error={!!formErrors.direction}>
-                  <InputLabel>Direction *</InputLabel>
-                  <Select
-                    name="direction"
-                    value={formData.direction || ''}
-                    label="Direction *"
-                    onChange={handleChange}
-                    disabled={loadingOptions.directions}
-                  >
-                    <MenuItem value="">Select a direction</MenuItem>
-                    {optionsData.directions && optionsData.directions.map((direction) => (
-                      <MenuItem key={direction._id} value={direction._id}>
-                        {direction.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  <FormHelperText>
-                    {formErrors.direction || loadingOptions.directions ? 'Loading directions...' : 'Select the student\'s direction'}
-                  </FormHelperText>
-                </FormControl>
-              </Grid>
-            )}
-            
-            {/* Direction Selection for Teachers only (Multiple) - Secretaries don't need directions */}
-            {formData.role === 'teacher' && (
-              <Grid item xs={12}>
-                <FormControl fullWidth error={!!formErrors.directions}>
-                  <InputLabel>Directions *</InputLabel>
-                  <Select
-                    name="directions"
-                    value={formData.directions || []}
-                    label="Directions *"
-                    onChange={handleChange}
-                    multiple
-                    disabled={loadingOptions.directions}
-                    renderValue={(selected) => {
-                      // Safety check for selected being an array
-                      if (!Array.isArray(selected)) {
-                        console.warn('[CreateUser] selected is not an array in directions renderValue:', selected);
-                        return 'Invalid selection';
-                      }
-                      
-                      // Safety check for directions data
-                      if (!Array.isArray(optionsData.directions)) {
-                        console.warn('[CreateUser] directions data is not an array in renderValue');
-                        return selected.join(', ');
-                      }
-                      
-                      return (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map((value) => {
-                            try {
-                              const direction = optionsData.directions.find(d => d && d._id === value);
-                              return direction ? direction.name : value;
-                            } catch (error) {
-                              console.error('[CreateUser] Error in directions renderValue:', error);
-                              return value;
-                            }
-                          }).join(', ')}
-                        </Box>
-                      );
-                    }}
-                  >
-                    {/* Safety check to ensure directions exists and is an array */}
-                    {Array.isArray(optionsData.directions) ? optionsData.directions.map((direction) => {
-                      // Skip rendering invalid direction items
-                      if (!direction || !direction._id || !direction.name) {
-                        console.warn('[CreateUser] Invalid direction in list:', direction);
-                        return null;
-                      }
-                      
-                      // Safe check for the formData.directions array
-                      const isChecked = Array.isArray(formData.directions) && 
-                        formData.directions.indexOf(direction._id) > -1;
-                        
-                      return (
-                        <MenuItem key={direction._id} value={direction._id}>
-                          <Checkbox checked={isChecked} />
-                          <ListItemText primary={direction.name} />
-                        </MenuItem>
-                      );
-                    }) : (
-                      // If not an array, render an empty/disabled item
-                      <MenuItem disabled>
-                        <ListItemText primary="No directions available" />
-                      </MenuItem>
-                    )}
-                  </Select>
-                  <FormHelperText>
-                    {formErrors.directions || loadingOptions.directions ? 'Loading directions...' : 'Select directions for this teacher'}
-                  </FormHelperText>
-                </FormControl>
-              </Grid>
-            )}
-            
             {/* Secretary Permissions Section */}
             {formData.role === 'secretary' && (
               <Grid item xs={12}>
@@ -1276,119 +943,8 @@ const CreateUser = (props) => {
                         label="Can manage schools"
                       />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.secretaryPermissions.canManageDirections}
-                            onChange={(e) => handleChange({ target: { name: 'secretary_canManageDirections', value: e.target.checked } })}
-                            color="primary"
-                          />
-                        }
-                        label="Can manage directions"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.secretaryPermissions.canManageSubjects}
-                            onChange={(e) => handleChange({ target: { name: 'secretary_canManageSubjects', value: e.target.checked } })}
-                            color="primary"
-                          />
-                        }
-                        label="Can manage subjects"
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.secretaryPermissions.canAccessStudentProgress}
-                            onChange={(e) => handleChange({ target: { name: 'secretary_canAccessStudentProgress', value: e.target.checked } })}
-                            color="primary"
-                          />
-                        }
-                        label="Can access student progress tracking"
-                      />
-                    </Grid>
                   </Grid>
                 </Paper>
-              </Grid>
-            )}
-
-            {/* Multiple Subject Selection for Teachers and Students */}
-            {(formData.role === 'teacher' || formData.role === 'student') && (
-              <Grid item xs={12}>
-                <FormControl fullWidth error={!!formErrors.subjects}>
-                  <InputLabel>Subjects *</InputLabel>
-                  <Select
-                    name="subjects"
-                    value={formData.subjects || []}
-                    label="Subjects *"
-                    onChange={handleChange}
-                    multiple
-                    disabled={loadingOptions.subjects}
-                    renderValue={(selected) => {
-                      // Safety check for selected being an array
-                      if (!Array.isArray(selected)) {
-                        console.warn('[CreateUser] selected is not an array in subjects renderValue:', selected);
-                        return 'Invalid selection';
-                      }
-                      
-                      // Safety check for subjects data
-                      if (!Array.isArray(optionsData.subjects)) {
-                        console.warn('[CreateUser] subjects data is not an array in renderValue');
-                        return selected.join(', ');
-                      }
-                      
-                      return (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map((value) => {
-                            try {
-                              const subject = optionsData.subjects.find(s => s && s._id === value);
-                              return subject ? subject.name : value;
-                            } catch (error) {
-                              console.error('[CreateUser] Error in subjects renderValue:', error);
-                              return value;
-                            }
-                          }).join(', ')}
-                        </Box>
-                      );
-                    }}
-                  >
-                    {/* Safety check to ensure subjects exists and is an array */}
-                    {Array.isArray(optionsData.subjects) ? optionsData.subjects.map((subject) => {
-                      // Skip rendering invalid subject items
-                      if (!subject || !subject._id || !subject.name) {
-                        console.warn('[CreateUser] Invalid subject in list:', subject);
-                        return null;
-                      }
-                      
-                      // Safe check for the formData.subjects array
-                      const isChecked = Array.isArray(formData.subjects) && 
-                        formData.subjects.indexOf(subject._id) > -1;
-                        
-                      return (
-                        <MenuItem key={subject._id} value={subject._id}>
-                          <Checkbox checked={isChecked} />
-                          <ListItemText primary={subject.name} />
-                        </MenuItem>
-                      );
-                    }) : (
-                      // If not an array, render an empty/disabled item
-                      <MenuItem disabled>
-                        <ListItemText primary="No subjects available" />
-                      </MenuItem>
-                    )}
-                  </Select>
-                  <FormHelperText>
-                    {formErrors.subjects ? formErrors.subjects : 
-                     loadingOptions.subjects ? 'Loading subjects...' : 
-                     formData.role === 'student' ? 'Select subjects for this student' : 
-                     'Select subjects for this teacher'}
-                  </FormHelperText>
-                </FormControl>
               </Grid>
             )}
             
