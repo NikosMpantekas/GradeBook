@@ -444,7 +444,11 @@ const adminWithPermission = (permissionType) => {
     }
 
     // Check if the admin has this specific permission
-    if (req.user.adminPermissions[requiredPermission] !== true) {
+    // TEMPORARY FIX: Allow all admins to manage users during transition period
+    if (permissionType === 'users') {
+      // Bypass permission check for user management
+      console.log(`PERMISSIONS: Allowing admin ${req.user.name} (${req.user._id}) to access user management during transition period`);
+    } else if (req.user.adminPermissions[requiredPermission] !== true) {
       console.warn(`PERMISSIONS: Admin ${req.user.name} (${req.user._id}) denied access - missing permission: ${requiredPermission}`);
       res.status(403);
       throw new Error(`Not authorized. You don't have permission to ${permissionType}`);

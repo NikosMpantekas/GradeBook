@@ -12,8 +12,17 @@ const webpush = require('web-push');
 dotenv.config();
 
 // Connect to the single MongoDB database for multi-tenancy
-connectDB().then(() => {
+connectDB().then(async () => {
   console.log('MongoDB Connected with multi-tenant configuration'.cyan.bold);
+  
+  // Run migrations on startup
+  try {
+    // Update all admin users with correct permissions
+    const migrationResult = await updateAllAdminPermissions();
+    console.log(`Admin permissions migration result: ${migrationResult.updatedCount} users updated`.green);
+  } catch (error) {
+    console.error(`Migration error: ${error.message}`.red);
+  }
 }).catch(err => {
   console.error(`MongoDB Connection Error: ${err.message}`.red.bold);
   process.exit(1);
@@ -175,6 +184,9 @@ app.get('/emergency-diagnostics', (req, res) => {
 
 // Import logger for consistent detailed logging
 const logger = require('./utils/logger');
+
+// Import migrations
+const { updateAllAdminPermissions } = require('./utils/migrations');
 
 // User routes - No global middleware for auth checking, each route will handle individually
 app.use('/api/users', require('./routes/userRoutes')); 
