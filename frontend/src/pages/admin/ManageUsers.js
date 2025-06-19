@@ -72,6 +72,20 @@ const ManageUsers = () => {
   // Get schools data from Redux store
   const { schools, isLoading: schoolsLoading } = useSelector((state) => state.schools);
 
+  // Monitor data loading state changes
+  useEffect(() => {
+    console.log('Loading state changed:', {
+      usersLoading: isLoading,
+      usersCount: Array.isArray(users) ? users.length : 'not array',
+      schoolsCount: Array.isArray(schools) ? schools.length : 'not array'
+    });
+    
+    // If we just finished loading and have data, apply filters
+    if (!isLoading && Array.isArray(users) && users.length > 0) {
+      applyFilters();
+    }
+  }, [isLoading, users, schools]);
+
   // Debug logs
   console.log('ManageUsers rendering:', { 
     userState: currentUser?.name, 
@@ -81,54 +95,34 @@ const ManageUsers = () => {
     dataLoaded: dataLoaded.current
   });
 
-  // IMPORTANT: Force immediate reload when users data is empty or stale
-  // This prevents the blank screen issue when navigating to this page
+  // IMPORTANT: Fix for the infinite loading state issue
   useEffect(() => {
-    // Always fetch data when the component mounts
-    console.log('Fetching users data. Current state:', {
-      usersLength: Array.isArray(users) ? users.length : 'not an array',
-      isLoading,
-      dataLoaded: dataLoaded.current
-    });
+    console.log('ManageUsers mounting and fetching data');
     
-    // Clear any stale data in localStorage
-    try {
-      if (localStorage.getItem('persist:users')) {
-        localStorage.removeItem('persist:users');
-      }
-    } catch (error) {
-      console.warn('Error accessing localStorage:', error);
-    }
-    
-    // Force a fresh data load
+    // Reset the state first to clear any previous data
     dispatch(reset());
     
-    // Load users and schools in parallel
-    Promise.all([
-      dispatch(getUsers()).unwrap(),
-      dispatch(getSchools()).unwrap()
-    ])
-      .then(([usersResponse, schoolsResponse]) => {
-        console.log('Users loaded successfully:', usersResponse?.length || 0, 'users');
-        console.log('Schools loaded successfully:', schoolsResponse?.length || 0, 'schools');
-        dataLoaded.current = true;
-      })
-      .catch(error => {
-        console.error('Failed to load data:', error);
-        toast.error(`Error loading data: ${error?.message || 'Unknown error'}`);
-      });
-      
+    // Load data
+    dispatch(getUsers());
+    dispatch(getSchools());
+    
+    // Mark as loaded when component mounts
+    dataLoaded.current = true;
+    
     // Clean up on unmount
     return () => {
       console.log('ManageUsers unmounting');
+      dataLoaded.current = false;
     };
   }, [dispatch]);
   
-  // Add route change listener - this ensures proper reloading on navigation
+  // Add visibility change handler to reload data when tab becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !dataLoaded.current) {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible again, refreshing data');
         dispatch(getUsers());
+        dispatch(getSchools());
       }
     };
     
@@ -138,67 +132,79 @@ const ManageUsers = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [dispatch]);
-  
+
+  // Check for errors and display toast notification
   useEffect(() => {
-    if (isError) {
-      toast.error(message);
+    if (isError && message) {
+      toast.error(`Error loading users: ${message}`);
+      // Even on error, mark as loaded to prevent infinite loading state
+      dataLoaded.current = true;
     }
   }, [isError, message]);
 
   useEffect(() => {
-    if (users) {
+    if (Array.isArray(users) && users.length > 0) {
+      console.log('Applying filters to', users.length, 'users');
       applyFilters();
+    } else if (!isLoading && Array.isArray(users)) {
+      // Data loaded but empty
+      setFilteredUsers([]);
     }
   }, [users, searchTerm, roleFilter, schoolFilter]);
 
   const applyFilters = () => {
-    // Safety check - ensure users is an array before filtering
-    if (!users || !Array.isArray(users)) {
-      console.log('Users is not an array:', users);
-      setFilteredUsers([]);
-      return;
-    }
-    
     try {
-      // Create a safe copy of the users array with null/undefined checks
-      const safeUsers = users.filter(user => user !== null && user !== undefined);
-      let filtered = [...safeUsers];
-      
-      // Apply search filter
-      if (searchTerm && searchTerm.trim() !== '') {
-        const searchLower = searchTerm.toLowerCase();
-        filtered = filtered.filter(user => 
-          (user.name && user.name.toLowerCase().includes(searchLower)) ||
-          (user.email && user.email.toLowerCase().includes(searchLower))
-        );
+      if (!Array.isArray(users) || users.length === 0) {
+        setFilteredUsers([]);
+        return;
       }
       
-      // Apply role filter
-      if (roleFilter && roleFilter !== '') {
-        filtered = filtered.filter(user => user.role === roleFilter);
-      }
+      console.log('Applying filters to', users.length, 'users');
+      console.log('Search term:', searchTerm || 'none');
+      console.log('Role filter:', roleFilter || 'none');
+      console.log('School filter:', schoolFilter || 'none');
+
+      let filtered = [...users];
       
-      // Apply school filter
-      if (schoolFilter && schoolFilter !== '') {
+      // First filter by search term (case insensitive)
+      if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
         filtered = filtered.filter(user => {
-          // Handle both array and single value for school
-          if (Array.isArray(user.school)) {
-            return user.school.some(school => {
-              // Handle both object references and string IDs
-              if (typeof school === 'object' && school !== null) {
-                return school._id === schoolFilter;
-              }
-              return school === schoolFilter;
-            });
-          } else if (typeof user.school === 'object' && user.school !== null) {
-            return user.school._id === schoolFilter;
-          } else {
-            return user.school === schoolFilter;
-          }
+          const name = user?.name || '';
+          const email = user?.email || '';
+          
+          return name.toLowerCase().includes(lowerSearchTerm) || 
+                 email.toLowerCase().includes(lowerSearchTerm);
         });
       }
       
+      // Then filter by role if specified
+      if (roleFilter) {
+        filtered = filtered.filter(user => user?.role === roleFilter);
+      }
+      
+      // Then filter by school if specified
+      if (schoolFilter) {
+        filtered = filtered.filter(user => {
+          // Handle different data structures for school references
+          if (user?.schoolId && typeof user.schoolId === 'string') {
+            return user.schoolId === schoolFilter;
+          } 
+          if (user?.school && typeof user.school === 'string') {
+            return user.school === schoolFilter;
+          }
+          if (user?.school && user.school._id) {
+            return user.school._id === schoolFilter;
+          }
+          return false;
+        });
+      }
+      
+      console.log('Filtered to', filtered.length, 'users');
       setFilteredUsers(filtered);
+      
+      // Reset pagination to first page when filters change
+      setPage(0);
     } catch (error) {
       console.error('Error applying filters:', error);
       // Fallback to empty array in case of any error
@@ -641,8 +647,15 @@ const ManageUsers = () => {
                   ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
-                    No users found matching your criteria
+                  <TableCell colSpan={8} align="center">
+                    {isLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                        <CircularProgress size={24} />
+                        <Typography variant="body2" sx={{ ml: 1 }}>Loading users...</Typography>
+                      </Box>
+                    ) : (
+                      'No users found matching your criteria'
+                    )}
                   </TableCell>
                 </TableRow>
               )}
