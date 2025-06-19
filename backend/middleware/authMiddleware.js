@@ -547,17 +547,13 @@ const adminWithPermission = (permissionType) => {
       }
       
       // If we got here, both the admin permission and school feature permission checks passed
-      logger.info('AUTH', `Admin permission and school feature check passed for ${permissionKey}`);
+      logger.info('AUTH', `Admin permission and school feature check passed for ${permissionType}`);
       next();
     } else {
-      // User is not an admin
-      logger.warn('AUTH', `Non-admin attempting to use admin permission ${permissionType}`, {
-        userId: req.user._id,
-        role: req.user.role,
-        path: req.originalUrl
-      });
-      res.status(403);
-      throw new Error('Not authorized for this action');
+      // No feature permission check needed for this admin permission (like users, schools, etc.)
+      // The user is already verified as admin with appropriate permissions above
+      logger.info('AUTH', `Admin ${req.user.name} granted access to ${permissionType} - no feature check required`);
+      next();
     }
   });
 };
