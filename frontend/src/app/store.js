@@ -6,6 +6,7 @@ import gradeReducer from '../features/grades/gradeSlice';
 import notificationReducer from '../features/notifications/notificationSlice';
 import schoolReducer from '../features/schools/schoolSlice';
 import directionReducer from '../features/directions/directionSlice';
+import classReducer from '../features/classes/classSlice';
 import subjectReducer from '../features/subjects/subjectSlice';
 import uiReducer from '../features/ui/uiSlice';
 import superAdminReducer from '../features/superadmin/superAdminSlice';
@@ -22,6 +23,7 @@ export const store = configureStore({
     notifications: notificationReducer,
     schools: schoolReducer,
     directions: directionReducer,
+    classes: classReducer,
     subjects: subjectReducer,
     ui: uiReducer,
     superAdmin: superAdminReducer,

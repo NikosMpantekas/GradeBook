@@ -60,6 +60,7 @@ import EditUser from './pages/admin/EditUser';
 import StudentProgress from './pages/admin/StudentProgress';
 import AdminContactMessages from './pages/admin/ContactMessages';
 import ManageDirections from './pages/admin/ManageDirections';
+import ManageClasses from './pages/admin/ManageClasses';
 import ManageSubjects from './pages/admin/ManageSubjects';
 import SchoolBranchManager from './pages/admin/SchoolBranchManager';
 import RatingManager from './pages/admin/RatingManager';
@@ -444,6 +445,11 @@ function App() {
             <Route path="/app/admin/directions" element={
               <AdminRoute>
                 <ManageDirections />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/classes" element={
+              <AdminRoute>
+                <ManageClasses />
               </AdminRoute>
             } />
             <Route path="/app/admin/subjects" element={
