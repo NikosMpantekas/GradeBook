@@ -106,6 +106,22 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['student', 'teacher', 'admin'],
       },
       {
+        text: 'Manage Grades',
+        icon: <GradesIcon />,
+        path: '/app/admin/grades',
+        roles: ['admin', 'secretary'],
+        checkPermission: (user) => isFeatureEnabled('enableGrades'),
+      },
+      {
+        text: 'Manage Classes',
+        icon: <ClassIcon />,
+        path: '/app/admin/classes',
+        roles: ['admin', 'secretary'],
+        checkPermission: (user) => user.role === 'admin' ? 
+          true : 
+          user.secretaryPermissions?.canManageSchools === true,
+      },
+      {
         text: 'My Grades',
         icon: <GradesIcon />,
         path: '/app/grades',

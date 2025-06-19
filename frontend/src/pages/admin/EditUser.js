@@ -493,28 +493,7 @@ const EditUser = () => {
         isValid = false;
       }
       
-      // Only validate school and direction fields if role is student or teacher
-      if (formData.role === 'student') {
-        if (!formData.school) {
-          errors.school = 'School is required for students';
-          isValid = false;
-        }
-        
-        if (!formData.direction) {
-          errors.direction = 'Direction is required for students';
-          isValid = false;
-        }
-      } else if (formData.role === 'teacher' || formData.role === 'secretary') {
-        if (!formData.schools || formData.schools.length === 0) {
-          errors.schools = 'At least one school is required';
-          isValid = false;
-        }
-        
-        if (!formData.directions || formData.directions.length === 0) {
-          errors.directions = 'At least one direction is required';
-          isValid = false;
-        }
-      }
+      // Legacy field validation has been removed
       
       setFormErrors(errors);
       return isValid;
@@ -525,33 +504,33 @@ const EditUser = () => {
     }
     
     // Create user data object with all necessary properties
-    let userData = {};
+    const userUpdateData = {};
     
     // Always include these basic fields
-    userData.name = formData.name;
-    userData.email = formData.email;
-    userData.mobilePhone = formData.mobilePhone || ''; // Added mobile phone
-    userData.personalEmail = formData.personalEmail || ''; // Added personal email
-    userData.role = formData.role;
+    userUpdateData.name = formData.name;
+    userUpdateData.email = formData.email;
+    userUpdateData.mobilePhone = formData.mobilePhone || ''; // Added mobile phone
+    userUpdateData.personalEmail = formData.personalEmail || ''; // Added personal email
+    userUpdateData.role = formData.role;
     
     // Only include password if changing it
     if (formData.changePassword && formData.password) {
-      userData.password = formData.password;
+      userUpdateData.password = formData.password;
     }
     
     // Handle school, direction, and subjects based on user role
     if (formData.role === 'student') {
       // For students: single school and direction
-      userData.school = formData.school || null;
-      userData.direction = formData.direction || null;
+      userUpdateData.school = formData.school || null;
+      userUpdateData.direction = formData.direction || null;
       
       // Ensure subjects array is always included
-      userData.subjects = formData.subjects && formData.subjects.length > 0 
+      userUpdateData.subjects = formData.subjects && formData.subjects.length > 0 
         ? formData.subjects 
         : [];
     } else if (formData.role === 'secretary') {
       // For secretaries: add secretary permissions and school/direction assignments
-      userData.secretaryPermissions = formData.secretaryPermissions;
+      userUpdateData.secretaryPermissions = formData.secretaryPermissions;
       
       // Process schools array with clean field naming to match the backend model
       console.log('Original secretary schools:', formData.schools);
@@ -571,8 +550,8 @@ const EditUser = () => {
         schoolsArray = [schoolId];
       }
       
-      userData.schools = schoolsArray;
-      userData.school = schoolsArray; // For compatibility
+      userUpdateData.schools = schoolsArray;
+      userUpdateData.school = schoolsArray; // For compatibility
 
       // Process directions array with clean field naming
       console.log('Original secretary directions:', formData.directions);
@@ -592,17 +571,17 @@ const EditUser = () => {
         directionsArray = [directionId];
       }
       
-      userData.directions = directionsArray;
-      userData.direction = directionsArray; // For compatibility
+      userUpdateData.directions = directionsArray;
+      userUpdateData.direction = directionsArray; // For compatibility
       
       // Ensure subjects array is always included
-      userData.subjects = formData.subjects && formData.subjects.length > 0 
+      userUpdateData.subjects = formData.subjects && formData.subjects.length > 0 
         ? formData.subjects.map(subject => 
             typeof subject === 'object' && subject._id ? subject._id : subject
           )
         : [];
 
-      console.log('Secretary data being sent to backend:', userData);
+      console.log('Secretary data being sent to backend:', userUpdateData);
     } else if (formData.role === 'teacher') {
       // For teachers: use the dedicated array fields (schools/directions)
       // The backend now uses separate fields for teachers vs students
@@ -628,13 +607,13 @@ const EditUser = () => {
       
       // FIXED FOR COMPATIBILITY: Use both old and new field names to ensure it works
       // This is because some API endpoints might still be using school/direction
-      userData.schools = schoolsArray;
-      userData.school = schoolsArray; // Also send using old field name for compatibility
+      userUpdateData.schools = schoolsArray;
+      userUpdateData.school = schoolsArray; // Also send using old field name for compatibility
       
       console.log('Schools data being sent to backend:');
-      console.log('- userData.schools:', JSON.stringify(userData.schools));
-      console.log('- userData.school:', JSON.stringify(userData.school));
-      console.log('Number of schools:', userData.schools.length);
+      console.log('- userUpdateData.schools:', JSON.stringify(userUpdateData.schools));
+      console.log('- userUpdateData.school:', JSON.stringify(userUpdateData.school));
+      console.log('Number of schools:', userUpdateData.schools.length);
       
       // Process directions array with clean field naming
       console.log('Original formData.directions:', formData.directions);
@@ -655,36 +634,36 @@ const EditUser = () => {
       }
       
       // FIXED FOR COMPATIBILITY: Use both old and new field names
-      userData.directions = directionsArray;
-      userData.direction = directionsArray; // Also send using old field name for compatibility
+      userUpdateData.directions = directionsArray;
+      userUpdateData.direction = directionsArray; // Also send using old field name for compatibility
       
       console.log('Directions data being sent to backend:');
-      console.log('- userData.directions:', JSON.stringify(userData.directions));
-      console.log('- userData.direction:', JSON.stringify(userData.direction));
-      console.log('Number of directions:', userData.directions.length);
+      console.log('- userUpdateData.directions:', JSON.stringify(userUpdateData.directions));
+      console.log('- userUpdateData.direction:', JSON.stringify(userUpdateData.direction));
+      console.log('Number of directions:', userUpdateData.directions.length);
       
       // Ensure subjects array is always included
-      userData.subjects = formData.subjects && formData.subjects.length > 0 
+      userUpdateData.subjects = formData.subjects && formData.subjects.length > 0 
         ? formData.subjects.map(subject => 
             typeof subject === 'object' && subject._id ? subject._id : subject
           )
         : [];
       
       // Include teacher permission fields
-      userData.canSendNotifications = formData.canSendNotifications || false;
-      userData.canAddGradeDescriptions = formData.canAddGradeDescriptions || false;
+      userUpdateData.canSendNotifications = formData.canSendNotifications || false;
+      userUpdateData.canAddGradeDescriptions = formData.canAddGradeDescriptions || false;
     } else {
       // For admins, clear these fields
-      userData.school = null;
-      userData.direction = null;
-      userData.subjects = [];
+      userUpdateData.school = null;
+      userUpdateData.direction = null;
+      userUpdateData.subjects = [];
     }
     
-    console.log('Submitting user data:', userData);
+    console.log('Submitting user data:', userUpdateData);
     
     // Update user
     setIsLoading(true);
-    dispatch(updateUser({ id, userData }))
+    dispatch(updateUser({ id, userData: userUpdateData }))
       .unwrap()
       .then((updatedUser) => {
         toast.success('User updated successfully');

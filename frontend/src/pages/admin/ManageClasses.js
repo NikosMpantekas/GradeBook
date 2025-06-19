@@ -25,16 +25,25 @@ import {
   CircularProgress,
   Divider,
   Alert,
+  Grid,
+  Autocomplete,
+  Chip,
+  Tabs,
+  Tab,
+  Card,
+  CardContent,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
+  Schedule as ScheduleIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import { getClasses, deleteClass, createClass, updateClass } from '../../features/classes/classSlice';
 import { getSchools } from '../../features/schools/schoolSlice';
+import { getUsers } from '../../features/users/userSlice';
 
 const ManageClasses = () => {
   const dispatch = useDispatch();
@@ -42,6 +51,7 @@ const ManageClasses = () => {
   const { user } = useSelector((state) => state.auth);
   const { classes, isLoading, isError, message } = useSelector((state) => state.classes);
   const { schools } = useSelector((state) => state.schools);
+  const { users } = useSelector((state) => state.users);
   
   // State for dialog operations
   const [open, setOpen] = useState(false);
@@ -51,29 +61,43 @@ const ManageClasses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [formMode, setFormMode] = useState('add'); // 'add' or 'edit'
   
+  // State for form tabs
+  const [tabValue, setTabValue] = useState(0);
+  
   // Form state
   const [formOpen, setFormOpen] = useState(false);
   const [classData, setClassData] = useState({
-    name: '',
-    description: '',
+    subjectName: '',
+    directionName: '',
     schoolId: '',
-    year: new Date().getFullYear(),
+    students: [],
+    teachers: [],
+    schedule: [
+      { day: 'Monday', startTime: '', endTime: '' },
+      { day: 'Tuesday', startTime: '', endTime: '' },
+      { day: 'Wednesday', startTime: '', endTime: '' },
+      { day: 'Thursday', startTime: '', endTime: '' },
+      { day: 'Friday', startTime: '', endTime: '' },
+    ],
   });
 
-  // Load classes and schools when component mounts
+  // Load classes, schools, and users when component mounts
   useEffect(() => {
-    console.log('Loading classes and schools');
+    console.log('Loading classes, schools, and users');
     dispatch(getClasses());
     dispatch(getSchools());
+    dispatch(getUsers());
   }, [dispatch]);
 
   // Filter classes when search term changes
   useEffect(() => {
     if (Array.isArray(classes)) {
       setFilteredClasses(
-        classes.filter((classItem) =>
-          classItem.name?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+        classes.filter((classItem) => {
+          const subjectMatch = classItem.subjectName?.toLowerCase().includes(searchTerm.toLowerCase());
+          const directionMatch = classItem.directionName?.toLowerCase().includes(searchTerm.toLowerCase());
+          return subjectMatch || directionMatch;
+        })
       );
     }
   }, [classes, searchTerm]);
@@ -102,22 +126,41 @@ const ManageClasses = () => {
   const handleAdd = () => {
     setFormMode('add');
     setClassData({
-      name: '',
-      description: '',
+      subjectName: '',
+      directionName: '',
       schoolId: user.role === 'admin' ? user.schoolId : '',
-      year: new Date().getFullYear(),
+      students: [],
+      teachers: [],
+      schedule: [
+        { day: 'Monday', startTime: '', endTime: '' },
+        { day: 'Tuesday', startTime: '', endTime: '' },
+        { day: 'Wednesday', startTime: '', endTime: '' },
+        { day: 'Thursday', startTime: '', endTime: '' },
+        { day: 'Friday', startTime: '', endTime: '' },
+      ],
     });
     setFormOpen(true);
   };
 
   const handleEdit = (classItem) => {
     setFormMode('edit');
+    // Create default schedule if none exists
+    const defaultSchedule = [
+      { day: 'Monday', startTime: '', endTime: '' },
+      { day: 'Tuesday', startTime: '', endTime: '' },
+      { day: 'Wednesday', startTime: '', endTime: '' },
+      { day: 'Thursday', startTime: '', endTime: '' },
+      { day: 'Friday', startTime: '', endTime: '' },
+    ];
+
     setClassData({
       id: classItem._id,
-      name: classItem.name || '',
-      description: classItem.description || '',
+      subjectName: classItem.subjectName || '',
+      directionName: classItem.directionName || '',
       schoolId: classItem.schoolId || '',
-      year: classItem.year || new Date().getFullYear(),
+      students: classItem.students || [],
+      teachers: classItem.teachers || [],
+      schedule: classItem.schedule || defaultSchedule,
     });
     setFormOpen(true);
   };
@@ -133,17 +176,60 @@ const ManageClasses = () => {
       [name]: value,
     }));
   };
+  
+  // Handle schedule changes
+  const handleScheduleChange = (index, field, value) => {
+    setClassData((prev) => {
+      const updatedSchedule = [...prev.schedule];
+      updatedSchedule[index] = { ...updatedSchedule[index], [field]: value };
+      return { ...prev, schedule: updatedSchedule };
+    });
+  };
+  
+  // Handle student selection
+  const handleStudentChange = (selectedStudents) => {
+    setClassData((prev) => ({
+      ...prev,
+      students: selectedStudents,
+    }));
+  };
+  
+  // Handle teacher selection
+  const handleTeacherChange = (selectedTeachers) => {
+    setClassData((prev) => ({
+      ...prev,
+      teachers: selectedTeachers,
+    }));
+  };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // Validate the form
+    if (!classData.subjectName || !classData.directionName || !classData.schoolId) {
+      toast.error('Subject name, direction name, and school are required');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Filter out schedule entries with empty times
+    const filteredSchedule = classData.schedule.filter(
+      item => item.startTime && item.endTime
+    );
+
+    // Prepare the data for submission
+    const submissionData = {
+      ...classData,
+      schedule: filteredSchedule,
+    };
+
     try {
       if (formMode === 'add') {
-        await dispatch(createClass(classData)).unwrap();
+        await dispatch(createClass(submissionData)).unwrap();
         toast.success('Class created successfully');
       } else {
-        await dispatch(updateClass(classData)).unwrap();
+        await dispatch(updateClass(submissionData)).unwrap();
         toast.success('Class updated successfully');
       }
       setFormOpen(false);
@@ -204,37 +290,57 @@ const ManageClasses = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Description</TableCell>
+              <TableCell>Subject</TableCell>
+              <TableCell>Direction</TableCell>
               <TableCell>School</TableCell>
-              <TableCell>Year</TableCell>
+              <TableCell>Students</TableCell>
+              <TableCell>Teachers</TableCell>
+              <TableCell>Schedule</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                  <CircularProgress size={24} />
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    Loading classes...
+                <TableCell colSpan={7} align="center">
+                  <CircularProgress />
+                  <Typography variant="body2" sx={{ ml: 2 }}>
+                  Loading classes...
                   </Typography>
                 </TableCell>
               </TableRow>
-            ) : filteredClasses.length > 0 ? (
+            ) : filteredClasses && filteredClasses.length > 0 ? (
               filteredClasses.map((classItem) => (
                 <TableRow key={classItem._id}>
-                  <TableCell>{classItem.name}</TableCell>
-                  <TableCell>{classItem.description}</TableCell>
+                  <TableCell>{classItem.subjectName}</TableCell>
+                  <TableCell>{classItem.directionName}</TableCell>
                   <TableCell>
-                    {schools?.find(s => s._id === classItem.schoolId)?.name || 'Unknown School'}
+                    {schools?.find((s) => s._id === classItem.schoolId)?.name || 'N/A'}
                   </TableCell>
-                  <TableCell>{classItem.year || 'N/A'}</TableCell>
-                  <TableCell align="right">
+                  <TableCell>
+                    {classItem.students?.length || 0} students
+                  </TableCell>
+                  <TableCell>
+                    {classItem.teachers?.length || 0} teachers
+                  </TableCell>
+                  <TableCell>
                     <IconButton
-                      onClick={() => handleEdit(classItem)}
-                      color="primary"
                       size="small"
+                      color="primary"
+                      onClick={() => {
+                        handleEdit(classItem);
+                        setTabValue(2); // Go directly to schedule tab
+                      }}
+                    >
+                      <ScheduleIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => {
+                        handleEdit(classItem);
+                        setTabValue(0); // Go to basic info tab
+                      }}
                     >
                       <EditIcon />
                     </IconButton>
@@ -250,7 +356,7 @@ const ManageClasses = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={7} align="center">
                   No classes found.
                 </TableCell>
               </TableRow>
@@ -276,55 +382,184 @@ const ManageClasses = () => {
       </Dialog>
       
       {/* Add/Edit form dialog */}
-      <Dialog open={formOpen} onClose={handleFormClose} maxWidth="sm" fullWidth>
+      <Dialog open={formOpen} onClose={handleFormClose} maxWidth="md" fullWidth>
         <form onSubmit={handleFormSubmit}>
           <DialogTitle>{formMode === 'add' ? 'Add New Class' : 'Edit Class'}</DialogTitle>
           <DialogContent>
-            <Box sx={{ mt: 2 }}>
-              <TextField
-                name="name"
-                label="Class Name"
-                value={classData.name}
-                onChange={handleFormChange}
-                fullWidth
-                required
-                margin="normal"
-              />
-              <TextField
-                name="description"
-                label="Description"
-                value={classData.description}
-                onChange={handleFormChange}
-                fullWidth
-                multiline
-                rows={3}
-                margin="normal"
-              />
-              <FormControl fullWidth margin="normal" required>
-                <InputLabel>School</InputLabel>
-                <Select
-                  name="schoolId"
-                  value={classData.schoolId}
-                  onChange={handleFormChange}
-                  label="School"
-                  disabled={user.role === 'admin'} // Admin can only add to their school
-                >
-                  {schools?.map((school) => (
-                    <MenuItem key={school._id} value={school._id}>
-                      {school.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                name="year"
-                label="Year"
-                value={classData.year}
-                onChange={handleFormChange}
-                fullWidth
-                type="number"
-                margin="normal"
-              />
+            <Box sx={{ width: '100%', mt: 2 }}>
+              <Tabs
+                value={tabValue}
+                onChange={(e, newValue) => setTabValue(newValue)}
+                aria-label="class form tabs"
+                variant="fullWidth"
+              >
+                <Tab label="Basic Info" />
+                <Tab label="Students & Teachers" />
+                <Tab label="Schedule" />
+              </Tabs>
+              
+              {/* Basic Info Tab */}
+              {tabValue === 0 && (
+                <Box sx={{ p: 2 }}>
+                  <TextField
+                    name="subjectName"
+                    label="Subject Name"
+                    value={classData.subjectName}
+                    onChange={handleFormChange}
+                    fullWidth
+                    required
+                    margin="normal"
+                  />
+                  <TextField
+                    name="directionName"
+                    label="Direction Name"
+                    value={classData.directionName}
+                    onChange={handleFormChange}
+                    fullWidth
+                    required
+                    margin="normal"
+                  />
+                  <FormControl fullWidth margin="normal" required>
+                    <InputLabel>School</InputLabel>
+                    <Select
+                      name="schoolId"
+                      value={classData.schoolId}
+                      onChange={handleFormChange}
+                      label="School"
+                      disabled={user.role === 'admin'} // Admin can only add to their school
+                    >
+                      {schools?.map((school) => (
+                        <MenuItem key={school._id} value={school._id}>
+                          {school.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+              )}
+              
+              {/* Students & Teachers Tab */}
+              {tabValue === 1 && (
+                <Box sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Select Students
+                  </Typography>
+                  <Autocomplete
+                    multiple
+                    options={users ? users.filter(user => user.role === 'student') : []}
+                    getOptionLabel={(option) => option.name}
+                    value={users ? users.filter(user => 
+                      classData.students.includes(user._id) && user.role === 'student'
+                    ) : []}
+                    onChange={(event, newValue) => {
+                      handleStudentChange(newValue.map(student => student._id));
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        variant="outlined"
+                        label="Students"
+                        placeholder="Select students"
+                        fullWidth
+                        margin="normal"
+                      />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          variant="outlined"
+                          label={option.name}
+                          size="small"
+                          {...getTagProps({ index })}
+                        />
+                      ))
+                    }
+                  />
+                  
+                  <Typography variant="subtitle1" sx={{ mt: 3 }} gutterBottom>
+                    Select Teachers
+                  </Typography>
+                  <Autocomplete
+                    multiple
+                    options={users ? users.filter(user => user.role === 'teacher') : []}
+                    getOptionLabel={(option) => option.name}
+                    value={users ? users.filter(user => 
+                      classData.teachers.includes(user._id) && user.role === 'teacher'
+                    ) : []}
+                    onChange={(event, newValue) => {
+                      handleTeacherChange(newValue.map(teacher => teacher._id));
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        variant="outlined"
+                        label="Teachers"
+                        placeholder="Select teachers"
+                        fullWidth
+                        margin="normal"
+                      />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          variant="outlined"
+                          label={option.name}
+                          size="small"
+                          {...getTagProps({ index })}
+                        />
+                      ))
+                    }
+                  />
+                </Box>
+              )}
+              
+              {/* Schedule Tab */}
+              {tabValue === 2 && (
+                <Box sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Class Schedule
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {classData.schedule.map((scheduleItem, index) => (
+                      <Grid item xs={12} key={scheduleItem.day}>
+                        <Card variant="outlined">
+                          <CardContent>
+                            <Grid container spacing={2} alignItems="center">
+                              <Grid item xs={3}>
+                                <Typography variant="body1">
+                                  {scheduleItem.day}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={4}>
+                                <TextField
+                                  label="Start Time"
+                                  type="time"
+                                  value={scheduleItem.startTime}
+                                  onChange={(e) => handleScheduleChange(index, 'startTime', e.target.value)}
+                                  InputLabelProps={{ shrink: true }}
+                                  inputProps={{ step: 300 }}
+                                  fullWidth
+                                />
+                              </Grid>
+                              <Grid item xs={4}>
+                                <TextField
+                                  label="End Time"
+                                  type="time"
+                                  value={scheduleItem.endTime}
+                                  onChange={(e) => handleScheduleChange(index, 'endTime', e.target.value)}
+                                  InputLabelProps={{ shrink: true }}
+                                  inputProps={{ step: 300 }}
+                                  fullWidth
+                                />
+                              </Grid>
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
             </Box>
           </DialogContent>
           <DialogActions>
