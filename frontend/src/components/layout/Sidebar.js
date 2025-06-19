@@ -30,8 +30,10 @@ import {
   Event as CalendarIcon,
   Star as RatingIcon,
   RateReview as RateReviewIcon,
+  Class as ClassIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
+import { useFeatureToggles } from '../../context/FeatureToggleContext';
 
 const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = false }) => {
   console.log('Sidebar rendering with props:', { drawerWidth, mobileOpen, permanent });
@@ -62,20 +64,23 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     console.log(`Sidebar state - Route: ${location.pathname} | Permanent: ${isActuallyPermanent} | Open: ${mobileOpen}`);
   }, [location.pathname, isActuallyPermanent, mobileOpen]);
 
+  // Get feature toggles from context
+  const { features } = useFeatureToggles();
+
   // Helper function to check if a school feature is enabled
   const isFeatureEnabled = (featureName) => {
-    // Check if user has schoolFeatures and if the specific feature is enabled
-    if (user?.schoolFeatures && featureName in user.schoolFeatures) {
-      return user.schoolFeatures[featureName] === true;
+    // For superadmin, all features are enabled
+    if (user?.role === 'superadmin') {
+      return true;
     }
     
-    // Try alternative location
-    if (user?.features && featureName in user.features) {
-      return user.features[featureName] === true;
+    // Check if the feature exists in the context
+    if (features && featureName in features) {
+      return features[featureName] === true;
     }
     
-    // Default to true if feature toggle not found
-    return true;
+    // Default to false for safety
+    return false;
   };
 
   // Generate menu items based on user role and school permissions
@@ -187,11 +192,27 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSchools),
       },
       {
-        text: 'Manage Directions',
+        text: 'Manage Classes',
+        icon: <ClassIcon />,
+        path: '/app/admin/classes',
+        roles: ['admin', 'secretary'],
+        checkPermission: (user) => {
+          return user.role === 'admin' ? 
+            user.adminPermissions?.canManageDirections !== false : 
+            user.secretaryPermissions?.canManageDirections === true;
+        },
+      },
+      // Keep legacy Directions option for backward compatibility during migration
+      {
+        text: 'Manage Directions (Legacy)',
         icon: <DirectionsIcon />,
         path: '/app/admin/directions',
         roles: ['admin', 'secretary'],
-        checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageDirections),
+        checkPermission: (user) => {
+          return user.role === 'admin' ? 
+            user.adminPermissions?.canManageDirections !== false : 
+            user.secretaryPermissions?.canManageDirections === true;
+        },
       },
       {
         text: 'Manage Subjects',
@@ -233,11 +254,18 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       },
       // Calendar is available to all users with the feature enabled
       {
-        text: 'Manage Events',
+        text: 'Calendar',
         icon: <CalendarIcon />,
         path: '/app/calendar',
-        roles: ['student', 'teacher', 'admin', 'secretary', 'superadmin'],
+        roles: ['admin', 'teacher', 'student', 'secretary'],
         checkPermission: (user) => isFeatureEnabled('enableCalendar'),
+      },
+      // Superadmin School Features menu item
+      {
+        text: 'School Features',
+        icon: <AdminIcon />,
+        path: '/superadmin/school-features',
+        roles: ['superadmin'],
       },
       // Profile is available to all users
       {

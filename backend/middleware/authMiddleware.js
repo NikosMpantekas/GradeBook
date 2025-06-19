@@ -366,6 +366,8 @@ const adminOrSecretary = (permissionKey) => {
   });
 };
 
+// Direct permission middlewares for specific admin functions are defined below
+
 // School Owner Permission Check Middleware
 // This middleware checks if a school owner (admin) has a specific permission enabled
 // AND if the corresponding school-wide feature is enabled

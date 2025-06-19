@@ -160,10 +160,16 @@ const userSchema = mongoose.Schema(
       ref: 'School',
     },
 
-    // For students: single direction reference
+    // For students: single class reference (replacing old direction reference)
+    class: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
+    },
+    
+    // Legacy: kept for backward compatibility during migration
     direction: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Direction',
+      ref: 'Class', // Updated to use Class model instead of Direction
     },
 
     // For teachers: multiple schools
@@ -174,11 +180,19 @@ const userSchema = mongoose.Schema(
       },
     ],
 
-    // For teachers: multiple directions
+    // For teachers: multiple classes (replacing old directions)
+    classes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Class',
+      },
+    ],
+    
+    // Legacy: kept for backward compatibility during migration
     directions: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Direction',
+        ref: 'Class', // Updated to use Class model instead of Direction
       },
     ],
     subjects: [
