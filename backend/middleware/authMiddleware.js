@@ -551,7 +551,7 @@ const adminWithPermission = (permissionType) => {
       next();
     } else {
       // User is not an admin
-      logger.warn('AUTH', `Non-admin attempting to use admin permission ${permissionKey}`, {
+      logger.warn('AUTH', `Non-admin attempting to use admin permission ${permissionType}`, {
         userId: req.user._id,
         role: req.user.role,
         path: req.originalUrl
