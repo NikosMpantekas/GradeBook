@@ -316,7 +316,7 @@ function App() {
   }, []);
 
   return (
-    <ErrorBoundary onError={handleReactError} fallback={<DiagnosticPage />} componentName="Application Root">
+    <ErrorBoundary fallback={<DiagnosticPage />} componentName="Application Root">
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <ScrollFix /> {/* Fix for Safari elastic scroll */}
