@@ -1,0 +1,7 @@
+// Add this after loading schools
+useEffect(() => {
+  if (schools && schools.length > 0) {
+    console.log('Available schools:', schools);
+    console.log('First school structure:', JSON.stringify(schools[0], null, 2));
+  }
+}, [schools]);

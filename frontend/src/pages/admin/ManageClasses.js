@@ -127,6 +127,14 @@ const ManageClasses = () => {
     dispatch(getSchools());
     dispatch(getUsers());
   }, [dispatch]);
+  
+  // Debug schools data
+  useEffect(() => {
+    if (schools) {
+      console.log(`Schools data received: ${schools.length} schools`);
+      console.log('Schools:', JSON.stringify(schools, null, 2));
+    }
+  }, [schools]);
 
   // Debug schools data whenever it changes
   useEffect(() => {
@@ -566,11 +574,16 @@ const ManageClasses = () => {
                       onChange={handleFormChange}
                       label="School"
                     >
-                      {schools && schools.filter(school => school.type === 'branch').map((school) => (
-                        <MenuItem key={school._id} value={school._id}>
-                          {school.name}
-                        </MenuItem>
-                      ))}
+                      {/* Show all available schools (don't filter by type) */}
+                      {schools && schools.length > 0 ? (
+                        schools.map((school) => (
+                          <MenuItem key={school._id} value={school._id}>
+                            {school.name}
+                          </MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem disabled>No schools available</MenuItem>
+                      )}
                     </Select>
                   </FormControl>
                 </Box>
