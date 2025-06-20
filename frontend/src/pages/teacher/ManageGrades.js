@@ -47,7 +47,7 @@ import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 import { 
   getGradesByTeacher, 
-  getGrades, 
+  getAllGrades, 
   reset as resetGrades,
   updateGrade,
   deleteGrade
@@ -129,7 +129,7 @@ const ManageGrades = () => {
             // If user is admin, fetch all grades instead of just teacher's grades
             if (user.role === 'admin') {
               console.log('[ManageGrades] Admin user detected - fetching ALL grades');
-              dispatch(getGrades())
+              dispatch(getAllGrades())
                 .unwrap()
                 .then(data => {
                   console.log(`[ManageGrades] Successfully fetched ${data?.length || 0} grades for admin`);
