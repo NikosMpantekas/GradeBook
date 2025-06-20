@@ -3,13 +3,10 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.6.0.17';
+const APP_VERSION = '1.6.0.18';
 
 // API URL
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
-// Export the constants for use in other files
-export { API_URL, APP_VERSION };
 
 // IMMEDIATE SELF-EXECUTING FUNCTION TO NUKE ALL VERSION DATA
 (function() {
