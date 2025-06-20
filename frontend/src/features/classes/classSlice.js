@@ -223,8 +223,13 @@ export const classSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(updateClass.fulfilled, (state, action) => {
+        // CRITICAL FIX: Ensure loading state is properly reset
         state.isLoading = false;
         state.isSuccess = true;
+        state.isError = false; // Reset error state to be safe
+        state.message = ''; // Clear any previous error messages
+        
+        console.log('Class update successful in Redux, resetting states');
         
         // Ensure we have a valid payload with _id
         if (action.payload && action.payload._id) {

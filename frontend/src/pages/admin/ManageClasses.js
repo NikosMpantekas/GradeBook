@@ -252,6 +252,50 @@ const ManageClasses = () => {
     setFormOpen(true);
   };
 
+
+
+  // CRITICAL FIX: Enhanced handleFormClose function to properly reset all states
+  const handleFormClose = () => {
+    console.log('Closing form and resetting all states');
+    
+    // Reset submission state immediately to fix "updating forever" issue
+    setIsSubmitting(false);
+    
+    // Close the dialog
+    setFormOpen(false);
+    setOpen(false);
+    
+    // Reset form when dialog closes
+    setClassData({
+      subjectName: '',
+      directionName: '',
+      schoolId: branchSchoolId,
+      students: [],
+      teachers: [],
+      schedule: [
+        { day: 'Monday', active: false, startTime: '', endTime: '' },
+        { day: 'Tuesday', active: false, startTime: '', endTime: '' },
+        { day: 'Wednesday', active: false, startTime: '', endTime: '' },
+        { day: 'Thursday', active: false, startTime: '', endTime: '' },
+        { day: 'Friday', active: false, startTime: '', endTime: '' },
+        { day: 'Saturday', active: false, startTime: '', endTime: '' },
+        { day: 'Sunday', active: false, startTime: '', endTime: '' },
+      ],
+    });
+    
+    // Reset the form mode and tabs
+    setFormMode('add');
+    setTabValue(0);
+    
+    // Force refresh classes with a short delay to ensure backend is updated
+    setTimeout(() => {
+      forceRefreshClasses().catch(err => {
+        console.error('Error in delayed refresh after form close:', err);
+        toast.error('Could not refresh class list');
+      });
+    }, 500);
+  };
+  
   const handleEdit = (classItem) => {
     console.log('Editing class:', classItem);
     setFormMode('edit');
@@ -321,9 +365,7 @@ const ManageClasses = () => {
     setFormOpen(true);
   };
 
-  const handleFormClose = () => {
-    setFormOpen(false);
-  };
+  // The handleFormClose function is now defined above with enhanced functionality
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -419,9 +461,11 @@ const ManageClasses = () => {
       teachers: selectedTeachers.map(teacher => teacher._id),
     }));
   };
-
+  
+  // Enhanced form submission handler to fix "updating forever" issue
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    console.log('Starting form submission, setting isSubmitting=true');
     setIsSubmitting(true);
 
     if (!classData.subjectName || !classData.directionName || !classData.schoolId) {
@@ -430,117 +474,109 @@ const ManageClasses = () => {
       return;
     }
 
-    // Validate schedule times
-    for (const day in classData.schedule) {
-      for (const slot of classData.schedule[day]) {
-        if (slot.startTime && !slot.endTime) {
-          toast.error(`End time is required when start time is provided for ${day}`);
+    // Prepare active schedule days for submission
+    const activeScheduleDays = classData.schedule
+      .filter((day) => day.active)
+      .map((day) => {
+        // Validate time entries
+        if (!day.startTime || !day.endTime) {
+          toast.error(`Please complete time entries for ${day.day}`);
           setIsSubmitting(false);
-          return;
+          return null;
         }
-        if (!slot.startTime && slot.endTime) {
-          toast.error(
-            `Start time is required when end time is provided for ${day}`
-          );
-          setIsSubmitting(false);
-          return;
-        }
-      }
+        // Remove the 'active' flag before submission
+        const { active, ...scheduleDayWithoutActive } = day;
+        return scheduleDayWithoutActive;
+      });
+
+    // Check if any schedule validation failed
+    if (activeScheduleDays.includes(null)) {
+      return; // Stop if validation failed for any day
     }
 
+    // Prepare submission data
+    const submissionData = {
+      ...classData,
+      subject: classData.subjectName,
+      direction: classData.directionName,
+      schoolBranch: classData.schoolId,
+      schedule: activeScheduleDays,
+    };
+    
     try {
-      // Create a flat schedule array with only non-empty slots
-      const filteredSchedule = [];
-      for (const day in classData.schedule) {
-        for (const slot of classData.schedule[day]) {
-          if (slot.startTime && slot.endTime) {
-            filteredSchedule.push({
-              day,
-              startTime: slot.startTime,
-              endTime: slot.endTime,
-            });
-          }
-        }
-      }
-
-      const submissionData = {
-        ...classData,
-        schedule: filteredSchedule,
-      };
-
-      if (formMode === 'add') {
-        // Create a new class
-        console.log('Creating new class with data:', submissionData);
+    if (formMode === 'add') {
+      // Create a new class
+      console.log('Creating new class with data:', submissionData);
+      try {
         const addResult = await dispatch(createClass(submissionData)).unwrap();
         console.log('Class creation result:', addResult);
         toast.success('Class created successfully');
         
         // Close dialog first then refresh data to avoid UI jank
-        handleFormClose();
-        await forceRefreshClasses();
-      } else {
-        // For update mode, verify we have a class ID
-        if (!classData._id) {
-          console.error('Cannot update class: Missing class ID')
-          toast.error('Cannot update class: Missing ID')
-          setIsSubmitting(false);
-          return;
-        }
-        
-        // CRITICAL FIX: Ensure the ID is properly set with priority
-        const classIdToUse = classData._id;
-        const enhancedData = {
-          ...submissionData,
-          _id: classIdToUse,  // Primary ID format
-          id: classIdToUse    // Alternative ID format for robustness
-        };
-        
-        console.log('Updating class with ID:', classIdToUse);
-        console.log('Full update payload:', enhancedData);
-        
-        // Update the class - FIXED: removed nested try-catch to ensure setIsSubmitting(false) always runs
-        try {
-          // CRITICAL FIX: Use Promise.all with catch to prevent hanging on errors
-          const updateResult = await dispatch(updateClass(enhancedData)).unwrap();
-          console.log('Class update API success:', updateResult);
-          
-          // Close dialog immediately to prevent UI hanging
-          handleFormClose();
-          toast.success('Class updated successfully');
-          
-          // Then force refresh the data
-          await forceRefreshClasses().catch(err => {
-            console.error('Error refreshing after successful update:', err);
-            // Still consider the update successful even if refresh fails
-          });
-          
-          console.log('Update and refresh workflow complete');
-        } catch (updateError) {
-          // Handle errors and make sure dialog closes
-          handleFormClose();
-          console.error('Class update operation failed:', updateError);
-          toast.error(`Update failed: ${updateError?.message || 'Unknown error'}`);
-        }
+        handleFormClose(); // This already resets isSubmitting
+      } catch (createError) {
+        console.error('Failed to create class:', createError);
+        toast.error(`Creation failed: ${createError?.message || 'Unknown error'}`);
+        setIsSubmitting(false); // Only reset here if handleFormClose isn't called
       }
-    } catch (error) {
-      console.error('Form submission error:', error);
-      toast.error(error.message || 'An error occurred');
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      // For update mode, verify we have a class ID
+      if (!classData._id) {
+        console.error('Cannot update class: Missing class ID');
+        toast.error('Cannot update class: Missing ID');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // CRITICAL FIX: Ensure the ID is properly set with priority
+      const classIdToUse = classData._id;
+      const enhancedData = {
+        ...submissionData,
+        _id: classIdToUse,  // Primary ID format
+        id: classIdToUse    // Alternative ID format for robustness
+      };
+      
+      console.log('Updating class with ID:', classIdToUse);
+      console.log('Full update payload:', enhancedData);
+      
+      try {
+        console.log('Dispatching updateClass action...');
+        const updateResult = await dispatch(updateClass(enhancedData)).unwrap();
+        console.log('Class update API success:', updateResult);
+        
+        // CRITICAL FIX: Always close dialog on success to prevent "updating forever"
+        toast.success('Class updated successfully');
+        handleFormClose(); // This function now resets isSubmitting and refreshes data
+        
+        console.log('Update workflow complete, dialog closed and refresh triggered');
+      } catch (updateError) {
+        // Handle errors properly
+        console.error('Class update operation failed:', updateError);
+        toast.error(`Update failed: ${updateError?.message || 'Unknown error'}`);
+        
+        // IMPORTANT: Always close dialog and reset states even on error
+        handleFormClose();
+      }
     }
-  };
+  } catch (generalError) {
+    // This catches any other errors not caught by the inner try-catch blocks
+    console.error('Unhandled form submission error:', generalError);
+    toast.error(generalError?.message || 'An unexpected error occurred');
+    setIsSubmitting(false);
+  }
+};  
 
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    
-    try {
-      await dispatch(deleteClass(deleteId)).unwrap();
-      toast.success('Class deleted successfully');
-      handleClose();
-    } catch (error) {
-      toast.error(`Error deleting class: ${error?.message || 'Unknown error'}`);
-    }
-  };
+const confirmDelete = async () => {
+  if (!deleteId) return;
+  
+  try {
+    await dispatch(deleteClass(deleteId)).unwrap();
+    toast.success('Class deleted successfully');
+    handleClose();
+  } catch (error) {
+    toast.error(`Error deleting class: ${error?.message || 'Unknown error'}`);
+  }
+};
   
   // Show loading state if data is being loaded
   if (localLoading || isLoading) {
