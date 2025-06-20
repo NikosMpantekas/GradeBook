@@ -305,15 +305,23 @@ const ManageSchools = () => {
   
   const handleEditSchool = () => {
     if (validateForm()) {
+      // First make sure we have a valid school ID
+      if (!currentSchool._id) {
+        toast.error('Cannot update: Missing school ID');
+        return;
+      }
+      
       // Structure the update data correctly with id and schoolData separately
       const schoolId = currentSchool._id; 
+      console.log('Updating school with ID:', schoolId);
+      
       const schoolData = {
         name: currentSchool.name,
         address: currentSchool.address,
         phone: currentSchool.phone,
-        email: currentSchool.email,
-        website: currentSchool.website,
-        logo: currentSchool.logo
+        email: currentSchool.email || '',
+        website: currentSchool.website || '',
+        logo: currentSchool.logo || ''
       };
       
       dispatch(updateSchool({ id: schoolId, schoolData }))

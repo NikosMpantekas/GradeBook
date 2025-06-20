@@ -44,14 +44,32 @@ const updateClass = async (classData, token) => {
   const config = {
     headers: {
       Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
     },
   };
+  
+  // Use correct ID field (could be id or _id)
+  const classId = classData.id || classData._id;
+  
+  if (!classId) {
+    console.error('No class ID provided for update:', classData);
+    throw new Error('Class ID is required for update');
+  }
 
+  console.log(`Updating class with ID: ${classId}`);
+  
+  // Create a clean data object without the ID field
+  const cleanData = { ...classData };
+  delete cleanData.id; // Remove id from payload
+  delete cleanData._id; // Remove _id from payload
+  
   const response = await axios.put(
-    `${API_CLASSES}/${classData.id}`, 
-    classData, 
+    `${API_CLASSES}/${classId}`, 
+    cleanData, 
     config
   );
+  
+  console.log('Class update response:', response.data);
   return response.data;
 };
 

@@ -32,14 +32,10 @@ import { getSubjectsByTeacher } from '../../features/subjects/subjectSlice';
 import { 
   getStudentsBySubject, 
   getStudents, 
-  ensureValidData,
-  safeValidateStudentData 
 } from '../../features/students/studentSlice';
 import { 
   getDirections, 
   reset as resetDirections,
-  ensureValidData as ensureValidDirectionData,
-  safeValidateDirectionData 
 } from '../../features/directions/directionSlice';
 import { getClassesByTeacher } from '../../features/classes/classSlice';
 
@@ -69,8 +65,8 @@ const CreateGrade = () => {
   const [formErrors, setFormErrors] = useState({});
   
   // CRITICAL FIX: Added safer validation logic to prevent runtime errors
-  // Safely handle direction validation
-  const validateDirections = () => {
+  // Handle directions data safely
+  const handleDirectionsData = () => {
     try {
       // Safety check - validate direction data structure
       if (reduxDirections && !Array.isArray(reduxDirections)) {
@@ -81,7 +77,7 @@ const CreateGrade = () => {
         setDirections(reduxDirections);
       }
     } catch (error) {
-      console.error('[CreateGrade] Error validating directions:', error);
+      console.error('[CreateGrade] Error handling directions:', error);
       // Safety fallback
       setDirections([]);
     }
@@ -90,15 +86,13 @@ const CreateGrade = () => {
   // Get directions from Redux store for consistent data handling
   const { directions: reduxDirections, isLoading: directionsLoading } = useSelector((state) => state.direction);
   
-  // CRITICAL FIX: Initial data loading with safe validation
+  // Initial data loading
   useEffect(() => {
     try {
       console.log('[CreateGrade] Component mounted - initializing data');
       
-      // Step 1: First, validate existing data structures to prevent errors
-      console.log('[CreateGrade] Validating data structures...');
-      safeValidateStudentData(dispatch);
-      safeValidateDirectionData(dispatch);
+      // Step 1: First, make sure our state is ready
+      console.log('[CreateGrade] Preparing data structures...');
       
       // Step 2: Load teacher subjects
       if (user && user._id) {
@@ -119,19 +113,15 @@ const CreateGrade = () => {
           });
       }
       
-      // Step 4: Load directions safely
+      // Step 4: Load directions
       console.log('[CreateGrade] Loading directions...');
       dispatch(getDirections())
         .unwrap()
         .then(data => {
           console.log(`[CreateGrade] Loaded ${Array.isArray(data) ? data.length : 0} directions`);
-          // Immediately validate direction data after loading
-          safeValidateDirectionData(dispatch);
         })
         .catch(error => {
           console.error('[CreateGrade] Error fetching directions:', error);
-          // Force validate even on error to ensure store is in good state
-          safeValidateDirectionData(dispatch);
         });
     } catch (err) {
       console.error('[CreateGrade] Critical initialization error:', err);
@@ -144,12 +134,10 @@ const CreateGrade = () => {
     };
   }, [dispatch, user]);
   
-  // CRITICAL FIX: Update local directions state from Redux store with robust validation
+  // Update local directions state from Redux store
   useEffect(() => {
     try {
-      // Double validate the direction data structure before using
-      safeValidateDirectionData(dispatch);
-      
+      // Check if directions data is valid
       if (Array.isArray(reduxDirections)) {
         console.log(`[CreateGrade] Setting ${reduxDirections.length} directions from Redux store`);
         setDirections(reduxDirections);

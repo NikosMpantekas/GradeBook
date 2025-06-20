@@ -53,16 +53,40 @@ const getSchool = async (schoolId, token) => {
 };
 
 // Update school (admin only)
-const updateSchool = async (schoolId, schoolData, token) => {
+const updateSchool = async (id, schoolData, token) => {
+  // Validate inputs
+  if (!id) {
+    console.error('updateSchool: Missing school ID');
+    throw new Error('School ID is required');
+  }
+  
+  if (!token) {
+    console.error('updateSchool: Missing authorization token');
+    throw new Error('Authorization token is required');
+  }
+  
+  console.log(`Updating school with ID: ${id}`);
+  
   const config = {
     headers: {
       Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
     },
   };
 
-  const response = await axios.put(`${API_SCHOOLS}/${schoolId}`, schoolData, config);
-
-  return response.data;
+  try {
+    const response = await axios.put(`${API_SCHOOLS}/${id}`, schoolData, config);
+    console.log('School update successful:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('School update failed:', {
+      id,
+      error: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    throw error;
+  }
 };
 
 // Delete school (admin only)
