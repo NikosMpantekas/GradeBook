@@ -209,12 +209,10 @@ const CreateGrade = () => {
     }
   }, [subjects, selectedClass, teacherClasses]);
 
-  // CRITICAL FIX: When a subject is selected, fetch students for that subject with improved validation
+  // When a subject is selected, fetch students for that subject
   useEffect(() => {
     try {
-      // Validate existing student data to prevent errors
-      safeValidateStudentData(dispatch);
-      
+      // Check if subject is selected
       if (!formData.subject) {
         // Clear students list when no subject selected
         setStudentsToSelect([]);
@@ -230,8 +228,7 @@ const CreateGrade = () => {
       dispatch(getStudentsBySubject(formData.subject))
         .unwrap()
         .then((allSubjectStudents) => {
-          // Immediately validate student data
-          safeValidateStudentData(dispatch);
+          // Log successful fetch
           console.log(`[CreateGrade] Successfully fetched ${allSubjectStudents?.length || 0} students for subject`);
           
           // If class is selected, filter students to only those in the class
@@ -261,8 +258,8 @@ const CreateGrade = () => {
         })
         .catch(err => {
           console.error('[CreateGrade] Error loading students for subject:', err);
-          safeValidateStudentData(dispatch); 
           setStudentsToSelect([]);
+
           toast.error('Failed to load students. Please try again.');
         });
     } catch (err) {
@@ -271,17 +268,11 @@ const CreateGrade = () => {
     }
   }, [dispatch, formData.subject, selectedClass, teacherClasses]);
   
-  // CRITICAL FIX: Add safe validation on component mount to ensure student data is an array
+  // Ensure student data is valid on component mount
   useEffect(() => {
     try {
-      console.log('[CreateGrade] Safely validating student data structures');
-      
-      // Call our new helper function that prevents the TypeError
-      safeValidateStudentData(dispatch);
-      
-      // Also explicitly call the validation action
-      dispatch(ensureValidData());
-      
+      console.log('[CreateGrade] Checking student data structures');
+            
       // Log validation results
       if (students) {
         if (!Array.isArray(students)) {
