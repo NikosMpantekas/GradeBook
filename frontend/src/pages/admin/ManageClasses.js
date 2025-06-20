@@ -235,25 +235,78 @@ const ManageClasses = () => {
   };
 
   const handleEdit = (classItem) => {
+    console.log('Editing class:', classItem);
     setFormMode('edit');
-    // Create default schedule if none exists
-    const defaultSchedule = [
-      { day: 'Monday', startTime: '', endTime: '' },
-      { day: 'Tuesday', startTime: '', endTime: '' },
-      { day: 'Wednesday', startTime: '', endTime: '' },
-      { day: 'Thursday', startTime: '', endTime: '' },
-      { day: 'Friday', startTime: '', endTime: '' },
+    
+    // Create complete schedule template with all days of the week
+    const fullWeekTemplate = [
+      { day: 'Monday', startTime: '', endTime: '', active: false },
+      { day: 'Tuesday', startTime: '', endTime: '', active: false },
+      { day: 'Wednesday', startTime: '', endTime: '', active: false },
+      { day: 'Thursday', startTime: '', endTime: '', active: false },
+      { day: 'Friday', startTime: '', endTime: '', active: false },
+      { day: 'Saturday', startTime: '', endTime: '', active: false },
+      { day: 'Sunday', startTime: '', endTime: '', active: false },
     ];
-
+    
+    // Process the existing schedule data (if any)
+    let processedSchedule = fullWeekTemplate;
+    if (classItem.schedule && Array.isArray(classItem.schedule) && classItem.schedule.length > 0) {
+      // Map each existing schedule entry to its corresponding day in the template
+      processedSchedule = fullWeekTemplate.map(template => {
+        const existingEntry = classItem.schedule.find(s => s.day === template.day);
+        if (existingEntry) {
+          return {
+            ...template,
+            startTime: existingEntry.startTime || '',
+            endTime: existingEntry.endTime || '',
+            active: true // If there's data for this day, mark it as active
+          };
+        }
+        return template;
+      });
+    }
+    
+    // Get students and teachers data
+    // If we have full objects, extract IDs; if we have just IDs, keep them as is
+    let studentIds = [];
+    if (classItem.students) {
+      studentIds = classItem.students.map(student => 
+        typeof student === 'object' && student._id ? student._id : student
+      );
+    }
+    
+    let teacherIds = [];
+    if (classItem.teachers) {
+      teacherIds = classItem.teachers.map(teacher => 
+        typeof teacher === 'object' && teacher._id ? teacher._id : teacher
+      );
+    }
+    
+    console.log('Processed student IDs:', studentIds);
+    console.log('Processed teacher IDs:', teacherIds);
+    
+    // Map backend field names to frontend field names if needed
     setClassData({
       id: classItem._id,
-      subjectName: classItem.subjectName || '',
-      directionName: classItem.directionName || '',
-      schoolId: classItem.schoolId || '',
-      students: classItem.students || [],
-      teachers: classItem.teachers || [],
-      schedule: classItem.schedule || defaultSchedule,
+      subjectName: classItem.subject || classItem.subjectName || '',
+      directionName: classItem.direction || classItem.directionName || '',
+      schoolId: classItem.schoolBranch || classItem.schoolId || '',
+      students: studentIds,
+      teachers: teacherIds,
+      schedule: processedSchedule,
     });
+    
+    console.log('Setting form data:', {
+      id: classItem._id,
+      subjectName: classItem.subject || classItem.subjectName || '',
+      directionName: classItem.direction || classItem.directionName || '',
+      schoolId: classItem.schoolBranch || classItem.schoolId || '',
+      students: studentIds.length,
+      teachers: teacherIds.length,
+      schedule: processedSchedule
+    });
+    
     setFormOpen(true);
   };
 
@@ -286,6 +339,8 @@ const ManageClasses = () => {
       schedule: updatedSchedule,
     }));
   };
+  
+
   
   // Toggle teacher selection with checkbox
   const handleTeacherToggle = (teacherId) => {
@@ -320,13 +375,17 @@ const ManageClasses = () => {
   // Toggle day activation in schedule
   const handleDayToggle = (index) => {
     const updatedSchedule = [...classData.schedule];
+    const newActiveState = !updatedSchedule[index].active;
+    
     updatedSchedule[index] = {
       ...updatedSchedule[index],
-      active: !updatedSchedule[index].active,
-      // Reset times if deactivating
-      startTime: !updatedSchedule[index].active ? updatedSchedule[index].startTime : '',
-      endTime: !updatedSchedule[index].active ? updatedSchedule[index].endTime : '',
+      active: newActiveState,
+      // Keep times if activating, reset if deactivating
+      startTime: newActiveState ? updatedSchedule[index].startTime : '',
+      endTime: newActiveState ? updatedSchedule[index].endTime : '',
     };
+    
+    console.log(`Toggling day ${updatedSchedule[index].day} to ${newActiveState ? 'active' : 'inactive'}`);
     
     setClassData(prevData => ({
       ...prevData,
