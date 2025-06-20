@@ -178,14 +178,14 @@ const subscribeToPushNotifications = async (subscription, token) => {
     },
   };
 
-  const response = await axiosInstance.post(SUBSCRIPTION_API_URL, subscription, config);
+  const response = await axiosInstance.post(API_SUBSCRIPTIONS, subscription, config);
 
   return response.data;
 };
 
 // Get VAPID public key
 const getVapidPublicKey = async () => {
-  const response = await axiosInstance.get(SUBSCRIPTION_API_URL + 'vapidPublicKey');
+  const response = await axiosInstance.get(API_SUBSCRIPTIONS + 'vapidPublicKey');
 
   return response.data;
 };
