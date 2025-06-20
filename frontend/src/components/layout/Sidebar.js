@@ -92,42 +92,18 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   // Generate menu items based on user role and school permissions
   const getMenuItems = () => {
     const menuItems = [
-      // Dashboard items for all roles - top of sidebar
+      // EXACTLY FOLLOWING THE REQUESTED MENU ORDER
+      
+      // 1. Admin Dashboard
       {
-        text: 'Dashboard',
-        icon: <DashboardIcon />,
-        path: '/app/dashboard',
-        roles: ['student', 'teacher', 'admin', 'secretary'],
-        section: 'general',
+        text: 'Admin Dashboard',
+        icon: <AdminIcon />,
+        path: '/app/admin',
+        roles: ['admin', 'secretary'],
+        section: 'admin',
       },
       
-      // STUDENT SPECIFIC ITEMS
-      {
-        text: 'My Grades',
-        icon: <GradesIcon />,
-        path: '/app/grades',
-        roles: ['student'],
-        checkPermission: (user) => isFeatureEnabled('enableGrades'),
-        section: 'student',
-      },
-      {
-        text: 'Submit Ratings',
-        icon: <RateReviewIcon />,
-        path: '/app/ratings',
-        roles: ['student'],
-        checkPermission: (user) => isFeatureEnabled('enableRatingSystem'),
-        section: 'student',
-      },
-      {
-        text: 'My Notifications',
-        icon: <NotificationsIcon />,
-        path: '/app/notifications',
-        roles: ['student', 'teacher', 'admin'],
-        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
-        section: 'student',
-      },
-
-      // TEACHER SPECIFIC ITEMS
+      // 2. Teacher Dashboard
       {
         text: 'Teacher Dashboard',
         icon: <SchoolIcon />,
@@ -135,16 +111,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['teacher', 'admin'],
         section: 'teacher',
       },
-      {
-        text: 'Manage Grades',
-        icon: <GradesIcon />,
-        path: '/app/teacher/grades/manage',
-        roles: ['teacher', 'admin', 'secretary'],
-        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
-                            (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
-                            isFeatureEnabled('enableGrades'),
-        section: 'teacher',
-      },
+      
+      // 3. Add Grade
       {
         text: 'Add Grade',
         icon: <AddIcon />,
@@ -155,15 +123,20 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
                             isFeatureEnabled('enableGrades'),
         section: 'teacher',
       },
+      
+      // 4. Manage Grades
       {
-        text: 'Student Ratings',
-        icon: <RatingIcon />,
-        path: '/app/teacher/ratings',
-        roles: ['teacher', 'admin'],
-        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher') && 
-                            isFeatureEnabled('enableRatingSystem'),
+        text: 'Manage Grades',
+        icon: <GradesIcon />,
+        path: '/app/teacher/grades/manage',
+        roles: ['teacher', 'admin', 'secretary'],
+        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
+                            (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
+                            isFeatureEnabled('enableGrades'),
         section: 'teacher',
       },
+      
+      // 5. Add Notifications (Send Notifications)
       {
         text: 'Send Notifications',
         icon: <NotificationsIcon />,
@@ -174,23 +147,18 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
                             isFeatureEnabled('enableNotifications'),
         section: 'teacher',
       },
-
-      // ADMIN AND SECRETARY ITEMS
+      
+      // 6. Notifications (My Notifications)
       {
-        text: 'Admin Dashboard',
-        icon: <AdminIcon />,
-        path: '/app/admin',
-        roles: ['admin', 'secretary'],
-        section: 'admin',
+        text: 'My Notifications',
+        icon: <NotificationsIcon />,
+        path: '/app/notifications',
+        roles: ['student', 'teacher', 'admin'],
+        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
+        section: 'common',
       },
-      {
-        text: 'Manage School Grades',
-        icon: <GradesIcon />,
-        path: '/app/admin/grades',
-        roles: ['admin', 'secretary'],
-        checkPermission: (user) => isFeatureEnabled('enableGrades'),
-        section: 'admin',
-      },
+      
+      // 7. Manage Users
       {
         text: 'Manage Users',
         icon: <UsersIcon />,
@@ -199,6 +167,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageUsers),
         section: 'admin',
       },
+      
+      // 8. Manage Schools
       {
         text: 'Manage Schools',
         icon: <SchoolsIcon />,
@@ -207,6 +177,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSchools),
         section: 'admin',
       },
+      
+      // 9. Manage Classes
       {
         text: 'Manage Classes',
         icon: <ClassIcon />,
@@ -216,97 +188,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSchools === true),
         section: 'admin',
       },
-      {
-        text: 'Send Notifications',
-        icon: <NotificationsIcon />,
-        path: '/app/admin/notifications',
-        roles: ['admin', 'secretary'],
-        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
-        section: 'admin',
-      },
-      // Keep legacy Directions option for backward compatibility during migration
-      {
-        text: 'Manage Directions (Legacy)',
-        icon: <DirectionsIcon />,
-        path: '/app/admin/directions',
-        roles: ['admin', 'secretary'],
-        checkPermission: (user) => {
-          return user.role === 'admin' ? 
-            user.adminPermissions?.canManageDirections !== false : 
-            user.secretaryPermissions?.canManageDirections === true;
-        },
-        section: 'admin',
-      },
-      {
-        text: 'Student Progress',
-        icon: <AssessmentIcon />,
-        path: '/app/admin/progress',
-        roles: ['admin', 'teacher', 'secretary'],
-        checkPermission: (user) => {
-          return (user.role === 'admin' || user.role === 'teacher' || 
-                 (user.role === 'secretary' && user.secretaryPermissions?.canAccessStudentProgress)) && 
-                 isFeatureEnabled('enableStudentProgress');
-        },
-        section: 'admin',
-      },
-      {
-        text: 'Rating System',
-        icon: <RatingIcon />,
-        path: '/app/admin/ratings',
-        roles: ['admin'],
-        checkPermission: (user) => user.role === 'admin' && isFeatureEnabled('enableRatingSystem'),
-        section: 'admin',
-      },
-      {
-        text: 'Rating Statistics',
-        icon: <AssessmentIcon />,
-        path: '/app/admin/rating-statistics',
-        roles: ['admin'],
-        checkPermission: (user) => user.role === 'admin' && isFeatureEnabled('enableRatingSystem'),
-        section: 'admin',
-      },
       
-      // SUPER ADMIN ITEMS
-      {
-        text: 'SuperAdmin Dashboard',
-        icon: <SuperAdminIcon />,
-        path: '/superadmin/dashboard',
-        roles: ['superadmin'],
-        section: 'superadmin',
-      },
-      {
-        text: 'Create School Owner',
-        icon: <AddUserIcon />,
-        path: '/superadmin/new-school-owner',
-        roles: ['superadmin'],
-        section: 'superadmin',
-      },
-      {
-        text: 'School Features',
-        icon: <AdminIcon />,
-        path: '/superadmin/school-features',
-        roles: ['superadmin'],
-        section: 'superadmin',
-      },
-      {
-        text: 'Contact Messages',
-        icon: <EmailIcon />,
-        path: '/superadmin/contact',
-        roles: ['superadmin'],
-        section: 'superadmin',
-      },
-      
-      // COMMON ITEMS FOR ALL USERS
-      // Calendar is available to all users with the feature enabled
-      {
-        text: 'Calendar',
-        icon: <CalendarIcon />,
-        path: '/app/calendar',
-        roles: ['admin', 'teacher', 'student', 'secretary'],
-        checkPermission: (user) => isFeatureEnabled('enableCalendar'),
-        section: 'common',
-      },
-      // Profile is available to all users
+      // 10. Profile
       {
         text: 'Profile',
         icon: <PersonIcon />,
@@ -314,7 +197,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['student', 'teacher', 'admin', 'superadmin'],
         section: 'common',
       },
-      // My Contact Messages is available to all users
+      
+      // 11. Messages and Bug Reports
       {
         text: 'My Messages & Bug Reports',
         icon: <EmailIcon />,
@@ -322,14 +206,24 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['student', 'teacher', 'admin', 'superadmin'],
         section: 'common',
       },
-      // My Notifications for all users
+      
+      // Student's view of grades
       {
-        text: 'My Notifications',
-        icon: <NotificationsIcon />,
-        path: '/app/notifications',
-        roles: ['student', 'teacher', 'admin'],
-        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
-        section: 'common',
+        text: 'My Grades',
+        icon: <GradesIcon />,
+        path: '/app/grades',
+        roles: ['student'],
+        checkPermission: (user) => isFeatureEnabled('enableGrades'),
+        section: 'student',
+      },
+      
+      // Dashboard for all users
+      {
+        text: 'Dashboard',
+        icon: <DashboardIcon />,
+        path: '/app/dashboard',
+        roles: ['student', 'teacher', 'admin', 'secretary'],
+        section: 'general',
       },
     ];
 
