@@ -423,28 +423,25 @@ const ManageClasses = () => {
         endTime: item.endTime || '09:00', // Default time if not set
       }));
 
-    // Validate schedule if there are active days
-    if (filteredSchedule.length > 0) {
-      const invalidSchedule = filteredSchedule.some(item => !item.startTime || !item.endTime);
-      if (invalidSchedule) {
-        toast.error('Please provide start and end times for all active days');
-        setIsSubmitting(false);
-        return;
-      }
+    // Validate that at least one time is set
+    if (filteredSchedule.length === 0) {
+      toast.warn('No schedule days are active, creating class with empty schedule');
     }
 
-    // Prepare the data for submission
+    // Prepare submission data with filtered schedule
     const submissionData = {
       ...classData,
       schedule: filteredSchedule,
     };
-    
-    // Debug logging
-    console.log(`Form mode: ${formMode}`, submissionData);
+
+    console.log(`Submitting ${formMode === 'add' ? 'new' : 'updated'} class data:`, submissionData);
 
     try {
+      let result;
+      
       if (formMode === 'add') {
-        await dispatch(createClass(submissionData)).unwrap();
+        result = await dispatch(createClass(submissionData)).unwrap();
+        console.log('Class creation successful, received:', result);
         toast.success('Class created successfully');
       } else {
         // Ensure we have the _id for updates
@@ -454,12 +451,19 @@ const ManageClasses = () => {
           return;
         }
         
-        await dispatch(updateClass(submissionData)).unwrap();
+        console.log(`Updating class with ID: ${submissionData._id}`);
+        result = await dispatch(updateClass(submissionData)).unwrap();
+        console.log('Class update successful, received:', result);
         toast.success('Class updated successfully');
       }
+      
       setFormOpen(false);
-      dispatch(getClasses()); // Refresh the list
+      
+      // Force a refresh to ensure UI is updated with latest data
+      await dispatch(getClasses()).unwrap();
+      console.log('Classes refreshed after update/create');
     } catch (error) {
+      console.error('Error in form submission:', error);
       toast.error(`Error: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);

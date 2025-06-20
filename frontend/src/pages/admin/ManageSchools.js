@@ -340,15 +340,22 @@ const ManageSchools = () => {
       console.log('Sending updateSchool with:', { id: schoolId, schoolData });
       
       // Dispatch with separate id and schoolData parameters matching what the action expects
-      dispatch(updateSchool({ id: schoolId, schoolData: schoolData }))
+      console.log('DEBUG: Calling updateSchool with ID:', schoolId);
+      console.log('DEBUG: schoolData:', schoolData);
+      
+      dispatch(updateSchool({ id: schoolId, schoolData }))
         .unwrap()
-        .then(() => {
+        .then((result) => {
+          console.log('School update succeeded:', result);
           setOpenEditDialog(false);
           // Refresh the schools list after update
-          dispatch(getSchools());
+          return dispatch(getSchools()).unwrap();
+        })
+        .then(() => {
           toast.success('School updated successfully');
         })
         .catch((error) => {
+          console.error('School update failed:', error);
           toast.error(`Failed to update school: ${error}`);
         });
     }
