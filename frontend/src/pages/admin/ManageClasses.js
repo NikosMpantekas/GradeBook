@@ -50,7 +50,8 @@ import {
   Clear as ClearIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { useCallback } from 'react';
 import { getClasses, deleteClass, createClass, updateClass } from '../../features/classes/classSlice';
 import { getSchools } from '../../features/schools/schoolSlice';
 import { getUsers } from '../../features/users/userSlice';
@@ -59,7 +60,9 @@ const ManageClasses = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { classes, isLoading, isError, message } = useSelector((state) => state.classes);
+  const { classes: reduxClasses, isLoading, isError, message } = useSelector(
+    (state) => state.classes
+  );
   const { schools } = useSelector((state) => state.schools);
   const { users } = useSelector((state) => state.users);
   
@@ -70,6 +73,8 @@ const ManageClasses = () => {
   const [filteredClasses, setFilteredClasses] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [formMode, setFormMode] = useState('add'); // 'add' or 'edit'
+  const [localLoading, setLocalLoading] = useState(true);
+  const [forceRefreshTrigger, setForceRefreshTrigger] = useState(0);
   
   // State for form tabs
   const [tabValue, setTabValue] = useState(0);
@@ -121,79 +126,91 @@ const ManageClasses = () => {
       );
   }, [users, studentFilter]);
 
-  // Load classes, schools, and users when component mounts
+  // Filter classes when searchTerm or classes changes
   useEffect(() => {
-    console.log('ManageClasses: Loading classes, schools, and users');
-    dispatch(getClasses());
-    dispatch(getSchools());
-    dispatch(getUsers());
-  }, [dispatch]);
-  
-  // Debug schools data
-  useEffect(() => {
-    if (schools) {
-      console.log(`Schools data received: ${schools.length} schools`);
-      console.log('Schools:', JSON.stringify(schools, null, 2));
+    // If no classes yet from Redux, don't try to filter
+    if (!reduxClasses) {
+      setFilteredClasses([]);
+      return;
     }
-  }, [schools]);
+    
+    // If no search term, use all classes
+    if (!searchTerm.trim()) {
+      setFilteredClasses(reduxClasses);
+      return;
+    }
 
-  // Debug schools data whenever it changes
-  useEffect(() => {
-    console.log('ManageClasses: Schools data changed');
-    console.log('Schools data available:', schools);
-    if (schools && Array.isArray(schools)) {
-      console.log('Number of schools:', schools.length);
-      schools.forEach(school => {
-        console.log(`School: ${school.name} (ID: ${school._id})`);
-      });
-      
-      // Test our filtering logic explicitly
-      const branchSchools = schools.filter(school => {
-        // Just test our main branch
-        return school._id === '6834cef6ae7eb00ba4d0820d'; // Φροντιστήριο Βαθύ
-      });
-      console.log('Found branch schools:', branchSchools.length);
-      branchSchools.forEach(school => {
-        console.log(`Branch school: ${school.name} (ID: ${school._id})`);
-      });
-    } else {
-      console.log('No schools data or invalid format');
-    }
-  }, [schools]);
-
-  // Add debug logging for classes state
-  useEffect(() => {
-    if (classes && classes.length > 0) {
-      console.log(`Received ${classes.length} classes from the backend`);
-      console.log('First class data structure:', JSON.stringify(classes[0], null, 2));
-    }
-  }, [classes]);
-  
-  // Filter classes when search term changes
-  useEffect(() => {
-    if (Array.isArray(classes)) {
-      setFilteredClasses(
-        classes.filter((classItem) => {
-          if (searchTerm === '') return true; // Show all classes when no search term
-          
-          // Account for both backend (subject/direction) and frontend (subjectName/directionName) field names
-          const subject = classItem.subject || classItem.subjectName || '';
-          const direction = classItem.direction || classItem.directionName || '';
-          
-          const subjectMatch = subject.toLowerCase().includes(searchTerm.toLowerCase());
-          const directionMatch = direction.toLowerCase().includes(searchTerm.toLowerCase());
-          return subjectMatch || directionMatch;
-        })
+    console.log(`Filtering ${reduxClasses.length} classes with term: ${searchTerm}`);
+    
+    const filtered = reduxClasses.filter((cls) => {
+      // Search in all text fields
+      return (
+        cls.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cls.direction?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cls.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cls.teachers?.some(
+          (t) =>
+            t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            t.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        ) ||
+        cls.students?.some(
+          (s) =>
+            s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
       );
-    }
-  }, [classes, searchTerm]);
+    });
 
-  // Show toast on errors
+    setFilteredClasses(filtered);
+    console.log(`Found ${filtered.length} classes matching search term`);
+  }, [searchTerm, reduxClasses, forceRefreshTrigger]);
+
+  // Load all required data
+  const loadData = async () => {
+    try {
+      setLocalLoading(true);
+      await dispatch(getClasses()).unwrap();
+      await dispatch(getSchools()).unwrap();
+      await dispatch(getUsers()).unwrap();
+      console.log('Initial data load complete');
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Failed to load required data');
+    } finally {
+      setLocalLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (isError && message) {
+    loadData();
+    
+    // This will run when component unmounts
+    return () => {
+      console.log('ManageClasses component unmounting');
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (isError) {
       toast.error(message);
     }
   }, [isError, message]);
+
+  // Force refresh function that can be called when we need to ensure the UI updates
+  const forceRefreshClasses = useCallback(async () => {
+    try {
+      console.log('Force refreshing classes list');
+      setLocalLoading(true);
+      await dispatch(getClasses()).unwrap();
+      setForceRefreshTrigger(prev => prev + 1); // Increment trigger to force re-render
+      console.log('Classes refreshed successfully');
+    } catch (error) {
+      console.error('Error refreshing classes:', error);
+      toast.error('Failed to refresh classes data');
+    } finally {
+      setLocalLoading(false);
+    }
+  }, [dispatch]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -407,64 +424,104 @@ const ManageClasses = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Validate the form
     if (!classData.subjectName || !classData.directionName || !classData.schoolId) {
       toast.error('Subject name, direction name, and school are required');
       setIsSubmitting(false);
       return;
     }
 
-    // Only include active days but make sure they have complete data
-    const filteredSchedule = classData.schedule
-      .filter(item => item.active)
-      .map(item => ({
-        day: item.day,
-        startTime: item.startTime || '08:00', // Default time if not set
-        endTime: item.endTime || '09:00', // Default time if not set
-      }));
-
-    // Validate that at least one time is set
-    if (filteredSchedule.length === 0) {
-      toast.warn('No schedule days are active, creating class with empty schedule');
+    // Validate schedule times
+    for (const day in classData.schedule) {
+      for (const slot of classData.schedule[day]) {
+        if (slot.startTime && !slot.endTime) {
+          toast.error(`End time is required when start time is provided for ${day}`);
+          setIsSubmitting(false);
+          return;
+        }
+        if (!slot.startTime && slot.endTime) {
+          toast.error(
+            `Start time is required when end time is provided for ${day}`
+          );
+          setIsSubmitting(false);
+          return;
+        }
+      }
     }
 
-    // Prepare submission data with filtered schedule
-    const submissionData = {
-      ...classData,
-      schedule: filteredSchedule,
-    };
-
-    console.log(`Submitting ${formMode === 'add' ? 'new' : 'updated'} class data:`, submissionData);
-
     try {
-      let result;
-      
+      // Create a flat schedule array with only non-empty slots
+      const filteredSchedule = [];
+      for (const day in classData.schedule) {
+        for (const slot of classData.schedule[day]) {
+          if (slot.startTime && slot.endTime) {
+            filteredSchedule.push({
+              day,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+            });
+          }
+        }
+      }
+
+      const submissionData = {
+        ...classData,
+        schedule: filteredSchedule,
+      };
+
       if (formMode === 'add') {
-        result = await dispatch(createClass(submissionData)).unwrap();
-        console.log('Class creation successful, received:', result);
+        // Create a new class
+        console.log('Creating new class with data:', submissionData);
+        const addResult = await dispatch(createClass(submissionData)).unwrap();
+        console.log('Class creation result:', addResult);
         toast.success('Class created successfully');
+        
+        // Close dialog first then refresh data to avoid UI jank
+        handleCloseDialog();
+        await forceRefreshClasses();
       } else {
-        // Ensure we have the _id for updates
-        if (!submissionData._id) {
-          toast.error('Cannot update class: Missing class ID');
+        // For update mode, verify we have a class ID
+        if (!classData._id) {
+          console.error('Cannot update class: Missing class ID')
+          toast.error('Cannot update class: Missing ID')
           setIsSubmitting(false);
           return;
         }
         
-        console.log(`Updating class with ID: ${submissionData._id}`);
-        result = await dispatch(updateClass(submissionData)).unwrap();
-        console.log('Class update successful, received:', result);
-        toast.success('Class updated successfully');
+        // CRITICAL FIX: Ensure the ID is properly set with priority
+        const classIdToUse = classData._id;
+        const enhancedData = {
+          ...submissionData,
+          _id: classIdToUse,  // Primary ID format
+          id: classIdToUse    // Alternative ID format for robustness
+        };
+        
+        console.log('Updating class with ID:', classIdToUse);
+        console.log('Full update payload:', enhancedData);
+        
+        try {
+          // Update the class
+          const updateResult = await dispatch(updateClass(enhancedData)).unwrap();
+          console.log('Class update API success:', updateResult);
+          
+          // Wait a brief moment for backend consistency
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Close dialog first
+          handleCloseDialog();
+          toast.success('Class updated successfully');
+          
+          // Then force refresh data with our specialized function
+          await forceRefreshClasses();
+          
+          console.log('Update and refresh workflow complete');
+        } catch (updateError) {
+          console.error('Class update operation failed:', updateError);
+          toast.error(`Update failed: ${updateError.message || 'Unknown error'}`);
+        }
       }
-      
-      setFormOpen(false);
-      
-      // Force a refresh to ensure UI is updated with latest data
-      await dispatch(getClasses()).unwrap();
-      console.log('Classes refreshed after update/create');
     } catch (error) {
-      console.error('Error in form submission:', error);
-      toast.error(`Error: ${error?.message || 'Unknown error'}`);
+      console.error('Form submission error:', error);
+      toast.error(error.message || 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -481,55 +538,68 @@ const ManageClasses = () => {
       toast.error(`Error deleting class: ${error?.message || 'Unknown error'}`);
     }
   };
-
-  return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Manage Classes
-      </Typography>
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Create, edit, and manage class groups for your school.
-      </Typography>
-      
-      <Divider sx={{ my: 2 }} />
-      
-      {/* Search and add controls */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <TextField
-          label="Search Classes"
-          variant="outlined"
-          size="small"
-          value={searchTerm}
-          onChange={handleSearchChange}
-          sx={{ width: '300px' }}
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={handleAdd}
-          disabled={isLoading}
-        >
-          Add New Class
-        </Button>
+  
+  // Show loading state if data is being loaded
+  if (localLoading || isLoading) {
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}
+      >
+        <CircularProgress />
+        <Typography variant="subtitle1" sx={{ ml: 2 }}>
+          Loading class data...
+        </Typography>
       </Box>
-      
-      {/* Classes table */}
-      <TableContainer component={Paper} elevation={1}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Subject</TableCell>
-              <TableCell>Direction</TableCell>
-              <TableCell>School</TableCell>
-              <TableCell>Students</TableCell>
-              <TableCell>Teachers</TableCell>
-              <TableCell>Schedule</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
+    );
+  }
+  
+  return (
+  <Box sx={{ p: 3 }}>
+    <Typography variant="h4" component="h1" gutterBottom>
+      Manage Classes
+    </Typography>
+    <Typography variant="body1" color="text.secondary" paragraph>
+      Create, edit, and manage class groups for your school.
+    </Typography>
+    
+    <Divider sx={{ my: 2 }} />
+    
+    {/* Search and add controls */}
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+      <TextField
+        label="Search Classes"
+        variant="outlined"
+        size="small"
+        value={searchTerm}
+        onChange={handleSearchChange}
+        sx={{ width: '300px' }}
+      />
+      <Button
+        variant="contained"
+        color="primary"
+        startIcon={<AddIcon />}
+        onClick={handleOpenAddDialog}
+      >
+        Add Class
+      </Button>
+    </Box>
+    
+    {/* Classes table */}
+    <TableContainer component={Paper} elevation={1}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Subject</TableCell>
+            <TableCell>Direction</TableCell>
+            <TableCell>School</TableCell>
+            <TableCell>Students</TableCell>
+            <TableCell>Teachers</TableCell>
+            <TableCell>Schedule</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {isLoading ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   <CircularProgress />

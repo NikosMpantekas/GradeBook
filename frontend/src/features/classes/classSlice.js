@@ -84,19 +84,35 @@ export const updateClass = createAsyncThunk(
   'classes/update',
   async (classData, thunkAPI) => {
     try {
-      // Check for user and token
-      const user = thunkAPI.getState().auth.user;
-      if (!user || !user.token) {
-        console.error('No user or token available in updateClass thunk');
-        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      // Validate we have a class ID
+      const classId = classData._id || classData.id;
+      if (!classId) {
+        console.error('Missing class ID in updateClass thunk:', classData);
+        return thunkAPI.rejectWithValue('Class ID is required for update');
+      }
+
+      console.log(`updateClass thunk executing with ID: ${classId}`, classData);
+      
+      const token = thunkAPI.getState().auth.user.token;
+      const result = await classService.updateClass(classData, token);
+      
+      console.log('Class service returned:', result);
+      
+      // Make sure the result has the ID for proper state update
+      if (result && !result._id && classId) {
+        console.log('Adding missing _id to result');
+        result._id = classId;
       }
       
-      // Update class with proper token
-      return await classService.updateClass(classData, user.token);
+      return result;
     } catch (error) {
-      console.error('Error in updateClass thunk:', error);
+      console.error('updateClass thunk error:', error);
       const message =
-        error.response?.data?.message || error.message || error.toString();
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
       return thunkAPI.rejectWithValue(message);
     }
   }

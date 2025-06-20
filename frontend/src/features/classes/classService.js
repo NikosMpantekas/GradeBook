@@ -44,7 +44,6 @@ const updateClass = async (classData, token) => {
   const config = {
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
     },
   };
   
@@ -71,8 +70,15 @@ const updateClass = async (classData, token) => {
       config
     );
     
-    console.log('Class update response:', response.data);
-    return response.data;
+    // CRITICAL FIX: Ensure the response includes the ID
+    // Backend may or may not include _id, so we ensure it's present
+    const resultWithId = {
+      ...response.data,
+      _id: response.data._id || classId // Use response ID or the original ID
+    };
+    
+    console.log('Class update response (with ID):', resultWithId);
+    return resultWithId;
   } catch (error) {
     console.error('Class update error:', error.response?.data || error.message);
     throw error;
