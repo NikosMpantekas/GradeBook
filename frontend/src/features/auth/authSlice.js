@@ -90,31 +90,8 @@ export const login = createAsyncThunk('auth/login', async (user, thunkAPI) => {
     });
     
     return thunkAPI.rejectWithValue(message);
-        role: response.role,
-        hasToken: !!response.token,
-        schoolId: response.schoolId
-      });
-      return response;
-    } catch (error) {
-      const message =
-        (error.response &&
-          error.response.data &&
-          error.response.data.message) ||
-        error.message ||
-        error.toString();
-      
-      // Detailed error logging
-      logger.error('AUTH', 'Login failed', {
-        errorMessage: message,
-        statusCode: error.response?.status,
-        responseData: error.response?.data,
-        errorStack: error.stack
-      });
-      
-      return thunkAPI.rejectWithValue(message);
-    }
   }
-);
+});
 
 // Logout user
 export const logout = createAsyncThunk('auth/logout', async () => {

@@ -3,7 +3,7 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.6.0.23';
+const APP_VERSION = '1.6.0.24';
 
 // API URL from environment variables - proper way without hardcoding
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
