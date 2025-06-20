@@ -209,9 +209,30 @@ export const classSlice = createSlice({
       .addCase(updateClass.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.classes = state.classes.map((c) =>
-          c._id === action.payload._id ? action.payload : c
-        );
+        
+        // Ensure we have a valid payload with _id
+        if (action.payload && action.payload._id) {
+          console.log(`Updating class in store with ID: ${action.payload._id}`);
+          
+          // Find if this class exists in the store
+          const existingIndex = state.classes.findIndex(c => c._id === action.payload._id);
+          
+          if (existingIndex >= 0) {
+            // Replace existing class in the array
+            console.log(`Found existing class at index ${existingIndex}, replacing it`);
+            state.classes = [
+              ...state.classes.slice(0, existingIndex),
+              action.payload,
+              ...state.classes.slice(existingIndex + 1)
+            ];
+          } else {
+            // If not found, add it to the array
+            console.log('Class not found in store, adding it');
+            state.classes.push(action.payload);
+          }
+        } else {
+          console.error('Update class response missing _id:', action.payload);
+        }
       })
       .addCase(updateClass.rejected, (state, action) => {
         state.isLoading = false;

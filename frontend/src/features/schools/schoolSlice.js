@@ -185,10 +185,41 @@ export const getSchool = createAsyncThunk(
 // Update school (admin only)
 export const updateSchool = createAsyncThunk(
   'schools/update',
-  async ({ id, schoolData }, thunkAPI) => {
+  async (payload, thunkAPI) => {
     try {
+      // Handle both object format { id, schoolData } and direct id format
+      let id, schoolData;
+      
+      // Determine if this is an object with id/schoolData or just raw params
+      if (typeof payload === 'object' && payload !== null) {
+        if (payload.id) {
+          id = payload.id;
+          schoolData = payload.schoolData;
+        } else if (payload._id) {
+          // Handle if _id is used instead of id
+          id = payload._id;
+          // Remove _id from the data
+          const { _id, ...rest } = payload;
+          schoolData = rest;
+        } else {
+          // Maybe the entire payload is the schoolData and id is separate
+          schoolData = payload;
+          id = schoolData.id || schoolData._id;
+          
+          // Remove id fields from schoolData if they exist
+          delete schoolData.id;
+          delete schoolData._id;
+        }
+      } else {
+        // If it's not an object, it might be just the ID (legacy format)
+        id = payload;
+      }
+
+      console.log('UPDATE SCHOOL - Final parameters:', { id, schoolDataKeys: schoolData ? Object.keys(schoolData) : 'none' });
+            
       // Validate school ID before making the API call
       if (!id || id === 'undefined') {
+        console.error('School update missing ID:', payload);
         return thunkAPI.rejectWithValue('School ID is required for update');
       }
       
@@ -199,8 +230,11 @@ export const updateSchool = createAsyncThunk(
         return thunkAPI.rejectWithValue('Authentication error: Please log in again');
       }
       
-      return await schoolService.updateSchool(id, schoolData, user.token);
+      const result = await schoolService.updateSchool(id, schoolData || {}, user.token);
+      console.log('UPDATE SCHOOL - Success response:', result);
+      return result;
     } catch (error) {
+      console.error('UPDATE SCHOOL - Error:', error);
       const message =
         (error.response &&
           error.response.data &&
