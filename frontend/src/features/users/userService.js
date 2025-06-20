@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { API_URL } from '../../config/appConfig';
 
-const API_USERS = `${API_URL}/api/users/`;
+// API URL with base URL from config - normalize path to avoid double slashes
+const API_USERS = API_URL.endsWith('/') ? `${API_URL}api/users/` : `${API_URL}/api/users/`;
 
 // Get all users (admin only)
 const getUsers = async (token) => {

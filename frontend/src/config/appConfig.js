@@ -3,10 +3,21 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.6.0.20';
+const APP_VERSION = '1.6.0.21';
 
 // API URL
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// Helper function to construct API endpoint URLs properly, avoiding double slashes
+const buildApiUrl = (baseUrl, endpoint) => {
+  // Remove trailing slash from base URL if it exists
+  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  
+  // Ensure endpoint starts with a slash
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  return `${normalizedBaseUrl}${normalizedEndpoint}`;
+};
 
 // IMMEDIATE SELF-EXECUTING FUNCTION TO NUKE ALL VERSION DATA
 (function() {
@@ -66,10 +77,11 @@ const initAppConfig = () => ({});
 const checkAppVersion = () => ({});
 const shouldShowUpdateNotification = () => false;
 
-// Export bare minimum
+// Export configuration
 export {
-  APP_VERSION,
   API_URL,
+  APP_VERSION,
+  buildApiUrl,
   initAppConfig,
   checkAppVersion,
   shouldShowUpdateNotification
