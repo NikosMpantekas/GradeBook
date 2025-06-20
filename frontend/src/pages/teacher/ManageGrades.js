@@ -30,6 +30,7 @@ import {
   Divider,
   Alert,
   Chip,
+  Snackbar,
   FormHelperText,
 } from '@mui/material';
 
@@ -172,12 +173,18 @@ const ManageGrades = () => {
     fetchData();
 
     return () => {
-      dispatch(reset());
+      dispatch(resetGrades());
     };
   }, [dispatch, user]);
 
 
 
+  // Initialize filtered subjects when subjects change
+  useEffect(() => {
+    // Initialize filteredSubjects with all available subjects
+    setFilteredSubjects(subjects || []);
+  }, [subjects]);
+  
   // Effect to update filtered subjects when class filter changes
   useEffect(() => {
     if (user?.role === 'teacher' && classFilter && teacherClasses.length > 0) {
@@ -188,7 +195,7 @@ const ManageGrades = () => {
         
         // Filter subjects to only show the one assigned to the selected class
         const classSubjectObj = subjects.find(subj => 
-          subj.name.toLowerCase() === selectedClass.subject.toLowerCase());
+          subj && subj.name && subj.name.toLowerCase() === selectedClass.subject.toLowerCase());
         
         if (classSubjectObj) {
           setFilteredSubjects([classSubjectObj]);
@@ -198,11 +205,11 @@ const ManageGrades = () => {
           console.log(`[ManageGrades] No matching subject found for class subject: ${selectedClass.subject}`);
         }
       } else {
-        setFilteredSubjects(subjects);
+        setFilteredSubjects(subjects || []);
       }
     } else {
       // If no class is selected, show all subjects
-      setFilteredSubjects(subjects);
+      setFilteredSubjects(subjects || []);
     }
   }, [classFilter, teacherClasses, subjects, user]);
 
@@ -626,19 +633,21 @@ const ManageGrades = () => {
                 <MenuItem value="">
                   <em>All Subjects</em>
                 </MenuItem>
-                {(filteredSubjects && filteredSubjects.length > 0 ? filteredSubjects : subjects).map((subject) => (
-                  <MenuItem key={subject._id} value={subject._id}>
-                    {subject.name}
-                    {classFilter && filteredSubjects.length === 1 && (
-                      <Chip 
-                        size="small" 
-                        label="Class Subject" 
-                        color="primary" 
-                        variant="outlined"
-                        sx={{ ml: 1 }}
-                      />
-                    )}
-                  </MenuItem>
+                {(filteredSubjects && filteredSubjects.length > 0 ? filteredSubjects : subjects || []).map((subject) => (
+                  subject && subject._id ? (
+                    <MenuItem key={subject._id} value={subject._id}>
+                      {subject.name}
+                      {classFilter && filteredSubjects && filteredSubjects.length === 1 && (
+                        <Chip 
+                          size="small" 
+                          label="Class Subject" 
+                          color="primary" 
+                          variant="outlined"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
+                    </MenuItem>
+                  ) : null
                 ))}
               </Select>
             </FormControl>
