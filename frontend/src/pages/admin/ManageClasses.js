@@ -160,13 +160,27 @@ const ManageClasses = () => {
     }
   }, [schools]);
 
+  // Add debug logging for classes state
+  useEffect(() => {
+    if (classes && classes.length > 0) {
+      console.log(`Received ${classes.length} classes from the backend`);
+      console.log('First class data structure:', JSON.stringify(classes[0], null, 2));
+    }
+  }, [classes]);
+  
   // Filter classes when search term changes
   useEffect(() => {
     if (Array.isArray(classes)) {
       setFilteredClasses(
         classes.filter((classItem) => {
-          const subjectMatch = classItem.subjectName?.toLowerCase().includes(searchTerm.toLowerCase());
-          const directionMatch = classItem.directionName?.toLowerCase().includes(searchTerm.toLowerCase());
+          if (searchTerm === '') return true; // Show all classes when no search term
+          
+          // Account for both backend (subject/direction) and frontend (subjectName/directionName) field names
+          const subject = classItem.subject || classItem.subjectName || '';
+          const direction = classItem.direction || classItem.directionName || '';
+          
+          const subjectMatch = subject.toLowerCase().includes(searchTerm.toLowerCase());
+          const directionMatch = direction.toLowerCase().includes(searchTerm.toLowerCase());
           return subjectMatch || directionMatch;
         })
       );
@@ -459,10 +473,10 @@ const ManageClasses = () => {
             ) : filteredClasses && filteredClasses.length > 0 ? (
               filteredClasses.map((classItem) => (
                 <TableRow key={classItem._id}>
-                  <TableCell>{classItem.subjectName}</TableCell>
-                  <TableCell>{classItem.directionName}</TableCell>
+                  <TableCell>{classItem.subject || classItem.subjectName}</TableCell>
+                  <TableCell>{classItem.direction || classItem.directionName}</TableCell>
                   <TableCell>
-                    {schools?.find((s) => s._id === classItem.schoolId)?.name || 'N/A'}
+                    {schools?.find((s) => s._id === classItem.schoolBranch || s._id === classItem.schoolId)?.name || 'N/A'}
                   </TableCell>
                   <TableCell>
                     {classItem.students?.length || 0} students
