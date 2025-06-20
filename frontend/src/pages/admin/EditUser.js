@@ -35,6 +35,7 @@ import { toast } from 'react-toastify';
 
 import { getUserById, updateUser, reset } from '../../features/users/userSlice';
 import { updateCurrentUserPermissions } from '../../features/auth/authSlice';
+import { API_URL } from '../../config/appConfig';
 
 const EditUser = () => {
   const { id } = useParams();
@@ -99,7 +100,7 @@ const EditUser = () => {
       try {
         setSchoolsLoading(true);
         // Fetch schools from API
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/schools`, {
+        const response = await fetch(`${API_URL}/api/schools`, {
           headers: {
             Authorization: `Bearer ${currentUser.token}`
           }

@@ -428,7 +428,24 @@ const ManageClasses = () => {
                       label="School"
                       disabled={user.role === 'admin'} // Admin can only add to their school
                     >
-                      {schools?.map((school) => (
+                      {schools?.filter(school => {
+                        // Filter out main schools/clusters and only show branches
+                        // Check explicit flag first
+                        if (school.isClusterSchool === true) return false;
+                        
+                        // Check name patterns
+                        const clusterPatterns = /primary|cluster|general|main|central|district|organization/i;
+                        if (school.name && typeof school.name === 'string' && clusterPatterns.test(school.name)) {
+                          return false;
+                        }
+                        
+                        // Check for very short names (likely acronyms for districts)
+                        if (school.name && typeof school.name === 'string' && school.name.length < 5) {
+                          return false;
+                        }
+                        
+                        return true; // Include this school branch
+                      }).map((school) => (
                         <MenuItem key={school._id} value={school._id}>
                           {school.name}
                         </MenuItem>

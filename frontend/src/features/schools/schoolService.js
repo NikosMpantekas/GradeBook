@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-const API_URL = '/api/schools/';
+const API_SCHOOLS = `${API_URL}/api/schools`;
 
 // Create new school (admin only)
 const createSchool = async (schoolData, token) => {
@@ -10,21 +11,21 @@ const createSchool = async (schoolData, token) => {
     },
   };
 
-  const response = await axios.post(API_URL, schoolData, config);
+  const response = await axios.post(API_SCHOOLS, schoolData, config);
 
   return response.data;
 };
 
 // Get all schools
 const getSchools = async () => {
-  const response = await axios.get(API_URL);
+  const response = await axios.get(API_SCHOOLS);
 
   return response.data;
 };
 
 // Get school by ID
 const getSchool = async (schoolId) => {
-  const response = await axios.get(API_URL + schoolId);
+  const response = await axios.get(`${API_SCHOOLS}/${schoolId}`);
 
   return response.data;
 };
@@ -37,7 +38,7 @@ const updateSchool = async (schoolId, schoolData, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + schoolId, schoolData, config);
+  const response = await axios.put(`${API_SCHOOLS}/${schoolId}`, schoolData, config);
 
   return response.data;
 };
@@ -50,7 +51,7 @@ const deleteSchool = async (schoolId, token) => {
     },
   };
 
-  const response = await axios.delete(API_URL + schoolId, config);
+  const response = await axios.delete(`${API_SCHOOLS}/${schoolId}`, config);
 
   return response.data;
 };
