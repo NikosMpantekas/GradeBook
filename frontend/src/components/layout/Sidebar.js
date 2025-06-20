@@ -217,14 +217,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'student',
       },
       
-      // Dashboard for all users
-      {
-        text: 'Dashboard',
-        icon: <DashboardIcon />,
-        path: '/app/dashboard',
-        roles: ['student', 'teacher', 'admin', 'secretary'],
-        section: 'general',
-      },
+      // Removed general dashboard to avoid duplication
     ];
 
     // Filter menu items based on user role and permissions

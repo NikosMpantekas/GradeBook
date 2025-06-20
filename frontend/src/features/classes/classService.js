@@ -57,20 +57,26 @@ const updateClass = async (classData, token) => {
   }
 
   console.log(`Updating class with ID: ${classId}`);
+  console.log('Class update data:', classData);
   
   // Create a clean data object without the ID field
   const cleanData = { ...classData };
   delete cleanData.id; // Remove id from payload
   delete cleanData._id; // Remove _id from payload
   
-  const response = await axios.put(
-    `${API_CLASSES}/${classId}`, 
-    cleanData, 
-    config
-  );
-  
-  console.log('Class update response:', response.data);
-  return response.data;
+  try {
+    const response = await axios.put(
+      `${API_CLASSES}/${classId}`, 
+      cleanData, 
+      config
+    );
+    
+    console.log('Class update response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Class update error:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 // Delete class

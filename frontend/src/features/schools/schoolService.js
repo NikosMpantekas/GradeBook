@@ -65,7 +65,12 @@ const updateSchool = async (id, schoolData, token) => {
     throw new Error('Authorization token is required');
   }
   
-  console.log(`Updating school with ID: ${id}`);
+  console.log(`Updating school with ID: ${id}`, schoolData);
+  
+  // Create a clean copy of the data without any _id or id fields (will be in URL)
+  const cleanData = { ...schoolData };
+  delete cleanData._id;
+  delete cleanData.id;
   
   const config = {
     headers: {
@@ -75,12 +80,15 @@ const updateSchool = async (id, schoolData, token) => {
   };
 
   try {
-    const response = await axios.put(`${API_SCHOOLS}/${id}`, schoolData, config);
+    // Making the API call with proper formatting
+    console.log(`PUT ${API_SCHOOLS}/${id}`, cleanData);
+    const response = await axios.put(`${API_SCHOOLS}/${id}`, cleanData, config);
     console.log('School update successful:', response.data);
     return response.data;
   } catch (error) {
     console.error('School update failed:', {
       id,
+      data: cleanData,
       error: error.message,
       response: error.response?.data,
       status: error.response?.status

@@ -228,7 +228,13 @@ const ManageSchools = () => {
   };
   
   const handleOpenEditDialog = (school) => {
-    setCurrentSchool(school);
+    // Make sure we have a clean copy with the _id properly set
+    const schoolCopy = {
+      ...school,
+      _id: school._id  // Ensure ID is preserved
+    };
+    console.log('Opening edit dialog with school:', schoolCopy);
+    setCurrentSchool(schoolCopy);
     setFormErrors({});
     setOpenEditDialog(true);
   };
@@ -321,9 +327,17 @@ const ManageSchools = () => {
         phone: currentSchool.phone,
         email: currentSchool.email || '',
         website: currentSchool.website || '',
-        logo: currentSchool.logo || ''
+        logo: currentSchool.logo || '',
+        // Include any additional fields needed
+        schoolDomain: currentSchool.schoolDomain || '',
+        emailDomain: currentSchool.emailDomain || '',
+        branchDescription: currentSchool.branchDescription || ''
       };
       
+      // Log the exact payload we're sending
+      console.log('Sending updateSchool with:', { id: schoolId, schoolData });
+      
+      // Dispatch with full school data and ID
       dispatch(updateSchool({ id: schoolId, schoolData }))
         .unwrap()
         .then(() => {
