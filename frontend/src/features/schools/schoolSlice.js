@@ -128,8 +128,16 @@ export const getSchool = createAsyncThunk(
   'schools/get',
   async (id, thunkAPI) => {
     try {
-      return await schoolService.getSchool(id);
+      // Check for user and token
+      const user = thunkAPI.getState().auth.user;
+      if (!user || !user.token) {
+        console.error('No user or token available in getSchool thunk');
+        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      }
+      
+      return await schoolService.getSchool(id, user.token);
     } catch (error) {
+      console.error('Error in getSchool thunk:', error);
       const message =
         (error.response &&
           error.response.data &&
@@ -151,8 +159,14 @@ export const updateSchool = createAsyncThunk(
         return thunkAPI.rejectWithValue('School ID is required for update');
       }
       
-      const token = thunkAPI.getState().auth.user.token;
-      return await schoolService.updateSchool(id, schoolData, token);
+      // Check for user and token
+      const user = thunkAPI.getState().auth.user;
+      if (!user || !user.token) {
+        console.error('No user or token available in updateSchool thunk');
+        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      }
+      
+      return await schoolService.updateSchool(id, schoolData, user.token);
     } catch (error) {
       const message =
         (error.response &&
@@ -170,8 +184,14 @@ export const deleteSchool = createAsyncThunk(
   'schools/delete',
   async (id, thunkAPI) => {
     try {
-      const token = thunkAPI.getState().auth.user.token;
-      return await schoolService.deleteSchool(id, token);
+      // Check for user and token
+      const user = thunkAPI.getState().auth.user;
+      if (!user || !user.token) {
+        console.error('No user or token available in deleteSchool thunk');
+        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      }
+      
+      return await schoolService.deleteSchool(id, user.token);
     } catch (error) {
       const message =
         (error.response &&

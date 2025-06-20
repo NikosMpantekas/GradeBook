@@ -39,9 +39,17 @@ export const createClass = createAsyncThunk(
   'classes/create',
   async (classData, thunkAPI) => {
     try {
-      const token = thunkAPI.getState().auth.user?.token;
-      return await classService.createClass(classData, token);
+      // Check for user and token
+      const user = thunkAPI.getState().auth.user;
+      if (!user || !user.token) {
+        console.error('No user or token available in createClass thunk');
+        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      }
+      
+      // Create class with proper token
+      return await classService.createClass(classData, user.token);
     } catch (error) {
+      console.error('Error in createClass thunk:', error);
       const message =
         error.response?.data?.message || error.message || error.toString();
       return thunkAPI.rejectWithValue(message);
@@ -54,9 +62,16 @@ export const getClass = createAsyncThunk(
   'classes/get',
   async (id, thunkAPI) => {
     try {
-      const token = thunkAPI.getState().auth.user?.token;
-      return await classService.getClass(id, token);
+      // Check for user and token
+      const user = thunkAPI.getState().auth.user;
+      if (!user || !user.token) {
+        console.error('No user or token available in getClass thunk');
+        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      }
+      
+      return await classService.getClass(id, user.token);
     } catch (error) {
+      console.error('Error in getClass thunk:', error);
       const message =
         error.response?.data?.message || error.message || error.toString();
       return thunkAPI.rejectWithValue(message);
@@ -69,9 +84,17 @@ export const updateClass = createAsyncThunk(
   'classes/update',
   async (classData, thunkAPI) => {
     try {
-      const token = thunkAPI.getState().auth.user?.token;
-      return await classService.updateClass(classData, token);
+      // Check for user and token
+      const user = thunkAPI.getState().auth.user;
+      if (!user || !user.token) {
+        console.error('No user or token available in updateClass thunk');
+        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      }
+      
+      // Update class with proper token
+      return await classService.updateClass(classData, user.token);
     } catch (error) {
+      console.error('Error in updateClass thunk:', error);
       const message =
         error.response?.data?.message || error.message || error.toString();
       return thunkAPI.rejectWithValue(message);
@@ -84,9 +107,17 @@ export const deleteClass = createAsyncThunk(
   'classes/delete',
   async (id, thunkAPI) => {
     try {
-      const token = thunkAPI.getState().auth.user?.token;
-      return await classService.deleteClass(id, token);
+      // Check for user and token
+      const user = thunkAPI.getState().auth.user;
+      if (!user || !user.token) {
+        console.error('No user or token available in deleteClass thunk');
+        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      }
+      
+      // Delete class with proper token
+      return await classService.deleteClass(id, user.token);
     } catch (error) {
+      console.error('Error in deleteClass thunk:', error);
       const message =
         error.response?.data?.message || error.message || error.toString();
       return thunkAPI.rejectWithValue(message);

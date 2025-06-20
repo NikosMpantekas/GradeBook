@@ -29,9 +29,14 @@ const getSchools = async (token) => {
 };
 
 // Get school by ID
-const getSchool = async (schoolId) => {
-  const response = await axios.get(`${API_SCHOOLS}/${schoolId}`);
+const getSchool = async (schoolId, token) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
 
+  const response = await axios.get(`${API_SCHOOLS}/${schoolId}`, config);
   return response.data;
 };
 
