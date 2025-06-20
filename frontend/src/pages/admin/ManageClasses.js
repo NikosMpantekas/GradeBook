@@ -339,10 +339,23 @@ const ManageClasses = () => {
       return;
     }
 
-    // Filter out schedule entries with empty times
-    const filteredSchedule = classData.schedule.filter(
-      item => item.startTime && item.endTime
-    );
+    // Only include active days but make sure they have complete data
+    const filteredSchedule = classData.schedule
+      .filter(item => item.active)
+      .map(item => ({
+        day: item.day,
+        startTime: item.startTime || '08:00', // Default time if not set
+        endTime: item.endTime || '09:00'     // Default time if not set
+      }));
+      
+    // Make sure we always have at least one schedule entry
+    if (filteredSchedule.length === 0) {
+      filteredSchedule.push({
+        day: 'Monday',
+        startTime: '08:00',
+        endTime: '09:00'
+      });
+    }
 
     // Prepare the data for submission
     const submissionData = {
@@ -570,72 +583,79 @@ const ManageClasses = () => {
                     <Typography variant="subtitle1" sx={{ mb: 2 }} gutterBottom>
                       Select Students
                     </Typography>
-                    <Box mb={2}>
-                      <TextField
-                        fullWidth
-                        label="Search Students"
-                        variant="outlined"
-                        value={studentFilter}
-                        onChange={(e) => setStudentFilter(e.target.value)}
-                        placeholder="Search by name or email"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <SearchIcon />
-                            </InputAdornment>
-                          ),
-                        }}
-                        size="small"
-                        margin="normal"
-                      />
-                    </Box>
-                    <FormGroup>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                        <Typography variant="caption" color="textSecondary">
-                          Selected: {classData.students.length} student(s)
-                        </Typography>
-                        {classData.students.length > 0 && (
-                          <Button 
-                            size="small" 
-                            onClick={() => setClassData({...classData, students: []})}
-                            startIcon={<ClearIcon fontSize="small" />}
-                          >
-                            Clear All
-                          </Button>
-                        )}
-                      </Box>
-                      <Box sx={{ 
-                        maxHeight: '300px', 
-                        overflowY: 'auto', 
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 1,
-                        p: 1
-                      }}>
-                        {filteredStudents.length === 0 ? (
-                          <Typography variant="body2" color="text.secondary" align="center" sx={{ p: 2 }}>
-                            No students match your search
+                    <Autocomplete
+                      multiple
+                      disableCloseOnSelect
+                      options={users ? users.filter(user => user.role === 'student') : []}
+                      getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
+                      value={users ? users.filter(user => classData.students.includes(user._id) && user.role === 'student') : []}
+                      onChange={(event, newValue) => {
+                        setClassData({
+                          ...classData,
+                          students: newValue.map(student => student._id)
+                        });
+                      }}
+                      filterOptions={(options, { inputValue }) => {
+                        return options.filter(option => 
+                          option.firstName?.toLowerCase().includes(inputValue.toLowerCase()) || 
+                          option.lastName?.toLowerCase().includes(inputValue.toLowerCase()) || 
+                          option.email?.toLowerCase().includes(inputValue.toLowerCase())
+                        );
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          variant="outlined"
+                          label="Students"
+                          placeholder="Search and select students"
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment: (
+                              <>
+                                <InputAdornment position="start">
+                                  <SearchIcon />
+                                </InputAdornment>
+                                {params.InputProps.startAdornment}
+                              </>
+                            )
+                          }}
+                          fullWidth
+                          margin="normal"
+                        />
+                      )}
+                      renderOption={(props, option, { selected }) => (
+                        <li {...props}>
+                          <Checkbox
+                            style={{ marginRight: 8 }}
+                            checked={selected}
+                          />
+                          <Typography variant="body2">
+                            {option.firstName} {option.lastName} • {option.email || ''}
                           </Typography>
-                        ) : (
-                          filteredStudents.map((student) => (
-                            <FormControlLabel
-                              key={student._id}
-                              control={
-                                <Checkbox
-                                  checked={classData.students.includes(student._id)}
-                                  onChange={() => handleStudentToggle(student._id)}
-                                  color="primary"
-                                />
-                              }
-                              label={
-                                <Typography variant="body2">
-                                  {student.firstName} {student.lastName} • {student.email}
-                                </Typography>
-                              }
-                            />
-                          ))
-                        )}
+                        </li>
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            variant="outlined"
+                            label={`${option.firstName} ${option.lastName}`}
+                            size="small"
+                            {...getTagProps({ index })}
+                          />
+                        ))
+                      }
+                    />
+                    {classData.students.length > 0 && (
+                      <Box display="flex" justifyContent="flex-end" mt={1}>
+                        <Button 
+                          size="small" 
+                          onClick={() => setClassData({...classData, students: []})}
+                          startIcon={<ClearIcon fontSize="small" />}
+                        >
+                          Clear All
+                        </Button>
                       </Box>
-                    </FormGroup>
+                    )}
                   </Box>
 
                   <Divider sx={{ my: 2 }} />
@@ -644,61 +664,79 @@ const ManageClasses = () => {
                     <Typography variant="subtitle1" sx={{ mb: 2 }} gutterBottom>
                       Select Teachers
                     </Typography>
-                    <Box mb={2}>
-                      <TextField
-                        fullWidth
-                        label="Search Teachers"
-                        variant="outlined"
-                        value={teacherFilter}
-                        onChange={(e) => setTeacherFilter(e.target.value)}
-                        placeholder="Search by name or email"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <SearchIcon />
-                            </InputAdornment>
-                          ),
-                        }}
-                        size="small"
-                        margin="normal"
-                      />
-                    </Box>
-                    <FormGroup>
-                      <Typography variant="caption" color="textSecondary" sx={{ mb: 1 }}>
-                        Selected: {classData.teachers.length} teacher(s)
-                      </Typography>
-                      <Box sx={{ 
-                        maxHeight: '200px', 
-                        overflowY: 'auto', 
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 1,
-                        p: 1
-                      }}>
-                        {filteredTeachers.length === 0 ? (
-                          <Typography variant="body2" color="text.secondary" align="center" sx={{ p: 2 }}>
-                            No teachers match your search
+                    <Autocomplete
+                      multiple
+                      disableCloseOnSelect
+                      options={users ? users.filter(user => user.role === 'teacher') : []}
+                      getOptionLabel={(option) => `${option.firstName} ${option.lastName}`}
+                      value={users ? users.filter(user => classData.teachers.includes(user._id) && user.role === 'teacher') : []}
+                      onChange={(event, newValue) => {
+                        setClassData({
+                          ...classData,
+                          teachers: newValue.map(teacher => teacher._id)
+                        });
+                      }}
+                      filterOptions={(options, { inputValue }) => {
+                        return options.filter(option => 
+                          option.firstName?.toLowerCase().includes(inputValue.toLowerCase()) || 
+                          option.lastName?.toLowerCase().includes(inputValue.toLowerCase()) || 
+                          option.email?.toLowerCase().includes(inputValue.toLowerCase())
+                        );
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          variant="outlined"
+                          label="Teachers"
+                          placeholder="Search and select teachers"
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment: (
+                              <>
+                                <InputAdornment position="start">
+                                  <SearchIcon />
+                                </InputAdornment>
+                                {params.InputProps.startAdornment}
+                              </>
+                            )
+                          }}
+                          fullWidth
+                          margin="normal"
+                        />
+                      )}
+                      renderOption={(props, option, { selected }) => (
+                        <li {...props}>
+                          <Checkbox
+                            style={{ marginRight: 8 }}
+                            checked={selected}
+                          />
+                          <Typography variant="body2">
+                            {option.firstName} {option.lastName} • {option.email || ''}
                           </Typography>
-                        ) : (
-                          filteredTeachers.map((teacher) => (
-                            <FormControlLabel
-                              key={teacher._id}
-                              control={
-                                <Checkbox
-                                  checked={classData.teachers.includes(teacher._id)}
-                                  onChange={() => handleTeacherToggle(teacher._id)}
-                                  color="primary"
-                                />
-                              }
-                              label={
-                                <Typography variant="body2">
-                                  {teacher.firstName} {teacher.lastName} • {teacher.email}
-                                </Typography>
-                              }
-                            />
-                          ))
-                        )}
+                        </li>
+                      )}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            variant="outlined"
+                            label={`${option.firstName} ${option.lastName}`}
+                            size="small"
+                            {...getTagProps({ index })}
+                          />
+                        ))
+                      }
+                    />
+                    {classData.teachers.length > 0 && (
+                      <Box display="flex" justifyContent="flex-end" mt={1}>
+                        <Button 
+                          size="small" 
+                          onClick={() => setClassData({...classData, teachers: []})}
+                          startIcon={<ClearIcon fontSize="small" />}
+                        >
+                          Clear All
+                        </Button>
                       </Box>
-                    </FormGroup>
+                    )}
                   </Box>
                 </Box>
               )}
