@@ -16,16 +16,28 @@ const createSchool = async (schoolData, token) => {
   return response.data;
 };
 
-// Get all schools
+// Get all schools (FIXED to only get branch schools, not main clusters)
 const getSchools = async (token) => {
   const config = {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+    params: {
+      // Explicitly tell the API to filter out cluster/main schools
+      branchesOnly: true,
+      filterClusters: true
+    }
   };
 
-  const response = await axios.get(API_SCHOOLS, config);
-  return response.data;
+  try {
+    console.log('Requesting schools API with branchesOnly filter');
+    const response = await axios.get(API_SCHOOLS, config);
+    console.log(`API returned ${response.data.length} schools`);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch schools:', error);
+    throw error;
+  }
 };
 
 // Get school by ID

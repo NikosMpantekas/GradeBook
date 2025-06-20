@@ -11,37 +11,69 @@ const initialState = {
 };
 
 /**
- * CRITICAL FIX: Definitive cluster school detection and filtering
- * This is a comprehensive solution to ensure cluster schools never appear in the UI
+ * CRITICAL FIX: Ultimate cluster school detection and filtering
+ * Comprehensive solution to GUARANTEE only school branches appear in the UI
  * @param {Object} school - School object to check
  * @returns {boolean} - True if this is a cluster school that should be filtered out
  */
 const isClusterSchool = (school) => {
   try {
     // Handle null/undefined schools
-    if (!school) return true; // Safety: filter out undefined schools
-    
-    // Multi-layer detection:
-    
-    // 1. Check explicit flag first (most reliable)
-    if (school.isClusterSchool === true) {
-      console.log(`Filtering cluster school by flag: ${school.name}`);
+    if (!school) {
+      console.log('Filtering undefined/null school');
       return true;
     }
     
-    // 2. Check name patterns for legacy data (comprehensive pattern matching)
-    const clusterPatterns = /primary|cluster|general|main|central|district|organization/i;
+    // Log the school being checked for debugging
+    console.log(`Checking school: ${school.name || 'unnamed school'}, ID: ${school._id || 'no id'}`);
+    
+    // Multi-layer detection strategy:
+    
+    // 1. Check explicit flags first (most reliable indicator)
+    if (school.isClusterSchool === true || 
+        school.isMainSchool === true || 
+        school.isParentSchool === true) {
+      console.log(`Filtering school with explicit cluster flag: ${school.name}`);
+      return true;
+    }
+    
+    // 2. Check for school relationships (cluster schools have child schools)
+    if (school.childSchools && Array.isArray(school.childSchools) && school.childSchools.length > 0) {
+      console.log(`Filtering school with child schools: ${school.name}, has ${school.childSchools.length} children`);
+      return true;
+    }
+    
+    if (school.parentSchoolId === null && school.hasChildren === true) {
+      console.log(`Filtering top-level school with children: ${school.name}`);
+      return true;
+    }
+    
+    // 3. Check for domain-level properties (clusters often have these)
+    if (school.schoolDomain || school.emailDomain) {
+      console.log(`Filtering likely cluster school with domain settings: ${school.name}`);
+      return true;
+    }
+    
+    // 4. Check name patterns for comprehensive identification
+    const clusterPatterns = /primary|cluster|general|main|central|district|organization|head|principal|board|academy|group|trust|federation/i;
     if (school.name && typeof school.name === 'string' && clusterPatterns.test(school.name)) {
       console.log(`Filtering cluster school by name pattern: ${school.name}`);
       return true;
     }
     
-    // 3. Check for very short names (likely acronyms for districts)
+    // 5. Check for very short names (likely acronyms for districts)
     if (school.name && typeof school.name === 'string' && school.name.length < 5) {
       console.log(`Filtering potential cluster by short name: ${school.name}`);
       return true;
     }
     
+    // 6. If school has hasStudents=false flag, it's likely administrative only
+    if (school.hasStudents === false) {
+      console.log(`Filtering administrative-only school: ${school.name}`);
+      return true;
+    }
+    
+    console.log(`KEEPING school branch: ${school.name}`);
     return false;
   } catch (error) {
     // Safety: If any error occurs during detection, filter the school out
