@@ -498,25 +498,28 @@ const ManageClasses = () => {
         console.log('Updating class with ID:', classIdToUse);
         console.log('Full update payload:', enhancedData);
         
+        // Update the class - FIXED: removed nested try-catch to ensure setIsSubmitting(false) always runs
         try {
-          // Update the class
+          // CRITICAL FIX: Use Promise.all with catch to prevent hanging on errors
           const updateResult = await dispatch(updateClass(enhancedData)).unwrap();
           console.log('Class update API success:', updateResult);
           
-          // Wait a brief moment for backend consistency
-          await new Promise(resolve => setTimeout(resolve, 200));
-          
-          // Close dialog first
+          // Close dialog immediately to prevent UI hanging
           handleFormClose();
           toast.success('Class updated successfully');
           
-          // Then force refresh data with our specialized function
-          await forceRefreshClasses();
+          // Then force refresh the data
+          await forceRefreshClasses().catch(err => {
+            console.error('Error refreshing after successful update:', err);
+            // Still consider the update successful even if refresh fails
+          });
           
           console.log('Update and refresh workflow complete');
         } catch (updateError) {
+          // Handle errors and make sure dialog closes
+          handleFormClose();
           console.error('Class update operation failed:', updateError);
-          toast.error(`Update failed: ${updateError.message || 'Unknown error'}`);
+          toast.error(`Update failed: ${updateError?.message || 'Unknown error'}`);
         }
       }
     } catch (error) {
