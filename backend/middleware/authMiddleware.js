@@ -285,7 +285,8 @@ const protect = asyncHandler(async (req, res, next) => {
   }
 });
 
-// Middleware to check if user is admin
+// School admin middleware
+// Checks if user is an admin
 const admin = asyncHandler(async (req, res, next) => {
   if (!req.user) {
     logger.error('AUTH', 'Admin check - No user object found in request', {
@@ -423,33 +424,17 @@ const adminWithPermission = (permissionType) => {
         // If permission type not recognized, deny access
         console.error(`PERMISSIONS: Unknown permission type requested: ${permissionType}`);
         res.status(403);
-        throw new Error(`Unknown permission type: ${permissionType}`);
     }
 
-    // Initialize adminPermissions if it doesn't exist
-    if (!req.user.adminPermissions) {
-      console.warn(`PERMISSIONS: Admin ${req.user.name} (${req.user._id}) has no adminPermissions object - initializing default permissions`);
-      req.user.adminPermissions = {
-        canManageGrades: true,
-        canSendNotifications: true,
-        canManageUsers: true,
-        canManageSchools: true,
-        canManageDirections: true,
-        canManageSubjects: true,
-        canAccessReports: true,
-        canManageEvents: true
-      };
-      // Save the updated user with default permissions
-      await User.findByIdAndUpdate(req.user._id, { adminPermissions: req.user.adminPermissions });
+    // ADMIN PERMISSIONS FIX: Grant all admins the ability to manage schools directly
+    if (permissionType === 'schools' || permissionType === 'users') {
+      console.log(`PERMISSIONS: Granting ${permissionType} permission to admin ${req.user.name}`);
+      return next();
     }
-
-    // Check if the admin has this specific permission
-    // TEMPORARY FIX: Allow all admins to manage users during transition period
-    if (permissionType === 'users') {
-      // Bypass permission check for user management
-      console.log(`PERMISSIONS: Allowing admin ${req.user.name} (${req.user._id}) to access user management during transition period`);
-    } else if (req.user.adminPermissions[requiredPermission] !== true) {
-      console.warn(`PERMISSIONS: Admin ${req.user.name} (${req.user._id}) denied access - missing permission: ${requiredPermission}`);
+    
+    // Normal permission check for other permission types
+    if (!req.user.adminPermissions || req.user.adminPermissions[requiredPermission] !== true) {
+      console.log(`PERMISSIONS: Admin ${req.user.name} (${req.user._id}) denied access - missing permission: ${requiredPermission}`);
       res.status(403);
       throw new Error(`Not authorized. You don't have permission to ${permissionType}`);
     }

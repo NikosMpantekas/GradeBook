@@ -7,25 +7,27 @@ const mongoose = require('mongoose');
 // @route   POST /api/classes
 // @access  Private (Admin only)
 const createClass = asyncHandler(async (req, res) => {
-  // Support both field naming conventions
+  // Extract all possible field names from request body
   const { 
     name, 
-    subject, subjectName,
+    subject, subjectName, 
     direction, directionName, 
-    schoolBranch, schoolId,
+    schoolBranch, schoolId, 
     description, 
     students, 
     teachers,
     schedule 
   } = req.body;
   
-  // Use the provided values with fallbacks
-  const actualSubject = subject || subjectName;
-  const actualDirection = direction || directionName;
-  const actualSchoolBranch = schoolBranch || schoolId;
+  // Map frontend field names to backend expected names
+  const classSubject = subject || subjectName;
+  const classDirection = direction || directionName;
+  const classSchoolBranch = schoolBranch || schoolId;
+  // Use subject as name if name not provided
+  const className = name || classSubject;
 
-  // Basic validation
-  if (!name || !actualSubject || !actualDirection || !actualSchoolBranch) {
+  // Basic validation with mapped field names
+  if (!className || !classSubject || !classDirection || !classSchoolBranch) {
     res.status(400);
     throw new Error('Please provide all required fields');
   }
@@ -57,13 +59,13 @@ const createClass = asyncHandler(async (req, res) => {
     throw new Error('A class with this name already exists');
   }
 
-  // Create the class with the current school ID
+  // Create the class with the current school ID and mapped field names
   const newClass = await Class.create({
-    name,
+    name: className,
     schoolId: req.user.schoolId,
-    subject: actualSubject,
-    direction: actualDirection,
-    schoolBranch: actualSchoolBranch,
+    subject: classSubject,
+    direction: classDirection,
+    schoolBranch: classSchoolBranch,
     description: description || '',
     students: students || [],
     teachers: teachers || [],
