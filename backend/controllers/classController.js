@@ -7,19 +7,25 @@ const mongoose = require('mongoose');
 // @route   POST /api/classes
 // @access  Private (Admin only)
 const createClass = asyncHandler(async (req, res) => {
+  // Support both field naming conventions
   const { 
     name, 
-    subject, 
-    direction, 
-    schoolBranch, 
+    subject, subjectName,
+    direction, directionName, 
+    schoolBranch, schoolId,
     description, 
     students, 
     teachers,
     schedule 
   } = req.body;
+  
+  // Use the provided values with fallbacks
+  const actualSubject = subject || subjectName;
+  const actualDirection = direction || directionName;
+  const actualSchoolBranch = schoolBranch || schoolId;
 
   // Basic validation
-  if (!name || !subject || !direction || !schoolBranch) {
+  if (!name || !actualSubject || !actualDirection || !actualSchoolBranch) {
     res.status(400);
     throw new Error('Please provide all required fields');
   }
@@ -55,9 +61,9 @@ const createClass = asyncHandler(async (req, res) => {
   const newClass = await Class.create({
     name,
     schoolId: req.user.schoolId,
-    subject,
-    direction,
-    schoolBranch,
+    subject: actualSubject,
+    direction: actualDirection,
+    schoolBranch: actualSchoolBranch,
     description: description || '',
     students: students || [],
     teachers: teachers || [],
