@@ -9,7 +9,9 @@ const FeatureToggleContext = createContext();
 // Default state for features - everything disabled by default
 const defaultFeatures = {
   enableCalendar: false,
-  enableRatingSystem: false
+  enableRatingSystem: false,
+  enableGrades: false,
+  enableNotifications: false
 };
 
 /**
@@ -28,7 +30,9 @@ export const FeatureToggleProvider = ({ children }) => {
     if (user?.role === 'superadmin') {
       setFeatures({
         enableCalendar: true,
-        enableRatingSystem: true
+        enableRatingSystem: true,
+        enableGrades: true,
+        enableNotifications: true
       });
       setLoading(false);
       return;
@@ -57,16 +61,29 @@ export const FeatureToggleProvider = ({ children }) => {
         const response = await axios.get(`${API_URL}/api/schools/features`, config);
         
         if (response.data && response.data.features) {
-          setFeatures(response.data.features);
+          // Always force enable grades and notifications regardless of API response
+          setFeatures({
+            ...response.data.features,
+            enableGrades: true,
+            enableNotifications: true
+          });
         } else {
-          // Fallback to default if API doesn't return proper structure
-          setFeatures(defaultFeatures);
+          // Force enable features even in fallback case
+          setFeatures({
+            ...defaultFeatures,
+            enableGrades: true,
+            enableNotifications: true
+          });
         }
       } catch (error) {
         console.error('Error fetching feature toggles:', error);
         setError(error.message || 'Failed to load feature toggles');
-        // Fallback to default features on error
-        setFeatures(defaultFeatures);
+        // Fallback to default features on error but force enable grades and notifications
+        setFeatures({
+          ...defaultFeatures,
+          enableGrades: true,
+          enableNotifications: true
+        });
       } finally {
         setLoading(false);
       }
@@ -82,7 +99,9 @@ export const FeatureToggleProvider = ({ children }) => {
     error,
     // Helper functions to check if specific features are enabled
     isCalendarEnabled: features.enableCalendar === true,
-    isRatingSystemEnabled: features.enableRatingSystem === true
+    isRatingSystemEnabled: features.enableRatingSystem === true,
+    isGradesEnabled: features.enableGrades === true,
+    isNotificationsEnabled: features.enableNotifications === true
   };
 
   return (
