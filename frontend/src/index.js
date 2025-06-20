@@ -4,7 +4,9 @@ import { Provider } from 'react-redux';
 import { store } from './app/store';
 import App from './App';
 import './index.css';
-// Service worker has been completely disabled to prevent update notifications
+// Main service worker has been completely disabled to prevent update notifications
+// But we still need the push service worker for notifications
+import { registerPushServiceWorker } from './pushServiceWorkerRegistration';
 
 const container = document.getElementById('root');
 const root = createRoot(container);
@@ -17,8 +19,21 @@ root.render(
   </React.StrictMode>
 );
 
-// SERVICE WORKER COMPLETELY DISABLED
-console.log('⚠️ Service worker has been completely disabled to prevent update notifications');
+// Main SERVICE WORKER DISABLED but push service worker is enabled
+console.log('⚠️ Main service worker disabled, but push notifications service worker is enabled');
+
+// Register only the push service worker
+registerPushServiceWorker()
+  .then(registration => {
+    if (registration) {
+      console.log('Push service worker registered for notifications');
+    } else {
+      console.log('Push service worker registration failed or not supported');
+    }
+  })
+  .catch(error => {
+    console.error('Error during push service worker registration:', error);
+  });
 
 // EMERGENCY FIX: Remove any existing update notifications
 setTimeout(() => {

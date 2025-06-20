@@ -3,10 +3,22 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.6.0.24';
+const APP_VERSION = '1.6.0.25';
 
 // API URL from environment variables - proper way without hardcoding
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// Production deployment on render.com - auto-detect and handle the correct API URL
+if (process.env.NODE_ENV === 'production') {
+  // Check if we're on render.com by looking at the hostname
+  const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  
+  // If we're on the render.com domain, use the same origin for API
+  if (currentHostname.includes('render.com')) {
+    API_URL = window.location.origin;
+    console.log('[appConfig] Production environment detected on render.com, setting API_URL to:', API_URL);
+  }
+}
 
 // Debug logging
 console.log('[appConfig] Environment:', process.env.NODE_ENV);

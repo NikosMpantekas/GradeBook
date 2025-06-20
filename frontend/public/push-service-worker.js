@@ -144,8 +144,11 @@ self.addEventListener('pushsubscriptionchange', (event) => {
         const newSubscription = event.newSubscription;
         
         if (newSubscription) {
-          // Send the new subscription to the server
-          const response = await fetch('/api/notifications/subscription', {
+          // Get the base URL from the service worker scope
+          const baseUrl = self.registration.scope;
+          
+          // Send the new subscription to the server using the correct base URL
+          const response = await fetch(`${baseUrl}api/notifications/subscription`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
