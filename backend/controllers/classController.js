@@ -99,6 +99,15 @@ const createClass = asyncHandler(async (req, res) => {
     console.log('Processed teachers:', processedTeachers);
   }
 
+  console.log('Creating class with schoolId:', req.user.schoolId);
+  console.log('Class creation data:', {
+    name: className,
+    schoolId: req.user.schoolId,
+    subject: classSubject,
+    direction: classDirection,
+    schoolBranch: classSchoolBranch,
+  });
+  
   // Create the class with the current school ID and mapped field names
   const newClass = await Class.create({
     name: className,
@@ -114,6 +123,7 @@ const createClass = asyncHandler(async (req, res) => {
 
   if (newClass) {
     console.log('Class created successfully:', newClass._id);
+    console.log('Created class details:', JSON.stringify(newClass, null, 2));
     res.status(201).json(newClass);
   } else {
     res.status(400);
@@ -125,6 +135,8 @@ const createClass = asyncHandler(async (req, res) => {
 // @route   GET /api/classes
 // @access  Private (Admin and Teachers)
 const getClasses = asyncHandler(async (req, res) => {
+  console.log('Getting classes for user with schoolId:', req.user.schoolId);
+  
   // Construct query based on user role
   let query = { schoolId: req.user.schoolId };
   
@@ -135,6 +147,8 @@ const getClasses = asyncHandler(async (req, res) => {
       teachers: req.user._id
     };
   }
+  
+  console.log('Class query filter:', JSON.stringify(query, null, 2));
 
   // Optional filtering
   const { subject, direction, schoolBranch, teacher, student } = req.query;
@@ -164,6 +178,19 @@ const getClasses = asyncHandler(async (req, res) => {
     .populate('students', 'name email')
     .populate('teachers', 'name email')
     .sort({ name: 1 });
+
+  console.log(`Found ${classes.length} classes matching query`);
+  if (classes.length > 0) {
+    // Only log first class to avoid excessive logging
+    console.log('Sample class data:', JSON.stringify(classes[0], null, 2));
+  } else {
+    console.log('No classes found - trying to get all classes to debug');
+    const allClasses = await Class.find({});
+    console.log(`Total classes in database: ${allClasses.length}`);
+    if (allClasses.length > 0) {
+      console.log('Sample class with potentially mismatched schoolId:', JSON.stringify(allClasses[0], null, 2));
+    }
+  }
 
   res.status(200).json(classes);
 });
