@@ -476,7 +476,7 @@ const ManageClasses = () => {
         toast.success('Class created successfully');
         
         // Close dialog first then refresh data to avoid UI jank
-        handleCloseDialog();
+        handleFormClose();
         await forceRefreshClasses();
       } else {
         // For update mode, verify we have a class ID
@@ -507,7 +507,7 @@ const ManageClasses = () => {
           await new Promise(resolve => setTimeout(resolve, 200));
           
           // Close dialog first
-          handleCloseDialog();
+          handleFormClose();
           toast.success('Class updated successfully');
           
           // Then force refresh data with our specialized function
@@ -578,7 +578,7 @@ const ManageClasses = () => {
         variant="contained"
         color="primary"
         startIcon={<AddIcon />}
-        onClick={handleOpenAddDialog}
+        onClick={handleAdd}
       >
         Add Class
       </Button>
