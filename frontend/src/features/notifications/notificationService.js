@@ -1,7 +1,8 @@
 import axiosInstance from '../../app/axios';
+import { API_URL } from '../../config/appConfig';
 
-const API_URL = '/api/notifications/';
-const SUBSCRIPTION_API_URL = '/api/subscriptions/';
+const API_NOTIFICATIONS = `${API_URL}/api/notifications/`;
+const API_SUBSCRIPTIONS = `${API_URL}/api/subscriptions/`;
 
 // Create new notification
 const createNotification = async (notificationData, token) => {

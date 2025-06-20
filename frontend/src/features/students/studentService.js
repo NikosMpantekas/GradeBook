@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-const API_URL = '/api/users/students';
+const API_STUDENTS = `${API_URL}/api/users/students`;
 
 // Get all students
 const getStudents = async (token) => {
@@ -20,8 +21,8 @@ const getStudents = async (token) => {
       }
     };
 
-    console.log(`[studentService] Making API request to: ${API_URL}`);
-    const response = await axios.get(API_URL, config);
+    console.log(`[studentService] Making API request to: ${API_STUDENTS}`);
+    const response = await axios.get(API_STUDENTS, config);
     
     if (!response.data) {
       console.warn('[studentService] Empty response received');
@@ -70,7 +71,7 @@ const getStudentsBySubject = async (subjectId, token) => {
       }
     };
 
-    const endpointUrl = `${API_URL}/subject/${subjectId}`;
+    const endpointUrl = `${API_STUDENTS}/subject/${subjectId}`;
     console.log(`[studentService] Making API request to: ${endpointUrl}`);
     
     const response = await axios.get(endpointUrl, config);

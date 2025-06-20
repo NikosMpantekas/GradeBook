@@ -1,11 +1,12 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-// API URL from environment or default for development
-const API_URL = '/api/users/';
+// API URL with base URL from config
+const API_AUTH = `${API_URL}/api/users/`;
 
 // Register user
 const register = async (userData) => {
-  const response = await axios.post(API_URL, userData);
+  const response = await axios.post(API_AUTH, userData);
 
   if (response.data) {
     // If the user wants to save credentials, store in localStorage
@@ -26,7 +27,7 @@ const login = async (userData) => {
   
   try {
     // Send saveCredentials preference to the backend
-    const response = await axios.post(API_URL + 'login', userData);
+    const response = await axios.post(API_AUTH + 'login', userData);
     console.log('Login successful - received data:', JSON.stringify(response.data));
 
     // Validate token and refresh token
@@ -134,7 +135,7 @@ const getUserData = async (token) => {
     },
   };
 
-  const response = await axios.get(API_URL + 'me', config);
+  const response = await axios.get(API_AUTH + 'me', config);
   
   if (response.data) {
     // Update the stored user data but preserve the token
@@ -167,7 +168,7 @@ const updateProfile = async (userData, token) => {
   };
 
   console.log('Updating profile with data:', userData);
-  const response = await axios.put(API_URL + 'profile', userData, config);
+  const response = await axios.put(API_AUTH + 'profile', userData, config);
   console.log('Profile update response:', response.data);
 
   if (response.data) {

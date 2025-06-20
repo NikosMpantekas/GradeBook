@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-const API_URL = '/api/ratings/';
+const API_RATINGS = `${API_URL}/api/ratings/`;
 
 // Create a new rating period
 const createRatingPeriod = async (periodData, token) => {
@@ -10,7 +11,7 @@ const createRatingPeriod = async (periodData, token) => {
     }
   };
 
-  const response = await axios.post(API_URL + 'periods', periodData, config);
+  const response = await axios.post(API_RATINGS + 'periods', periodData, config);
   return response.data;
 };
 
@@ -22,7 +23,7 @@ const getRatingPeriods = async (token) => {
     }
   };
 
-  const response = await axios.get(API_URL + 'periods', config);
+  const response = await axios.get(API_RATINGS + 'periods', config);
   return response.data;
 };
 
@@ -34,7 +35,7 @@ const getRatingPeriod = async (id, token) => {
     }
   };
 
-  const response = await axios.get(API_URL + 'periods/' + id, config);
+  const response = await axios.get(API_RATINGS + 'periods/' + id, config);
   return response.data;
 };
 
@@ -46,7 +47,7 @@ const updateRatingPeriod = async (id, periodData, token) => {
     }
   };
 
-  const response = await axios.put(API_URL + 'periods/' + id, periodData, config);
+  const response = await axios.put(API_RATINGS + 'periods/' + id, periodData, config);
   return response.data;
 };
 
@@ -58,7 +59,7 @@ const deleteRatingPeriod = async (id, token) => {
     }
   };
 
-  const response = await axios.delete(API_URL + 'periods/' + id, config);
+  const response = await axios.delete(API_RATINGS + 'periods/' + id, config);
   return response.data;
 };
 
@@ -74,7 +75,7 @@ const createRatingQuestion = async (questionData, token) => {
   console.log('Creating rating question with data:', JSON.stringify(questionData));
   
   try {
-    const response = await axios.post(API_URL + 'questions', questionData, config);
+    const response = await axios.post(API_RATINGS + 'questions', questionData, config);
     console.log('Rating question created successfully:', response.data);
     return response.data;
   } catch (error) {
@@ -92,7 +93,7 @@ const getRatingQuestions = async (periodId, token) => {
   };
 
   console.log('Admin getting questions for period:', periodId);
-  const response = await axios.get(API_URL + 'questions/' + periodId, config);
+  const response = await axios.get(API_RATINGS + 'questions/' + periodId, config);
   return response.data;
 };
 
@@ -105,7 +106,7 @@ const getStudentRatingQuestions = async (periodId, token) => {
   };
 
   console.log('Student getting questions for period:', periodId);
-  const response = await axios.get(API_URL + 'period/' + periodId + '/questions', config);
+  const response = await axios.get(API_RATINGS + 'period/' + periodId + '/questions', config);
   return response.data;
 };
 
@@ -117,7 +118,7 @@ const updateRatingQuestion = async (id, questionData, token) => {
     }
   };
 
-  const response = await axios.put(API_URL + 'questions/' + id, questionData, config);
+  const response = await axios.put(API_RATINGS + 'questions/' + id, questionData, config);
   return response.data;
 };
 
@@ -129,7 +130,7 @@ const deleteRatingQuestion = async (id, token) => {
     }
   };
 
-  const response = await axios.delete(API_URL + 'questions/' + id, config);
+  const response = await axios.delete(API_RATINGS + 'questions/' + id, config);
   return response.data;
 };
 
@@ -141,7 +142,7 @@ const submitRating = async (ratingData, token) => {
     }
   };
 
-  const response = await axios.post(API_URL + 'submit', ratingData, config);
+  const response = await axios.post(API_RATINGS + 'submit', ratingData, config);
   return response.data;
 };
 
@@ -153,7 +154,7 @@ const getActiveRatingPeriods = async (token) => {
     }
   };
 
-  const response = await axios.get(API_URL + 'active', config);
+  const response = await axios.get(API_RATINGS + 'active', config);
   return response.data;
 };
 
@@ -165,7 +166,7 @@ const getRatingTargets = async (periodId, token) => {
     }
   };
 
-  const response = await axios.get(API_URL + 'targets?periodId=' + periodId, config);
+  const response = await axios.get(API_RATINGS + 'targets?periodId=' + periodId, config);
   return response.data;
 };
 
@@ -177,7 +178,7 @@ const getRatingStats = async (targetType, targetId, periodId, token) => {
     }
   };
 
-  let url = API_URL + 'stats/' + targetType + '/' + targetId;
+  let url = API_RATINGS + 'stats/' + targetType + '/' + targetId;
   if (periodId) {
     url += '?periodId=' + periodId;
   }
@@ -194,7 +195,7 @@ const checkStudentRating = async (periodId, targetType, targetId, token) => {
     }
   };
 
-  const response = await axios.get(API_URL + 'check/' + periodId + '/' + targetType + '/' + targetId, config);
+  const response = await axios.get(API_RATINGS + 'check/' + periodId + '/' + targetType + '/' + targetId, config);
   return response.data;
 };
 

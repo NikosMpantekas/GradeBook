@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-const API_URL = '/api/events/';
+const API_EVENTS = `${API_URL}/api/events/`;
 
 // Get all events (filtered by user role and permissions)
 const getEvents = async (token, dateRange = null) => {
@@ -11,7 +12,7 @@ const getEvents = async (token, dateRange = null) => {
   };
 
   // Add date range filtering if provided
-  let url = API_URL;
+  let url = API_EVENTS;
   if (dateRange && dateRange.startDate && dateRange.endDate) {
     url += `?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`;
   }
@@ -28,7 +29,7 @@ const getEventById = async (eventId, token) => {
     },
   };
 
-  const response = await axios.get(API_URL + eventId, config);
+  const response = await axios.get(`${API_EVENTS}${eventId}`, config);
   return response.data;
 };
 
@@ -40,7 +41,7 @@ const createEvent = async (eventData, token) => {
     },
   };
 
-  const response = await axios.post(API_URL, eventData, config);
+  const response = await axios.post(API_EVENTS, eventData, config);
   return response.data;
 };
 
@@ -52,7 +53,7 @@ const updateEvent = async (eventId, eventData, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + eventId, eventData, config);
+  const response = await axios.put(`${API_EVENTS}${eventId}`, eventData, config);
   return response.data;
 };
 
@@ -64,7 +65,7 @@ const deleteEvent = async (eventId, token) => {
     },
   };
 
-  const response = await axios.delete(API_URL + eventId, config);
+  const response = await axios.delete(`${API_EVENTS}${eventId}`, config);
   return response.data;
 };
 

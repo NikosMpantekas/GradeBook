@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-const API_URL = '/api/grades/';
+const API_GRADES = `${API_URL}/api/grades/`;
 
 // Create new grade
 const createGrade = async (gradeData, token) => {
@@ -18,12 +19,12 @@ const createGrade = async (gradeData, token) => {
 
   // Add timestamp to ensure fresh request
   const timestamp = new Date().getTime();
-  const url = `${API_URL}?_t=${timestamp}`;
+  const url = `${API_GRADES}?_t=${timestamp}`;
   
   console.log(`Attempting to save grade with data to ${url}:`, JSON.stringify(gradeData));
   
   try {
-    const response = await axios.post(url, gradeData, config);
+    const response = await axios.post(API_GRADES, gradeData, config);
     console.log('Grade saved successfully:', response.data);
     return response.data;
   } catch (error) {
@@ -55,7 +56,7 @@ const getAllGrades = async (token) => {
 
     // Add timestamp to prevent caching issues
     const timestamp = new Date().getTime();
-    const response = await axios.get(`${API_URL}?_t=${timestamp}`, config);
+    const response = await axios.get(`${API_GRADES}?_t=${timestamp}`, config);
 
     console.log(`API returned ${response.data?.length || 0} total grades for admin`);
     
@@ -81,7 +82,7 @@ const getStudentGrades = async (studentId, token) => {
     },
   };
 
-  const response = await axios.get(API_URL + 'student/' + studentId, config);
+  const response = await axios.get(API_GRADES + 'student/' + studentId, config);
 
   return response.data;
 };
@@ -94,7 +95,7 @@ const getGradesBySubject = async (subjectId, token) => {
     },
   };
 
-  const response = await axios.get(API_URL + 'subject/' + subjectId, config);
+  const response = await axios.get(API_GRADES + 'subject/' + subjectId, config);
 
   return response.data;
 };
@@ -111,7 +112,7 @@ const getGradesByTeacher = async (teacherId, token) => {
 
     // Add timestamp to prevent caching issues
     const timestamp = new Date().getTime();
-    const response = await axios.get(`${API_URL}teacher/${teacherId}?_t=${timestamp}`, config);
+    const response = await axios.get(`${API_GRADES}teacher/${teacherId}?_t=${timestamp}`, config);
 
     console.log(`API returned ${response.data?.length || 0} grades for teacher`);
     
@@ -137,7 +138,7 @@ const getGrade = async (gradeId, token) => {
     },
   };
 
-  const response = await axios.get(API_URL + gradeId, config);
+  const response = await axios.get(API_GRADES + gradeId, config);
 
   return response.data;
 };
@@ -150,7 +151,7 @@ const updateGrade = async (gradeId, gradeData, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + gradeId, gradeData, config);
+  const response = await axios.put(API_GRADES + gradeId, gradeData, config);
 
   return response.data;
 };
@@ -163,7 +164,7 @@ const deleteGrade = async (gradeId, token) => {
     },
   };
 
-  const response = await axios.delete(API_URL + gradeId, config);
+  const response = await axios.delete(API_GRADES + gradeId, config);
 
   return response.data;
 };

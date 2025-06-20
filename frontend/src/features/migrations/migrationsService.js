@@ -1,12 +1,14 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 import { getAuthConfig } from '../../utils/authConfig';
 
-const API_URL = '/api/admin/migrations';
+// Migrations service
+const API_MIGRATIONS = `${API_URL}/api/admin/migrations`;
 
 // Get all available migrations
 const getMigrations = async () => {
   const config = getAuthConfig();
-  const response = await axios.get(API_URL, config);
+  const response = await axios.get(API_MIGRATIONS, config);
   return response.data;
 };
 

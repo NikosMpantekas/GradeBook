@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-const API_URL = '/api/superadmin/';
+const API_SUPERADMIN = `${API_URL}/api/superadmin/`;
 
 // Create new school owner
 const createSchoolOwner = async (schoolOwnerData, token) => {
@@ -11,7 +12,7 @@ const createSchoolOwner = async (schoolOwnerData, token) => {
   };
 
   const response = await axios.post(
-    API_URL + 'create-school-owner', 
+    API_SUPERADMIN + 'create-school-owner', 
     schoolOwnerData, 
     config
   );
@@ -27,7 +28,7 @@ const getSchoolOwners = async (token) => {
     },
   };
 
-  const response = await axios.get(API_URL + 'school-owners', config);
+  const response = await axios.get(API_SUPERADMIN + 'school-owners', config);
 
   return response.data;
 };
@@ -40,7 +41,7 @@ const getSchoolOwnerById = async (ownerId, token) => {
     },
   };
 
-  const response = await axios.get(API_URL + `school-owners/${ownerId}`, config);
+  const response = await axios.get(API_SUPERADMIN + `school-owners/${ownerId}`, config);
 
   return response.data;
 };
@@ -54,7 +55,7 @@ const updateSchoolOwnerStatus = async (ownerId, statusData, token) => {
   };
 
   const response = await axios.put(
-    API_URL + `school-owners/${ownerId}/status`,
+    API_SUPERADMIN + `school-owners/${ownerId}/status`,
     statusData,
     config
   );
@@ -65,7 +66,7 @@ const updateSchoolOwnerStatus = async (ownerId, statusData, token) => {
 // Create first superadmin (initializing the system)
 const createFirstSuperAdmin = async (superAdminData) => {
   const response = await axios.post(
-    API_URL + 'create-first-superadmin',
+    API_SUPERADMIN + 'create-first-superadmin',
     superAdminData
   );
 

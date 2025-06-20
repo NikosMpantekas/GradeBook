@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-const API_URL = '/api/directions/';
+const API_DIRECTIONS = `${API_URL}/api/directions/`;
 
 // Create new direction (admin only)
 const createDirection = async (directionData, token) => {
@@ -10,7 +11,7 @@ const createDirection = async (directionData, token) => {
     },
   };
 
-  const response = await axios.post(API_URL, directionData, config);
+  const response = await axios.post(API_DIRECTIONS, directionData, config);
 
   return response.data;
 };
@@ -25,7 +26,7 @@ const getDirections = async (token) => {
   } : {};
 
   try {
-    const response = await axios.get(API_URL, config);
+    const response = await axios.get(API_DIRECTIONS, config);
     
     // CRITICAL FIX: Validate the response data
     if (!response.data) {
@@ -72,7 +73,7 @@ const updateDirection = async (directionId, directionData, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + directionId, directionData, config);
+  const response = await axios.put(API_DIRECTIONS + directionId, directionData, config);
 
   return response.data;
 };
@@ -85,7 +86,7 @@ const deleteDirection = async (directionId, token) => {
     },
   };
 
-  const response = await axios.delete(API_URL + directionId, config);
+  const response = await axios.delete(API_DIRECTIONS + directionId, config);
 
   return response.data;
 };

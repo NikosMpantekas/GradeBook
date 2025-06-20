@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
-const API_URL = '/api/subjects/';
+const API_SUBJECTS = `${API_URL}/api/subjects/`;
 
 // Create new subject (admin only)
 const createSubject = async (subjectData, token) => {
@@ -10,7 +11,7 @@ const createSubject = async (subjectData, token) => {
     },
   };
 
-  const response = await axios.post(API_URL, subjectData, config);
+  const response = await axios.post(API_SUBJECTS, subjectData, config);
 
   return response.data;
 };
@@ -25,7 +26,7 @@ const getSubjects = async (token) => {
       },
     } : {};
     
-    const response = await axios.get(API_URL, config);
+    const response = await axios.get(API_SUBJECTS, config);
     
     // CRITICAL FIX: Validate response data
     if (!response.data) {
@@ -56,7 +57,7 @@ const getSubject = async (subjectId, token) => {
       },
     } : {};
     
-    const response = await axios.get(API_URL + subjectId, config);
+    const response = await axios.get(API_SUBJECTS + subjectId, config);
     return response.data;
   } catch (error) {
     console.error(`Error fetching subject ${subjectId}:`, error.message);
@@ -76,7 +77,7 @@ const getSubjectsByTeacher = async (teacherId, token) => {
     };
 
     // Ensure the URL is correct with proper slashes
-    const url = `${API_URL}teacher/${teacherId}`;
+    const url = `${API_SUBJECTS}teacher/${teacherId}`;
     console.log(`Making API request to: ${url}`);
     
     const response = await axios.get(url, config);
@@ -103,7 +104,7 @@ const updateSubject = async (subjectId, subjectData, token) => {
     },
   };
 
-  const response = await axios.put(API_URL + subjectId, subjectData, config);
+  const response = await axios.put(API_SUBJECTS + subjectId, subjectData, config);
 
   return response.data;
 };
@@ -116,7 +117,7 @@ const deleteSubject = async (subjectId, token) => {
     },
   };
 
-  const response = await axios.delete(API_URL + subjectId, config);
+  const response = await axios.delete(API_SUBJECTS + subjectId, config);
 
   return response.data;
 };
