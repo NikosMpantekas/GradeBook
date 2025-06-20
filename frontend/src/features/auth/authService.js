@@ -1,16 +1,16 @@
 import axios from 'axios';
-import { API_URL, buildApiUrl } from '../../config/appConfig';
+import { authEndpoint } from '../../config/apiConfig';
 
-// API URL with base URL from config - using the utility function to avoid URL issues
-const API_AUTH_BASE = buildApiUrl(API_URL, 'api/users');
-
-// Add useful debug logging
-console.log('[authService] API_URL:', API_URL);
-console.log('[authService] API_AUTH_BASE:', API_AUTH_BASE);
+// Add extensive debug logging
+console.log('============= AUTH SERVICE INITIALIZATION =============');
+console.log('[authService] Environment:', process.env.NODE_ENV);
+console.log('[authService] Auth API Base URL:', authEndpoint());
+console.log('======================================================');
 
 // Register user
 const register = async (userData) => {
-  const response = await axios.post(`${API_AUTH_BASE}/`, userData);
+  console.log(`[authService] Attempting to register user at: ${authEndpoint('')}`);
+  const response = await axios.post(authEndpoint(''), userData);
 
   if (response.data) {
     // If the user wants to save credentials, store in localStorage
@@ -31,7 +31,8 @@ const login = async (userData) => {
   
   try {
     // Send saveCredentials preference to the backend
-    const response = await axios.post(`${API_AUTH_BASE}/login`, userData);
+    console.log(`[authService] Attempting login at: ${authEndpoint('/login')}`);
+    const response = await axios.post(authEndpoint('/login'), userData);
     console.log('Login successful - received data:', JSON.stringify(response.data));
 
     // Validate token and refresh token
@@ -139,7 +140,8 @@ const getUserData = async (token) => {
     },
   };
 
-  const response = await axios.get(`${API_AUTH_BASE}/me`, config);
+  console.log(`[authService] Getting user data at: ${authEndpoint('/me')}`);
+  const response = await axios.get(authEndpoint('/me'), config);
   
   if (response.data) {
     // Update the stored user data but preserve the token
@@ -172,7 +174,8 @@ const updateProfile = async (userData, token) => {
   };
 
   console.log('Updating profile with data:', userData);
-  const response = await axios.put(`${API_AUTH_BASE}/profile`, userData, config);
+  console.log(`[authService] Updating profile at: ${authEndpoint('/profile')}`);
+  const response = await axios.put(authEndpoint('/profile'), userData, config);
   console.log('Profile update response:', response.data);
 
   if (response.data) {
