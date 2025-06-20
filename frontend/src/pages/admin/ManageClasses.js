@@ -544,33 +544,45 @@ const ManageClasses = () => {
                     {classItem.teachers?.length || 0} teachers
                   </TableCell>
                   <TableCell>
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => {
-                        handleEdit(classItem);
-                        setTabValue(2); // Go directly to schedule tab
-                      }}
-                    >
-                      <ScheduleIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => {
-                        handleEdit(classItem);
-                        setTabValue(0); // Go to basic info tab
-                      }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleDelete(classItem._id)}
-                      color="error"
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    {classItem.schedule && classItem.schedule.length > 0 ? (
+                      <Tooltip title="View Schedule">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => {
+                            handleEdit(classItem);
+                            setTabValue(2); // Go directly to schedule tab
+                          }}
+                        >
+                          <ScheduleIcon />
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">No schedule</Typography>
+                    )}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="Edit Class">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => {
+                          handleEdit(classItem);
+                          setTabValue(0); // Go to basic info tab
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete Class">
+                      <IconButton
+                        onClick={() => handleDelete(classItem._id)}
+                        color="error"
+                        size="small"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))
