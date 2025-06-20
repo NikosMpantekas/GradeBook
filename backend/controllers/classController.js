@@ -7,7 +7,8 @@ const mongoose = require('mongoose');
 // @route   POST /api/classes
 // @access  Private (Admin only)
 const createClass = asyncHandler(async (req, res) => {
-  // Extract all possible field names from request body
+  console.log('Create class request body:', JSON.stringify(req.body, null, 2));
+  
   const { 
     name, 
     subject, subjectName, 
@@ -26,6 +27,13 @@ const createClass = asyncHandler(async (req, res) => {
   // Use subject as name if name not provided
   const className = name || classSubject;
 
+  console.log('Mapped class fields:', {
+    name: className,
+    subject: classSubject,
+    direction: classDirection,
+    schoolBranch: classSchoolBranch
+  });
+  
   // Basic validation with mapped field names
   if (!className || !classSubject || !classDirection || !classSchoolBranch) {
     res.status(400);
@@ -59,6 +67,38 @@ const createClass = asyncHandler(async (req, res) => {
     throw new Error('A class with this name already exists');
   }
 
+  // Process students and teachers arrays to ensure they are valid MongoDB IDs
+  let processedStudents = [];
+  let processedTeachers = [];
+  
+  // Process students array - ensure IDs are valid and handle object format from frontend
+  if (students && Array.isArray(students)) {
+    processedStudents = students.map(student => {
+      if (typeof student === 'string') {
+        return student;  // Already an ID string
+      } else if (student && student._id) {
+        return student._id;  // Extract ID from object
+      }
+      return null;
+    }).filter(Boolean);  // Remove any null values
+    
+    console.log('Processed students:', processedStudents);
+  }
+  
+  // Process teachers array - ensure IDs are valid and handle object format from frontend
+  if (teachers && Array.isArray(teachers)) {
+    processedTeachers = teachers.map(teacher => {
+      if (typeof teacher === 'string') {
+        return teacher;  // Already an ID string
+      } else if (teacher && teacher._id) {
+        return teacher._id;  // Extract ID from object
+      }
+      return null;
+    }).filter(Boolean);  // Remove any null values
+    
+    console.log('Processed teachers:', processedTeachers);
+  }
+
   // Create the class with the current school ID and mapped field names
   const newClass = await Class.create({
     name: className,
@@ -67,12 +107,13 @@ const createClass = asyncHandler(async (req, res) => {
     direction: classDirection,
     schoolBranch: classSchoolBranch,
     description: description || '',
-    students: students || [],
-    teachers: teachers || [],
+    students: processedStudents,
+    teachers: processedTeachers,
     schedule: schedule || [],
   });
 
   if (newClass) {
+    console.log('Class created successfully:', newClass._id);
     res.status(201).json(newClass);
   } else {
     res.status(400);

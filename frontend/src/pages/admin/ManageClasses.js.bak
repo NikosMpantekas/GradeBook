@@ -647,7 +647,7 @@ const ManageClasses = () => {
                         value.map((option, index) => (
                           <Chip
                             variant="outlined"
-                            label={`${option.firstName || ""} ${option.lastName || ""}`.trim() || option.email || "User"}
+                            label={`${option.firstName} ${option.lastName}`}
                             size="small"
                             {...getTagProps({ index })}
                           />
@@ -737,7 +737,7 @@ const ManageClasses = () => {
                         value.map((option, index) => (
                           <Chip
                             variant="outlined"
-                            label={`${option.firstName || ""} ${option.lastName || ""}`.trim() || option.email || "User"}
+                            label={`${option.firstName} ${option.lastName}`}
                             size="small"
                             {...getTagProps({ index })}
                           />
