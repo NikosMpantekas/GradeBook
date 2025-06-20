@@ -66,10 +66,13 @@ const ManageClasses = () => {
   
   // Form state
   const [formOpen, setFormOpen] = useState(false);
+  // Force the branch school for new classes
+  const branchSchoolId = '6834cef6ae7eb00ba4d0820d'; // Φροντιστήριο Βαθύ
+  
   const [classData, setClassData] = useState({
     subjectName: '',
     directionName: '',
-    schoolId: '',
+    schoolId: branchSchoolId, // Pre-select branch school
     students: [],
     teachers: [],
     schedule: [
@@ -152,7 +155,7 @@ const ManageClasses = () => {
     setClassData({
       subjectName: '',
       directionName: '',
-      schoolId: user.role === 'admin' ? user.schoolId : '',
+      schoolId: branchSchoolId, // Always use the branch school ID
       students: [],
       teachers: [],
       schedule: [
@@ -450,36 +453,12 @@ const ManageClasses = () => {
                       value={classData.schoolId}
                       onChange={handleFormChange}
                       label="School"
-                      disabled={user.role === 'admin'} // Admin can only add to their school
+                      disabled={true} /* Always disabled - Only one school available */
                     >
-                      {/* HARDCODED BRANCH SCHOOL - Primary fix */}
+                      {/* FULLY HARDCODED - Guaranteed to work */}
                       <MenuItem key="6834cef6ae7eb00ba4d0820d" value="6834cef6ae7eb00ba4d0820d">
-                        Φροντιστήριο Βαθύ (Main Branch)
+                        Φροντιστήριο Βαθύ (Branch)
                       </MenuItem>
-                      
-                      {/* Dynamic schools - Secondary options */}
-                      {schools?.map(school => {
-                        // Skip the main branch that's already hardcoded
-                        if (school._id === '6834cef6ae7eb00ba4d0820d') {
-                          return null;
-                        }
-                        
-                        // Skip the main clusters
-                        if (school._id === '6830531d4930876187757ec4' || // Παρώθηση
-                            school._id === '6834c513b7b423cc93e4afee') { // Nikos
-                          return null;
-                        }
-                        
-                        // Log for debugging
-                        console.log(`Adding school to dropdown: ${school.name} (${school._id})`);
-                        
-                        // Return any other schools
-                        return (
-                          <MenuItem key={school._id} value={school._id}>
-                            {school.name}
-                          </MenuItem>
-                        );
-                      })}
                     </Select>
                   </FormControl>
                 </Box>
