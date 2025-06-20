@@ -93,8 +93,8 @@ const ManageSchools = () => {
   }, [schools, searchTerm, isError, message]);
   
   /**
-   * School branch detection - MINIMAL filtering to show existing schools
-   * This is a FIXED version that won't filter out your legitimate schools
+   * School branch detection - EXACT filtering based on known school data
+   * Custom implementation for Parothisi Database structure
    */
   const isClusterSchool = (school) => {
     try {
@@ -107,36 +107,59 @@ const ManageSchools = () => {
       // Log which school we're checking
       console.log(`UI Filter checking school: ${school.name || 'unnamed'}, ID: ${school._id || 'no ID'}`);
       
-      // MINIMAL filtering that only excludes schools explicitly marked as clusters
+      // EXACT filtering based on school IDs and known data structure
       
-      // 1. If it's explicitly flagged as NOT a cluster, ALWAYS keep it
-      if (school.isClusterSchool === false || school.isBranchSchool === true) {
-        console.log(`UI Filter: KEEPING explicitly marked branch: ${school.name}`);
-        return false;
-      }
-      
-      // 2. Only filter out schools EXPLICITLY marked as clusters
-      if (school.isClusterSchool === true) {
-        console.log(`UI Filter: Excluding explicit cluster school: ${school.name}`);
+      // 1. Main School "Παρώθηση" - Filter out by exact ID
+      if (school._id === '6830531d4930876187757ec4') {
+        console.log(`UI Filter: Filtering main cluster Παρώθηση by ID`);
         return true;
       }
       
-      // 3. Extremely minimal pattern matching - only exact matches
-      if (school.name) {
-        const exactClusterNames = ['cluster', 'main', 'district', 'central'];
-        const nameLower = school.name.toLowerCase();
-        if (exactClusterNames.includes(nameLower)) {
-          console.log(`UI Filter: Excluding obvious cluster by exact name: ${school.name}`);
+      // 2. Main School "Nikos" - Filter out by exact ID
+      if (school._id === '6834c513b7b423cc93e4afee') {
+        console.log(`UI Filter: Filtering main cluster Nikos by ID`);
+        return true;
+      }
+      
+      // 3. Branch "Φροντιστήριο Βαθύ" - Keep this one explicitly
+      if (school._id === '6834cef6ae7eb00ba4d0820d') {
+        console.log(`UI Filter: KEEPING confirmed branch school: ${school.name}`);
+        return false;
+      }
+      
+      // Additional heuristic filtering for future schools
+      
+      // 4. Schools that are direct branches should be kept
+      if (school.parentCluster) {
+        console.log(`UI Filter: KEEPING branch with parent: ${school.name}`);
+        return false;
+      }
+      
+      // 5. Schools with exact names matching our clusters
+      const mainClusterNames = ['Παρώθηση', 'Nikos'];
+      if (mainClusterNames.includes(school.name)) {
+        console.log(`UI Filter: Filtering known main cluster by name: ${school.name}`);
+        return true;
+      }
+      
+      // 6. Compare domain with name (normalized for Greek characters)
+      if (school.schoolDomain && school.name) {
+        const normalizedName = school.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const normalizedDomain = school.schoolDomain.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        // If domain exactly matches name, it's likely a main cluster
+        if (normalizedName === normalizedDomain || 
+            normalizedDomain === 'parwthisi' && school.name === 'Παρώθηση') {
+          console.log(`UI Filter: Filtering main cluster by domain match: ${school.name}`);
           return true;
         }
       }
       
-      // By default, KEEP all schools to avoid filtering out legitimate branches
+      // By default, keep all other schools
       console.log(`UI Filter: KEEPING school: ${school.name}`);
       return false;
     } catch (error) {
-      // Log the error but KEEP the school anyway to avoid losing legitimate branches
-      console.error('UI Filter: Error in school filtering, keeping school for safety:', error);
+      console.error('UI Filter: Error in filtering, keeping school to be safe:', error);
       return false;
     }
   };

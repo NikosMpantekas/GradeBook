@@ -429,45 +429,67 @@ const ManageClasses = () => {
                       disabled={user.role === 'admin'} // Admin can only add to their school
                     >
                       {schools?.filter(school => {
-                        // RELAXED school filtering - minimal approach to show all schools
+                        // EXACT filtering based on known school data
                         try {
                           // Log which school we're checking
                           console.log(`Class Form checking school: ${school.name || 'unnamed'}, ID: ${school._id || 'no ID'}`);
                           
-                          // MINIMAL filtering - only exclude explicitly marked clusters
+                          // Filter based on exact school IDs and data structure
                           
-                          // 1. If school is null/undefined, skip it
+                          // 1. Skip null/undefined schools
                           if (!school) {
                             return false;
                           }
                           
-                          // 2. If explicitly NOT a cluster or IS a branch, always include it
-                          if (school.isClusterSchool === false || school.isBranchSchool === true) {
-                            console.log(`Class Form: KEEPING explicitly marked branch: ${school.name}`);
-                            return true;
-                          }
-                          
-                          // 3. Only filter out if EXPLICITLY marked as cluster
-                          if (school.isClusterSchool === true) {
-                            console.log(`Class Form: Excluding explicit cluster: ${school.name}`);
+                          // 2. Main School "Παρώθηση" - Filter out by exact ID
+                          if (school._id === '6830531d4930876187757ec4') {
+                            console.log(`Class Form: Excluding main cluster Παρώθηση by ID`);
                             return false;
                           }
                           
-                          // 4. Minimal name-based filtering - only exact matches for cluster terms
-                          if (school.name) {
-                            const exactClusterNames = ['cluster', 'main', 'district', 'central'];
-                            const nameLower = school.name.toLowerCase();
-                            if (exactClusterNames.includes(nameLower)) {
-                              console.log(`Class Form: Excluding obvious cluster by name: ${school.name}`);
+                          // 3. Main School "Nikos" - Filter out by exact ID
+                          if (school._id === '6834c513b7b423cc93e4afee') {
+                            console.log(`Class Form: Excluding main cluster Nikos by ID`);
+                            return false;
+                          }
+                          
+                          // 4. Branch "Φροντιστήριο Βαθύ" - Keep this one explicitly
+                          if (school._id === '6834cef6ae7eb00ba4d0820d') {
+                            console.log(`Class Form: KEEPING confirmed branch school: ${school.name}`);
+                            return true;
+                          }
+                          
+                          // 5. Schools that are direct branches should be kept
+                          if (school.parentCluster) {
+                            console.log(`Class Form: KEEPING branch with parent: ${school.name}`);
+                            return true;
+                          }
+                          
+                          // 6. Filter out schools with exact main cluster names
+                          const mainClusterNames = ['Παρώθηση', 'Nikos'];
+                          if (mainClusterNames.includes(school.name)) {
+                            console.log(`Class Form: Excluding main cluster by name: ${school.name}`);
+                            return false;
+                          }
+                          
+                          // 7. Compare domain with name (normalized for Greek characters)
+                          if (school.schoolDomain && school.name) {
+                            const normalizedName = school.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                            const normalizedDomain = school.schoolDomain.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                            
+                            // If the domain exactly matches the school name, it's likely a main cluster
+                            if (normalizedName === normalizedDomain || 
+                                normalizedDomain === 'parwthisi' && school.name === 'Παρώθηση') {
+                              console.log(`Class Form: Excluding main cluster by domain: ${school.name}`);
                               return false;
                             }
                           }
                           
-                          // Default: KEEP all other schools
+                          // By default, include all other schools
                           console.log(`Class Form: KEEPING school: ${school.name}`);
                           return true;
                         } catch (error) {
-                          // On error, keep the school (safer than excluding)
+                          // On error, include the school to be safe
                           console.error('Class Form: Error filtering school, keeping it:', error);
                           return true;
                         }

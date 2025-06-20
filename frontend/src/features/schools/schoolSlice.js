@@ -11,7 +11,7 @@ const initialState = {
 };
 
 /**
- * School branch filtering - FIXED to allow legitimate branches
+ * School branch filtering - CUSTOM for Parothisi Database Structure
  * @param {Object} school - School object to check
  * @returns {boolean} - True if this is a cluster school that should be filtered out
  */
@@ -26,36 +26,60 @@ const isClusterSchool = (school) => {
     // Log the school being checked for debugging
     console.log(`Checking school: ${school.name || 'unnamed school'}, ID: ${school._id || 'no id'}`);
     
-    // RELAXED filtering to keep existing branches:
+    // CUSTOM filtering for Parothisi Database Structure
     
-    // 1. Only filter out if EXPLICITLY flagged as cluster
-    if (school.isClusterSchool === true) {
-      console.log(`Filtering school with explicit cluster flag: ${school.name}`);
+    // 1. Main School "Παρώθηση" - Filter out by exact ID
+    if (school._id === '6830531d4930876187757ec4') {
+      console.log(`Filtering main cluster by ID: ${school.name}`);
       return true;
     }
     
-    // 2. If it's explicitly marked as branch, ALWAYS keep it
-    if (school.isBranchSchool === true) {
-      console.log(`KEEPING explicitly marked branch school: ${school.name}`);
+    // 2. Main School "Nikos" - Filter out by exact ID
+    if (school._id === '6834c513b7b423cc93e4afee') {
+      console.log(`Filtering main cluster by ID: ${school.name}`);
+      return true;
+    }
+    
+    // 3. Branch "Φροντιστήριο Βαθύ" - Keep this one
+    if (school._id === '6834cef6ae7eb00ba4d0820d') {
+      console.log(`KEEPING confirmed branch school: ${school.name}`);
       return false;
     }
     
-    // 3. Very minimal pattern matching to avoid over-filtering
-    if (school.name && typeof school.name === 'string') {
-      const nameLC = school.name.toLowerCase();
-      if (nameLC === 'cluster' || nameLC === 'main' || nameLC === 'district' || nameLC === 'central') {
-        console.log(`Filtering obvious cluster school by exact name: ${school.name}`);
+    // Additional heuristic filtering for future schools
+    
+    // 4. Schools that are direct branches should be kept
+    if (school.parentCluster) {
+      console.log(`KEEPING branch with parent: ${school.name}`);
+      return false;
+    }
+    
+    // 5. Special case - filter by name if it's one of our main clusters
+    const mainClusterNames = ['Παρώθηση', 'Nikos'];
+    if (mainClusterNames.includes(school.name)) {
+      console.log(`Filtering known main cluster by name: ${school.name}`);
+      return true;
+    }
+    
+    // Default: Compare domain with name to detect if it's a main cluster
+    if (school.schoolDomain && school.name) {
+      const normalizedSchoolName = school.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const normalizedDomain = school.schoolDomain.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      
+      // If the domain exactly matches the school name, it's likely a main cluster
+      if (normalizedSchoolName === normalizedDomain || 
+          normalizedDomain === 'parwthisi' && school.name === 'Παρώθηση') {
+        console.log(`Filtering main cluster by domain match: ${school.name}`);
         return true;
       }
     }
     
-    // Default: KEEP the school to avoid filtering out legitimate branches
+    // By default, keep schools that don't match our filtering criteria
     console.log(`KEEPING school: ${school.name}`);
     return false;
   } catch (error) {
-    // Log the error but KEEP the school anyway to avoid losing legitimate branches
-    console.error('Error in school filtering, keeping school for safety:', error, school);
-    return false;
+    console.error('Error in school filtering, keeping to be safe:', error);
+    return false; 
   }
 };
 
