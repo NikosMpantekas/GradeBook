@@ -250,46 +250,39 @@ const ManageClasses = () => {
       { day: 'Sunday', startTime: '', endTime: '', active: false },
     ];
     
-    // Process the existing schedule data (if any)
-    let processedSchedule = fullWeekTemplate;
-    if (classItem.schedule && Array.isArray(classItem.schedule) && classItem.schedule.length > 0) {
-      // Map each existing schedule entry to its corresponding day in the template
-      processedSchedule = fullWeekTemplate.map(template => {
-        const existingEntry = classItem.schedule.find(s => s.day === template.day);
-        if (existingEntry) {
-          return {
-            ...template,
-            startTime: existingEntry.startTime || '',
-            endTime: existingEntry.endTime || '',
-            active: true // If there's data for this day, mark it as active
+    // Map existing schedule to the template
+    let processedSchedule = [...fullWeekTemplate];
+    if (classItem.schedule && Array.isArray(classItem.schedule)) {
+      // Process each day in the existing schedule
+      classItem.schedule.forEach(item => {
+        // Find the day in our template
+        const dayIndex = processedSchedule.findIndex(d => d.day === item.day);
+        if (dayIndex >= 0) {
+          // Update the template with the existing schedule data
+          processedSchedule[dayIndex] = {
+            ...processedSchedule[dayIndex],
+            startTime: item.startTime || '',
+            endTime: item.endTime || '',
+            active: true // If it's in the schedule, it's active
           };
         }
-        return template;
       });
     }
     
-    // Get students and teachers data
-    // If we have full objects, extract IDs; if we have just IDs, keep them as is
-    let studentIds = [];
-    if (classItem.students) {
-      studentIds = classItem.students.map(student => 
-        typeof student === 'object' && student._id ? student._id : student
-      );
-    }
+    // Get the IDs of teachers and students
+    const teacherIds = (classItem.teachers || []).map(teacher => 
+      typeof teacher === 'string' ? teacher : teacher._id
+    );
     
-    let teacherIds = [];
-    if (classItem.teachers) {
-      teacherIds = classItem.teachers.map(teacher => 
-        typeof teacher === 'object' && teacher._id ? teacher._id : teacher
-      );
-    }
+    const studentIds = (classItem.students || []).map(student => 
+      typeof student === 'string' ? student : student._id
+    );
     
-    console.log('Processed student IDs:', studentIds);
-    console.log('Processed teacher IDs:', teacherIds);
+    // Store the class ID for update operation
+    const classId = classItem._id;
     
-    // Map backend field names to frontend field names if needed
     setClassData({
-      id: classItem._id,
+      _id: classId, // Store the ID in the state
       subjectName: classItem.subject || classItem.subjectName || '',
       directionName: classItem.direction || classItem.directionName || '',
       schoolId: classItem.schoolBranch || classItem.schoolId || '',
@@ -299,7 +292,7 @@ const ManageClasses = () => {
     });
     
     console.log('Setting form data:', {
-      id: classItem._id,
+      _id: classId,
       subjectName: classItem.subject || classItem.subjectName || '',
       directionName: classItem.direction || classItem.directionName || '',
       schoolId: classItem.schoolBranch || classItem.schoolId || '',
@@ -427,16 +420,17 @@ const ManageClasses = () => {
       .map(item => ({
         day: item.day,
         startTime: item.startTime || '08:00', // Default time if not set
-        endTime: item.endTime || '09:00'     // Default time if not set
+        endTime: item.endTime || '09:00', // Default time if not set
       }));
-      
-    // Make sure we always have at least one schedule entry
-    if (filteredSchedule.length === 0) {
-      filteredSchedule.push({
-        day: 'Monday',
-        startTime: '08:00',
-        endTime: '09:00'
-      });
+
+    // Validate schedule if there are active days
+    if (filteredSchedule.length > 0) {
+      const invalidSchedule = filteredSchedule.some(item => !item.startTime || !item.endTime);
+      if (invalidSchedule) {
+        toast.error('Please provide start and end times for all active days');
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     // Prepare the data for submission
@@ -444,12 +438,22 @@ const ManageClasses = () => {
       ...classData,
       schedule: filteredSchedule,
     };
+    
+    // Debug logging
+    console.log(`Form mode: ${formMode}`, submissionData);
 
     try {
       if (formMode === 'add') {
         await dispatch(createClass(submissionData)).unwrap();
         toast.success('Class created successfully');
       } else {
+        // Ensure we have the _id for updates
+        if (!submissionData._id) {
+          toast.error('Cannot update class: Missing class ID');
+          setIsSubmitting(false);
+          return;
+        }
+        
         await dispatch(updateClass(submissionData)).unwrap();
         toast.success('Class updated successfully');
       }

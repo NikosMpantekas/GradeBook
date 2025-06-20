@@ -317,10 +317,11 @@ const ManageSchools = () => {
         return;
       }
       
-      // Structure the update data correctly with id and schoolData separately
+      // Extract the ID
       const schoolId = currentSchool._id; 
       console.log('Updating school with ID:', schoolId);
       
+      // Create a clean schoolData object without the ID
       const schoolData = {
         name: currentSchool.name,
         address: currentSchool.address,
@@ -328,17 +329,18 @@ const ManageSchools = () => {
         email: currentSchool.email || '',
         website: currentSchool.website || '',
         logo: currentSchool.logo || '',
-        // Include any additional fields needed
         schoolDomain: currentSchool.schoolDomain || '',
         emailDomain: currentSchool.emailDomain || '',
+        parentCluster: currentSchool.parentCluster || '',
+        isClusterSchool: currentSchool.isClusterSchool || false,
         branchDescription: currentSchool.branchDescription || ''
       };
       
       // Log the exact payload we're sending
       console.log('Sending updateSchool with:', { id: schoolId, schoolData });
       
-      // Dispatch with full school data and ID
-      dispatch(updateSchool({ id: schoolId, schoolData }))
+      // Dispatch with separate id and schoolData parameters matching what the action expects
+      dispatch(updateSchool({ id: schoolId, schoolData: schoolData }))
         .unwrap()
         .then(() => {
           setOpenEditDialog(false);
