@@ -2,7 +2,7 @@
  * Application configuration
  */
 
-// App version (GRADES AND NOTIFICATIONS RESTORED)
+// App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 const APP_VERSION = '1.6.0.45';
 
 // API URL from environment variables - proper way without hardcoding

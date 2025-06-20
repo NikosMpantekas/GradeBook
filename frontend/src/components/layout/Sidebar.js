@@ -74,6 +74,12 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       return true;
     }
     
+    // Always enable grades and notifications regardless of context
+    if (featureName === 'enableGrades' || featureName === 'enableNotifications') {
+      console.log(`Forcing ${featureName} to be enabled for user ${user?.name}`);
+      return true;
+    }
+    
     // Check if the feature exists in the context
     if (features && featureName in features) {
       return features[featureName] === true;
