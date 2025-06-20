@@ -95,6 +95,7 @@ const ManageSchools = () => {
   /**
    * CRITICAL FIX: Definitive cluster school detection - UI-level filter
    * Third and final layer of protection to ensure cluster schools never appear
+   * Exactly matching the filtering logic in ManageClasses component for consistency
    */
   const isClusterSchool = (school) => {
     try {
@@ -142,7 +143,7 @@ const ManageSchools = () => {
       // First apply cluster school filtering as a UI-level safeguard
       const nonClusterSchools = schools.filter(school => !isClusterSchool(school));
       
-      console.log(`UI Filter: Excluded ${schools.length - nonClusterSchools.length} cluster schools`);
+      console.log(`UI Filter: Excluded ${schools.length - nonClusterSchools.length} cluster schools, showing ${nonClusterSchools.length} school branches`);
       
       // Then apply the search filter to the non-cluster schools
       if (searchTerm.trim() === '') {

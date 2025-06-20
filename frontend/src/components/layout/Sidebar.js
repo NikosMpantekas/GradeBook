@@ -219,13 +219,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
             user.secretaryPermissions?.canManageDirections === true;
         },
       },
-      {
-        text: 'Manage Subjects',
-        icon: <SubjectsIcon />,
-        path: '/app/admin/subjects',
-        roles: ['admin', 'secretary'],
-        checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSubjects),
-      },
+      // Manage Subjects menu item removed as requested
+
       {
         text: 'Student Progress',
         icon: <AssessmentIcon />,

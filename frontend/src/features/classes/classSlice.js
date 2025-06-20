@@ -15,9 +15,18 @@ export const getClasses = createAsyncThunk(
   'classes/getAll',
   async (_, thunkAPI) => {
     try {
-      const token = thunkAPI.getState().auth.user?.token;
-      return await classService.getClasses(token);
+      // Check for user and token
+      const user = thunkAPI.getState().auth.user;
+      if (!user || !user.token) {
+        console.error('No user or token available in getClasses thunk');
+        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      }
+      
+      // Get classes with proper token
+      const result = await classService.getClasses(user.token);
+      return result;
     } catch (error) {
+      console.error('Error in getClasses thunk:', error);
       const message =
         error.response?.data?.message || error.message || error.toString();
       return thunkAPI.rejectWithValue(message);

@@ -104,12 +104,12 @@ export const getSchools = createAsyncThunk(
       const user = thunkAPI.getState().auth.user;
       
       // Handle missing user data more gracefully
-      if (!user) {
-        console.error('No user data available in getSchools thunk');
+      if (!user || !user.token) {
+        console.error('No user data or token available in getSchools thunk');
         return []; // Return empty array instead of failing
       }
       
-      return await schoolService.getSchools();
+      return await schoolService.getSchools(user.token);
     } catch (error) {
       console.error('Error fetching schools:', error);
       const message =

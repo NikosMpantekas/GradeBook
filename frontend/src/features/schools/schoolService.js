@@ -17,9 +17,14 @@ const createSchool = async (schoolData, token) => {
 };
 
 // Get all schools
-const getSchools = async () => {
-  const response = await axios.get(API_SCHOOLS);
+const getSchools = async (token) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
 
+  const response = await axios.get(API_SCHOOLS, config);
   return response.data;
 };
 
