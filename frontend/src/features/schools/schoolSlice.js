@@ -11,8 +11,7 @@ const initialState = {
 };
 
 /**
- * CRITICAL FIX: Ultimate cluster school detection and filtering
- * Comprehensive solution to GUARANTEE only school branches appear in the UI
+ * School branch filtering - FIXED to allow legitimate branches
  * @param {Object} school - School object to check
  * @returns {boolean} - True if this is a cluster school that should be filtered out
  */
@@ -27,58 +26,36 @@ const isClusterSchool = (school) => {
     // Log the school being checked for debugging
     console.log(`Checking school: ${school.name || 'unnamed school'}, ID: ${school._id || 'no id'}`);
     
-    // Multi-layer detection strategy:
+    // RELAXED filtering to keep existing branches:
     
-    // 1. Check explicit flags first (most reliable indicator)
-    if (school.isClusterSchool === true || 
-        school.isMainSchool === true || 
-        school.isParentSchool === true) {
+    // 1. Only filter out if EXPLICITLY flagged as cluster
+    if (school.isClusterSchool === true) {
       console.log(`Filtering school with explicit cluster flag: ${school.name}`);
       return true;
     }
     
-    // 2. Check for school relationships (cluster schools have child schools)
-    if (school.childSchools && Array.isArray(school.childSchools) && school.childSchools.length > 0) {
-      console.log(`Filtering school with child schools: ${school.name}, has ${school.childSchools.length} children`);
-      return true;
+    // 2. If it's explicitly marked as branch, ALWAYS keep it
+    if (school.isBranchSchool === true) {
+      console.log(`KEEPING explicitly marked branch school: ${school.name}`);
+      return false;
     }
     
-    if (school.parentSchoolId === null && school.hasChildren === true) {
-      console.log(`Filtering top-level school with children: ${school.name}`);
-      return true;
+    // 3. Very minimal pattern matching to avoid over-filtering
+    if (school.name && typeof school.name === 'string') {
+      const nameLC = school.name.toLowerCase();
+      if (nameLC === 'cluster' || nameLC === 'main' || nameLC === 'district' || nameLC === 'central') {
+        console.log(`Filtering obvious cluster school by exact name: ${school.name}`);
+        return true;
+      }
     }
     
-    // 3. Check for domain-level properties (clusters often have these)
-    if (school.schoolDomain || school.emailDomain) {
-      console.log(`Filtering likely cluster school with domain settings: ${school.name}`);
-      return true;
-    }
-    
-    // 4. Check name patterns for comprehensive identification
-    const clusterPatterns = /primary|cluster|general|main|central|district|organization|head|principal|board|academy|group|trust|federation/i;
-    if (school.name && typeof school.name === 'string' && clusterPatterns.test(school.name)) {
-      console.log(`Filtering cluster school by name pattern: ${school.name}`);
-      return true;
-    }
-    
-    // 5. Check for very short names (likely acronyms for districts)
-    if (school.name && typeof school.name === 'string' && school.name.length < 5) {
-      console.log(`Filtering potential cluster by short name: ${school.name}`);
-      return true;
-    }
-    
-    // 6. If school has hasStudents=false flag, it's likely administrative only
-    if (school.hasStudents === false) {
-      console.log(`Filtering administrative-only school: ${school.name}`);
-      return true;
-    }
-    
-    console.log(`KEEPING school branch: ${school.name}`);
+    // Default: KEEP the school to avoid filtering out legitimate branches
+    console.log(`KEEPING school: ${school.name}`);
     return false;
   } catch (error) {
-    // Safety: If any error occurs during detection, filter the school out
-    console.error('Error in cluster school detection, filtering out for safety:', error);
-    return true;
+    // Log the error but KEEP the school anyway to avoid losing legitimate branches
+    console.error('Error in school filtering, keeping school for safety:', error, school);
+    return false;
   }
 };
 

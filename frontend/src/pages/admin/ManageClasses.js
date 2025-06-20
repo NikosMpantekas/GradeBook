@@ -429,77 +429,47 @@ const ManageClasses = () => {
                       disabled={user.role === 'admin'} // Admin can only add to their school
                     >
                       {schools?.filter(school => {
-                        // ULTIMATE school branch filtering - identical to ManageSchools.js
+                        // RELAXED school filtering - minimal approach to show all schools
                         try {
-                          // 1. Handle null/undefined schools (exclude them)
-                          if (!school) {
-                            console.log('Class Form: Excluding null/undefined school');
-                            return false;
-                          }
-                          
-                          // Debug - log every school being evaluated
+                          // Log which school we're checking
                           console.log(`Class Form checking school: ${school.name || 'unnamed'}, ID: ${school._id || 'no ID'}`);
                           
-                          // 2. Check ALL possible explicit flags (most reliable indicators)
-                          if (school.isClusterSchool === true || 
-                              school.isMainSchool === true || 
-                              school.isParentSchool === true ||
-                              school.isMainFacility === true ||
-                              school.isDistrictOffice === true) {
-                            console.log(`Class Form: Excluding flagged cluster school: ${school.name}`);
+                          // MINIMAL filtering - only exclude explicitly marked clusters
+                          
+                          // 1. If school is null/undefined, skip it
+                          if (!school) {
                             return false;
                           }
                           
-                          // 3. Check ALL school relationship properties
-                          if (school.childSchools && Array.isArray(school.childSchools) && school.childSchools.length > 0) {
-                            console.log(`Class Form: Excluding school with child schools: ${school.name}`);
+                          // 2. If explicitly NOT a cluster or IS a branch, always include it
+                          if (school.isClusterSchool === false || school.isBranchSchool === true) {
+                            console.log(`Class Form: KEEPING explicitly marked branch: ${school.name}`);
+                            return true;
+                          }
+                          
+                          // 3. Only filter out if EXPLICITLY marked as cluster
+                          if (school.isClusterSchool === true) {
+                            console.log(`Class Form: Excluding explicit cluster: ${school.name}`);
                             return false;
                           }
                           
-                          // Handle schools with children flag
-                          if (school.parentSchoolId === null && school.hasChildren === true) {
-                            console.log(`Class Form: Excluding top-level parent school: ${school.name}`);
-                            return false;
+                          // 4. Minimal name-based filtering - only exact matches for cluster terms
+                          if (school.name) {
+                            const exactClusterNames = ['cluster', 'main', 'district', 'central'];
+                            const nameLower = school.name.toLowerCase();
+                            if (exactClusterNames.includes(nameLower)) {
+                              console.log(`Class Form: Excluding obvious cluster by name: ${school.name}`);
+                              return false;
+                            }
                           }
                           
-                          // If a school has NO parent but is not explicitly a branch, it's likely a cluster
-                          if (school.parentSchoolId === undefined && school.isBranchSchool !== true) {
-                            console.log(`Class Form: Excluding potential cluster without parent: ${school.name}`);
-                            return false;
-                          }
-                          
-                          // 4. Check ALL administrative indicators
-                          if (school.schoolDomain || school.emailDomain || school.hasAdminFunctions === true) {
-                            console.log(`Class Form: Excluding administrative school: ${school.name}`);
-                            return false;
-                          }
-                          
-                          // 5. COMPREHENSIVE name pattern check
-                          const clusterPatterns = /primary|cluster|general|main|central|district|organization|head|principal|board|academy|group|trust|federation|association|network|community|council|county|authority/i;
-                          if (school.name && typeof school.name === 'string' && clusterPatterns.test(school.name)) {
-                            console.log(`Class Form: Excluding school by name pattern: ${school.name}`);
-                            return false;
-                          }
-                          
-                          // 6. Check for very short or single-word names
-                          if (school.name && typeof school.name === 'string' && 
-                              (school.name.length < 5 || school.name.split(' ').length === 1)) {
-                            console.log(`Class Form: Excluding likely cluster by name: ${school.name}`);
-                            return false;
-                          }
-                          
-                          // 7. School type and function checks
-                          if (school.hasStudents === false || school.type === 'administrative') {
-                            console.log(`Class Form: Excluding administrative-only school: ${school.name}`);
-                            return false;
-                          }
-                          
-                          // This is a valid school branch - include it
-                          console.log(`Class Form: KEEPING school branch: ${school.name}`);
+                          // Default: KEEP all other schools
+                          console.log(`Class Form: KEEPING school: ${school.name}`);
                           return true;
                         } catch (error) {
-                          console.error('Class Form: Error in school filtering, excluding for safety:', error);
-                          return false; // Exclude on error for safety
+                          // On error, keep the school (safer than excluding)
+                          console.error('Class Form: Error filtering school, keeping it:', error);
+                          return true;
                         }
                       }).map((school) => (
                         <MenuItem key={school._id} value={school._id}>
