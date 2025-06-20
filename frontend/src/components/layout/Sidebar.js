@@ -92,39 +92,23 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   // Generate menu items based on user role and school permissions
   const getMenuItems = () => {
     const menuItems = [
-      // SuperAdmin menu items
-      {
-        text: 'SuperAdmin Dashboard',
-        icon: <SuperAdminIcon />,
-        path: '/superadmin/dashboard',
-        roles: ['superadmin'],
-      },
-      {
-        text: 'Create School Owner',
-        icon: <AddUserIcon />,
-        path: '/superadmin/new-school-owner',
-        roles: ['superadmin'],
-      },
+      // Dashboard items for all roles - top of sidebar
       {
         text: 'Dashboard',
         icon: <DashboardIcon />,
         path: '/app/dashboard',
-        roles: ['student', 'teacher', 'admin'],
+        roles: ['student', 'teacher', 'admin', 'secretary'],
+        section: 'general',
       },
-      {
-        text: 'Manage Grades',
-        icon: <GradesIcon />,
-        path: '/app/admin/grades',
-        roles: ['admin', 'secretary'],
-        checkPermission: (user) => isFeatureEnabled('enableGrades'),
-      },
-
+      
+      // STUDENT SPECIFIC ITEMS
       {
         text: 'My Grades',
         icon: <GradesIcon />,
         path: '/app/grades',
         roles: ['student'],
         checkPermission: (user) => isFeatureEnabled('enableGrades'),
+        section: 'student',
       },
       {
         text: 'Submit Ratings',
@@ -132,6 +116,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/ratings',
         roles: ['student'],
         checkPermission: (user) => isFeatureEnabled('enableRatingSystem'),
+        section: 'student',
       },
       {
         text: 'My Notifications',
@@ -139,23 +124,16 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/notifications',
         roles: ['student', 'teacher', 'admin'],
         checkPermission: (user) => isFeatureEnabled('enableNotifications'),
+        section: 'student',
       },
-      // Teacher specific notifications below
 
-      // Teacher menu items
+      // TEACHER SPECIFIC ITEMS
       {
         text: 'Teacher Dashboard',
         icon: <SchoolIcon />,
         path: '/app/teacher',
         roles: ['teacher', 'admin'],
-      },
-      {
-        text: 'Student Ratings',
-        icon: <RatingIcon />,
-        path: '/app/teacher/ratings',
-        roles: ['teacher', 'admin'],
-        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher') && 
-                               isFeatureEnabled('enableRatingSystem'),
+        section: 'teacher',
       },
       {
         text: 'Manage Grades',
@@ -163,8 +141,9 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/teacher/grades/manage',
         roles: ['teacher', 'admin', 'secretary'],
         checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
-                               (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
-                               isFeatureEnabled('enableGrades'),
+                            (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
+                            isFeatureEnabled('enableGrades'),
+        section: 'teacher',
       },
       {
         text: 'Add Grade',
@@ -172,8 +151,18 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/teacher/grades/create',
         roles: ['teacher', 'admin', 'secretary'],
         checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
-                               (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
-                               isFeatureEnabled('enableGrades'),
+                            (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
+                            isFeatureEnabled('enableGrades'),
+        section: 'teacher',
+      },
+      {
+        text: 'Student Ratings',
+        icon: <RatingIcon />,
+        path: '/app/teacher/ratings',
+        roles: ['teacher', 'admin'],
+        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher') && 
+                            isFeatureEnabled('enableRatingSystem'),
+        section: 'teacher',
       },
       {
         text: 'Send Notifications',
@@ -181,15 +170,26 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/teacher/notifications',
         roles: ['teacher', 'admin', 'secretary'],
         checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
-                               (user.role === 'secretary' && user.secretaryPermissions?.canSendNotifications)) && 
-                               isFeatureEnabled('enableNotifications'),
+                            (user.role === 'secretary' && user.secretaryPermissions?.canSendNotifications)) && 
+                            isFeatureEnabled('enableNotifications'),
+        section: 'teacher',
       },
-      // Admin and Secretary menu items
+
+      // ADMIN AND SECRETARY ITEMS
       {
         text: 'Admin Dashboard',
         icon: <AdminIcon />,
         path: '/app/admin',
         roles: ['admin', 'secretary'],
+        section: 'admin',
+      },
+      {
+        text: 'Manage School Grades',
+        icon: <GradesIcon />,
+        path: '/app/admin/grades',
+        roles: ['admin', 'secretary'],
+        checkPermission: (user) => isFeatureEnabled('enableGrades'),
+        section: 'admin',
       },
       {
         text: 'Manage Users',
@@ -197,6 +197,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/users',
         roles: ['admin', 'secretary'],
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageUsers),
+        section: 'admin',
       },
       {
         text: 'Manage Schools',
@@ -204,6 +205,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/schools',
         roles: ['admin', 'secretary'],
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSchools),
+        section: 'admin',
       },
       {
         text: 'Manage Classes',
@@ -212,6 +214,15 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin', 'secretary'],
         // Always allow admins to access, for secretary require school management permission
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSchools === true),
+        section: 'admin',
+      },
+      {
+        text: 'Send Notifications',
+        icon: <NotificationsIcon />,
+        path: '/app/admin/notifications',
+        roles: ['admin', 'secretary'],
+        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
+        section: 'admin',
       },
       // Keep legacy Directions option for backward compatibility during migration
       {
@@ -224,9 +235,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
             user.adminPermissions?.canManageDirections !== false : 
             user.secretaryPermissions?.canManageDirections === true;
         },
+        section: 'admin',
       },
-      // Manage Subjects menu item removed as requested
-
       {
         text: 'Student Progress',
         icon: <AssessmentIcon />,
@@ -237,6 +247,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
                  (user.role === 'secretary' && user.secretaryPermissions?.canAccessStudentProgress)) && 
                  isFeatureEnabled('enableStudentProgress');
         },
+        section: 'admin',
       },
       {
         text: 'Rating System',
@@ -244,6 +255,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/ratings',
         roles: ['admin'],
         checkPermission: (user) => user.role === 'admin' && isFeatureEnabled('enableRatingSystem'),
+        section: 'admin',
       },
       {
         text: 'Rating Statistics',
@@ -251,13 +263,40 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/rating-statistics',
         roles: ['admin'],
         checkPermission: (user) => user.role === 'admin' && isFeatureEnabled('enableRatingSystem'),
+        section: 'admin',
+      },
+      
+      // SUPER ADMIN ITEMS
+      {
+        text: 'SuperAdmin Dashboard',
+        icon: <SuperAdminIcon />,
+        path: '/superadmin/dashboard',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      {
+        text: 'Create School Owner',
+        icon: <AddUserIcon />,
+        path: '/superadmin/new-school-owner',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      {
+        text: 'School Features',
+        icon: <AdminIcon />,
+        path: '/superadmin/school-features',
+        roles: ['superadmin'],
+        section: 'superadmin',
       },
       {
         text: 'Contact Messages',
         icon: <EmailIcon />,
         path: '/superadmin/contact',
         roles: ['superadmin'],
+        section: 'superadmin',
       },
+      
+      // COMMON ITEMS FOR ALL USERS
       // Calendar is available to all users with the feature enabled
       {
         text: 'Calendar',
@@ -265,13 +304,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/calendar',
         roles: ['admin', 'teacher', 'student', 'secretary'],
         checkPermission: (user) => isFeatureEnabled('enableCalendar'),
-      },
-      // Superadmin School Features menu item
-      {
-        text: 'School Features',
-        icon: <AdminIcon />,
-        path: '/superadmin/school-features',
-        roles: ['superadmin'],
+        section: 'common',
       },
       // Profile is available to all users
       {
@@ -279,6 +312,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <PersonIcon />,
         path: '/app/profile',
         roles: ['student', 'teacher', 'admin', 'superadmin'],
+        section: 'common',
       },
       // My Contact Messages is available to all users
       {
@@ -286,6 +320,16 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <EmailIcon />,
         path: '/app/contact-messages',
         roles: ['student', 'teacher', 'admin', 'superadmin'],
+        section: 'common',
+      },
+      // My Notifications for all users
+      {
+        text: 'My Notifications',
+        icon: <NotificationsIcon />,
+        path: '/app/notifications',
+        roles: ['student', 'teacher', 'admin'],
+        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
+        section: 'common',
       },
     ];
 

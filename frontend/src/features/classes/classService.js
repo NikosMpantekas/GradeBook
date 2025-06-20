@@ -67,12 +67,25 @@ const deleteClass = async (classId, token) => {
   return response.data;
 };
 
+// Get classes by teacher ID
+const getClassesByTeacher = async (teacherId, token) => {
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const response = await axios.get(`${API_CLASSES}/teacher/${teacherId}`, config);
+  return response.data;
+};
+
 const classService = {
   getClasses,
   createClass,
   getClass,
   updateClass,
   deleteClass,
+  getClassesByTeacher,
 };
 
 export default classService;

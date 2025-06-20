@@ -16,12 +16,14 @@ import {
   Alert,
   FormHelperText,
   Divider,
+  Chip,
 } from '@mui/material';
 // Using standard date input fields instead of DatePicker component
 // to avoid dependency issues
 import {
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
+  Class as ClassIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -39,6 +41,7 @@ import {
   ensureValidData as ensureValidDirectionData,
   safeValidateDirectionData 
 } from '../../features/directions/directionSlice';
+import { getClassesByTeacher } from '../../features/classes/classSlice';
 
 const CreateGrade = () => {
   const navigate = useNavigate();
@@ -48,10 +51,14 @@ const CreateGrade = () => {
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.grades);
   const { subjects, isLoading: subjectsLoading } = useSelector((state) => state.subjects);
   const { students, isLoading: studentsLoading } = useSelector((state) => state.students);
+  const { classes, isLoading: classesLoading } = useSelector((state) => state.classes);
   
   const [studentsToSelect, setStudentsToSelect] = useState([]);
+  const [subjectsToSelect, setSubjectsToSelect] = useState([]);
   const [directions, setDirections] = useState([]);
   const [selectedDirection, setSelectedDirection] = useState('');
+  const [teacherClasses, setTeacherClasses] = useState([]);
+  const [selectedClass, setSelectedClass] = useState('');
   const [formData, setFormData] = useState({
     student: '',
     subject: '',
@@ -97,9 +104,22 @@ const CreateGrade = () => {
       if (user && user._id) {
         console.log('[CreateGrade] Loading subjects for teacher:', user._id);
         dispatch(getSubjectsByTeacher(user._id));
+        
+        // Step 3: Load teacher classes
+        console.log('[CreateGrade] Loading classes for teacher:', user._id);
+        dispatch(getClassesByTeacher(user._id))
+          .unwrap()
+          .then(data => {
+            console.log(`[CreateGrade] Loaded ${Array.isArray(data) ? data.length : 0} teacher classes`);
+            setTeacherClasses(data || []);
+          })
+          .catch(error => {
+            console.error('[CreateGrade] Error fetching teacher classes:', error);
+            setTeacherClasses([]);
+          });
       }
       
-      // Step 3: Load directions safely
+      // Step 4: Load directions safely
       console.log('[CreateGrade] Loading directions...');
       dispatch(getDirections())
         .unwrap()
@@ -113,17 +133,16 @@ const CreateGrade = () => {
           // Force validate even on error to ensure store is in good state
           safeValidateDirectionData(dispatch);
         });
-      
-      // Cleanup function
-      return () => {
-        // Reset only grades state to avoid interfering with other components
-        dispatch(reset());
-      };
-    } catch (error) {
-      console.error('[CreateGrade] Error in initialization:', error);
-      toast.error('Error loading data. Please try again.');
+    } catch (err) {
+      console.error('[CreateGrade] Critical initialization error:', err);
+      toast.error('There was a problem initializing the form. Please try again.');
     }
-  }, [dispatch, user?._id, user?.token]);
+    
+    return () => {
+      // Reset grade data when component unmounts
+      dispatch(reset());
+    };
+  }, [dispatch, user]);
   
   // CRITICAL FIX: Update local directions state from Redux store with robust validation
   useEffect(() => {
@@ -145,59 +164,124 @@ const CreateGrade = () => {
     }
   }, [reduxDirections, dispatch]);
   
+  // Handle class selection change
+  const handleClassChange = (e) => {
+    const classId = e.target.value;
+    console.log(`[CreateGrade] Class selected: ${classId}`);
+    setSelectedClass(classId);
+    
+    // Reset subject and student when class changes
+    setFormData(prev => ({
+      ...prev,
+      subject: '',
+      student: ''
+    }));
+    
+    // Filter subjects for the selected class
+    if (classId) {
+      filterSubjectsForClass(classId);
+    } else {
+      setSubjectsToSelect([]);
+    }
+  };
+
+  // Filter subjects based on selected class
+  const filterSubjectsForClass = (classId) => {
+    if (!classId || !subjects || !Array.isArray(subjects)) {
+      console.log('[CreateGrade] No valid class or subjects to filter');
+      setSubjectsToSelect([]);
+      return;
+    }
+    
+    const selectedClassObj = teacherClasses.find(cls => cls._id === classId);
+    if (!selectedClassObj) {
+      console.log('[CreateGrade] Selected class not found in teacher classes');
+      setSubjectsToSelect([]);
+      return;
+    }
+    
+    // Use the subject from the class
+    const classSubject = selectedClassObj.subject;
+    console.log(`[CreateGrade] Class subject: ${classSubject}`);
+    
+    const filteredSubjects = subjects.filter(subject => 
+      subject.name.toLowerCase() === classSubject.toLowerCase());
+    
+    console.log(`[CreateGrade] Filtered ${filteredSubjects.length} subjects for class ${selectedClassObj.name}`);
+    setSubjectsToSelect(filteredSubjects);
+  };
+  
+  // When subjects load or change, update filtered subjects based on selected class
+  useEffect(() => {
+    if (selectedClass && teacherClasses.length > 0) {
+      filterSubjectsForClass(selectedClass);
+    } else if (subjects && Array.isArray(subjects)) {
+      // If no class is selected, show all subjects
+      setSubjectsToSelect(subjects);
+    }
+  }, [subjects, selectedClass, teacherClasses]);
+
   // CRITICAL FIX: When a subject is selected, fetch students for that subject with improved validation
   useEffect(() => {
     try {
       // Validate existing student data to prevent errors
       safeValidateStudentData(dispatch);
       
-      if (formData.subject) {
-        console.log(`[CreateGrade] Subject selected: ${formData.subject}, fetching students...`);
-        
-        // Reset student selection for safety
-        setFormData(prev => ({ ...prev, student: '' }));
-        
-        // Try to get students for this subject
-        dispatch(getStudentsBySubject(formData.subject))
-          .unwrap()
-          .then((data) => {
-            // Immediately validate student data
-            safeValidateStudentData(dispatch);
-            console.log(`[CreateGrade] Successfully fetched ${data?.length || 0} students for subject`);
-            
-            // If no students found for subject, try to get all students as fallback
-            if (!data || data.length === 0) {
-              console.log('[CreateGrade] No students found for subject, loading all students');
-              dispatch(getStudents())
-                .unwrap()
-                .then(allStudents => {
-                  safeValidateStudentData(dispatch);
-                  console.log(`[CreateGrade] Loaded ${allStudents?.length || 0} total students`);
-                })
-                .catch(err => {
-                  console.error('[CreateGrade] Error loading all students:', err);
-                  safeValidateStudentData(dispatch);
-                });
-            }
-          })
-          .catch((error) => {
-            console.error('[CreateGrade] Error fetching students for subject:', error);
-            // If this fails, load all students as a fallback
-            dispatch(getStudents())
-              .then(() => safeValidateStudentData(dispatch));
-          });
-      } else {
-        // If no subject is selected, load all students so the dropdown is never empty
-        console.log('[CreateGrade] No subject selected, loading all students as fallback');
-        dispatch(getStudents())
-          .then(() => safeValidateStudentData(dispatch));
+      if (!formData.subject) {
+        // Clear students list when no subject selected
+        setStudentsToSelect([]);
+        return;
       }
-    } catch (error) {
-      console.error('[CreateGrade] Critical error in subject selection effect:', error);
-      // Force empty array as last resort
-      setStudentsToSelect([]);
+      
+      console.log(`[CreateGrade] Subject selected: ${formData.subject}, fetching students...`);
+      
+      // Reset student selection for safety
+      setFormData(prev => ({ ...prev, student: '' }));
+      
+      // Try to get students for this subject
+      dispatch(getStudentsBySubject(formData.subject))
+        .unwrap()
+        .then((allSubjectStudents) => {
+          // Immediately validate student data
+          safeValidateStudentData(dispatch);
+          console.log(`[CreateGrade] Successfully fetched ${allSubjectStudents?.length || 0} students for subject`);
+          
+          // If class is selected, filter students to only those in the class
+          if (selectedClass && teacherClasses.length > 0) {
+            const selectedClassObj = teacherClasses.find(cls => cls._id === selectedClass);
+            
+            if (selectedClassObj && selectedClassObj.students && Array.isArray(selectedClassObj.students)) {
+              // Extract student IDs from class (handling both string IDs and object references)
+              const classStudentIds = selectedClassObj.students.map(student => 
+                typeof student === 'string' ? student : student._id
+              );
+              
+              // Filter to only students who are both in the class and taking the subject
+              const filteredStudents = Array.isArray(allSubjectStudents) ? 
+                allSubjectStudents.filter(student => classStudentIds.includes(student._id)) : [];
+              
+              console.log(`[CreateGrade] Filtered from ${allSubjectStudents?.length || 0} to ${filteredStudents.length} students based on class ${selectedClassObj.name}`);
+              setStudentsToSelect(filteredStudents);
+            } else {
+              console.log('[CreateGrade] No students found in selected class');
+              setStudentsToSelect([]);
+            }
+          } else {
+            // If no class selected, use all subject students
+            setStudentsToSelect(allSubjectStudents || []);
+          }
+        })
+        .catch(err => {
+          console.error('[CreateGrade] Error loading students for subject:', err);
+          safeValidateStudentData(dispatch); 
+          setStudentsToSelect([]);
+          toast.error('Failed to load students. Please try again.');
+        });
+    } catch (err) {
+      console.error('[CreateGrade] Critical error in subject selection effect:', err);
+      toast.error('There was a problem loading students. Please try again.');
     }
-  }, [dispatch, formData.subject]);
+  }, [dispatch, formData.subject, selectedClass, teacherClasses]);
   
   // CRITICAL FIX: Add safe validation on component mount to ensure student data is an array
   useEffect(() => {
@@ -590,6 +674,52 @@ const CreateGrade = () => {
         
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={3}>
+            {/* Class Selection */}
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel id="class-select-label">
+                  <ClassIcon fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />
+                  Select Class
+                </InputLabel>
+                <Select
+                  labelId="class-select-label"
+                  id="class-select"
+                  value={selectedClass}
+                  onChange={handleClassChange}
+                  label="Select Class"
+                >
+                  <MenuItem value="">
+                    <em>All Classes</em>
+                  </MenuItem>
+                  {teacherClasses && teacherClasses.length > 0 ? (
+                    teacherClasses.map((cls) => (
+                      <MenuItem key={cls._id} value={cls._id}>
+                        {cls.name}
+                        {cls.subject && (
+                          <Chip 
+                            size="small" 
+                            label={cls.subject} 
+                            color="primary" 
+                            variant="outlined" 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem disabled>
+                      <em>No classes available</em>
+                    </MenuItem>
+                  )}
+                </Select>
+                {selectedClass && (
+                  <FormHelperText>
+                    Students and subjects will be filtered by this class
+                  </FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+
             {/* Direction Filter */}
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
@@ -632,7 +762,7 @@ const CreateGrade = () => {
                   value={formData.subject}
                   onChange={handleChange}
                   label="Subject *"
-                  disabled={subjectsLoading}
+                  disabled={subjectsLoading || (selectedClass && subjectsToSelect.length === 0)}
                 >
                   <MenuItem value="">
                     <em>Select a subject</em>
@@ -644,21 +774,34 @@ const CreateGrade = () => {
                         Loading subjects...
                       </Box>
                     </MenuItem>
-                  ) : Array.isArray(subjects) && subjects.length > 0 ? (
-                    subjects.map((subject) => (
+                  ) : 
+                  // Use filtered subjects if class is selected, otherwise show all subjects
+                  Array.isArray(selectedClass ? subjectsToSelect : subjects) && 
+                  (selectedClass ? subjectsToSelect : subjects).length > 0 ? (
+                    (selectedClass ? subjectsToSelect : subjects).map((subject) => (
                       <MenuItem key={subject._id} value={subject._id}>
                         {subject.name}
+                        {selectedClass && (
+                          <Chip 
+                            size="small" 
+                            label="Class Subject" 
+                            color="success" 
+                            variant="outlined" 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
                       </MenuItem>
                     ))
                   ) : (
                     <MenuItem disabled>
-                      <em>No subjects available</em>
+                      <em>{selectedClass ? "No subjects available for selected class" : "No subjects available"}</em>
                     </MenuItem>
                   )}
                 </Select>
                 <FormHelperText>
                   {formErrors.subject || 
                    (subjectsLoading ? 'Loading subjects...' : 
+                    selectedClass && (!Array.isArray(subjectsToSelect) || subjectsToSelect.length === 0) ? 'No subjects for selected class' :
                     !Array.isArray(subjects) || subjects.length === 0 ? 'No subjects assigned to you' :
                     'Select the subject for this grade')}
                 </FormHelperText>
@@ -693,12 +836,25 @@ const CreateGrade = () => {
                     </MenuItem>
                   ) : studentsToSelect.length === 0 ? (
                     <MenuItem disabled>
-                      <em>No students available for this subject</em>
+                      <em>
+                        {selectedClass 
+                          ? "No students available in this class for the selected subject" 
+                          : "No students available for this subject"}
+                      </em>
                     </MenuItem>
                   ) : (
                     studentsToSelect.map((student) => (
                       <MenuItem key={student._id} value={student._id}>
                         {student.name}
+                        {selectedClass && (
+                          <Chip 
+                            size="small" 
+                            label="Class Student" 
+                            color="info" 
+                            variant="outlined" 
+                            sx={{ ml: 1 }}
+                          />
+                        )}
                       </MenuItem>
                     ))
                   )}
@@ -707,8 +863,11 @@ const CreateGrade = () => {
                   {formErrors.student || 
                    (studentsLoading ? 'Loading students...' : 
                     !formData.subject ? 'Please select a subject first' :
-                    studentsToSelect.length === 0 ? 'No students found for this subject' :
-                    'Select the student to grade')}
+                    studentsToSelect.length === 0 ? 
+                      (selectedClass 
+                        ? `No students found in class ${teacherClasses.find(c => c._id === selectedClass)?.name || ''} for this subject` 
+                        : 'No students found for this subject') :
+                    selectedClass ? `Showing only students from the selected class` : 'Select the student to grade')}
                 </FormHelperText>
               </FormControl>
             </Grid>

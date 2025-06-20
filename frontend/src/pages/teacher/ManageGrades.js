@@ -1,56 +1,66 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
-  Typography,
-  Paper,
   Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
+  Typography,
   Button,
-  IconButton,
-  Chip,
+  Paper,
+  TableContainer,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TablePagination,
+  CircularProgress,
   TextField,
-  InputAdornment,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
+  InputAdornment,
+  IconButton,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  CircularProgress,
   Grid,
-  Snackbar,
-  Alert,
-  FormHelperText,
   Divider,
+  Alert,
+  Chip,
+  FormHelperText,
 } from '@mui/material';
+
 import {
-  Add as AddIcon,
+  Search as SearchIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Search as SearchIcon,
+  Add as AddIcon,
   FilterList as FilterIcon,
+  Class as ClassIcon,
 } from '@mui/icons-material';
+
 import { format } from 'date-fns';
-import { getStudentsBySubject } from '../../features/students/studentSlice';
 import { toast } from 'react-toastify';
-import {
-  getGradesByTeacher,
-  getAllGrades,
+import { Link } from 'react-router-dom';
+import { 
+  getGradesByTeacher, 
+  getGrades, 
+  reset as resetGrades,
   updateGrade,
-  deleteGrade,
-  reset,
+  deleteGrade
 } from '../../features/grades/gradeSlice';
-import { getSubjectsByTeacher, getSubjects } from '../../features/subjects/subjectSlice';
+import { 
+  getSubjectsByTeacher, 
+  getSubjects 
+} from '../../features/subjects/subjectSlice';
+import { 
+  getStudents, 
+  getStudentsBySubject 
+} from '../../features/students/studentSlice';
+import { getClassesByTeacher } from '../../features/classes/classSlice';
 
 const ManageGrades = () => {
   const navigate = useNavigate();
@@ -60,12 +70,17 @@ const ManageGrades = () => {
   const { grades, isLoading, isSuccess, isError, message } = useSelector((state) => state.grades);
   const { subjects } = useSelector((state) => state.subjects);
   const { students } = useSelector((state) => state.students);
+  const { classes, isLoading: classesLoading } = useSelector((state) => state.classes);
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
+  const [classFilter, setClassFilter] = useState('');
+  const [teacherClasses, setTeacherClasses] = useState([]);
   const [filteredGrades, setFilteredGrades] = useState([]);
+  const [filteredSubjects, setFilteredSubjects] = useState([]);
+  const [filteredStudents, setFilteredStudents] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [gradeToDelete, setGradeToDelete] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -84,64 +99,76 @@ const ManageGrades = () => {
   });
 
   useEffect(() => {
+    if (user && user._id && user.role === 'teacher') {
+      console.log('[ManageGrades] Fetching classes for teacher:', user._id);
+      dispatch(getClassesByTeacher(user._id))
+        .unwrap()
+        .then(data => {
+          console.log(`[ManageGrades] Successfully loaded ${data?.length || 0} teacher classes`);
+          setTeacherClasses(data || []);
+        })
+        .catch(error => {
+          console.error('[ManageGrades] Error fetching teacher classes:', error);
+          setTeacherClasses([]);
+          toast.error('Error loading class data');
+        });
+    }
+  }, [dispatch, user]);
+
+  useEffect(() => {
     // Force refetch on component mount to avoid stale data issues
     const fetchData = async () => {
       if (user && user._id) {
         try {
-          console.log('Fetching grades data');
+          console.log('[ManageGrades] Fetching grades data');
           // Clear the grades first to prevent stale data display
-          dispatch(reset());
+          dispatch(resetGrades());
           
           // Fetch grades with a slight delay to ensure reset takes effect
           setTimeout(() => {
             // If user is admin, fetch all grades instead of just teacher's grades
             if (user.role === 'admin') {
-              console.log('Admin user detected - fetching ALL grades');
-              dispatch(getAllGrades())
+              console.log('[ManageGrades] Admin user detected - fetching ALL grades');
+              dispatch(getGrades())
                 .unwrap()
                 .then(data => {
-                  console.log(`Successfully fetched ${data?.length || 0} grades for admin`);
+                  console.log(`[ManageGrades] Successfully fetched ${data?.length || 0} grades for admin`);
                   if (data && data.length === 0) {
-                    console.log('API returned empty grades array - no grades exist in the system');
+                    console.log('[ManageGrades] API returned empty grades array - no grades exist in the system');
                   }
                 })
                 .catch(error => {
-                  console.error('Error fetching all grades:', error);
-                  toast.error('Failed to load grades. Please try again.');
+                  console.error('[ManageGrades] Error fetching all grades:', error);
                 });
             } else {
-              console.log('Fetching grades for teacher ID:', user._id);
+              // Regular teacher - fetch only their grades
+              console.log(`[ManageGrades] Teacher user detected - fetching grades for teacher ID: ${user._id}`);
               dispatch(getGradesByTeacher(user._id))
                 .unwrap()
                 .then(data => {
-                  console.log(`Successfully fetched ${data?.length || 0} grades for teacher`);
+                  console.log(`[ManageGrades] Successfully fetched ${data?.length || 0} grades for teacher ${user._id}`);
                   if (data && data.length === 0) {
-                    console.log('API returned empty grades array - this is expected if teacher has no grades');
+                    console.log('[ManageGrades] API returned empty grades array - no grades assigned to this teacher');
                   }
                 })
                 .catch(error => {
-                  console.error('Error fetching teacher grades:', error);
-                  toast.error('Failed to load grades. Please try again.');
+                  console.error('[ManageGrades] Error fetching teacher grades:', error);
                 });
             }
-            
-            // Fetch subjects (both admin and teacher need this)
-            if (user.role === 'admin') {
-              dispatch(getSubjects());
-            } else {
-              dispatch(getSubjectsByTeacher(user._id));
-            }
           }, 100);
+          
+          // Fetch subjects relevant to the user
+          if (user.role === 'admin') {
+            dispatch(getSubjects());
+          } else {
+            dispatch(getSubjectsByTeacher(user._id));
+          }
         } catch (error) {
-          console.error('Error in grades fetch flow:', error);
-          toast.error('Something went wrong. Please refresh the page.');
+          console.error('[ManageGrades] Error in initial data fetch:', error);
         }
-      } else {
-        console.error('User ID missing - cannot fetch grades');
-        toast.error('User information is missing. Please try logging in again.');
       }
     };
-    
+
     fetchData();
 
     return () => {
@@ -150,6 +177,34 @@ const ManageGrades = () => {
   }, [dispatch, user]);
 
 
+
+  // Effect to update filtered subjects when class filter changes
+  useEffect(() => {
+    if (user?.role === 'teacher' && classFilter && teacherClasses.length > 0) {
+      const selectedClass = teacherClasses.find(cls => cls._id === classFilter);
+      
+      if (selectedClass && selectedClass.subject) {
+        console.log(`[ManageGrades] Filtering subjects for class ${selectedClass.name} with subject ${selectedClass.subject}`);
+        
+        // Filter subjects to only show the one assigned to the selected class
+        const classSubjectObj = subjects.find(subj => 
+          subj.name.toLowerCase() === selectedClass.subject.toLowerCase());
+        
+        if (classSubjectObj) {
+          setFilteredSubjects([classSubjectObj]);
+          console.log(`[ManageGrades] Found matching subject: ${classSubjectObj.name}`);
+        } else {
+          setFilteredSubjects([]);
+          console.log(`[ManageGrades] No matching subject found for class subject: ${selectedClass.subject}`);
+        }
+      } else {
+        setFilteredSubjects(subjects);
+      }
+    } else {
+      // If no class is selected, show all subjects
+      setFilteredSubjects(subjects);
+    }
+  }, [classFilter, teacherClasses, subjects, user]);
 
   useEffect(() => {
     if (isError) {
@@ -165,9 +220,9 @@ const ManageGrades = () => {
       }
       
       // Log success information for debugging
-      console.log(`Grade fetch succeeded, received: ${grades?.length || 0} grades`);
+      console.log(`[ManageGrades] Grade fetch succeeded, received: ${grades?.length || 0} grades`);
       if (grades && grades.length === 0) {
-        console.log('Received empty array of grades from server');
+        console.log('[ManageGrades] Received empty array of grades from server');
       }
     }
 
@@ -176,59 +231,82 @@ const ManageGrades = () => {
     applyFilters();
     
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grades, isError, isSuccess, message, searchTerm, subjectFilter, alertState]);
+  }, [grades, isError, isSuccess, message, searchTerm, subjectFilter, classFilter, alertState]);
 
   const applyFilters = () => {
     // Safety check that grades exists and is an array
     if (!grades || !Array.isArray(grades)) {
-      console.warn('Cannot filter grades: grades is not an array', grades);
+      console.warn('[ManageGrades] Cannot filter grades: grades is not an array', grades);
       setFilteredGrades([]);
       return;
     }
 
-    console.log(`Applying filters to ${grades.length} grades`);
+    console.log(`[ManageGrades] Applying filters to ${grades.length} grades`);
     
     try {
       let filtered = [...grades];
-
-      // Apply subject filter
-      if (subjectFilter) {
-        filtered = filtered.filter((grade) => {
-          if (!grade) return false;
-          // Handle both object references and direct IDs
-          const subjectId = typeof grade.subject === 'object' ? grade.subject?._id : grade.subject;
-          return subjectId === subjectFilter;
-        });
-        console.log(`After subject filter: ${filtered.length} grades`);
-      }
-
-      // Apply search filter
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        filtered = filtered.filter((grade) => {
-          if (!grade) return false;
-          
-          // Safely check subject name
-          const hasSubjectMatch = grade.subject && 
-            (typeof grade.subject === 'object' ? 
-              (grade.subject.name && grade.subject.name.toLowerCase().includes(search)) : 
-              false);
-              
-          // Safely check description
-          const hasDescriptionMatch = grade.description && 
-            grade.description.toLowerCase().includes(search);
+      
+      // Apply class filter if one is selected (for teacher users only)
+      if (classFilter && user?.role === 'teacher') {
+        const selectedClass = teacherClasses.find(cls => cls._id === classFilter);
+        
+        if (selectedClass) {
+          // Get class student IDs as strings
+          const classStudentIds = selectedClass.students
+            ? selectedClass.students.map(student => 
+                typeof student === 'string' ? student : student._id
+              )
+            : [];
             
-          // Safely check student name
-          const hasStudentMatch = grade.student && 
-            (typeof grade.student === 'object' ? 
-              (grade.student.name && grade.student.name.toLowerCase().includes(search)) : 
-              false);
-              
-          return hasSubjectMatch || hasDescriptionMatch || hasStudentMatch;
-        });
-        console.log(`After search filter: ${filtered.length} grades`);
+          // Get class subject name
+          const classSubject = selectedClass.subject?.toLowerCase() || '';
+          
+          // Filter grades where the student is in the selected class AND subject matches the class subject
+          filtered = filtered.filter(grade => {
+            const studentId = grade.student?._id || '';
+            const subjectName = grade.subject?.name?.toLowerCase() || '';
+            
+            // Check if this grade's student is in the class AND subject matches
+            const studentInClass = classStudentIds.includes(studentId);
+            const subjectMatches = classSubject === '' || subjectName === classSubject;
+            
+            return studentInClass && subjectMatches;
+          });
+          
+          console.log(`[ManageGrades] After class filter, ${filtered.length} grades remain`);
+        }
       }
-
+      
+      // Apply subject filter if one is selected
+      if (subjectFilter) {
+        filtered = filtered.filter(grade => 
+          grade.subject && grade.subject._id === subjectFilter);
+        console.log(`[ManageGrades] After subject filter, ${filtered.length} grades remain`);
+      }
+      
+      // Apply search filter if one exists
+      if (searchTerm.trim() !== '') {
+        const search = searchTerm.toLowerCase().trim();
+        filtered = filtered.filter(grade => {
+          // Check student name
+          const studentName = grade.student?.name?.toLowerCase() || '';
+          // Check subject name
+          const subjectName = grade.subject?.name?.toLowerCase() || '';
+          // Check grade value as string
+          const gradeValue = grade.value?.toString()?.toLowerCase() || '';
+          // Check description
+          const description = grade.description?.toLowerCase() || '';
+          
+          return (
+            studentName.includes(search) ||
+            subjectName.includes(search) ||
+            gradeValue.includes(search) ||
+            description.includes(search)
+          );
+        });
+        console.log(`[ManageGrades] After search filter, ${filtered.length} grades remain`);
+      }
+      
       console.log(`Final filtered grades: ${filtered.length}`);
       setFilteredGrades(filtered);
     } catch (error) {
@@ -462,7 +540,7 @@ const ManageGrades = () => {
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <TextField
               fullWidth
               variant="outlined"
@@ -478,7 +556,59 @@ const ManageGrades = () => {
               }}
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          
+          {/* Class Filter - Only shown for teachers */}
+          {user && user.role === 'teacher' && (
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth variant="outlined">
+                <InputLabel id="class-filter-label">Filter by Class</InputLabel>
+                <Select
+                  labelId="class-filter-label"
+                  id="class-filter"
+                  value={classFilter}
+                  onChange={(e) => {
+                    setClassFilter(e.target.value);
+                    // Reset subject filter when class changes
+                    if (subjectFilter) {
+                      setSubjectFilter('');
+                    }
+                  }}
+                  label="Filter by Class"
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <ClassIcon />
+                    </InputAdornment>
+                  }
+                  disabled={classesLoading || teacherClasses.length === 0}
+                >
+                  <MenuItem value="">
+                    <em>All Classes</em>
+                  </MenuItem>
+                  {teacherClasses.map((classItem) => (
+                    <MenuItem key={classItem._id} value={classItem._id}>
+                      {classItem.name}
+                      {classItem.subject && (
+                        <Chip 
+                          size="small" 
+                          label={classItem.subject} 
+                          color="primary" 
+                          variant="outlined"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>
+                  {classesLoading ? 'Loading classes...' : 
+                   teacherClasses.length === 0 ? 'No classes assigned' :
+                   'Filter grades by class'}
+                </FormHelperText>
+              </FormControl>
+            </Grid>
+          )}
+          
+          <Grid item xs={12} md={user && user.role === 'teacher' ? 4 : 6}>
             <FormControl fullWidth variant="outlined">
               <InputLabel id="subject-filter-label">Filter by Subject</InputLabel>
               <Select
@@ -496,9 +626,18 @@ const ManageGrades = () => {
                 <MenuItem value="">
                   <em>All Subjects</em>
                 </MenuItem>
-                {subjects && subjects.map((subject) => (
+                {(filteredSubjects && filteredSubjects.length > 0 ? filteredSubjects : subjects).map((subject) => (
                   <MenuItem key={subject._id} value={subject._id}>
                     {subject.name}
+                    {classFilter && filteredSubjects.length === 1 && (
+                      <Chip 
+                        size="small" 
+                        label="Class Subject" 
+                        color="primary" 
+                        variant="outlined"
+                        sx={{ ml: 1 }}
+                      />
+                    )}
                   </MenuItem>
                 ))}
               </Select>

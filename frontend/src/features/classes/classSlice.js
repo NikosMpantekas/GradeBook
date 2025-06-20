@@ -125,6 +125,29 @@ export const deleteClass = createAsyncThunk(
   }
 );
 
+// Get classes by teacher ID
+export const getClassesByTeacher = createAsyncThunk(
+  'classes/getByTeacher',
+  async (teacherId, thunkAPI) => {
+    try {
+      // Check for user and token
+      const user = thunkAPI.getState().auth.user;
+      if (!user || !user.token) {
+        console.error('No user or token available in getClassesByTeacher thunk');
+        return thunkAPI.rejectWithValue('Authentication error: Please log in again');
+      }
+      
+      // Get classes for the specified teacher with proper token
+      return await classService.getClassesByTeacher(teacherId, user.token);
+    } catch (error) {
+      console.error('Error in getClassesByTeacher thunk:', error);
+      const message =
+        error.response?.data?.message || error.message || error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 export const classSlice = createSlice({
   name: 'classes',
   initialState,
@@ -204,6 +227,19 @@ export const classSlice = createSlice({
         state.classes = state.classes.filter((c) => c._id !== action.payload.id);
       })
       .addCase(deleteClass.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+      })
+      .addCase(getClassesByTeacher.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getClassesByTeacher.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.classes = action.payload;
+      })
+      .addCase(getClassesByTeacher.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
