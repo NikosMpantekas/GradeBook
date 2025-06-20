@@ -32,12 +32,21 @@ import {
   Tab,
   Card,
   CardContent,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  OutlinedInput,
+  InputAdornment,
+  Skeleton,
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
   Schedule as ScheduleIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
@@ -76,13 +85,40 @@ const ManageClasses = () => {
     students: [],
     teachers: [],
     schedule: [
-      { day: 'Monday', startTime: '', endTime: '' },
-      { day: 'Tuesday', startTime: '', endTime: '' },
-      { day: 'Wednesday', startTime: '', endTime: '' },
-      { day: 'Thursday', startTime: '', endTime: '' },
-      { day: 'Friday', startTime: '', endTime: '' },
+      { day: 'Monday', startTime: '', endTime: '', active: false },
+      { day: 'Tuesday', startTime: '', endTime: '', active: false },
+      { day: 'Wednesday', startTime: '', endTime: '', active: false },
+      { day: 'Thursday', startTime: '', endTime: '', active: false },
+      { day: 'Friday', startTime: '', endTime: '', active: false },
+      { day: 'Saturday', startTime: '', endTime: '', active: false },
+      { day: 'Sunday', startTime: '', endTime: '', active: false },
     ],
   });
+  
+  // States for filtering teachers and students
+  const [teacherFilter, setTeacherFilter] = useState('');
+  const [studentFilter, setStudentFilter] = useState('');
+  
+  // Filtered lists
+  const filteredTeachers = useMemo(() => {
+    return users
+      .filter(user => user.role === 'teacher')
+      .filter(teacher => 
+        teacher.firstName?.toLowerCase().includes(teacherFilter.toLowerCase()) || 
+        teacher.lastName?.toLowerCase().includes(teacherFilter.toLowerCase()) ||
+        teacher.email?.toLowerCase().includes(teacherFilter.toLowerCase())
+      );
+  }, [users, teacherFilter]);
+  
+  const filteredStudents = useMemo(() => {
+    return users
+      .filter(user => user.role === 'student')
+      .filter(student => 
+        student.firstName?.toLowerCase().includes(studentFilter.toLowerCase()) || 
+        student.lastName?.toLowerCase().includes(studentFilter.toLowerCase()) ||
+        student.email?.toLowerCase().includes(studentFilter.toLowerCase())
+      );
+  }, [users, studentFilter]);
 
   // Load classes, schools, and users when component mounts
   useEffect(() => {
@@ -152,6 +188,11 @@ const ManageClasses = () => {
 
   const handleAdd = () => {
     setFormMode('add');
+    
+    // Reset the filters too
+    setTeacherFilter('');
+    setStudentFilter('');
+    
     setClassData({
       subjectName: '',
       directionName: '',
@@ -159,11 +200,13 @@ const ManageClasses = () => {
       students: [],
       teachers: [],
       schedule: [
-        { day: 'Monday', startTime: '', endTime: '' },
-        { day: 'Tuesday', startTime: '', endTime: '' },
-        { day: 'Wednesday', startTime: '', endTime: '' },
-        { day: 'Thursday', startTime: '', endTime: '' },
-        { day: 'Friday', startTime: '', endTime: '' },
+        { day: 'Monday', startTime: '', endTime: '', active: false },
+        { day: 'Tuesday', startTime: '', endTime: '', active: false },
+        { day: 'Wednesday', startTime: '', endTime: '', active: false },
+        { day: 'Thursday', startTime: '', endTime: '', active: false },
+        { day: 'Friday', startTime: '', endTime: '', active: false },
+        { day: 'Saturday', startTime: '', endTime: '', active: false },
+        { day: 'Sunday', startTime: '', endTime: '', active: false },
       ],
     });
     setFormOpen(true);
@@ -198,26 +241,82 @@ const ManageClasses = () => {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setClassData((prev) => ({
-      ...prev,
+    setClassData((prevData) => ({
+      ...prevData,
       [name]: value,
     }));
   };
-  
-  // Handle schedule changes
+
   const handleScheduleChange = (index, field, value) => {
-    setClassData((prev) => {
-      const updatedSchedule = [...prev.schedule];
-      updatedSchedule[index] = { ...updatedSchedule[index], [field]: value };
-      return { ...prev, schedule: updatedSchedule };
+    const updatedSchedule = [...classData.schedule];
+    updatedSchedule[index] = {
+      ...updatedSchedule[index],
+      [field]: value,
+    };
+    
+    // If setting times on an inactive day, auto-activate it
+    if ((field === 'startTime' || field === 'endTime') && value && !updatedSchedule[index].active) {
+      updatedSchedule[index].active = true;
+    }
+    
+    setClassData((prevData) => ({
+      ...prevData,
+      schedule: updatedSchedule,
+    }));
+  };
+  
+  // Toggle teacher selection with checkbox
+  const handleTeacherToggle = (teacherId) => {
+    setClassData(prevData => {
+      const isSelected = prevData.teachers.includes(teacherId);
+      const updatedTeachers = isSelected 
+        ? prevData.teachers.filter(id => id !== teacherId)
+        : [...prevData.teachers, teacherId];
+        
+      return {
+        ...prevData,
+        teachers: updatedTeachers
+      };
     });
+  };
+  
+  // Toggle student selection with checkbox
+  const handleStudentToggle = (studentId) => {
+    setClassData(prevData => {
+      const isSelected = prevData.students.includes(studentId);
+      const updatedStudents = isSelected 
+        ? prevData.students.filter(id => id !== studentId)
+        : [...prevData.students, studentId];
+        
+      return {
+        ...prevData,
+        students: updatedStudents
+      };
+    });
+  };
+  
+  // Toggle day activation in schedule
+  const handleDayToggle = (index) => {
+    const updatedSchedule = [...classData.schedule];
+    updatedSchedule[index] = {
+      ...updatedSchedule[index],
+      active: !updatedSchedule[index].active,
+      // Reset times if deactivating
+      startTime: !updatedSchedule[index].active ? updatedSchedule[index].startTime : '',
+      endTime: !updatedSchedule[index].active ? updatedSchedule[index].endTime : '',
+    };
+    
+    setClassData(prevData => ({
+      ...prevData,
+      schedule: updatedSchedule
+    }));
   };
   
   // Handle student selection
   const handleStudentChange = (selectedStudents) => {
     setClassData((prev) => ({
       ...prev,
-      students: selectedStudents,
+      students: selectedStudents.map(student => student._id),
     }));
   };
   
@@ -225,7 +324,7 @@ const ManageClasses = () => {
   const handleTeacherChange = (selectedTeachers) => {
     setClassData((prev) => ({
       ...prev,
-      teachers: selectedTeachers,
+      teachers: selectedTeachers.map(teacher => teacher._id),
     }));
   };
 
@@ -467,120 +566,208 @@ const ManageClasses = () => {
               {/* Students & Teachers Tab */}
               {tabValue === 1 && (
                 <Box sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Select Students
-                  </Typography>
-                  <Autocomplete
-                    multiple
-                    options={users ? users.filter(user => user.role === 'student') : []}
-                    getOptionLabel={(option) => option.name}
-                    value={users ? users.filter(user => 
-                      classData.students.includes(user._id) && user.role === 'student'
-                    ) : []}
-                    onChange={(event, newValue) => {
-                      handleStudentChange(newValue.map(student => student._id));
-                    }}
-                    renderInput={(params) => (
+                  <Box mb={4}>
+                    <Typography variant="subtitle1" sx={{ mb: 2 }} gutterBottom>
+                      Select Students
+                    </Typography>
+                    <Box mb={2}>
                       <TextField
-                        {...params}
-                        variant="outlined"
-                        label="Students"
-                        placeholder="Select students"
                         fullWidth
+                        label="Search Students"
+                        variant="outlined"
+                        value={studentFilter}
+                        onChange={(e) => setStudentFilter(e.target.value)}
+                        placeholder="Search by name or email"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SearchIcon />
+                            </InputAdornment>
+                          ),
+                        }}
+                        size="small"
                         margin="normal"
                       />
-                    )}
-                    renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip
-                          variant="outlined"
-                          label={option.name}
-                          size="small"
-                          {...getTagProps({ index })}
-                        />
-                      ))
-                    }
-                  />
-                  
-                  <Typography variant="subtitle1" sx={{ mt: 3 }} gutterBottom>
-                    Select Teachers
-                  </Typography>
-                  <Autocomplete
-                    multiple
-                    options={users ? users.filter(user => user.role === 'teacher') : []}
-                    getOptionLabel={(option) => option.name}
-                    value={users ? users.filter(user => 
-                      classData.teachers.includes(user._id) && user.role === 'teacher'
-                    ) : []}
-                    onChange={(event, newValue) => {
-                      handleTeacherChange(newValue.map(teacher => teacher._id));
-                    }}
-                    renderInput={(params) => (
+                    </Box>
+                    <FormGroup>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="caption" color="textSecondary">
+                          Selected: {classData.students.length} student(s)
+                        </Typography>
+                        {classData.students.length > 0 && (
+                          <Button 
+                            size="small" 
+                            onClick={() => setClassData({...classData, students: []})}
+                            startIcon={<ClearIcon fontSize="small" />}
+                          >
+                            Clear All
+                          </Button>
+                        )}
+                      </Box>
+                      <Box sx={{ 
+                        maxHeight: '300px', 
+                        overflowY: 'auto', 
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 1,
+                        p: 1
+                      }}>
+                        {filteredStudents.length === 0 ? (
+                          <Typography variant="body2" color="text.secondary" align="center" sx={{ p: 2 }}>
+                            No students match your search
+                          </Typography>
+                        ) : (
+                          filteredStudents.map((student) => (
+                            <FormControlLabel
+                              key={student._id}
+                              control={
+                                <Checkbox
+                                  checked={classData.students.includes(student._id)}
+                                  onChange={() => handleStudentToggle(student._id)}
+                                  color="primary"
+                                />
+                              }
+                              label={
+                                <Typography variant="body2">
+                                  {student.firstName} {student.lastName} • {student.email}
+                                </Typography>
+                              }
+                            />
+                          ))
+                        )}
+                      </Box>
+                    </FormGroup>
+                  </Box>
+
+                  <Divider sx={{ my: 2 }} />
+                    
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ mb: 2 }} gutterBottom>
+                      Select Teachers
+                    </Typography>
+                    <Box mb={2}>
                       <TextField
-                        {...params}
-                        variant="outlined"
-                        label="Teachers"
-                        placeholder="Select teachers"
                         fullWidth
+                        label="Search Teachers"
+                        variant="outlined"
+                        value={teacherFilter}
+                        onChange={(e) => setTeacherFilter(e.target.value)}
+                        placeholder="Search by name or email"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SearchIcon />
+                            </InputAdornment>
+                          ),
+                        }}
+                        size="small"
                         margin="normal"
                       />
-                    )}
-                    renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip
-                          variant="outlined"
-                          label={option.name}
-                          size="small"
-                          {...getTagProps({ index })}
-                        />
-                      ))
-                    }
-                  />
+                    </Box>
+                    <FormGroup>
+                      <Typography variant="caption" color="textSecondary" sx={{ mb: 1 }}>
+                        Selected: {classData.teachers.length} teacher(s)
+                      </Typography>
+                      <Box sx={{ 
+                        maxHeight: '200px', 
+                        overflowY: 'auto', 
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 1,
+                        p: 1
+                      }}>
+                        {filteredTeachers.length === 0 ? (
+                          <Typography variant="body2" color="text.secondary" align="center" sx={{ p: 2 }}>
+                            No teachers match your search
+                          </Typography>
+                        ) : (
+                          filteredTeachers.map((teacher) => (
+                            <FormControlLabel
+                              key={teacher._id}
+                              control={
+                                <Checkbox
+                                  checked={classData.teachers.includes(teacher._id)}
+                                  onChange={() => handleTeacherToggle(teacher._id)}
+                                  color="primary"
+                                />
+                              }
+                              label={
+                                <Typography variant="body2">
+                                  {teacher.firstName} {teacher.lastName} • {teacher.email}
+                                </Typography>
+                              }
+                            />
+                          ))
+                        )}
+                      </Box>
+                    </FormGroup>
+                  </Box>
                 </Box>
               )}
               
               {/* Schedule Tab */}
               {tabValue === 2 && (
                 <Box sx={{ p: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Class Schedule
-                  </Typography>
+                  <Divider>
+                    <Typography variant="h6">Schedule</Typography>
+                  </Divider>
+                  <Box mb={2}>
+                    <Typography variant="body2" color="textSecondary">
+                      Select the days when this class takes place and set the time range.
+                    </Typography>
+                  </Box>
                   <Grid container spacing={2}>
-                    {classData.schedule.map((scheduleItem, index) => (
-                      <Grid item xs={12} key={scheduleItem.day}>
-                        <Card variant="outlined">
-                          <CardContent>
-                            <Grid container spacing={2} alignItems="center">
-                              <Grid item xs={3}>
-                                <Typography variant="body1">
-                                  {scheduleItem.day}
-                                </Typography>
-                              </Grid>
-                              <Grid item xs={4}>
+                    {classData.schedule.map((daySchedule, index) => (
+                      <Grid item xs={12} key={daySchedule.day}>
+                        <Paper sx={{ p: 2, backgroundColor: daySchedule.active ? 'rgba(25, 118, 210, 0.08)' : 'transparent' }}>
+                          <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} alignItems="center">
+                            <Box display="flex" alignItems="center" width={{ xs: '100%', sm: 'auto' }} mb={{ xs: 1, sm: 0 }}>
+                              <Checkbox
+                                checked={daySchedule.active}
+                                onChange={() => handleDayToggle(index)}
+                                color="primary"
+                              />
+                              <Typography
+                                sx={{ width: '100px', fontWeight: daySchedule.active ? 'bold' : 'normal' }}
+                                variant="subtitle1"
+                              >
+                                {daySchedule.day}
+                              </Typography>
+                            </Box>
+                            {daySchedule.active && (
+                              <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} flex={1} gap={2}>
                                 <TextField
+                                  fullWidth
                                   label="Start Time"
                                   type="time"
-                                  value={scheduleItem.startTime}
-                                  onChange={(e) => handleScheduleChange(index, 'startTime', e.target.value)}
+                                  value={daySchedule.startTime || ''}
+                                  onChange={(e) =>
+                                    handleScheduleChange(
+                                      index,
+                                      'startTime',
+                                      e.target.value
+                                    )
+                                  }
                                   InputLabelProps={{ shrink: true }}
                                   inputProps={{ step: 300 }}
-                                  fullWidth
                                 />
-                              </Grid>
-                              <Grid item xs={4}>
                                 <TextField
+                                  fullWidth
                                   label="End Time"
                                   type="time"
-                                  value={scheduleItem.endTime}
-                                  onChange={(e) => handleScheduleChange(index, 'endTime', e.target.value)}
+                                  value={daySchedule.endTime || ''}
+                                  onChange={(e) =>
+                                    handleScheduleChange(
+                                      index,
+                                      'endTime',
+                                      e.target.value
+                                    )
+                                  }
                                   InputLabelProps={{ shrink: true }}
                                   inputProps={{ step: 300 }}
-                                  fullWidth
                                 />
-                              </Grid>
-                            </Grid>
-                          </CardContent>
-                        </Card>
+                              </Box>
+                            )}
+                          </Box>
+                        </Paper>
                       </Grid>
                     ))}
                   </Grid>
