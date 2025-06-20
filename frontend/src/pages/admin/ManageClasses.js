@@ -429,20 +429,28 @@ const ManageClasses = () => {
                       disabled={user.role === 'admin'} // Admin can only add to their school
                     >
                       {schools?.filter(school => {
-                        // Filter out main schools/clusters and only show branches
-                        // Check explicit flag first
+                        // Enhanced filtering logic to show ONLY school branches
+                        // Handle null/undefined schools
+                        if (!school) return false;
+                        
+                        // 1. Check explicit flag first (most reliable)
                         if (school.isClusterSchool === true) return false;
                         
-                        // Check name patterns
-                        const clusterPatterns = /primary|cluster|general|main|central|district|organization/i;
-                        if (school.name && typeof school.name === 'string' && clusterPatterns.test(school.name)) {
-                          return false;
-                        }
+                        // 2. Check for parent school relationship
+                        if (school.isMainSchool === true || school.isParentSchool === true) return false;
                         
-                        // Check for very short names (likely acronyms for districts)
-                        if (school.name && typeof school.name === 'string' && school.name.length < 5) {
-                          return false;
-                        }
+                        // 3. Check if school has child schools (clusters have child schools)
+                        if (Array.isArray(school.childSchools) && school.childSchools.length > 0) return false;
+                        
+                        // 4. Check name patterns (comprehensive pattern matching)
+                        const clusterPatterns = /primary|cluster|general|main|central|district|organization|head|principal|board|academy/i;
+                        if (school.name && typeof school.name === 'string' && clusterPatterns.test(school.name)) return false;
+                        
+                        // 5. Check for very short names (likely acronyms for districts)
+                        if (school.name && typeof school.name === 'string' && school.name.length < 5) return false;
+                        
+                        // 6. Check domain properties - clusters often have domain settings
+                        if (school.schoolDomain || school.emailDomain) return false;
                         
                         return true; // Include this school branch
                       }).map((school) => (

@@ -94,8 +94,8 @@ const ManageSchools = () => {
   
   /**
    * CRITICAL FIX: Definitive cluster school detection - UI-level filter
-   * Third and final layer of protection to ensure cluster schools never appear
-   * Exactly matching the filtering logic in ManageClasses component for consistency
+   * Enhanced to better detect and filter out main school clusters
+   * This ensures ONLY actual school branches are shown to administrators
    */
   const isClusterSchool = (school) => {
     try {
@@ -110,16 +110,35 @@ const ManageSchools = () => {
         return true;
       }
       
-      // 2. Check name patterns (comprehensive pattern matching)
-      const clusterPatterns = /primary|cluster|general|main|central|district|organization/i;
+      // 2. Check for parent school relationship
+      if (school.isMainSchool === true || school.isParentSchool === true) {
+        console.log(`UI Filter: Excluding main/parent school: ${school.name}`);
+        return true;
+      }
+      
+      // 3. Check if school has child schools (clusters have child schools)
+      if (Array.isArray(school.childSchools) && school.childSchools.length > 0) {
+        console.log(`UI Filter: Excluding school with child schools: ${school.name}`);
+        return true;
+      }
+      
+      // 4. Check name patterns (comprehensive pattern matching)
+      const clusterPatterns = /primary|cluster|general|main|central|district|organization|head|principal|board|academy/i;
       if (school.name && typeof school.name === 'string' && clusterPatterns.test(school.name)) {
         console.log(`UI Filter: Excluding cluster school by name pattern: ${school.name}`);
         return true;
       }
       
-      // 3. Check for very short names (likely acronyms for districts)
+      // 5. Check for very short names (likely acronyms for districts)
       if (school.name && typeof school.name === 'string' && school.name.length < 5) {
         console.log(`UI Filter: Excluding potential cluster by short name: ${school.name}`);
+        return true;
+      }
+      
+      // 6. Check domain properties - clusters often have domain settings
+      if (school.schoolDomain || school.emailDomain) {
+        // If a school defines domains, it's likely a cluster/parent
+        console.log(`UI Filter: Excluding school with domain definitions: ${school.name}`);
         return true;
       }
       
