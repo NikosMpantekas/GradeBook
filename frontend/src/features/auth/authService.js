@@ -1,16 +1,24 @@
 import axios from 'axios';
-import { authEndpoint } from '../../config/apiConfig';
+import { API_URL } from '../../config/appConfig';
 
-// Add extensive debug logging
-console.log('============= AUTH SERVICE INITIALIZATION =============');
-console.log('[authService] Environment:', process.env.NODE_ENV);
-console.log('[authService] Auth API Base URL:', authEndpoint());
-console.log('======================================================');
+// API base URL
+console.log('[authService] Using API_URL from environment:', API_URL);
+
+// Helper function for consistent API endpoint handling
+const buildEndpointUrl = (path) => {
+  const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${baseUrl}${normalizedPath}`;
+};
+
+// Common API endpoint paths
+const API_USERS = buildEndpointUrl('/api/users');
 
 // Register user
 const register = async (userData) => {
-  console.log(`[authService] Attempting to register user at: ${authEndpoint('')}`);
-  const response = await axios.post(authEndpoint(''), userData);
+  const url = `${API_USERS}/`;
+  console.log(`[authService] Registering at: ${url}`);
+  const response = await axios.post(url, userData);
 
   if (response.data) {
     // If the user wants to save credentials, store in localStorage
@@ -30,9 +38,21 @@ const login = async (userData) => {
   console.log('Login attempt with:', { email: userData.email, saveCredentials: userData.saveCredentials });
   
   try {
-    // Send saveCredentials preference to the backend
-    console.log(`[authService] Attempting login at: ${authEndpoint('/login')}`);
-    const response = await axios.post(authEndpoint('/login'), userData);
+    // Build proper URL using our utility function
+    const loginUrl = `${API_USERS}/login`;
+    console.log(`[authService] Login attempting at: ${loginUrl}`);
+    
+    // Make request with proper headers
+    const response = await axios({
+      method: 'post',
+      url: loginUrl,
+      data: userData,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log(`[authService] Login successful`);
     console.log('Login successful - received data:', JSON.stringify(response.data));
 
     // Validate token and refresh token
@@ -132,16 +152,27 @@ const logout = () => {
   window.location.replace(`/login?cache=${cacheBuster}`);
 };
 
-// Get current user data with populated fields
+// Get user data for current user (to refresh user details)
 const getUserData = async (token) => {
+  if (!token) {
+    console.error('No token provided to getUserData');
+    throw new Error('Authentication token is required');
+  }
+
   const config = {
     headers: {
       Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
     },
+    timeout: 10000
   };
 
-  console.log(`[authService] Getting user data at: ${authEndpoint('/me')}`);
-  const response = await axios.get(authEndpoint('/me'), config);
+  // Use proper API path
+  const meUrl = `${API_USERS}/me`;
+  console.log(`[authService] Getting user profile from: ${meUrl}`);
+  const response = await axios.get(meUrl, config);
   
   if (response.data) {
     // Update the stored user data but preserve the token
@@ -174,8 +205,9 @@ const updateProfile = async (userData, token) => {
   };
 
   console.log('Updating profile with data:', userData);
-  console.log(`[authService] Updating profile at: ${authEndpoint('/profile')}`);
-  const response = await axios.put(authEndpoint('/profile'), userData, config);
+  const profileUrl = `${API_USERS}/profile`;
+  console.log(`[authService] Updating profile at: ${profileUrl}`);
+  const response = await axios.put(profileUrl, userData, config);
   console.log('Profile update response:', response.data);
 
   if (response.data) {

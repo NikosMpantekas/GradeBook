@@ -3,10 +3,20 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.6.0.22';
+const APP_VERSION = '1.6.0.23';
 
-// API URL
+// API URL from environment variables - proper way without hardcoding
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// Debug logging
+console.log('[appConfig] Environment:', process.env.NODE_ENV);
+console.log('[appConfig] Using API_URL:', API_URL);
+
+// Add warning if API_URL is localhost in production
+if (process.env.NODE_ENV === 'production' && API_URL.includes('localhost')) {
+  console.warn('[appConfig] WARNING: Using localhost in production environment!');
+  console.warn('[appConfig] Set REACT_APP_API_URL in your production environment');
+}
 
 // Helper function to construct API endpoint URLs properly, avoiding double slashes
 const buildApiUrl = (baseUrl, endpoint) => {

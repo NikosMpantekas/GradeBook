@@ -61,14 +61,35 @@ export const register = createAsyncThunk(
 );
 
 // Login user
-export const login = createAsyncThunk(
-  'auth/login',
-  async (userData, thunkAPI) => {
-    logger.info('AUTH', 'Login attempt', { email: userData.email, saveCredentials: userData.saveCredentials });
-    try {
-      const response = await authService.login(userData);
-      logger.info('AUTH', 'Login successful', { 
-        userId: response._id, 
+export const login = createAsyncThunk('auth/login', async (user, thunkAPI) => {
+  console.log('Auth Slice: Login thunk triggered with:', { email: user.email });
+  logger.info('AUTH', 'Login attempt', { email: user.email, saveCredentials: user.saveCredentials });
+  try {
+    const response = await authService.login(user);
+    logger.info('AUTH', 'Login successful', { 
+      userId: response._id, 
+      role: response.role,
+      hasToken: !!response.token,
+      schoolId: response.schoolId
+    });
+    return response;
+  } catch (error) {
+    const message =
+      (error.response &&
+        error.response.data &&
+        error.response.data.message) ||
+      error.message ||
+      error.toString();
+    
+    // Detailed error logging
+    logger.error('AUTH', 'Login failed', {
+      errorMessage: message,
+      statusCode: error.response?.status,
+      responseData: error.response?.data,
+      errorStack: error.stack
+    });
+    
+    return thunkAPI.rejectWithValue(message);
         role: response.role,
         hasToken: !!response.token,
         schoolId: response.schoolId
