@@ -13,7 +13,24 @@ import { API_URL, buildApiUrl } from '../../config/appConfig';
 import { createGrade, reset } from '../../features/grades/gradeSlice';
 
 // Material UI components
-import { Box, Grid, Paper } from '@mui/material';
+import {
+  Box,
+  Grid,
+  Card,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+  TextField,
+  Button,
+  CircularProgress,
+  Typography,
+  Autocomplete,
+  Chip,
+  Alert,
+  Paper
+} from '@mui/material';
 
 // Utility functions
 import { handleAxiosError, filterSubjectsByDirection, filterStudentsBySubject, extractTeacherData } from './CreateGradeUtils';
@@ -192,44 +209,102 @@ const CreateGradeSimple = () => {
       
       // Get directions with detailed error handling
       try {
+        // Force URL without slash to be consistent
         const directionsUrl = buildApiUrl('/api/directions');
         console.log('[CreateGradeSimple] Requesting directions from:', directionsUrl);
-        directionsRes = await axios.get(directionsUrl, config);
+        
+        // Use direct API_URL with manual normalization as fallback if buildApiUrl fails
+        try {
+          directionsRes = await axios.get(directionsUrl, config);
+        } catch (directUrlError) {
+          console.warn('[CreateGradeSimple] First attempt failed, trying alternate URL format');
+          const fallbackUrl = `${API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL}/api/directions`;
+          console.log('[CreateGradeSimple] Trying fallback URL:', fallbackUrl);
+          directionsRes = await axios.get(fallbackUrl, config);
+        }
+        
         console.log('[CreateGradeSimple] Directions response status:', directionsRes.status);
+        console.log('[CreateGradeSimple] Directions response headers:', JSON.stringify(directionsRes.headers));
         console.log('[CreateGradeSimple] Directions data type:', typeof directionsRes.data, 
                    'Is array:', Array.isArray(directionsRes.data), 
                    'Length:', directionsRes.data?.length || 0);
                    
-        console.log('[CreateGradeSimple] Raw directions data sample:', 
-          JSON.stringify(directionsRes.data?.slice(0, 1) || 'No data'));
+        // More detailed inspection of response data
+        if (directionsRes.data) {
+          console.log('[CreateGradeSimple] Raw directions data sample:', 
+            JSON.stringify(directionsRes.data?.slice(0, 1) || 'No data'));
+            
+          // Check if data is properly structured
+          if (Array.isArray(directionsRes.data) && directionsRes.data.length > 0) {
+            console.log('[CreateGradeSimple] First direction object keys:', 
+              Object.keys(directionsRes.data[0]).join(', '));
+          }
+        } else {
+          console.error('[CreateGradeSimple] Directions response data is null or undefined');
+        }
       } catch (dirError) {
         console.error('[CreateGradeSimple] Failed to fetch directions:', dirError);
+        console.error('Error name:', dirError.name);
+        console.error('Error message:', dirError.message);
+        console.error('Error stack:', dirError.stack);
         if (dirError.response) {
           console.error('Response status:', dirError.response.status);
+          console.error('Response headers:', JSON.stringify(dirError.response.headers));
           console.error('Response data:', JSON.stringify(dirError.response.data));
+        } else if (dirError.request) {
+          console.error('Request was made but no response received:', dirError.request);
         }
-        toast.error('Failed to load directions. Please check console for details.');
+        toast.error(`Failed to load directions: ${dirError.message}. Check console for details.`);
       }
       
       // Get subjects with detailed error handling
       try {
+        // Force URL without slash to be consistent
         const subjectsUrl = buildApiUrl('/api/subjects');
         console.log('[CreateGradeSimple] Requesting subjects from:', subjectsUrl);
-        subjectsRes = await axios.get(subjectsUrl, config);
+        
+        // Use direct API_URL with manual normalization as fallback if buildApiUrl fails
+        try {
+          subjectsRes = await axios.get(subjectsUrl, config);
+        } catch (subUrlError) {
+          console.warn('[CreateGradeSimple] First attempt for subjects failed, trying alternate URL format');
+          const fallbackUrl = `${API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL}/api/subjects`;
+          console.log('[CreateGradeSimple] Trying fallback URL for subjects:', fallbackUrl);
+          subjectsRes = await axios.get(fallbackUrl, config);
+        }
+        
         console.log('[CreateGradeSimple] Subjects response status:', subjectsRes.status);
+        console.log('[CreateGradeSimple] Subjects response headers:', JSON.stringify(subjectsRes.headers));
         console.log('[CreateGradeSimple] Subjects data type:', typeof subjectsRes.data, 
                    'Is array:', Array.isArray(subjectsRes.data), 
                    'Length:', subjectsRes.data?.length || 0);
                    
-        console.log('[CreateGradeSimple] Raw subjects data sample:', 
-          JSON.stringify(subjectsRes.data?.slice(0, 1) || 'No data'));
+        // More detailed inspection of response data
+        if (subjectsRes.data) {
+          console.log('[CreateGradeSimple] Raw subjects data sample:', 
+            JSON.stringify(subjectsRes.data?.slice(0, 1) || 'No data'));
+            
+          // Check if data is properly structured
+          if (Array.isArray(subjectsRes.data) && subjectsRes.data.length > 0) {
+            console.log('[CreateGradeSimple] First subject object keys:', 
+              Object.keys(subjectsRes.data[0]).join(', '));
+          }
+        } else {
+          console.error('[CreateGradeSimple] Subjects response data is null or undefined');
+        }
       } catch (subError) {
         console.error('[CreateGradeSimple] Failed to fetch subjects:', subError);
+        console.error('Error name:', subError.name);
+        console.error('Error message:', subError.message);
+        console.error('Error stack:', subError.stack);
         if (subError.response) {
           console.error('Response status:', subError.response.status);
+          console.error('Response headers:', JSON.stringify(subError.response.headers));
           console.error('Response data:', JSON.stringify(subError.response.data));
+        } else if (subError.request) {
+          console.error('Request was made but no response received:', subError.request);
         }
-        toast.error('Failed to load subjects. Please check console for details.');
+        toast.error(`Failed to load subjects: ${subError.message}. Check console for details.`);
       }
       
       // Set directions, with defensive checks
