@@ -1166,7 +1166,7 @@ const CreateGradeSimple = () => {
                 disabled={isLoading}
                 sx={{ mb: { xs: 0, md: 2 } }}
                 InputProps={{
-                  startAdornment: <CalendarIcon color="primary" sx={{ mr: 1 }} />,
+                  startAdornment: <CalendarTodayIcon color="primary" sx={{ mr: 1 }} />,
                   sx: { py: 1.5 }
                 }}
               />
