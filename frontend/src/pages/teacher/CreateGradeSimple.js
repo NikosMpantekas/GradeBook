@@ -6,8 +6,8 @@ import { format } from 'date-fns';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-// Import API_URL from appConfig
-import { API_URL } from '../../config/appConfig';
+// Import API helpers from appConfig
+import { API_URL, buildApiUrl } from '../../config/appConfig';
 
 // Redux actions
 import { createGrade, reset } from '../../features/grades/gradeSlice';
@@ -184,92 +184,83 @@ const CreateGradeSimple = () => {
         }
       };
       
-      // Use imported API_URL from appConfig - ensure no trailing slash
-      let baseUrl = API_URL;
-      if (baseUrl.endsWith('/')) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
-      console.log('[CreateGradeSimple] Using normalized API_URL:', baseUrl);
+      console.log('[CreateGradeSimple] Using buildApiUrl helper for API requests');
       
-      // Fetch directions and subjects in parallel with detailed error handling
+      // Use separate try/catch blocks for each API call to identify which one fails
+      let directionsRes = { data: [] };
+      let subjectsRes = { data: [] };
+      
+      // Get directions with detailed error handling
       try {
-        console.log('[CreateGradeSimple] Sending requests to:', 
-          `${baseUrl}/api/directions`, 
-          `${baseUrl}/api/subjects`);
-
-        // Use individual calls for better error isolation
-        let directionsRes;
-        try {
-          directionsRes = await axios.get(`${baseUrl}/api/directions`, config);
-          console.log('[CreateGradeSimple] Directions response status:', directionsRes.status);
-          console.log('[CreateGradeSimple] Directions data type:', typeof directionsRes.data, 
-                     'Is array:', Array.isArray(directionsRes.data), 
-                     'Length:', directionsRes.data?.length || 0);
-        } catch (dirError) {
-          console.error('[CreateGradeSimple] Failed to load directions:', dirError.message);
-          if (dirError.response) {
-            console.error('Response status:', dirError.response.status);
-            console.error('Response data:', dirError.response.data);
-          }
-          throw new Error(`Directions API Error: ${dirError.message}`);
-        }
-
-        let subjectsRes;
-        try {
-          subjectsRes = await axios.get(`${baseUrl}/api/subjects`, config);
-          console.log('[CreateGradeSimple] Subjects response status:', subjectsRes.status);
-          console.log('[CreateGradeSimple] Subjects data type:', typeof subjectsRes.data, 
-                     'Is array:', Array.isArray(subjectsRes.data), 
-                     'Length:', subjectsRes.data?.length || 0);
-        } catch (subError) {
-          console.error('[CreateGradeSimple] Failed to load subjects:', subError.message);
-          if (subError.response) {
-            console.error('Response status:', subError.response.status);
-            console.error('Response data:', subError.response.data);
-          }
-          throw new Error(`Subjects API Error: ${subError.message}`);
-        }
-        
-        // Debug raw response data
+        const directionsUrl = buildApiUrl('/api/directions');
+        console.log('[CreateGradeSimple] Requesting directions from:', directionsUrl);
+        directionsRes = await axios.get(directionsUrl, config);
+        console.log('[CreateGradeSimple] Directions response status:', directionsRes.status);
+        console.log('[CreateGradeSimple] Directions data type:', typeof directionsRes.data, 
+                   'Is array:', Array.isArray(directionsRes.data), 
+                   'Length:', directionsRes.data?.length || 0);
+                   
         console.log('[CreateGradeSimple] Raw directions data sample:', 
           JSON.stringify(directionsRes.data?.slice(0, 1) || 'No data'));
-        console.log('[CreateGradeSimple] Raw subjects data sample:', 
-          JSON.stringify(subjectsRes.data?.slice(0, 1) || 'No data'));
-        
-        // Set directions, with defensive checks
-        if (Array.isArray(directionsRes.data)) {
-          console.log('[CreateGradeSimple] Setting directions state with', directionsRes.data.length, 'items');
-          setDirections(directionsRes.data);
-        } else {
-          console.error('[CreateGradeSimple] Directions data is not an array:', directionsRes.data);
-          setDirections([]);
+      } catch (dirError) {
+        console.error('[CreateGradeSimple] Failed to fetch directions:', dirError);
+        if (dirError.response) {
+          console.error('Response status:', dirError.response.status);
+          console.error('Response data:', JSON.stringify(dirError.response.data));
         }
-        
-        // Set subjects, with defensive checks
-        if (Array.isArray(subjectsRes.data)) {
-          console.log('[CreateGradeSimple] Setting subjects state with', subjectsRes.data.length, 'items');
-          setSubjects(subjectsRes.data);
-        } else {
-          console.error('[CreateGradeSimple] Subjects data is not an array:', subjectsRes.data);
-          setSubjects([]);
-        }
-        
-        // Apply initial filtering based on teacher data
-        if (teacherSubjects.length > 0) {
-          console.log('[CreateGradeSimple] Using teacher subjects for filtering:', teacherSubjects.length, 'items');
-          setFilteredSubjects(teacherSubjects);
-        } else if (Array.isArray(subjectsRes.data)) {
-          console.log('[CreateGradeSimple] Using API subjects for filtering:', subjectsRes.data.length, 'items');
-          setFilteredSubjects(subjectsRes.data || []);
-        } else {
-          console.warn('[CreateGradeSimple] No subjects available for filtering');
-          setFilteredSubjects([]);
-        }
-      } catch (error) {
-        console.error('[CreateGradeSimple] Error loading initial data:', error);
-        toast.error(`Failed to load data: ${error.message}`);
+        toast.error('Failed to load directions. Please check console for details.');
       }
       
+      // Get subjects with detailed error handling
+      try {
+        const subjectsUrl = buildApiUrl('/api/subjects');
+        console.log('[CreateGradeSimple] Requesting subjects from:', subjectsUrl);
+        subjectsRes = await axios.get(subjectsUrl, config);
+        console.log('[CreateGradeSimple] Subjects response status:', subjectsRes.status);
+        console.log('[CreateGradeSimple] Subjects data type:', typeof subjectsRes.data, 
+                   'Is array:', Array.isArray(subjectsRes.data), 
+                   'Length:', subjectsRes.data?.length || 0);
+                   
+        console.log('[CreateGradeSimple] Raw subjects data sample:', 
+          JSON.stringify(subjectsRes.data?.slice(0, 1) || 'No data'));
+      } catch (subError) {
+        console.error('[CreateGradeSimple] Failed to fetch subjects:', subError);
+        if (subError.response) {
+          console.error('Response status:', subError.response.status);
+          console.error('Response data:', JSON.stringify(subError.response.data));
+        }
+        toast.error('Failed to load subjects. Please check console for details.');
+      }
+      
+      // Set directions, with defensive checks
+      if (Array.isArray(directionsRes.data)) {
+        console.log('[CreateGradeSimple] Setting directions state with', directionsRes.data.length, 'items');
+        setDirections(directionsRes.data);
+      } else {
+        console.error('[CreateGradeSimple] Directions data is not an array:', directionsRes.data);
+        setDirections([]);
+      }
+      
+      // Set subjects, with defensive checks
+      if (Array.isArray(subjectsRes.data)) {
+        console.log('[CreateGradeSimple] Setting subjects state with', subjectsRes.data.length, 'items');
+        setSubjects(subjectsRes.data);
+      } else {
+        console.error('[CreateGradeSimple] Subjects data is not an array:', subjectsRes.data);
+        setSubjects([]);
+      }
+      
+      // Apply initial filtering based on teacher data
+      if (teacherSubjects.length > 0 && !isAdmin) {
+        console.log('[CreateGradeSimple] Using teacher subjects for filtering:', teacherSubjects.length, 'items');
+        setFilteredSubjects(teacherSubjects);
+      } else if (Array.isArray(subjectsRes.data)) {
+        console.log('[CreateGradeSimple] Using API subjects for filtering:', subjectsRes.data.length, 'items');
+        setFilteredSubjects(subjectsRes.data || []);
+      } else {
+        console.warn('[CreateGradeSimple] No subjects available for filtering');
+        setFilteredSubjects([]);
+      }
     } catch (error) {
       handleAxiosError(error, 'loadInitialData');
       toast.error('Failed to load initial data. Please refresh the page.');

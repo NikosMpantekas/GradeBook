@@ -3,7 +3,7 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-export const APP_VERSION = '1.6.0.76';
+export const APP_VERSION = '1.6.0.77';
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -31,15 +31,25 @@ if (process.env.NODE_ENV === 'production' && API_URL.includes('localhost')) {
 }
 
 // Helper function to construct API endpoint URLs properly, avoiding double slashes
-const buildApiUrl = (baseUrl, endpoint) => {
-  // Remove trailing slash from base URL if it exists
-  const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+export const buildApiUrl = (endpoint) => {
+  // Ensure API_URL doesn't have a trailing slash
+  const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
   
-  // Ensure endpoint starts with a slash
-  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  // Ensure endpoint has a leading slash but no trailing slash
+  const normalizedEndpoint = endpoint.startsWith('/') 
+    ? endpoint 
+    : `/${endpoint}`;
   
-  return `${normalizedBaseUrl}${normalizedEndpoint}`;
+  // Remove any trailing slash from the endpoint
+  const cleanEndpoint = normalizedEndpoint.endsWith('/') 
+    ? normalizedEndpoint.slice(0, -1) 
+    : normalizedEndpoint;
+    
+  return `${baseUrl}${cleanEndpoint}`;
 };
+
+// Export the base URL for backward compatibility
+export { API_URL };
 
 // IMMEDIATE SELF-EXECUTING FUNCTION TO NUKE ALL VERSION DATA
 (function() {
