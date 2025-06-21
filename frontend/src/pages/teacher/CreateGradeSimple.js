@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';  
+import React, { useState, useEffect, useCallback, useRef } from 'react';  
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
@@ -50,6 +50,9 @@ const CreateGradeSimple = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
+  // Reference to track if component is mounted
+  const isMounted = useRef(true);
+  
   // Get user from auth state
   const { user } = useSelector((state) => state.auth);
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.grades);
@@ -78,6 +81,9 @@ const CreateGradeSimple = () => {
   const [teacherDirections, setTeacherDirections] = useState([]);
   const [teacherStudents, setTeacherStudents] = useState([]);
   const [isLoadingTeacherData, setIsLoadingTeacherData] = useState(false);
+  
+  // Store whether current user is admin to bypass teacher filtering
+  const [isAdmin, setIsAdmin] = useState(false);
   
   // Reset form after submission
   const resetForm = () => {
@@ -112,19 +118,32 @@ const CreateGradeSimple = () => {
     }
   };
   
-  // Load classes where the current teacher is assigned
-  const loadTeacherClasses = useCallback(async () => {
-    if (!user?.token) return;
+  // Load teacher classes and associated data
+  const loadTeacherData = async () => {
+    if (!user?.token || !user?.user?._id) return;
     
-    setIsLoadingTeacherData(true);
     try {
+      setIsLoadingTeacherData(true); 
       const config = {
         headers: {
           Authorization: `Bearer ${user.token}`
         }
       };
       
-      console.log('[CreateGradeSimple] Loading classes for teacher:', user._id);
+      // For admins, skip teacher-based filtering
+      if (user.user && user.user.role === 'admin') {
+        console.log('[CreateGradeSimple] Admin user detected - bypassing teacher filtering');
+        setIsAdmin(true); 
+        setTeacherClasses([]);
+        setTeacherSubjects([]);
+        setTeacherDirections([]);
+        setTeacherStudents([]);
+        setIsLoadingTeacherData(false);
+        return;
+      }
+      
+      // For teachers, load their specific classes
+      console.log('[CreateGradeSimple] Loading classes for teacher:', user.user?._id);
       const response = await axios.get('/api/classes', config);
       
       if (Array.isArray(response.data)) {
@@ -246,7 +265,7 @@ const CreateGradeSimple = () => {
     } finally {
       setIsLoadingTeacherData(false);
     }
-  }, [user]);
+  };
 
   
   // Create a consolidated data loading function
@@ -303,43 +322,47 @@ const CreateGradeSimple = () => {
       console.error('[CreateGradeSimple] Error loading dropdown data:', error);
       toast.error('Failed to load form data. Please refresh and try again.');
     } finally {
-      // Skip if component unmounted before cleanup
-      if (!isMounted.current) return;
-      setLoading(false);
-    }
-  };
 
-  // Reference to track if component is mounted
-  const isMounted = React.useRef(true);
-
-  // Load all directions and teacher classes on component mount
-  useEffect(() => {
-    if (user && user.token) {
-      // Only load teacher classes data initially, then use loadInitialData for the rest
-      loadTeacherClasses()
-        .then(() => {
-          console.log('[CreateGradeSimple] Teacher classes loaded, now loading initial data');
-          loadInitialData();
-        })
-        .catch(error => {
-          console.error('[CreateGradeSimple] Error loading teacher data:', error);
-          // Still try to load basic data if teacher data fails
-          loadInitialData();
-        });
-    }
-  }, [user, loadTeacherClasses]);
+// Create a consolidated data loading function
+const loadInitialData = async () => {
+  if (!user || !user.token) {
+    console.error('[CreateGradeSimple] No user token available');
+    return;
+  }
   
-  // Cleanup function to prevent memory leaks and state updates on unmounted component
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
+  // Skip if component unmounted during async operations
+  if (!isMounted.current) return;
+  
+  setLoading(true);
+  try {
+    // Configure headers with auth token
+    const config = {
+      headers: {
+        Authorization: `Bearer ${user.token}`
+      }
     };
-  }, []);
-
-  // Load subjects filtered by selected direction
-  const loadDirectionSubjects = async () => {
-    if (!user?.token || !isMounted.current) return;
     
+    // Load directions with timestamp to avoid cache issues
+    const timestamp = new Date().getTime();
+    const [directionsRes, subjectsRes] = await Promise.all([
+      axios.get(`/api/directions?_t=${timestamp}`, config),
+      axios.get(`/api/subjects?_t=${timestamp}`, config)
+    ]);
+    
+    // Skip if component unmounted during API calls
+    if (!isMounted.current) return;
+    
+    // Set directions, prioritizing teacher directions if available
+    if (Array.isArray(directionsRes.data)) {
+      setDirections(directionsRes.data);
+    }
+    
+    // Set subjects, prioritizing teacher subjects if available
+    if (Array.isArray(subjectsRes.data)) {
+      setSubjects(subjectsRes.data);
+    }
+      
+    // Apply initial filtering to subjects based on teacher data
     setLoading(true);
     try {
       // Check if we can filter from teacher-specific subjects first
@@ -764,7 +787,6 @@ const CreateGradeSimple = () => {
         student: formData.student,
         subject: formData.subject,
         value: parseInt(formData.value, 10),
-        // FIXED: Safely check user permissions with proper null checks
         // Only include description if user has permission or if permission is undefined (default to allowed)
         description: (user && user.canAddGradeDescriptions === false) ? '' : (formData.description || ''),
         date: formData.date,
@@ -797,7 +819,6 @@ const CreateGradeSimple = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
   
   // Handle error and success states
   useEffect(() => {
@@ -1232,7 +1253,7 @@ const CreateGradeSimple = () => {
                 </Button>
               </Box>
               
-              {teacherClasses.length > 0 && (
+              {teacherClasses.length > 0 && !isAdmin && (
                 <Alert 
                   severity="info" 
                   variant="outlined"
@@ -1240,6 +1261,19 @@ const CreateGradeSimple = () => {
                 >
                   <Typography variant="subtitle2">
                     Teacher Mode: You can only grade students from your assigned classes.
+                  </Typography>
+                </Alert>
+              )}
+              
+              {isAdmin && (
+                <Alert 
+                  severity="info" 
+                  variant="outlined"
+                  sx={{ mt: 3 }}
+                  icon={<SchoolIcon />}
+                >
+                  <Typography variant="subtitle2">
+                    Admin Mode: You can grade any student in the system.
                   </Typography>
                 </Alert>
               )}
