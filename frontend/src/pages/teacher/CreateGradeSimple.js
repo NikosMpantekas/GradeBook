@@ -130,8 +130,11 @@ const CreateGradeSimple = () => {
       }
       
       // For teachers, load their specific classes
+      // Configure proper API base URL
+      const API_BASE_URL = process.env.REACT_APP_API_URL || '';
       console.log('[CreateGradeSimple] Loading classes for teacher:', user.user?._id);
-      const response = await axios.get('/api/classes', config);
+      console.log('[CreateGradeSimple] Using API base URL:', API_BASE_URL);
+      const response = await axios.get(`${API_BASE_URL}/api/classes`, config);
       
       if (!Array.isArray(response.data)) {
         console.error('[CreateGradeSimple] Invalid response format for teacher classes');
@@ -176,11 +179,19 @@ const CreateGradeSimple = () => {
         }
       };
       
+      // Configure proper API base URL
+      const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+      console.log('[CreateGradeSimple] Using API base URL:', API_BASE_URL);
+      
       // Fetch directions and subjects in parallel
       const [directionsRes, subjectsRes] = await Promise.all([
-        axios.get('/api/directions', config),
-        axios.get('/api/subjects', config)
+        axios.get(`${API_BASE_URL}/api/directions`, config),
+        axios.get(`${API_BASE_URL}/api/subjects`, config)
       ]);
+      
+      // Log response for debugging
+      console.log('[CreateGradeSimple] Directions response:', directionsRes?.data?.length || 0, 'items');
+      console.log('[CreateGradeSimple] Subjects response:', subjectsRes?.data?.length || 0, 'items');
       
       // Set directions, prioritizing teacher directions if available
       if (Array.isArray(directionsRes.data)) {
@@ -245,8 +256,10 @@ const CreateGradeSimple = () => {
           }
         };
         
+        const API_BASE_URL = process.env.REACT_APP_API_URL || '';
         const timestamp = new Date().getTime();
-        const response = await axios.get(`/api/subjects/direction/${selectedDirection}?_t=${timestamp}`, config);
+        console.log('[CreateGradeSimple] Loading subjects for direction:', selectedDirection);
+        const response = await axios.get(`${API_BASE_URL}/api/subjects/direction/${selectedDirection}?_t=${timestamp}`, config);
         
         if (isMounted.current && Array.isArray(response.data)) {
           // If teacher subjects available, filter API results
@@ -316,9 +329,13 @@ const CreateGradeSimple = () => {
           }
         };
         
+        // Configure proper API base URL
+        const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+        
         // Get students for selected subject
         const timestamp = new Date().getTime();
-        const response = await axios.get(`/api/students/subject/${formData.subject}?_t=${timestamp}`, config);
+        console.log(`[CreateGradeSimple] Loading students for subject: ${formData.subject}`);
+        const response = await axios.get(`${API_BASE_URL}/api/students/subject/${formData.subject}?_t=${timestamp}`, config);
         
         if (isMounted.current && Array.isArray(response.data)) {
           // If teacher students available, filter API results
@@ -412,6 +429,11 @@ const CreateGradeSimple = () => {
     
     if (!formData.value) {
       errors.value = 'Please enter a grade value';
+    } else {
+      const gradeValue = parseInt(formData.value, 10);
+      if (isNaN(gradeValue) || gradeValue < 0 || gradeValue > 100) {
+        errors.value = 'Grade must be a number between 0-100';
+      }
     }
     
     if (!formData.date) {
@@ -438,7 +460,7 @@ const CreateGradeSimple = () => {
   
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
-      <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+      <Paper elevation={3} sx={{ p: 3, borderRadius: 2, boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)' }}>
         <form onSubmit={onSubmit}>
           <FormHeader 
             isAdmin={isAdmin}

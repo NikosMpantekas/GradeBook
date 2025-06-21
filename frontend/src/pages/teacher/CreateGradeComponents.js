@@ -18,6 +18,12 @@ import {
   Alert,
   Chip,
   Divider,
+  Card,
+  CardContent,
+  Tooltip,
+  Slider,
+  Rating,
+  LinearProgress
 } from '@mui/material';
 
 // Material UI icons
@@ -38,36 +44,54 @@ import SaveIcon from '@mui/icons-material/Save';
  * Form Header component
  */
 export const FormHeader = ({ isAdmin, teacherClasses }) => (
-  <Box sx={{ mb: 3 }}>
-    <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600 }}>
-      <GradeIcon sx={{ mr: 1, verticalAlign: 'bottom', fontSize: '2rem' }} />
+  <Box sx={{ mb: 4 }}>
+    <Typography 
+      variant="h4" 
+      component="h1" 
+      gutterBottom 
+      sx={{ 
+        fontWeight: 700, 
+        background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        textShadow: '1px 1px 2px rgba(0,0,0,0.05)',
+        display: 'flex',
+        alignItems: 'center',
+        pb: 1
+      }}
+    >
+      <GradeIcon sx={{ mr: 1.5, fontSize: '2.2rem', color: '#1976d2' }} />
       Create New Grade
     </Typography>
     
-    {isAdmin && (
-      <Alert 
-        severity="info" 
-        variant="outlined"
-        icon={<SchoolIcon />}
-        sx={{ mb: 2 }}
-      >
-        <Typography variant="body2">
-          Admin Mode: You can add grades for any student in the system
-        </Typography>
-      </Alert>
-    )}
-    
-    {teacherClasses.length > 0 && !isAdmin && (
-      <Alert 
-        severity="info" 
-        variant="outlined"
-        sx={{ mb: 2 }}
-      >
-        <Typography variant="body2">
-          Teacher Mode: You can only grade students from your assigned classes
-        </Typography>
-      </Alert>
-    )}
+    <Card sx={{ mb: 3, border: isAdmin ? '1px solid rgba(25, 118, 210, 0.2)' : 'none' }}>
+      <CardContent sx={{ pb: '16px !important' }}>
+        {isAdmin && (
+          <Alert 
+            severity="info" 
+            variant="filled"
+            icon={<SchoolIcon />}
+            sx={{ mb: 0, fontWeight: 500 }}
+          >
+            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+              Admin Mode Active: You can add grades for any student in the system
+            </Typography>
+          </Alert>
+        )}
+        
+        {teacherClasses.length > 0 && !isAdmin && (
+          <Alert 
+            severity="info" 
+            variant="outlined"
+            sx={{ mb: 0 }}
+          >
+            <Typography variant="body1">
+              Teacher Mode: You can only grade students from your assigned classes
+            </Typography>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
   </Box>
 );
 
@@ -231,7 +255,7 @@ export const StudentSelect = ({
   loading,
   formErrors
 }) => (
-  <FormControl fullWidth variant="outlined" sx={{ mb: 2 }} error={!!formErrors.student}>
+  <FormControl fullWidth variant="outlined" sx={{ mb: 3 }} error={!!formErrors.student}>
     <InputLabel id="student-label">Student</InputLabel>
     <Select
       labelId="student-label"
@@ -240,18 +264,41 @@ export const StudentSelect = ({
       value={formData.student || ''}
       onChange={handleChange}
       label="Student"
-      disabled={loading || !formData.subject}
+      disabled={!formData.subject || loading}
       startAdornment={<PersonIcon color="primary" sx={{ ml: 1, mr: 1 }} />}
+      sx={{
+        '.MuiOutlinedInput-notchedOutline': {
+          borderColor: formData.student ? 'rgba(25, 118, 210, 0.5)' : undefined
+        }
+      }}
     >
       <MenuItem value="" disabled>
         <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>
-          <span>Select a student</span>
+          <InfoIcon sx={{ mr: 1, fontSize: 18 }} /> {formData.subject ? 'Select a student' : 'Please select a subject first'}
         </Box>
       </MenuItem>
-      <Divider />
-      {filteredStudents.length > 0 ? (
+      
+      {loading && (
+        <MenuItem disabled>
+          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', py: 1 }}>
+            <CircularProgress size={20} sx={{ mr: 2 }} />
+            <Typography>Loading students...</Typography>
+          </Box>
+        </MenuItem>
+      )}
+      
+      {!loading && filteredStudents.length === 0 && formData.subject && (
+        <MenuItem disabled>
+          <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.7, py: 1 }}>
+            <InfoIcon sx={{ mr: 1, fontSize: 18 }} /> No students available for this subject
+          </Box>
+        </MenuItem>
+      )}
+      
+      {!loading && filteredStudents.length > 0 ? (
         filteredStudents.map((student) => {
           const isTeacherStudent = teacherStudents.some(s => s._id === student._id);
+          
           return (
             <MenuItem 
               key={student._id} 
@@ -266,7 +313,9 @@ export const StudentSelect = ({
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
-                <Typography variant="body1">{`${student.lastname} ${student.firstname}`}</Typography>
+                <Typography variant="body1">
+                  {student.lastName}, {student.firstName}
+                </Typography>
                 {isTeacherStudent && (
                   <Chip 
                     size="small" 
@@ -281,15 +330,17 @@ export const StudentSelect = ({
           );
         })
       ) : (
-        <MenuItem disabled>
-          <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>
-            <InfoIcon sx={{ mr: 1, fontSize: 18 }} /> {formData.subject ? 'No students available' : 'Please select a subject first'}
-          </Box>
-        </MenuItem>
+        !loading && !formData.subject && (
+          <MenuItem disabled>
+            <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>
+              <InfoIcon sx={{ mr: 1, fontSize: 18 }} /> Please select a subject first
+            </Box>
+          </MenuItem>
+        )
       )}
     </Select>
     <FormHelperText>
-      {formData.subject ? 'Select a student to grade' : 'Please select a subject first'}
+      {formErrors.student || (formData.subject ? 'Select a student to grade' : 'Please select a subject first')}
     </FormHelperText>
   </FormControl>
 );
@@ -303,14 +354,21 @@ export const GradeValueField = ({ formData, handleChange, loading, formErrors })
     id="value"
     name="value"
     label="Grade Value"
+    type="number"
     value={formData.value}
     onChange={handleChange}
     variant="outlined"
     disabled={loading}
     error={!!formErrors.value}
-    helperText={formErrors.value || 'Enter a grade value (e.g. A, B, C or 1-10)'}
+    inputProps={{ min: 0, max: 100 }}
+    helperText={formErrors.value || 'Enter a grade value between 0-100'}
     InputProps={{
       startAdornment: <GradeIcon color="primary" sx={{ mr: 1 }} />,
+      endAdornment: (
+        <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+          / 100
+        </Typography>
+      ),
     }}
     sx={{ mb: 2 }}
   />
@@ -367,7 +425,7 @@ export const DescriptionField = ({ formData, handleChange, loading, formErrors, 
  * Form Actions (buttons) component
  */
 export const FormActions = ({ isLoading, loading, handleReset, isSuccess }) => (
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, pt: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
     <Button
       variant="outlined"
       color="secondary"
@@ -387,27 +445,30 @@ export const FormActions = ({ isLoading, loading, handleReset, isSuccess }) => (
       Reset Form
     </Button>
     
-    <Button
-      type="submit"
-      variant="contained"
-      color="primary"
-      size="large"
-      startIcon={isLoading ? <CircularProgress size={24} color="inherit" /> : <SaveIcon />}
-      disabled={isLoading || loading}
-      sx={{ 
-        px: 5, 
-        py: 1.5, 
-        borderRadius: 2,
-        boxShadow: 3,
-        fontWeight: 'bold',
-        '&:hover': {
-          boxShadow: 6,
-          backgroundColor: 'primary.dark'
-        }
-      }}
-    >
-      {isLoading ? 'Saving Grade...' : 'Save Grade'}
-    </Button>
+    <Tooltip title="Save this grade to the database" arrow placement="top">
+      <Button
+        type="submit"
+        variant="contained"
+        color="primary"
+        size="large"
+        startIcon={isLoading ? <CircularProgress size={24} color="inherit" /> : <SaveIcon />}
+        disabled={isLoading || loading}
+        sx={{ 
+          px: 5, 
+          py: 1.5, 
+          borderRadius: 2,
+          boxShadow: 3,
+          fontWeight: 'bold',
+          background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+          '&:hover': {
+            boxShadow: '0 6px 12px rgba(66, 165, 245, 0.3)',
+            background: 'linear-gradient(45deg, #1565c0 30%, #1976d2 90%)'
+          }
+        }}
+      >
+        {isLoading ? 'Saving Grade...' : 'Save Grade'}
+      </Button>
+    </Tooltip>
   </Box>
 );
 
@@ -417,28 +478,37 @@ export const FormActions = ({ isLoading, loading, handleReset, isSuccess }) => (
 export const RoleInfo = ({ isAdmin, teacherClasses }) => (
   <>
     {teacherClasses.length > 0 && !isAdmin && (
-      <Alert 
-        severity="info" 
-        variant="outlined"
-        sx={{ mt: 3 }}
-      >
-        <Typography variant="subtitle2">
-          Teacher Mode: You can only grade students from your assigned classes.
-        </Typography>
-      </Alert>
+      <Card sx={{ mt: 4, bgcolor: 'rgba(25, 118, 210, 0.05)', borderRadius: 2 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <PersonIcon color="primary" sx={{ mr: 1 }} />
+            <Typography variant="h6" color="primary" fontWeight={500}>
+              Teacher Grading Mode
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            As a teacher, you can only grade students from your assigned classes. The system automatically filters
+            the available directions, subjects and students based on your teaching assignments.
+          </Typography>
+        </CardContent>
+      </Card>
     )}
     
     {isAdmin && (
-      <Alert 
-        severity="info" 
-        variant="outlined"
-        sx={{ mt: 3 }}
-        icon={<SchoolIcon />}
-      >
-        <Typography variant="subtitle2">
-          Admin Mode: You can grade any student in the system.
-        </Typography>
-      </Alert>
+      <Card sx={{ mt: 4, bgcolor: 'rgba(25, 118, 210, 0.05)', borderRadius: 2 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <SchoolIcon color="primary" sx={{ mr: 1 }} />
+            <Typography variant="h6" color="primary" fontWeight={500}>
+              Administrator Grading Mode
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            As an administrator, you have full access to grade any student in the system across all directions and subjects.
+            There are no restrictions on which students you can grade.
+          </Typography>
+        </CardContent>
+      </Card>
     )}
   </>
 );
