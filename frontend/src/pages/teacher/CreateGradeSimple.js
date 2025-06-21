@@ -971,11 +971,85 @@ const CreateGradeSimple = () => {
             
             {/* 2. Subject Selection (Second) */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth error={!!formErrors.subject} sx={{ mb: { xs: 0, md: 2 } }}>
+              <FormControl required fullWidth error={Boolean(formErrors.subject)}>
                 <InputLabel id="subject-label">Subject *</InputLabel>
                 <Select
                   labelId="subject-label"
                   name="subject"
+                  value={formData.subject || ''}
+                  label="Subject *"
+                  onChange={onChange}
+                  disabled={isLoading || filteredSubjects.length === 0}
+                  sx={{ 
+                    '& .MuiSelect-select': { py: 1.8 },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: formErrors.subject ? 'error.main' : 'primary.light',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: formErrors.subject ? 'error.main' : 'primary.main',
+                      borderWidth: 2
+                    }
+                  }}
+                  startAdornment={<SubjectIcon color="primary" sx={{ mr: 1 }} />}
+                >
+                  <MenuItem value="" sx={{ fontWeight: 'bold' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                      <span>Select a subject</span>
+                      <ArrowDropDownIcon />
+                    </Box>
+                  </MenuItem>
+                  <Divider />
+                  {filteredSubjects.length > 0 ? (
+                    filteredSubjects.map((subject) => {
+                      const isTeacherSubject = teacherSubjects.some(s => s._id === subject._id);
+                      return (
+                        <MenuItem 
+                          key={subject._id} 
+                          value={subject._id}
+                          sx={{
+                            backgroundColor: isTeacherSubject ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                            '&:hover': {
+                              backgroundColor: isTeacherSubject ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)'
+                            },
+                            borderLeft: isTeacherSubject ? '4px solid #1976d2' : 'none',
+                            pl: isTeacherSubject ? 1 : 2
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                            <Typography variant="body1">{subject.name}</Typography>
+                            {isTeacherSubject && (
+                              <Chip 
+                                size="small" 
+                                label="Your Class" 
+                                color="primary" 
+                                icon={<CheckCircleIcon />}
+                                sx={{ ml: 1, height: 24, fontWeight: 500 }} 
+                              />
+                            )}
+                          </Box>
+                        </MenuItem>
+                      );
+                    })
+                  ) : (
+                    <MenuItem disabled>
+                      <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>
+                        <InfoIcon sx={{ mr: 1, fontSize: 18 }} /> No subjects found
+                      </Box>
+                    </MenuItem>
+                  )}
+                </Select>
+                {formErrors.subject && (
+                  <FormHelperText error>{formErrors.subject}</FormHelperText>
+                )}
+                {!formErrors.subject && (
+                  <FormHelperText>
+                    {selectedDirection ? 'Subjects filtered by direction' : 'All available subjects'}
+                    {teacherSubjects.length > 0 && ' - Highlighted items are your classes'}
+                  </FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+            
             {/* 3. Student Selection (Third) */}
             <Grid item xs={12} md={6}>
               <FormControl fullWidth error={!!formErrors.student} sx={{ mb: { xs: 0, md: 2 } }}>
@@ -983,37 +1057,67 @@ const CreateGradeSimple = () => {
                 <Select
                   labelId="student-label"
                   name="student"
-                  value={formData.student}
+                  value={formData.student || ''}
                   label="Student *"
                   onChange={onChange}
-                  disabled={isLoading || loading || !formData.subject}
-                  sx={{ '& .MuiSelect-select': { py: 1.5 } }}
-                  startAdornment={formData.student && <PersonIcon color="primary" sx={{ ml: 1, mr: 1 }} />}
+                  disabled={isLoading || filteredStudents.length === 0 || !formData.subject}
+                  sx={{ 
+                    '& .MuiSelect-select': { py: 1.8 },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: formErrors.student ? 'error.main' : 'primary.light',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: formErrors.student ? 'error.main' : 'primary.main',
+                      borderWidth: 2
+                    }
+                  }}
+                  startAdornment={<PersonIcon color="primary" sx={{ mr: 1 }} />}
                 >
-                  <MenuItem value="">Select a student</MenuItem>
-                  {loading && formData.subject ? (
+                  <MenuItem value="" sx={{ fontWeight: 'bold' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                      <span>Select a student</span>
+                      <ArrowDropDownIcon />
+                    </Box>
+                  </MenuItem>
+                  <Divider />
+                  {filteredStudents.length > 0 ? (
+                    filteredStudents.map((student) => {
+                      const isTeacherStudent = teacherStudents.some(s => s._id === student._id);
+                      return (
+                        <MenuItem 
+                          key={student._id} 
+                          value={student._id}
+                          sx={{
+                            backgroundColor: isTeacherStudent ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                            '&:hover': {
+                              backgroundColor: isTeacherStudent ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)'
+                            },
+                            borderLeft: isTeacherStudent ? '4px solid #1976d2' : 'none',
+                            pl: isTeacherStudent ? 1 : 2
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                            <Typography variant="body1">{student.lastname} {student.firstname}</Typography>
+                            {isTeacherStudent && (
+                              <Chip 
+                                size="small" 
+                                label="Your Class" 
+                                color="primary" 
+                                icon={<CheckCircleIcon />}
+                                sx={{ ml: 1, height: 24, fontWeight: 500 }} 
+                              />
+                            )}
+                          </Box>
+                        </MenuItem>
+                      );
+                    })
+                  ) : (
                     <MenuItem disabled>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <CircularProgress size={20} sx={{ mr: 1 }} /> Loading students...
+                      <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>
+                        <InfoIcon sx={{ mr: 1, fontSize: 18 }} /> 
+                        {!formData.subject ? 'Select a subject first' : 'No students available'}
                       </Box>
                     </MenuItem>
-                  ) : filteredStudents.length > 0 ? (
-                    filteredStudents.map((student) => (
-                      <MenuItem key={student._id} value={student._id}>
-                        {student.name}
-                        {teacherStudents.some(s => s._id === student._id) && (
-                          <Chip 
-                            size="small" 
-                            label="Your Class" 
-                            color="primary" 
-                            variant="outlined" 
-                            sx={{ ml: 1, height: 20 }} 
-                          />
-                        )}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem disabled>No students available</MenuItem>
                   )}
                 </Select>
                 {formErrors.student ? (
@@ -1089,12 +1193,21 @@ const CreateGradeSimple = () => {
             
             {/* Action Buttons */}
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', mt: 3, gap: 2 }}>
                 <Button
                   variant="outlined"
                   onClick={resetForm}
                   disabled={isLoading || loading}
-                  sx={{ px: 3, py: 1.2 }}
+                  startIcon={<InfoIcon />}
+                  sx={{ 
+                    px: 3, 
+                    py: 1.5, 
+                    borderRadius: 2,
+                    borderWidth: 2,
+                    '&:hover': {
+                      borderWidth: 2
+                    }
+                  }}
                 >
                   Reset Form
                 </Button>
@@ -1106,11 +1219,33 @@ const CreateGradeSimple = () => {
                   size="large"
                   startIcon={isLoading ? <CircularProgress size={24} color="inherit" /> : <SaveIcon />}
                   disabled={isLoading || loading}
-                  sx={{ px: 4, py: 1.2, borderRadius: 2 }}
+                  sx={{ 
+                    px: 5, 
+                    py: 1.5, 
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      boxShadow: 6,
+                      backgroundColor: 'primary.dark'
+                    }
+                  }}
                 >
-                  {isLoading ? 'Saving...' : 'Save Grade'}
+                  {isLoading ? 'Saving Grade...' : 'Save Grade'}
                 </Button>
               </Box>
+              
+              {teacherClasses.length > 0 && (
+                <Alert 
+                  severity="info" 
+                  variant="outlined"
+                  sx={{ mt: 3 }}
+                >
+                  <Typography variant="subtitle2">
+                    Teacher Mode: You can only grade students from your assigned classes.
+                  </Typography>
+                </Alert>
+              )}
             </Grid>
           </Grid>
         </form>
