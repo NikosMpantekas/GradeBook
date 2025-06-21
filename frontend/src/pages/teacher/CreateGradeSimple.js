@@ -452,13 +452,22 @@ const CreateGradeSimple = () => {
     setIsSubmitting(true);
     
     try {
+      // Construct the grade data with permission handling
       const gradeData = {
         student: formData.student,
         subject: formData.subject,
-        value: formData.value,
-        description: formData.description,
+        value: parseInt(formData.value, 10),
+        // FIXED: Safely check user permissions with proper null checks
+        // Only include description if user has permission or if permission is undefined (default to allowed)
+        description: (user && user.canAddGradeDescriptions === false) ? '' : (formData.description || ''),
         date: formData.date,
       };
+      
+      // Log whether description was included based on permissions
+      console.log(`[CreateGradeSimple] User permission check: canAddGradeDescriptions=${user?.canAddGradeDescriptions}`);
+      if (user && user.canAddGradeDescriptions === false) {
+        console.log('[CreateGradeSimple] Description field ignored due to user permissions');
+      }
       
       console.log('[CreateGradeSimple] Submitting grade:', gradeData);
       await dispatch(createGrade(gradeData)).unwrap();

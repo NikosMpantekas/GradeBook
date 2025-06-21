@@ -592,8 +592,9 @@ const CreateGrade = () => {
         subject: formData.subject,
         value: parseInt(formData.value, 10),
         date: format(formData.date, 'yyyy-MM-dd'),
-        // Only include description if user has permission
-        description: user?.canAddGradeDescriptions !== false ? (formData.description || '') : '',
+        // FIXED: Safely check user permissions with proper null checks
+        // Only include description if user has permission or if permission is undefined (default to allowed)
+        description: (user && user.canAddGradeDescriptions === false) ? '' : (formData.description || '')
       };
       
       console.log('Creating grade with data:', gradeData);
