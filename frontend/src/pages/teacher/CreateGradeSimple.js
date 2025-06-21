@@ -241,6 +241,69 @@ const CreateGradeSimple = () => {
   }, [user]);
 
   
+  // Create a consolidated data loading function
+  const loadInitialData = async () => {
+    if (!user || !user.token) {
+      console.error('[CreateGradeSimple] No user token available');
+      return;
+    }
+    
+    // Skip if component unmounted during async operations
+    if (!isMounted.current) return;
+    
+    setLoading(true);
+    try {
+      // Configure headers with auth token
+      const config = {
+        headers: {
+          Authorization: `Bearer ${user.token}`
+        }
+      };
+      
+      // Load directions with timestamp to avoid cache issues
+      const timestamp = new Date().getTime();
+      const [directionsRes, subjectsRes] = await Promise.all([
+        axios.get(`/api/directions?_t=${timestamp}`, config),
+        axios.get(`/api/subjects?_t=${timestamp}`, config)
+      ]);
+      
+      // Skip if component unmounted during API calls
+      if (!isMounted.current) return;
+      
+      // Set directions, prioritizing teacher directions if available
+      if (Array.isArray(directionsRes.data)) {
+        setDirections(directionsRes.data);
+      }
+      
+      // Set subjects, prioritizing teacher subjects if available
+      if (Array.isArray(subjectsRes.data)) {
+        setSubjects(subjectsRes.data);
+        
+        // Apply initial filtering to subjects based on teacher data
+        if (teacherSubjects.length > 0) {
+          setFilteredSubjects(teacherSubjects);
+        } else {
+          setFilteredSubjects(subjectsRes.data);
+        }
+      }
+      
+    } catch (error) {
+      // Skip if component unmounted during error handling
+      if (!isMounted.current) return;
+      
+      handleAxiosError(error, 'loadInitialData');
+      console.error('[CreateGradeSimple] Error loading dropdown data:', error);
+      toast.error('Failed to load form data. Please refresh and try again.');
+    } finally {
+      // Skip if component unmounted before cleanup
+      if (!isMounted.current) return;
+      setLoading(false);
+    }
+  };
+
+  // Reference to track if component is mounted
+  const isMounted = React.useRef(true);
+
   // Load all directions and teacher classes on component mount
   useEffect(() => {
     if (user && user.token) {
@@ -258,81 +321,13 @@ const CreateGradeSimple = () => {
     }
   }, [user, loadTeacherClasses]);
   
-  // Reference to track if component is mounted
-  const isMounted = React.useRef(true);
-  
-  // Only load all data once when the component mounts
+  // Cleanup function to prevent memory leaks and state updates on unmounted component
   useEffect(() => {
-    // Create a consolidated data loading function
-    const loadInitialData = async () => {
-      if (!user || !user.token) {
-        console.error('[CreateGradeSimple] No user token available');
-        return;
-      }
-      
-      setLoading(true);
-      const config = {
-        headers: {
-          Authorization: `Bearer ${user.token}`
-        }
-      };
-      
-      try {
-        // First load teacher's classes to get teacher-specific data
-        await loadTeacherClasses();
-        
-        // Then load remaining required data
-        console.log('[CreateGradeSimple] Loading directions and subjects');
-        
-        // 1. Load all directions if teacher directions aren't available
-        if (teacherDirections.length === 0) {
-          console.log('[CreateGradeSimple] Loading all directions');
-          const directionsResponse = await axios.get('/api/directions', config);
-          if (isMounted.current && Array.isArray(directionsResponse.data)) {
-            setDirections(directionsResponse.data);
-            console.log(`[CreateGradeSimple] Loaded ${directionsResponse.data.length} directions`);
-          }
-        } else {
-          // Use teacher-specific directions if available
-          setDirections(teacherDirections);
-          console.log(`[CreateGradeSimple] Using ${teacherDirections.length} teacher-specific directions`);
-        }
-        
-        // 2. Load all subjects if teacher subjects aren't available
-        if (teacherSubjects.length === 0) {
-          console.log('[CreateGradeSimple] Loading all subjects');
-          const subjectsResponse = await axios.get('/api/subjects', config);
-          if (isMounted.current && Array.isArray(subjectsResponse.data)) {
-            setSubjects(subjectsResponse.data);
-            setFilteredSubjects(subjectsResponse.data); // Initially show all subjects
-            console.log(`[CreateGradeSimple] Loaded ${subjectsResponse.data.length} subjects`);
-          }
-        } else {
-          // Use teacher-specific subjects if available
-          setSubjects(teacherSubjects);
-          setFilteredSubjects(teacherSubjects);
-          console.log(`[CreateGradeSimple] Using ${teacherSubjects.length} teacher-specific subjects`);
-        }
-      } catch (error) {
-        if (isMounted.current) {
-          handleAxiosError(error, 'loadInitialData');
-          toast.error('Failed to load initial data. Please refresh the page.');
-        }
-      } finally {
-        if (isMounted.current) {
-          setLoading(false);
-        }
-      }
-    };
-    
-    loadInitialData();
-    
-    // Cleanup function to prevent memory leaks and state updates on unmounted component
     return () => {
       isMounted.current = false;
     };
-  }, [user]);
-  
+  }, []);
+
   // Load subjects filtered by selected direction
   const loadDirectionSubjects = async () => {
     if (!user?.token || !isMounted.current) return;
