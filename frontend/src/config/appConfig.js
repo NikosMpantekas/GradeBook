@@ -3,7 +3,7 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-export const APP_VERSION = '1.6.0.77';
+export const APP_VERSION = '1.6.0.79';
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -48,8 +48,8 @@ export const buildApiUrl = (endpoint) => {
   return `${baseUrl}${cleanEndpoint}`;
 };
 
-// Export the base URL for backward compatibility
-export { API_URL };
+// We export API_URL in the main export section below
+// Don't export it here to avoid duplicate exports
 
 // IMMEDIATE SELF-EXECUTING FUNCTION TO NUKE ALL VERSION DATA
 (function() {
