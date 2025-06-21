@@ -2,6 +2,7 @@ import React from 'react';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 // CRITICAL FIX: Use the simplified version that avoids the Redux patterns causing errors
 import CreateGradeSimple from './CreateGradeSimple';
+import { handleAxiosError } from './CreateGradeUtils';
 import { trackError } from '../../utils/errorHandler';
 
 /**

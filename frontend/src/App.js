@@ -48,6 +48,7 @@ import TeacherGrades from './pages/teacher/TeacherGrades';
 import ManageGrades from './pages/teacher/ManageGrades';
 // CRITICAL FIX: Use error-wrapped version of CreateGrade to prevent TypeError
 import CreateGradeErrorWrapper from './pages/teacher/CreateGradeErrorWrapper';
+import CreateGradeSimple from './pages/teacher/CreateGradeSimple';
 import TeacherNotifications from './pages/teacher/TeacherNotifications';
 import CreateNotification from './pages/teacher/CreateNotification';
 
@@ -380,7 +381,7 @@ function App() {
             <Route path="/app/teacher/grades/create" element={
               <TeacherRoute>
                 <ErrorBoundary componentName="Create Grade">
-                  <CreateGradeErrorWrapper />
+                  <CreateGradeSimple />
                 </ErrorBoundary>
               </TeacherRoute>
             } />
