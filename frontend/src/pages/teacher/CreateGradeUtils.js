@@ -86,8 +86,12 @@ export const filterStudentsBySubject = (students, subjectId) => {
  */
 export const extractTeacherData = (classes) => {
   if (!classes || !Array.isArray(classes)) {
+    console.log('[extractTeacherData] No classes or invalid format provided');
     return { subjects: [], directions: [], students: [] };
   }
+  
+  console.log('[extractTeacherData] Processing', classes.length, 'classes');
+  console.log('[extractTeacherData] Sample class structure:', JSON.stringify(classes[0]));
   
   const subjectsSet = new Set();
   const directionsSet = new Set();
@@ -97,40 +101,64 @@ export const extractTeacherData = (classes) => {
   const teacherStudents = [];
   
   classes.forEach(cls => {
-    // Extract subject
+    // Extract subject - in new schema, subject might be a string directly
     if (cls.subject) {
-      const subjectId = typeof cls.subject === 'object' ? cls.subject._id : cls.subject;
-      if (!subjectsSet.has(subjectId)) {
-        subjectsSet.add(subjectId);
-        const subjectObj = typeof cls.subject === 'object' ? 
-          cls.subject : { _id: subjectId, name: subjectId };
-        teacherSubjects.push(subjectObj);
+      const subjectValue = cls.subject;
+      // In the new schema, subject might just be a string like "A"
+      const subjectId = typeof subjectValue === 'object' ? subjectValue._id : subjectValue;
+      const subjectName = typeof subjectValue === 'object' ? subjectValue.name : subjectValue;
+      
+      if (!subjectsSet.has(subjectId || subjectName)) {
+        subjectsSet.add(subjectId || subjectName);
+        teacherSubjects.push({ 
+          _id: subjectId || subjectName, 
+          name: subjectName 
+        });
       }
     }
     
-    // Extract direction
+    // Extract direction - in new schema, direction might be a string directly
     if (cls.direction) {
-      const directionId = typeof cls.direction === 'object' ? cls.direction._id : cls.direction;
-      if (!directionsSet.has(directionId)) {
-        directionsSet.add(directionId);
-        const directionObj = typeof cls.direction === 'object' ? 
-          cls.direction : { _id: directionId, name: directionId };
-        teacherDirections.push(directionObj);
+      const directionValue = cls.direction;
+      // In the new schema, direction might just be a string like "A"
+      const directionId = typeof directionValue === 'object' ? directionValue._id : directionValue;
+      const directionName = typeof directionValue === 'object' ? directionValue.name : directionValue;
+      
+      if (!directionsSet.has(directionId || directionName)) {
+        directionsSet.add(directionId || directionName);
+        teacherDirections.push({ 
+          _id: directionId || directionName, 
+          name: directionName 
+        });
       }
     }
     
     // Extract students
     if (cls.students && Array.isArray(cls.students)) {
       cls.students.forEach(student => {
+        // Student might be just an ID or a full object
         const studentId = typeof student === 'object' ? student._id : student;
+        
         if (!studentsSet.has(studentId)) {
           studentsSet.add(studentId);
-          const studentObj = typeof student === 'object' ? 
-            student : { _id: studentId, name: studentId };
-          teacherStudents.push(studentObj);
+          
+          // If we have a full student object, use it; otherwise create a placeholder
+          // The actual student details will need to be fetched separately if needed
+          if (typeof student === 'object') {
+            teacherStudents.push(student);
+          } else {
+            // In this case we only have the ID and may need to fetch details later
+            teacherStudents.push({ _id: studentId, name: 'Student ' + studentId.substring(0, 5) });
+          }
         }
       });
     }
+  });
+  
+  console.log('[extractTeacherData] Extracted:', {
+    subjects: teacherSubjects.length,
+    directions: teacherDirections.length, 
+    students: teacherStudents.length
   });
   
   return {
