@@ -1,37 +1,48 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';  
 import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import {
-  Typography,
-  Paper,
-  Box,
-  TextField,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  CircularProgress,
-  Grid,
-  Alert,
-  FormHelperText,
-  Divider,
-  Chip,
-} from '@mui/material';
-import {
-  Save as SaveIcon,
-  ArrowBack as ArrowBackIcon,
-  School as SchoolIcon,
-  Book as BookIcon,
-  Person as PersonIcon,
-  Grade as GradeIcon,
-  CalendarToday as CalendarIcon,
-  Class as ClassIcon,
-} from '@mui/icons-material';
-import { format } from 'date-fns';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { createGrade, reset } from '../../features/grades/gradeSlice';
+import { format } from 'date-fns';
 import axios from 'axios';
+
+// Redux actions
+import { createGrade, reset } from '../../features/grades/gradeSlice';
+
+// Utils
+import { formatDate } from '../../utils/dateUtils';
+
+// Material UI components
+import { 
+  Box, 
+  Button, 
+  TextField, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem, 
+  FormHelperText, 
+  Paper, 
+  Typography, 
+  Grid, 
+  CircularProgress,
+  Alert,
+  Chip,
+  Divider,
+} from '@mui/material';
+
+// Material UI icons
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ClassIcon from '@mui/icons-material/Class';
+import SchoolIcon from '@mui/icons-material/School';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoIcon from '@mui/icons-material/Info';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import GradeIcon from '@mui/icons-material/Grade';
+import SubjectIcon from '@mui/icons-material/Subject';
+import PersonIcon from '@mui/icons-material/Person';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import DescriptionIcon from '@mui/icons-material/Description';
+import SaveIcon from '@mui/icons-material/Save';
 
 /**
  * CreateGradeSimple - Revised version with proper field order and filtering
@@ -809,30 +820,70 @@ const CreateGradeSimple = () => {
       <Button
         startIcon={<ArrowBackIcon />}
         onClick={handleBack}
-        sx={{ mb: 2 }}
+        sx={{ mb: 2, py: 1, px: 2 }}
         variant="outlined"
+        color="primary"
+        size="large"
       >
         Back to Grades
       </Button>
       
-      <Paper elevation={3} sx={{ p: 4, mb: 3, maxWidth: '1200px', mx: 'auto' }}>
-        <Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+      <Paper elevation={5} sx={{ 
+        p: { xs: 2, sm: 4 }, 
+        mb: 3, 
+        maxWidth: '1200px', 
+        mx: 'auto',
+        borderRadius: 2,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+      }}>
+        <Typography 
+          variant="h4" 
+          component="h1" 
+          gutterBottom 
+          sx={{ 
+            fontWeight: 'bold', 
+            color: 'primary.main', 
+            borderBottom: '2px solid', 
+            borderColor: 'primary.light',
+            pb: 1,
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          <GradeIcon sx={{ mr: 2, fontSize: 30 }} />
           Create New Grade
         </Typography>
         
         {teacherClasses.length > 0 && (
-          <Box sx={{ mt: 2, mb: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            <ClassIcon color="primary" sx={{ mr: 1 }} />
-            <Typography variant="body2" color="primary">
-              Showing students from your {teacherClasses.length} assigned {teacherClasses.length === 1 ? 'class' : 'classes'}
-            </Typography>
-            <Chip 
-              size="small" 
-              color="primary" 
-              variant="outlined"
-              label={`${teacherStudents.length} students available`} 
-            />
-          </Box>
+          <Alert 
+            severity="info" 
+            icon={<ClassIcon />}
+            sx={{ 
+              mt: 2, 
+              mb: 3, 
+              '& .MuiAlert-message': { 
+                display: 'flex', 
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 1
+              } 
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+              <Typography variant="body1" fontWeight="500">
+                Teacher Mode: 
+              </Typography>
+              <Typography>  
+                Showing students from your {teacherClasses.length} assigned {teacherClasses.length === 1 ? 'class' : 'classes'}
+              </Typography>
+              <Chip 
+                size="small" 
+                color="primary" 
+                variant="outlined"
+                label={`${teacherStudents.length} students available`} 
+              />
+            </Box>
+          </Alert>
         )}
         
         <Divider sx={{ mb: 4 }} />
@@ -854,27 +905,62 @@ const CreateGradeSimple = () => {
                   label="Direction"
                   onChange={handleDirectionChange}
                   disabled={isLoading || loading || directions.length === 0}
-                  sx={{ '& .MuiSelect-select': { py: 1.5 } }}
-                  startAdornment={selectedDirection && <SchoolIcon color="primary" sx={{ ml: 1, mr: 1 }} />}
+                  sx={{ 
+                    '& .MuiSelect-select': { py: 1.8 },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.light',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'primary.main',
+                      borderWidth: 2
+                    }
+                  }}
+                  startAdornment={<SchoolIcon color="primary" sx={{ mr: 1 }} />}
                 >
-                  <MenuItem value="">All Directions</MenuItem>
+                  <MenuItem value="" sx={{ fontWeight: 'bold' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                      <span>All Directions</span>
+                      <ArrowDropDownIcon />
+                    </Box>
+                  </MenuItem>
+                  <Divider />
                   {directions.length > 0 ? (
-                    directions.map((direction) => (
-                      <MenuItem key={direction._id} value={direction._id}>
-                        {direction.name}
-                        {teacherDirections.some(d => d._id === direction._id) && (
-                          <Chip 
-                            size="small" 
-                            label="Your Class" 
-                            color="primary" 
-                            variant="outlined" 
-                            sx={{ ml: 1, height: 20 }} 
-                          />
-                        )}
-                      </MenuItem>
-                    ))
+                    directions.map((direction) => {
+                      const isTeacherDirection = teacherDirections.some(d => d._id === direction._id);
+                      return (
+                        <MenuItem 
+                          key={direction._id} 
+                          value={direction._id}
+                          sx={{
+                            backgroundColor: isTeacherDirection ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                            '&:hover': {
+                              backgroundColor: isTeacherDirection ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)'
+                            },
+                            borderLeft: isTeacherDirection ? '4px solid #1976d2' : 'none',
+                            pl: isTeacherDirection ? 1 : 2
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                            <Typography variant="body1">{direction.name}</Typography>
+                            {isTeacherDirection && (
+                              <Chip 
+                                size="small" 
+                                label="Your Class" 
+                                color="primary" 
+                                icon={<CheckCircleIcon />}
+                                sx={{ ml: 1, height: 24, fontWeight: 500 }} 
+                              />
+                            )}
+                          </Box>
+                        </MenuItem>
+                      );
+                    })
                   ) : (
-                    <MenuItem disabled>No directions available</MenuItem>
+                    <MenuItem disabled>
+                      <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.7 }}>
+                        <InfoIcon sx={{ mr: 1, fontSize: 18 }} /> No directions found
+                      </Box>
+                    </MenuItem>
                   )}
                 </Select>
                 <FormHelperText>
@@ -890,52 +976,6 @@ const CreateGradeSimple = () => {
                 <Select
                   labelId="subject-label"
                   name="subject"
-                  value={formData.subject}
-                  label="Subject *"
-                  onChange={onChange}
-                  disabled={isLoading || loading}
-                  sx={{ '& .MuiSelect-select': { py: 1.5 } }}
-                  startAdornment={formData.subject && <BookIcon color="primary" sx={{ ml: 1, mr: 1 }} />}
-                >
-                  <MenuItem value="">Select a subject</MenuItem>
-                  {loading && filteredSubjects.length === 0 ? (
-                    <MenuItem disabled>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <CircularProgress size={20} sx={{ mr: 1 }} /> Loading subjects...
-                      </Box>
-                    </MenuItem>
-                  ) : filteredSubjects.length > 0 ? (
-                    filteredSubjects.map((subject) => (
-                      <MenuItem key={subject._id} value={subject._id}>
-                        {subject.name}
-                        {teacherSubjects.some(s => s._id === subject._id) && (
-                          <Chip 
-                            size="small" 
-                            label="Your Class" 
-                            color="primary" 
-                            variant="outlined" 
-                            sx={{ ml: 1, height: 20 }} 
-                          />
-                        )}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem disabled>No subjects available</MenuItem>
-                  )}
-                </Select>
-                {formErrors.subject ? (
-                  <FormHelperText error>{formErrors.subject}</FormHelperText>
-                ) : (
-                  <FormHelperText>
-                    {loading ? 'Loading subjects...' : 
-                     filteredSubjects.length === 0 ? 
-                      (selectedDirection ? 'No subjects found for this direction' : 'No subjects found') : 
-                      teacherSubjects.length > 0 ? 'Subjects from your classes are highlighted' : 'Select the subject for this grade'}
-                  </FormHelperText>
-                )}
-              </FormControl>
-            </Grid>
-            
             {/* 3. Student Selection (Third) */}
             <Grid item xs={12} md={6}>
               <FormControl fullWidth error={!!formErrors.student} sx={{ mb: { xs: 0, md: 2 } }}>
