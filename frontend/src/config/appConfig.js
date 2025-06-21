@@ -31,7 +31,8 @@ if (process.env.NODE_ENV === 'production' && API_URL.includes('localhost')) {
 }
 
 // Helper function to construct API endpoint URLs properly, avoiding double slashes
-export const buildApiUrl = (endpoint) => {
+// We declare this as a regular const and export it in the main export section below
+const buildApiUrl = (endpoint) => {
   // Ensure API_URL doesn't have a trailing slash
   const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
   
