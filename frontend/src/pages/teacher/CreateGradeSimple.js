@@ -8,9 +8,6 @@ import axios from 'axios';
 // Redux actions
 import { createGrade, reset } from '../../features/grades/gradeSlice';
 
-// Utils
-import { formatDate } from '../../utils/dateUtils';
-
 // Material UI components
 import { 
   Box, 
