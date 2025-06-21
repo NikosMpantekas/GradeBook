@@ -8,7 +8,6 @@ import { toast } from 'react-toastify';
 
 // Import API_URL from appConfig
 import { API_URL } from '../../config/appConfig';
-console.log('[CreateGradeSimple] Imported API_URL:', API_URL);
 
 // Redux actions
 import { createGrade, reset } from '../../features/grades/gradeSlice';
@@ -31,6 +30,9 @@ import {
   FormActions,
   RoleInfo
 } from './CreateGradeComponents';
+
+// Debug logging
+console.log('[CreateGradeSimple] Imported API_URL:', API_URL);
 
 /**
  * CreateGradeSimple - Revised version with proper field order and filtering
