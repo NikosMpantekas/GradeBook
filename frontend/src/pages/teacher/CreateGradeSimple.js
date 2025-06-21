@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -16,6 +16,7 @@ import {
   Alert,
   FormHelperText,
   Divider,
+  Chip,
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -25,6 +26,7 @@ import {
   Person as PersonIcon,
   Grade as GradeIcon,
   CalendarToday as CalendarIcon,
+  Class as ClassIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -57,11 +59,17 @@ const CreateGradeSimple = () => {
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [subjects, setSubjects] = useState([]);
-  // eslint-disable-next-line no-unused-vars
   const [directions, setDirections] = useState([]);
   const [selectedDirection, setSelectedDirection] = useState('');
   const [filteredSubjects, setFilteredSubjects] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
+  
+  // Teacher-specific state
+  const [teacherClasses, setTeacherClasses] = useState([]);
+  const [teacherSubjects, setTeacherSubjects] = useState([]);
+  const [teacherDirections, setTeacherDirections] = useState([]);
+  const [teacherStudents, setTeacherStudents] = useState([]);
+  const [isLoadingTeacherData, setIsLoadingTeacherData] = useState(false);
   
   // Reset form after submission
   const resetForm = () => {
@@ -96,34 +104,159 @@ const CreateGradeSimple = () => {
     }
   };
   
-  // Load all directions on component mount
-  useEffect(() => {
-    const loadDirections = async () => {
-      setLoading(true);
-      try {
-        if (user && user.token) {
-          const config = {
-            headers: {
-              Authorization: `Bearer ${user.token}`
-            }
-          };
-          
-          // Get all directions
-          const response = await axios.get('/api/directions', config);
-          if (Array.isArray(response.data)) {
-            setDirections(response.data);
-            console.log(`[CreateGradeSimple] Loaded ${response.data.length} directions`);
-          }
-        }
-      } catch (error) {
-        handleAxiosError(error, 'loadDirections');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Load classes where the current teacher is assigned
+  const loadTeacherClasses = useCallback(async () => {
+    if (!user?.token) return;
     
-    loadDirections();
+    setIsLoadingTeacherData(true);
+    try {
+      const config = {
+        headers: {
+          Authorization: `Bearer ${user.token}`
+        }
+      };
+      
+      console.log('[CreateGradeSimple] Loading classes for teacher:', user._id);
+      const response = await axios.get('/api/classes', config);
+      
+      if (Array.isArray(response.data)) {
+        setTeacherClasses(response.data);
+        console.log(`[CreateGradeSimple] Loaded ${response.data.length} teacher classes`);
+        
+        // Extract unique subjects from teacher classes
+        const subjectIds = new Set();
+        const subjectsFromClasses = [];
+        
+        // Extract unique directions from teacher classes
+        const directionIds = new Set();
+        const directionsFromClasses = [];
+        
+        // Extract unique students from teacher classes
+        const studentIds = new Set();
+        const studentsFromClasses = [];
+        
+        // Process each class to extract related data
+        response.data.forEach(cls => {
+          // Extract subject info if available
+          if (cls.subject) {
+            const subjectId = typeof cls.subject === 'object' ? cls.subject._id : cls.subject;
+            if (subjectId && !subjectIds.has(subjectId)) {
+              subjectIds.add(subjectId);
+              if (typeof cls.subject === 'object') {
+                subjectsFromClasses.push(cls.subject);
+              }
+            }
+          }
+          
+          // Extract direction info if available
+          if (cls.direction) {
+            const directionId = typeof cls.direction === 'object' ? cls.direction._id : cls.direction;
+            if (directionId && !directionIds.has(directionId)) {
+              directionIds.add(directionId);
+              if (typeof cls.direction === 'object') {
+                directionsFromClasses.push(cls.direction);
+              }
+            }
+          }
+          
+          // Extract student info if available
+          if (cls.students && Array.isArray(cls.students)) {
+            cls.students.forEach(student => {
+              const studentId = typeof student === 'object' ? student._id : student;
+              if (studentId && !studentIds.has(studentId)) {
+                studentIds.add(studentId);
+                if (typeof student === 'object') {
+                  studentsFromClasses.push(student);
+                }
+              }
+            });
+          }
+        });
+        
+        // If we have subject IDs but not full objects, fetch their details
+        if (subjectIds.size > 0 && subjectsFromClasses.length < subjectIds.size) {
+          try {
+            const subjectsResponse = await axios.get('/api/subjects', config);
+            if (Array.isArray(subjectsResponse.data)) {
+              const filteredSubjects = subjectsResponse.data.filter(subject => 
+                subjectIds.has(subject._id)
+              );
+              setTeacherSubjects(filteredSubjects);
+            }
+          } catch (error) {
+            handleAxiosError(error, 'loadTeacherSubjects');
+            // Use what we have
+            setTeacherSubjects(subjectsFromClasses);
+          }
+        } else {
+          setTeacherSubjects(subjectsFromClasses);
+        }
+        
+        // If we have direction IDs but not full objects, fetch their details
+        if (directionIds.size > 0 && directionsFromClasses.length < directionIds.size) {
+          try {
+            const directionsResponse = await axios.get('/api/directions', config);
+            if (Array.isArray(directionsResponse.data)) {
+              const filteredDirections = directionsResponse.data.filter(direction => 
+                directionIds.has(direction._id)
+              );
+              setTeacherDirections(filteredDirections);
+            }
+          } catch (error) {
+            handleAxiosError(error, 'loadTeacherDirections');
+            // Use what we have
+            setTeacherDirections(directionsFromClasses);
+          }
+        } else {
+          setTeacherDirections(directionsFromClasses);
+        }
+        
+        // If we have student IDs but not full objects, fetch their details
+        if (studentIds.size > 0 && studentsFromClasses.length < studentIds.size) {
+          try {
+            const studentsResponse = await axios.get('/api/students', config);
+            if (Array.isArray(studentsResponse.data)) {
+              const filteredStudents = studentsResponse.data.filter(student => 
+                studentIds.has(student._id)
+              );
+              setTeacherStudents(filteredStudents);
+            }
+          } catch (error) {
+            handleAxiosError(error, 'loadTeacherStudents');
+            // Use what we have
+            setTeacherStudents(studentsFromClasses);
+          }
+        } else {
+          setTeacherStudents(studentsFromClasses);
+        }
+        
+        console.log(`[CreateGradeSimple] Teacher data extracted: ${teacherSubjects.length} subjects, ${teacherDirections.length} directions, ${teacherStudents.length} students`);
+      }
+    } catch (error) {
+      handleAxiosError(error, 'loadTeacherClasses');
+      toast.error('Failed to load teacher class data. Some filtering options may be limited.');
+    } finally {
+      setIsLoadingTeacherData(false);
+    }
   }, [user]);
+
+  
+  // Load all directions and teacher classes on component mount
+  useEffect(() => {
+    if (user && user.token) {
+      // Only load teacher classes data initially, then use loadInitialData for the rest
+      loadTeacherClasses()
+        .then(() => {
+          console.log('[CreateGradeSimple] Teacher classes loaded, now loading initial data');
+          loadInitialData();
+        })
+        .catch(error => {
+          console.error('[CreateGradeSimple] Error loading teacher data:', error);
+          // Still try to load basic data if teacher data fails
+          loadInitialData();
+        });
+    }
+  }, [user, loadTeacherClasses]);
   
   // Reference to track if component is mounted
   const isMounted = React.useRef(true);
@@ -145,25 +278,45 @@ const CreateGradeSimple = () => {
       };
       
       try {
-        // 1. Load all directions
-        console.log('[CreateGradeSimple] Loading all directions');
-        const directionsResponse = await axios.get('/api/directions', config);
-        if (isMounted.current && Array.isArray(directionsResponse.data)) {
-          setDirections(directionsResponse.data);
-          console.log(`[CreateGradeSimple] Loaded ${directionsResponse.data.length} directions`);
+        // First load teacher's classes to get teacher-specific data
+        await loadTeacherClasses();
+        
+        // Then load remaining required data
+        console.log('[CreateGradeSimple] Loading directions and subjects');
+        
+        // 1. Load all directions if teacher directions aren't available
+        if (teacherDirections.length === 0) {
+          console.log('[CreateGradeSimple] Loading all directions');
+          const directionsResponse = await axios.get('/api/directions', config);
+          if (isMounted.current && Array.isArray(directionsResponse.data)) {
+            setDirections(directionsResponse.data);
+            console.log(`[CreateGradeSimple] Loaded ${directionsResponse.data.length} directions`);
+          }
+        } else {
+          // Use teacher-specific directions if available
+          setDirections(teacherDirections);
+          console.log(`[CreateGradeSimple] Using ${teacherDirections.length} teacher-specific directions`);
         }
         
-        // 2. Load all subjects
-        console.log('[CreateGradeSimple] Loading all subjects');
-        const subjectsResponse = await axios.get('/api/subjects', config);
-        if (isMounted.current && Array.isArray(subjectsResponse.data)) {
-          setSubjects(subjectsResponse.data);
-          setFilteredSubjects(subjectsResponse.data); // Initially show all subjects
-          console.log(`[CreateGradeSimple] Loaded ${subjectsResponse.data.length} subjects`);
+        // 2. Load all subjects if teacher subjects aren't available
+        if (teacherSubjects.length === 0) {
+          console.log('[CreateGradeSimple] Loading all subjects');
+          const subjectsResponse = await axios.get('/api/subjects', config);
+          if (isMounted.current && Array.isArray(subjectsResponse.data)) {
+            setSubjects(subjectsResponse.data);
+            setFilteredSubjects(subjectsResponse.data); // Initially show all subjects
+            console.log(`[CreateGradeSimple] Loaded ${subjectsResponse.data.length} subjects`);
+          }
+        } else {
+          // Use teacher-specific subjects if available
+          setSubjects(teacherSubjects);
+          setFilteredSubjects(teacherSubjects);
+          console.log(`[CreateGradeSimple] Using ${teacherSubjects.length} teacher-specific subjects`);
         }
       } catch (error) {
         if (isMounted.current) {
           handleAxiosError(error, 'loadInitialData');
+          toast.error('Failed to load initial data. Please refresh the page.');
         }
       } finally {
         if (isMounted.current) {
@@ -180,76 +333,124 @@ const CreateGradeSimple = () => {
     };
   }, [user]);
   
-  // Filter subjects when direction changes (no API call)
-  useEffect(() => {
-    if (!selectedDirection) {
-      // If no direction is selected, show all subjects
-      setFilteredSubjects(subjects);
-      return;
-    }
+  // Load subjects filtered by selected direction
+  const loadDirectionSubjects = async () => {
+    if (!user?.token || !isMounted.current) return;
     
-    console.log(`[CreateGradeSimple] Filtering subjects for direction: ${selectedDirection}`);
-    
-    // If we have a selected direction, make a dedicated API call for it
-    const loadDirectionSubjects = async () => {
-      if (!user?.token || !isMounted.current) return;
-      
-      setLoading(true);
-      try {
-        const config = {
-          headers: {
-            Authorization: `Bearer ${user.token}`
-          }
-        };
+    setLoading(true);
+    try {
+      // Check if we can filter from teacher-specific subjects first
+      if (teacherSubjects.length > 0) {
+        // Filter subjects that match the selected direction
+        const filteredTeacherSubjects = teacherSubjects.filter(subject => {
+          return subject.directions && 
+                 Array.isArray(subject.directions) && 
+                 subject.directions.some(dir => {
+                   const dirId = typeof dir === 'object' ? dir._id : dir;
+                   return dirId === selectedDirection;
+                 });
+        });
         
-        // Add a cache buster to prevent unnecessary cached responses
-        const timestamp = new Date().getTime();
-        const response = await axios.get(`/api/subjects/direction/${selectedDirection}?_t=${timestamp}`, config);
-        
-        if (isMounted.current && Array.isArray(response.data)) {
-          setFilteredSubjects(response.data);
-          console.log(`[CreateGradeSimple] Loaded ${response.data.length} subjects for direction ${selectedDirection}`);
+        if (filteredTeacherSubjects.length > 0) {
+          console.log(`[CreateGradeSimple] Found ${filteredTeacherSubjects.length} teacher-specific subjects for direction ${selectedDirection}`);
+          setFilteredSubjects(filteredTeacherSubjects);
           
-          // Reset subject selection if it's not in the new list
-          const subjectStillValid = response.data.some(s => s._id === formData.subject);
+          // Reset subject if not valid anymore
+          const subjectStillValid = filteredTeacherSubjects.some(s => s._id === formData.subject);
           if (formData.subject && !subjectStillValid) {
             setFormData(prev => ({
               ...prev,
               subject: '',
-              student: '' // Also reset student when subject is reset
+              student: ''
             }));
           }
-        }
-      } catch (error) {
-        if (isMounted.current) {
-          handleAxiosError(error, 'loadDirectionSubjects');
-          // Filter existing subjects client-side as fallback
-          const filtered = subjects.filter(subject => {
-            // Check if the subject has this direction
-            return subject.directions && 
-                  Array.isArray(subject.directions) && 
-                  subject.directions.some(dir => {
-                    const dirId = typeof dir === 'object' ? dir?._id : dir;
-                    return dirId === selectedDirection;
-                  });
-          });
-          setFilteredSubjects(filtered);
-          console.log(`[CreateGradeSimple] Fallback: filtered ${filtered.length} subjects client-side`);
-        }
-      } finally {
-        if (isMounted.current) {
+          
           setLoading(false);
+          return;
         }
       }
-    };
+      
+      // If no teacher-specific subjects found, make API call
+      const config = {
+        headers: {
+          Authorization: `Bearer ${user.token}`
+        }
+      };
+      
+      const timestamp = new Date().getTime();
+      const response = await axios.get(`/api/subjects/direction/${selectedDirection}?_t=${timestamp}`, config);
+      
+      if (isMounted.current && Array.isArray(response.data)) {
+        // If teacher subjects available, filter API results
+        if (teacherSubjects.length > 0) {
+          const teacherSubjectIds = new Set(teacherSubjects.map(s => s._id));
+          const filteredResults = response.data.filter(subject => teacherSubjectIds.has(subject._id));
+          setFilteredSubjects(filteredResults);
+          console.log(`[CreateGradeSimple] Filtered ${filteredResults.length} teacher subjects from API results`);
+        } else {
+          setFilteredSubjects(response.data);
+          console.log(`[CreateGradeSimple] Loaded ${response.data.length} subjects for direction ${selectedDirection}`);
+        }
+        
+        // Reset subject if needed
+        const subjectStillValid = response.data.some(s => s._id === formData.subject);
+        if (formData.subject && !subjectStillValid) {
+          setFormData(prev => ({
+            ...prev,
+            subject: '',
+            student: ''
+          }));
+        }
+      }
+    } catch (error) {
+      if (isMounted.current) {
+        handleAxiosError(error, 'loadDirectionSubjects');
+        // Client-side fallback
+        const filtered = subjects.filter(subject => {
+          return subject.directions && 
+                 Array.isArray(subject.directions) && 
+                 subject.directions.some(dir => {
+                   const dirId = typeof dir === 'object' ? dir._id : dir;
+                   return dirId === selectedDirection;
+                 });
+        });
+        
+        // Apply teacher filter if available
+        if (teacherSubjects.length > 0) {
+          const teacherSubjectIds = new Set(teacherSubjects.map(s => s._id));
+          const teacherFiltered = filtered.filter(s => teacherSubjectIds.has(s._id));
+          setFilteredSubjects(teacherFiltered);
+        } else {
+          setFilteredSubjects(filtered);
+        }
+      }
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+      }
+    }
+  };
+  
+  // Filter subjects based on direction selection
+  useEffect(() => {
+    if (!selectedDirection) {
+      // If no direction selected, show all subjects (filtered by teacher if available)
+      if (teacherSubjects.length > 0) {
+        setFilteredSubjects(teacherSubjects);
+      } else {
+        setFilteredSubjects(subjects);
+      }
+      return;
+    }
     
+    console.log(`[CreateGradeSimple] Filtering subjects for direction: ${selectedDirection}`);
     loadDirectionSubjects();
     
-    // This effect should only run when selectedDirection changes, not on every render
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDirection]);
+  // This effect should only run when selectedDirection changes, not on every render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDirection, subjects, teacherSubjects]);
   
-  // Load students when subject changes (only when subject actually changes)
+  // Load students when subject changes
   useEffect(() => {
     // Track if this effect is still relevant
     let isEffectActive = true;
@@ -264,15 +465,56 @@ const CreateGradeSimple = () => {
       
       setLoading(true);
       try {
+        // First check if we can filter from teacher-specific students
+        if (teacherStudents.length > 0 && isEffectActive) {
+          console.log(`[CreateGradeSimple] Filtering teacher-specific students for subject ${formData.subject}`);
+          
+          // Filter students that have this subject
+          let teacherFilteredStudents = teacherStudents.filter(student => {
+            return student.subjects && 
+                  Array.isArray(student.subjects) && 
+                  student.subjects.some(sub => {
+                    const subId = typeof sub === 'object' ? sub?._id : sub;
+                    return subId === formData.subject;
+                  });
+          });
+          
+          // Further filter by direction if selected
+          if (selectedDirection) {
+            teacherFilteredStudents = teacherFilteredStudents.filter(student => {
+              const studentDirId = typeof student.direction === 'object' 
+                ? student.direction?._id 
+                : student.direction;
+              return studentDirId && studentDirId.toString() === selectedDirection;
+            });
+          }
+          
+          if (teacherFilteredStudents.length > 0 && isEffectActive) {
+            console.log(`[CreateGradeSimple] Found ${teacherFilteredStudents.length} students from teacher's classes`);
+            setFilteredStudents(teacherFilteredStudents);
+            
+            // Check if current student selection is still valid
+            const studentStillValid = teacherFilteredStudents.some(s => s._id === formData.student);
+            if (formData.student && !studentStillValid) {
+              setFormData(prev => ({
+                ...prev,
+                student: ''
+              }));
+            }
+            
+            setLoading(false);
+            return; // Exit early as we've found students from teacher data
+          }
+        }
+        
+        // If no teacher-specific students found or available, continue with API call
         const config = {
           headers: {
             Authorization: `Bearer ${user.token}`
           }
         };
         
-        // Try to get students for this specific subject
-        console.log(`[CreateGradeSimple] Loading students for subject: ${formData.subject}`);
-        // Add cache buster to prevent unnecessary API calls
+        console.log(`[CreateGradeSimple] Loading students for subject ${formData.subject}`);
         const timestamp = new Date().getTime();
         const response = await axios.get(`/api/students/subject/${formData.subject}?_t=${timestamp}`, config);
         
@@ -280,27 +522,31 @@ const CreateGradeSimple = () => {
         if (!isEffectActive) return;
         
         if (Array.isArray(response.data)) {
-          // Further filter by direction if one is selected
           let studentsToShow = response.data;
           
+          // Filter by direction if selected
           if (selectedDirection) {
-            studentsToShow = response.data.filter(student => {
-              // Handle both populated and unpopulated direction
+            studentsToShow = studentsToShow.filter(student => {
               const studentDirId = typeof student.direction === 'object' 
                 ? student.direction?._id 
                 : student.direction;
-              
               return studentDirId && studentDirId.toString() === selectedDirection;
             });
-            
-            console.log(`[CreateGradeSimple] Filtered to ${studentsToShow.length} students in direction ${selectedDirection}`);
+          }
+          
+          // Filter by teacher's students if available
+          if (teacherStudents.length > 0) {
+            const teacherStudentIds = new Set(teacherStudents.map(s => s._id));
+            const previousCount = studentsToShow.length;
+            studentsToShow = studentsToShow.filter(student => teacherStudentIds.has(student._id));
+            console.log(`[CreateGradeSimple] Filtered API students from ${previousCount} to ${studentsToShow.length} teacher's students`);
           }
           
           if (isEffectActive) {
             setFilteredStudents(studentsToShow);
             console.log(`[CreateGradeSimple] Loaded ${studentsToShow.length} students for subject ${formData.subject}`);
             
-            // Reset student selection if it's not in the new list
+            // Check if current student selection is still valid
             const studentStillValid = studentsToShow.some(s => s._id === formData.student);
             if (formData.student && !studentStillValid) {
               setFormData(prev => ({
@@ -311,44 +557,102 @@ const CreateGradeSimple = () => {
           }
         }
       } catch (error) {
-        if (isEffectActive) {
-          handleAxiosError(error, 'loadStudents');
-          // Try to get all students as fallback
-          try {
-            const config = {
+        if (!isEffectActive) return;
+        
+        handleAxiosError(error, 'loadStudents');
+        
+        // Fallback: Try to load all students
+        try {
+          console.log('[CreateGradeSimple] Falling back to loading all students');
+          
+          // If we have teacher students, just use those
+          if (teacherStudents.length > 0) {
+            console.log('[CreateGradeSimple] Using teacher students as fallback');
+            let studentsToShow = [...teacherStudents];
+            
+            // Filter by subject
+            if (formData.subject) {
+              studentsToShow = studentsToShow.filter(student => {
+                return student.subjects && 
+                      Array.isArray(student.subjects) && 
+                      student.subjects.some(sub => {
+                        const subId = typeof sub === 'object' ? sub?._id : sub;
+                        return subId === formData.subject;
+                      });
+              });
+            }
+            
+            // Filter by direction
+            if (selectedDirection) {
+              studentsToShow = studentsToShow.filter(student => {
+                const studentDirId = typeof student.direction === 'object' 
+                  ? student.direction?._id 
+                  : student.direction;
+                return studentDirId && studentDirId.toString() === selectedDirection;
+              });
+            }
+            
+            if (isEffectActive) {
+              setFilteredStudents(studentsToShow);
+              console.log(`[CreateGradeSimple] Fallback: filtered ${studentsToShow.length} teacher students`);
+              
+              const studentStillValid = studentsToShow.some(s => s._id === formData.student);
+              if (formData.student && !studentStillValid) {
+                setFormData(prev => ({
+                  ...prev,
+                  student: ''
+                }));
+              }
+            }
+          } else {
+            // Full fallback - load all students and filter
+            const allStudentsResponse = await axios.get('/api/students', {
               headers: {
                 Authorization: `Bearer ${user.token}`
               }
-            };
-            const fallbackResponse = await axios.get('/api/students', config);
+            });
             
-            // Check again if this effect is still relevant
-            if (!isEffectActive) return;
-            
-            if (Array.isArray(fallbackResponse.data)) {
-              // Filter by direction if one is selected
-              let allStudents = fallbackResponse.data;
+            if (isEffectActive && Array.isArray(allStudentsResponse.data)) {
+              // First filter by subject (if any)
+              let studentsToShow = allStudentsResponse.data;
               
+              if (formData.subject) {
+                studentsToShow = allStudentsResponse.data.filter(student => {
+                  return student.subjects && 
+                        Array.isArray(student.subjects) && 
+                        student.subjects.some(sub => {
+                          const subId = typeof sub === 'object' ? sub?._id : sub;
+                          return subId === formData.subject;
+                        });
+                });
+              }
+              
+              // Then filter by direction (if any)
               if (selectedDirection) {
-                allStudents = allStudents.filter(student => {
+                studentsToShow = studentsToShow.filter(student => {
                   const studentDirId = typeof student.direction === 'object' 
                     ? student.direction?._id 
                     : student.direction;
-                  
                   return studentDirId && studentDirId.toString() === selectedDirection;
                 });
               }
               
-              if (isEffectActive) {
-                setFilteredStudents(allStudents);
-                console.log(`[CreateGradeSimple] Fallback loaded ${allStudents.length} students (all)`);
+              setFilteredStudents(studentsToShow);
+              console.log(`[CreateGradeSimple] Fallback: loaded ${studentsToShow.length} students client-side`);
+              
+              const studentStillValid = studentsToShow.some(s => s._id === formData.student);
+              if (formData.student && !studentStillValid) {
+                setFormData(prev => ({
+                  ...prev,
+                  student: ''
+                }));
               }
             }
-          } catch (fallbackError) {
-            if (isEffectActive) {
-              console.error('[CreateGradeSimple] Fallback error:', fallbackError);
-              setFilteredStudents([]);
-            }
+          }
+        } catch (fallbackError) {
+          if (isEffectActive) {
+            handleAxiosError(fallbackError, 'loadAllStudentsFallback');
+            toast.error('Failed to load students');
           }
         }
       } finally {
@@ -366,9 +670,9 @@ const CreateGradeSimple = () => {
       isEffectActive = false;
     };
     
-    // Only depend on subject and direction to prevent unnecessary API calls
+    // Only depend on subject, direction, and teacher students to prevent unnecessary API calls
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.subject, selectedDirection]);
+  }, [formData.subject, selectedDirection, user, teacherStudents]);
   
   // Handle direction change
   const handleDirectionChange = (e) => {
@@ -521,6 +825,21 @@ const CreateGradeSimple = () => {
           Create New Grade
         </Typography>
         
+        {teacherClasses.length > 0 && (
+          <Box sx={{ mt: 2, mb: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <ClassIcon color="primary" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="primary">
+              Showing students from your {teacherClasses.length} assigned {teacherClasses.length === 1 ? 'class' : 'classes'}
+            </Typography>
+            <Chip 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+              label={`${teacherStudents.length} students available`} 
+            />
+          </Box>
+        )}
+        
         <Divider sx={{ mb: 4 }} />
         
         {isError && <Alert severity="error" sx={{ mb: 4 }}>{message}</Alert>}
@@ -548,6 +867,15 @@ const CreateGradeSimple = () => {
                     directions.map((direction) => (
                       <MenuItem key={direction._id} value={direction._id}>
                         {direction.name}
+                        {teacherDirections.some(d => d._id === direction._id) && (
+                          <Chip 
+                            size="small" 
+                            label="Your Class" 
+                            color="primary" 
+                            variant="outlined" 
+                            sx={{ ml: 1, height: 20 }} 
+                          />
+                        )}
                       </MenuItem>
                     ))
                   ) : (
@@ -555,7 +883,7 @@ const CreateGradeSimple = () => {
                   )}
                 </Select>
                 <FormHelperText>
-                  Select a direction to filter subjects and students
+                  {teacherDirections.length > 0 ? 'Directions from your classes are highlighted' : 'Select a direction to filter subjects and students'}
                 </FormHelperText>
               </FormControl>
             </Grid>
@@ -585,6 +913,15 @@ const CreateGradeSimple = () => {
                     filteredSubjects.map((subject) => (
                       <MenuItem key={subject._id} value={subject._id}>
                         {subject.name}
+                        {teacherSubjects.some(s => s._id === subject._id) && (
+                          <Chip 
+                            size="small" 
+                            label="Your Class" 
+                            color="primary" 
+                            variant="outlined" 
+                            sx={{ ml: 1, height: 20 }} 
+                          />
+                        )}
                       </MenuItem>
                     ))
                   ) : (
@@ -598,7 +935,7 @@ const CreateGradeSimple = () => {
                     {loading ? 'Loading subjects...' : 
                      filteredSubjects.length === 0 ? 
                       (selectedDirection ? 'No subjects found for this direction' : 'No subjects found') : 
-                      'Select the subject for this grade'}
+                      teacherSubjects.length > 0 ? 'Subjects from your classes are highlighted' : 'Select the subject for this grade'}
                   </FormHelperText>
                 )}
               </FormControl>
@@ -629,6 +966,15 @@ const CreateGradeSimple = () => {
                     filteredStudents.map((student) => (
                       <MenuItem key={student._id} value={student._id}>
                         {student.name}
+                        {teacherStudents.some(s => s._id === student._id) && (
+                          <Chip 
+                            size="small" 
+                            label="Your Class" 
+                            color="primary" 
+                            variant="outlined" 
+                            sx={{ ml: 1, height: 20 }} 
+                          />
+                        )}
                       </MenuItem>
                     ))
                   ) : (
@@ -642,7 +988,7 @@ const CreateGradeSimple = () => {
                     {loading && formData.subject ? 'Loading students...' : 
                      !formData.subject ? 'Select a subject first' : 
                      filteredStudents.length === 0 ? 'No students found for selected criteria' : 
-                     'Select the student to grade'}
+                     teacherStudents.length > 0 ? 'Students from your classes are highlighted' : 'Select the student to grade'}
                   </FormHelperText>
                 )}
               </FormControl>
