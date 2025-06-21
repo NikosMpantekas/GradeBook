@@ -59,8 +59,10 @@ const CreateGradeSimple = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  // Reference to track if component is mounted
+  // References to track component mount state and prevent duplicate API calls
   const isMounted = useRef(true);
+  const apiCallsInProgress = useRef({});
+  const cancelTokens = useRef({});
   
   // Get user from auth state
   const { user } = useSelector((state) => state.auth);
@@ -112,7 +114,7 @@ const CreateGradeSimple = () => {
     }
   };
   
-  // Effect to check if user is admin
+  // Effect to check if user is admin and initiate data loading
   useEffect(() => {
     if (!user || !user.token) return;
 
@@ -121,12 +123,22 @@ const CreateGradeSimple = () => {
       console.log('[CreateGradeSimple] Admin user detected - loading all data');
       setIsAdmin(true);
     }
+    
+    // Only load initial data once when component mounts and user is available
+    loadInitialData();
 
-    // Return cleanup function
+    // Cancel any pending requests and cleanup on unmount
     return () => {
+      console.log('[CreateGradeSimple] Component unmounting - cleaning up requests');
       isMounted.current = false;
+      // Cancel any in-flight requests
+      Object.values(cancelTokens.current).forEach(cancelToken => {
+        if (cancelToken && typeof cancelToken.cancel === 'function') {
+          cancelToken.cancel('Component unmounted');
+        }
+      });
     };
-  }, [user]);
+  }, [user?.token]); // Only run when user token changes
   
   // Load teacher classes and associated data
   const loadTeacherData = async () => {
@@ -192,6 +204,14 @@ const CreateGradeSimple = () => {
     // Skip if component unmounted during async operations
     if (!isMounted.current) return;
     
+    // Prevent duplicate API calls
+    if (apiCallsInProgress.current.initialData) {
+      console.log('[CreateGradeSimple] Initial data loading already in progress, skipping');
+      return;
+    }
+    
+    // Mark that we're loading data
+    apiCallsInProgress.current.initialData = true;
     setLoading(true);
     
     try {
@@ -209,19 +229,18 @@ const CreateGradeSimple = () => {
       
       // Get directions with detailed error handling
       try {
+        // Create cancelation token for this request
+        cancelTokens.current.directions = axios.CancelToken.source();
+        
         // Force URL without slash to be consistent
         const directionsUrl = buildApiUrl('/api/directions');
         console.log('[CreateGradeSimple] Requesting directions from:', directionsUrl);
         
-        // Use direct API_URL with manual normalization as fallback if buildApiUrl fails
-        try {
-          directionsRes = await axios.get(directionsUrl, config);
-        } catch (directUrlError) {
-          console.warn('[CreateGradeSimple] First attempt failed, trying alternate URL format');
-          const fallbackUrl = `${API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL}/api/directions`;
-          console.log('[CreateGradeSimple] Trying fallback URL:', fallbackUrl);
-          directionsRes = await axios.get(fallbackUrl, config);
-        }
+        // Add cancel token to request
+        directionsRes = await axios.get(directionsUrl, {
+          ...config,
+          cancelToken: cancelTokens.current.directions.token
+        });
         
         console.log('[CreateGradeSimple] Directions response status:', directionsRes.status);
         console.log('[CreateGradeSimple] Directions response headers:', JSON.stringify(directionsRes.headers));
@@ -259,19 +278,18 @@ const CreateGradeSimple = () => {
       
       // Get subjects with detailed error handling
       try {
+        // Create cancelation token for this request
+        cancelTokens.current.subjects = axios.CancelToken.source();
+        
         // Force URL without slash to be consistent
         const subjectsUrl = buildApiUrl('/api/subjects');
         console.log('[CreateGradeSimple] Requesting subjects from:', subjectsUrl);
         
-        // Use direct API_URL with manual normalization as fallback if buildApiUrl fails
-        try {
-          subjectsRes = await axios.get(subjectsUrl, config);
-        } catch (subUrlError) {
-          console.warn('[CreateGradeSimple] First attempt for subjects failed, trying alternate URL format');
-          const fallbackUrl = `${API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL}/api/subjects`;
-          console.log('[CreateGradeSimple] Trying fallback URL for subjects:', fallbackUrl);
-          subjectsRes = await axios.get(fallbackUrl, config);
-        }
+        // Add cancel token to request
+        subjectsRes = await axios.get(subjectsUrl, {
+          ...config,
+          cancelToken: cancelTokens.current.subjects.token
+        });
         
         console.log('[CreateGradeSimple] Subjects response status:', subjectsRes.status);
         console.log('[CreateGradeSimple] Subjects response headers:', JSON.stringify(subjectsRes.headers));
@@ -337,9 +355,17 @@ const CreateGradeSimple = () => {
         setFilteredSubjects([]);
       }
     } catch (error) {
-      handleAxiosError(error, 'loadInitialData');
-      toast.error('Failed to load initial data. Please refresh the page.');
+      // Don't treat cancelled requests as errors
+      if (axios.isCancel(error)) {
+        console.log('[CreateGradeSimple] Request cancelled:', error.message);
+      } else {
+        console.error('[CreateGradeSimple] Error loading initial data:', error);
+        toast.error('Failed to load data. Please check console for details.');
+      }
     } finally {
+      // Mark that we're done loading
+      apiCallsInProgress.current.initialData = false;
+      
       if (isMounted.current) {
         setLoading(false);
       }
