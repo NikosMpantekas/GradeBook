@@ -6,6 +6,10 @@ import { format } from 'date-fns';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
+// Import API_URL from appConfig
+import { API_URL } from '../../config/appConfig';
+console.log('[CreateGradeSimple] Imported API_URL:', API_URL);
+
 // Redux actions
 import { createGrade, reset } from '../../features/grades/gradeSlice';
 
@@ -130,11 +134,10 @@ const CreateGradeSimple = () => {
       }
       
       // For teachers, load their specific classes
-      // Configure proper API base URL
-      const API_BASE_URL = process.env.REACT_APP_API_URL || '';
+      // Use imported API_URL
       console.log('[CreateGradeSimple] Loading classes for teacher:', user.user?._id);
-      console.log('[CreateGradeSimple] Using API base URL:', API_BASE_URL);
-      const response = await axios.get(`${API_BASE_URL}/api/classes`, config);
+      console.log('[CreateGradeSimple] Using API_URL:', API_URL);
+      const response = await axios.get(`${API_URL}/api/classes`, config);
       
       if (!Array.isArray(response.data)) {
         console.error('[CreateGradeSimple] Invalid response format for teacher classes');
@@ -179,35 +182,39 @@ const CreateGradeSimple = () => {
         }
       };
       
-      // Configure proper API base URL
-      const API_BASE_URL = process.env.REACT_APP_API_URL || '';
-      console.log('[CreateGradeSimple] Using API base URL:', API_BASE_URL);
+      // Use imported API_URL from appConfig
+      console.log('[CreateGradeSimple] Using API_URL:', API_URL);
       
       // Fetch directions and subjects in parallel
-      const [directionsRes, subjectsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/directions`, config),
-        axios.get(`${API_BASE_URL}/api/subjects`, config)
-      ]);
-      
-      // Log response for debugging
-      console.log('[CreateGradeSimple] Directions response:', directionsRes?.data?.length || 0, 'items');
-      console.log('[CreateGradeSimple] Subjects response:', subjectsRes?.data?.length || 0, 'items');
-      
-      // Set directions, prioritizing teacher directions if available
-      if (Array.isArray(directionsRes.data)) {
-        setDirections(directionsRes.data);
-      }
-      
-      // Set subjects, prioritizing teacher subjects if available
-      if (Array.isArray(subjectsRes.data)) {
-        setSubjects(subjectsRes.data);
-      }
-      
-      // Apply initial filtering based on teacher data
-      if (teacherSubjects.length > 0) {
-        setFilteredSubjects(teacherSubjects);
-      } else {
-        setFilteredSubjects(subjectsRes.data || []);
+      try {
+        const [directionsRes, subjectsRes] = await Promise.all([
+          axios.get(`${API_URL}/api/directions`, config),
+          axios.get(`${API_URL}/api/subjects`, config)
+        ]);
+        
+        // Log response for debugging
+        console.log('[CreateGradeSimple] Directions loaded:', directionsRes?.data?.length || 0, 'items');
+        console.log('[CreateGradeSimple] Subjects loaded:', subjectsRes?.data?.length || 0, 'items');
+        
+        // Set directions, prioritizing teacher directions if available
+        if (Array.isArray(directionsRes.data)) {
+          setDirections(directionsRes.data);
+        }
+        
+        // Set subjects, prioritizing teacher subjects if available
+        if (Array.isArray(subjectsRes.data)) {
+          setSubjects(subjectsRes.data);
+        }
+        
+        // Apply initial filtering based on teacher data
+        if (teacherSubjects.length > 0) {
+          setFilteredSubjects(teacherSubjects);
+        } else {
+          setFilteredSubjects(subjectsRes.data || []);
+        }
+      } catch (error) {
+        console.error('[CreateGradeSimple] Error loading initial data:', error);
+        toast.error('Failed to load directions and subjects. Please refresh the page.');
       }
       
     } catch (error) {
@@ -256,10 +263,9 @@ const CreateGradeSimple = () => {
           }
         };
         
-        const API_BASE_URL = process.env.REACT_APP_API_URL || '';
         const timestamp = new Date().getTime();
         console.log('[CreateGradeSimple] Loading subjects for direction:', selectedDirection);
-        const response = await axios.get(`${API_BASE_URL}/api/subjects/direction/${selectedDirection}?_t=${timestamp}`, config);
+        const response = await axios.get(`${API_URL}/api/subjects/direction/${selectedDirection}?_t=${timestamp}`, config);
         
         if (isMounted.current && Array.isArray(response.data)) {
           // If teacher subjects available, filter API results
@@ -329,13 +335,11 @@ const CreateGradeSimple = () => {
           }
         };
         
-        // Configure proper API base URL
-        const API_BASE_URL = process.env.REACT_APP_API_URL || '';
-        
-        // Get students for selected subject
+        // Get students for selected subject using imported API_URL
         const timestamp = new Date().getTime();
         console.log(`[CreateGradeSimple] Loading students for subject: ${formData.subject}`);
-        const response = await axios.get(`${API_BASE_URL}/api/students/subject/${formData.subject}?_t=${timestamp}`, config);
+        console.log('[CreateGradeSimple] Using API_URL:', API_URL);
+        const response = await axios.get(`${API_URL}/api/students/subject/${formData.subject}?_t=${timestamp}`, config);
         
         if (isMounted.current && Array.isArray(response.data)) {
           // If teacher students available, filter API results
@@ -447,15 +451,34 @@ const CreateGradeSimple = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
+    // Validate form data
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setFormErrors(validationErrors);
+      toast.error('Please correct the errors in the form');
       return;
     }
-    
-    // Submit grade
-    dispatch(createGrade(formData));
+
+    // Log the form submission for debugging
+    console.log('[CreateGradeSimple] Submitting grade with data:', {
+      student: formData.student,
+      subject: formData.subject,
+      value: formData.value,
+      date: formData.date,
+      description: formData.description?.substring(0, 20) + '...' // Log only first 20 chars of description
+    });
+
+    // Create object for API submission
+    const gradeData = {
+      student: formData.student,
+      subject: formData.subject,
+      value: formData.value,
+      date: formData.date,
+      description: formData.description
+    };
+
+    // Dispatch create grade action
+    dispatch(createGrade(gradeData));
   };
   
   return (
