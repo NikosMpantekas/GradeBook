@@ -3,7 +3,8 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-const APP_VERSION = '1.6.0.61';
+// Updated to fix TypeError in grade creation component
+const APP_VERSION = '1.6.0.63';
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
