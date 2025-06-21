@@ -232,8 +232,9 @@ const CreateGradeSimple = () => {
         // Create cancelation token for this request
         cancelTokens.current.directions = axios.CancelToken.source();
         
-        // Force URL without slash to be consistent
-        const directionsUrl = buildApiUrl('/api/directions');
+        // Force URL without slash to be consistent - trailing slashes cause issues
+        // IMPORTANT: Do not use trailing slashes in API paths
+        const directionsUrl = buildApiUrl('/api/directions').replace(/\/$/, '');
         console.log('[CreateGradeSimple] Requesting directions from:', directionsUrl);
         
         // Add cancel token to request
@@ -244,22 +245,16 @@ const CreateGradeSimple = () => {
         
         console.log('[CreateGradeSimple] Directions response status:', directionsRes.status);
         console.log('[CreateGradeSimple] Directions response headers:', JSON.stringify(directionsRes.headers));
-        console.log('[CreateGradeSimple] Directions data type:', typeof directionsRes.data, 
-                   'Is array:', Array.isArray(directionsRes.data), 
-                   'Length:', directionsRes.data?.length || 0);
-                   
-        // More detailed inspection of response data
-        if (directionsRes.data) {
-          console.log('[CreateGradeSimple] Raw directions data sample:', 
-            JSON.stringify(directionsRes.data?.slice(0, 1) || 'No data'));
-            
-          // Check if data is properly structured
-          if (Array.isArray(directionsRes.data) && directionsRes.data.length > 0) {
-            console.log('[CreateGradeSimple] First direction object keys:', 
-              Object.keys(directionsRes.data[0]).join(', '));
-          }
+        console.log('[CreateGradeSimple] Directions data type:', typeof directionsRes.data, Array.isArray(directionsRes.data) ? 'is array' : 'not array');
+        console.log('[CreateGradeSimple] Directions data length:', Array.isArray(directionsRes.data) ? directionsRes.data.length : 'N/A');
+        
+        if (Array.isArray(directionsRes.data) && directionsRes.data.length > 0) {
+          console.log('[CreateGradeSimple] Direction sample item:', JSON.stringify(directionsRes.data[0]));
+          // Log all direction names for debugging
+          console.log('[CreateGradeSimple] All directions:', directionsRes.data.map(d => d.name || 'unnamed').join(', '));
         } else {
-          console.error('[CreateGradeSimple] Directions response data is null or undefined');
+          console.warn('[CreateGradeSimple] No directions found or invalid data format');
+          console.log('[CreateGradeSimple] Raw directions data:', JSON.stringify(directionsRes.data));
         }
       } catch (dirError) {
         console.error('[CreateGradeSimple] Failed to fetch directions:', dirError);
@@ -281,8 +276,9 @@ const CreateGradeSimple = () => {
         // Create cancelation token for this request
         cancelTokens.current.subjects = axios.CancelToken.source();
         
-        // Force URL without slash to be consistent
-        const subjectsUrl = buildApiUrl('/api/subjects');
+        // Force URL without slash to be consistent - trailing slashes cause issues
+        // IMPORTANT: Do not use trailing slashes in API paths
+        const subjectsUrl = buildApiUrl('/api/subjects').replace(/\/$/, '');
         console.log('[CreateGradeSimple] Requesting subjects from:', subjectsUrl);
         
         // Add cancel token to request
@@ -293,22 +289,16 @@ const CreateGradeSimple = () => {
         
         console.log('[CreateGradeSimple] Subjects response status:', subjectsRes.status);
         console.log('[CreateGradeSimple] Subjects response headers:', JSON.stringify(subjectsRes.headers));
-        console.log('[CreateGradeSimple] Subjects data type:', typeof subjectsRes.data, 
-                   'Is array:', Array.isArray(subjectsRes.data), 
-                   'Length:', subjectsRes.data?.length || 0);
-                   
-        // More detailed inspection of response data
-        if (subjectsRes.data) {
-          console.log('[CreateGradeSimple] Raw subjects data sample:', 
-            JSON.stringify(subjectsRes.data?.slice(0, 1) || 'No data'));
-            
-          // Check if data is properly structured
-          if (Array.isArray(subjectsRes.data) && subjectsRes.data.length > 0) {
-            console.log('[CreateGradeSimple] First subject object keys:', 
-              Object.keys(subjectsRes.data[0]).join(', '));
-          }
+        console.log('[CreateGradeSimple] Subjects data type:', typeof subjectsRes.data, Array.isArray(subjectsRes.data) ? 'is array' : 'not array');
+        console.log('[CreateGradeSimple] Subjects data length:', Array.isArray(subjectsRes.data) ? subjectsRes.data.length : 'N/A');
+        
+        if (Array.isArray(subjectsRes.data) && subjectsRes.data.length > 0) {
+          console.log('[CreateGradeSimple] Subject sample item:', JSON.stringify(subjectsRes.data[0]));
+          // Log all subject names for debugging
+          console.log('[CreateGradeSimple] All subjects:', subjectsRes.data.map(s => s.name || 'unnamed').join(', '));
         } else {
-          console.error('[CreateGradeSimple] Subjects response data is null or undefined');
+          console.warn('[CreateGradeSimple] No subjects found or invalid data format');
+          console.log('[CreateGradeSimple] Raw subjects data:', JSON.stringify(subjectsRes.data));
         }
       } catch (subError) {
         console.error('[CreateGradeSimple] Failed to fetch subjects:', subError);
@@ -372,17 +362,8 @@ const CreateGradeSimple = () => {
     }
   };
   
-  // Load data based on user role when component mounts
-  useEffect(() => {
-    if (!user || !user.token) return;
-    
-    const loadData = async () => {
-      await loadTeacherData();
-      await loadInitialData();
-    };
-    
-    loadData();
-  }, [user]);
+  // We now load initial data in the user useEffect when component mounts
+  // This prevents duplicate API calls that were causing 404 errors
   
   // Filter subjects based on direction selection
   useEffect(() => {
