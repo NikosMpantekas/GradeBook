@@ -44,6 +44,26 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Add middleware to handle API URLs with trailing slashes
+// This must be added BEFORE the API routes
+app.use((req, res, next) => {
+  // Only apply to API routes with trailing slashes
+  if (req.path.startsWith('/api/') && req.path.length > 5 && req.path.endsWith('/')) {
+    // Remove the trailing slash and redirect
+    const normalizedPath = req.path.slice(0, -1);
+    console.log(`[API URL Normalizer] Redirecting ${req.path} to ${normalizedPath}`);
+    
+    // Preserve query parameters if any
+    const queryString = Object.keys(req.query).length > 0 
+      ? '?' + new URLSearchParams(req.query).toString() 
+      : '';
+      
+    // 307 preserves the HTTP method (GET, POST, etc)
+    return res.redirect(307, normalizedPath + queryString);
+  }
+  next();
+});
+
 // Health check endpoint for Render deployment
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
