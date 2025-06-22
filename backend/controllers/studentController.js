@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const Subject = require('../models/subjectModel');
+const Class = require('../models/classModel');
 
 // @desc    Get all students
 // @route   GET /api/students
@@ -99,8 +100,153 @@ const getStudentsByDirection = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get students for teacher based on their classes (NEW CLASS-BASED LOGIC)
+// @route   GET /api/students/teacher/classes
+// @access  Private/Teacher
+const getStudentsForTeacher = asyncHandler(async (req, res) => {
+  console.log('getStudentsForTeacher endpoint called for teacher:', req.user._id);
+  
+  try {
+    // Find all classes where this teacher is assigned
+    const teacherClasses = await Class.find({
+      schoolId: req.user.schoolId,
+      teachers: req.user._id,
+      active: true
+    }).populate('students', 'name email');
+    
+    console.log(`Found ${teacherClasses.length} classes for teacher ${req.user._id}`);
+    
+    // Extract unique students from all the teacher's classes
+    const studentIds = new Set();
+    const studentsMap = new Map();
+    
+    teacherClasses.forEach(cls => {
+      if (cls.students && Array.isArray(cls.students)) {
+        cls.students.forEach(student => {
+          if (student && student._id) {
+            const studentId = student._id.toString();
+            if (!studentIds.has(studentId)) {
+              studentIds.add(studentId);
+              studentsMap.set(studentId, {
+                _id: student._id,
+                name: student.name,
+                email: student.email,
+                // Add class context information
+                classes: []
+              });
+            }
+            // Add class information to student record
+            studentsMap.get(studentId).classes.push({
+              classId: cls._id,
+              className: cls.name,
+              subject: cls.subject,
+              direction: cls.direction,
+              schoolBranch: cls.schoolBranch
+            });
+          }
+        });
+      }
+    });
+    
+    // Convert to array and add detailed student information
+    const students = Array.from(studentsMap.values());
+    
+    console.log(`Found ${students.length} unique students across teacher's classes`);
+    
+    res.json(students);
+  } catch (error) {
+    console.error('Error in getStudentsForTeacher:', error.message);
+    res.status(500);
+    throw new Error('Error retrieving students for teacher: ' + error.message);
+  }
+});
+
+// @desc    Get students by subject for a teacher (NEW CLASS-BASED LOGIC)
+// @route   GET /api/students/teacher/subject/:id
+// @access  Private/Teacher
+const getStudentsBySubjectForTeacher = asyncHandler(async (req, res) => {
+  const subjectId = req.params.id;
+  console.log(`getStudentsBySubjectForTeacher called for teacher: ${req.user._id}, subject: ${subjectId}`);
+  
+  try {
+    // First verify the subject exists in this school
+    const subject = await Subject.findOne({
+      _id: subjectId,
+      schoolId: req.user.schoolId
+    });
+    
+    if (!subject) {
+      console.log(`Subject not found or not in this school: ${subjectId}`);
+      res.status(404);
+      throw new Error('Subject not found in this school');
+    }
+    
+    console.log(`Subject found: ${subject.name}`);
+    
+    // Find classes where:
+    // 1. Teacher is assigned
+    // 2. Subject matches
+    // 3. Same school
+    const teacherClasses = await Class.find({
+      schoolId: req.user.schoolId,
+      teachers: req.user._id,
+      subject: subject.name, // Match by subject name
+      active: true
+    }).populate('students', 'name email');
+    
+    console.log(`Found ${teacherClasses.length} classes for teacher ${req.user._id} with subject ${subject.name}`);
+    
+    // Extract unique students from matching classes
+    const studentIds = new Set();
+    const studentsMap = new Map();
+    
+    teacherClasses.forEach(cls => {
+      console.log(`Processing class: ${cls.name} (${cls.subject}) with ${cls.students?.length || 0} students`);
+      
+      if (cls.students && Array.isArray(cls.students)) {
+        cls.students.forEach(student => {
+          if (student && student._id) {
+            const studentId = student._id.toString();
+            if (!studentIds.has(studentId)) {
+              studentIds.add(studentId);
+              studentsMap.set(studentId, {
+                _id: student._id,
+                name: student.name,
+                email: student.email,
+                // Add class context information for this subject
+                classes: []
+              });
+            }
+            // Add class information to student record
+            studentsMap.get(studentId).classes.push({
+              classId: cls._id,
+              className: cls.name,
+              subject: cls.subject,
+              direction: cls.direction,
+              schoolBranch: cls.schoolBranch
+            });
+          }
+        });
+      }
+    });
+    
+    // Convert to array
+    const students = Array.from(studentsMap.values());
+    
+    console.log(`Found ${students.length} unique students for teacher ${req.user._id} and subject ${subject.name}`);
+    
+    res.json(students);
+  } catch (error) {
+    console.error('Error in getStudentsBySubjectForTeacher:', error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error retrieving students for this subject');
+  }
+});
+
 module.exports = {
   getStudents,
   getStudentsBySubject,
-  getStudentsByDirection
+  getStudentsByDirection,
+  getStudentsForTeacher,
+  getStudentsBySubjectForTeacher
 };

@@ -316,35 +316,53 @@ const CreateGradeSimple = () => {
           }
         };
         
-        // Get students for selected subject
+        console.log(`[CreateGradeSimple] Loading students for subject: ${formData.subject}, user role: ${user.user?.role}`);
+        
+        let response;
         const timestamp = new Date().getTime();
-        const response = await axios.get(`/api/students/subject/${formData.subject}?_t=${timestamp}`, config);
+        
+        // Use new class-based endpoint for teachers, fallback to old endpoint for admins
+        if (user.user?.role === 'teacher') {
+          // NEW CLASS-BASED LOGIC: Get students from teacher's classes for specific subject
+          response = await axios.get(`/api/students/teacher/subject/${formData.subject}?_t=${timestamp}`, config);
+          console.log(`[CreateGradeSimple] Using new class-based endpoint for teacher`);
+        } else {
+          // LEGACY LOGIC: Admins still use the old subject-based endpoint
+          response = await axios.get(`/api/students/subject/${formData.subject}?_t=${timestamp}`, config);
+          console.log(`[CreateGradeSimple] Using legacy subject-based endpoint for admin`);
+        }
         
         if (isMounted.current && Array.isArray(response.data)) {
-          // If teacher students available, filter API results
-          if (teacherStudents.length > 0 && !isAdmin) {
-            const teacherStudentIds = new Set(teacherStudents.map(s => s._id));
-            const filteredResults = response.data.filter(student => teacherStudentIds.has(student._id));
-            setFilteredStudents(filteredResults);
-            console.log(`[CreateGradeSimple] Filtered ${filteredResults.length} teacher students from API results`);
-          } else {
-            setFilteredStudents(response.data);
-            console.log(`[CreateGradeSimple] Loaded ${response.data.length} students for subject ${formData.subject}`);
+          setFilteredStudents(response.data);
+          console.log(`[CreateGradeSimple] Loaded ${response.data.length} students for subject ${formData.subject}`);
+          
+          // Log class information for debugging (only available in new endpoint)
+          if (user.user?.role === 'teacher' && response.data.length > 0 && response.data[0].classes) {
+            console.log(`[CreateGradeSimple] Students with class context:`, 
+              response.data.map(s => ({
+                name: s.name,
+                classes: s.classes?.map(c => `${c.className} (${c.subject})`)
+              }))
+            );
           }
         }
       } catch (error) {
         if (isMounted.current) {
           handleAxiosError(error, 'loadStudents');
-          // Client-side fallback
-          const filtered = filterStudentsBySubject(subjects, formData.subject);
           
-          // Apply teacher filter if available
+          // Client-side fallback - only for backward compatibility
+          console.warn('[CreateGradeSimple] API failed, falling back to client-side filtering');
+          
           if (teacherStudents.length > 0 && !isAdmin) {
             const teacherStudentIds = new Set(teacherStudents.map(s => s._id));
+            const filtered = subjects.filter(s => s._id === formData.subject)[0]?.students || [];
             const teacherFiltered = filtered.filter(s => teacherStudentIds.has(s._id));
             setFilteredStudents(teacherFiltered);
+            console.log(`[CreateGradeSimple] Fallback: filtered to ${teacherFiltered.length} teacher students`);
           } else {
+            const filtered = filterStudentsBySubject(subjects, formData.subject);
             setFilteredStudents(filtered);
+            console.log(`[CreateGradeSimple] Fallback: loaded ${filtered.length} students from local data`);
           }
         }
       } finally {

@@ -184,6 +184,70 @@ export const getStudentsByDirection = createAsyncThunk(
   }
 );
 
+// NEW CLASS-BASED ACTIONS: Get students for teacher's classes
+export const getStudentsForTeacher = createAsyncThunk(
+  'students/getForTeacher',
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      const token = getState().auth.user?.token;
+      if (!token) {
+        console.warn('[studentSlice] No auth token available for getStudentsForTeacher');
+        return [];
+      }
+      
+      console.log('[studentSlice] Fetching students for teacher classes');
+      const response = await studentService.getStudentsForTeacher(token);
+      
+      console.log(`[studentSlice] Loaded ${response?.length || 0} students for teacher`);
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Failed to fetch teacher students';
+      console.error('[studentSlice] Error in getStudentsForTeacher:', message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
+// NEW CLASS-BASED ACTION: Get students by subject for teacher's classes
+export const getStudentsBySubjectForTeacher = createAsyncThunk(
+  'students/getBySubjectForTeacher',
+  async (subjectId, { getState, rejectWithValue }) => {
+    try {
+      const token = getState().auth.user?.token;
+      if (!token) {
+        console.warn('[studentSlice] No auth token available for getStudentsBySubjectForTeacher');
+        return [];
+      }
+      
+      if (!subjectId) {
+        console.warn('[studentSlice] No subjectId provided for getStudentsBySubjectForTeacher');
+        return [];
+      }
+      
+      console.log(`[studentSlice] Fetching students for teacher classes with subject: ${subjectId}`);
+      const response = await studentService.getStudentsBySubjectForTeacher(subjectId, token);
+      
+      console.log(`[studentSlice] Loaded ${response?.length || 0} students for teacher with subject ${subjectId}`);
+      
+      // Log class information for debugging
+      if (Array.isArray(response) && response.length > 0 && response[0].classes) {
+        console.log('[studentSlice] Students with class context:', 
+          response.slice(0, 3).map(s => ({
+            name: s.name,
+            classes: s.classes?.map(c => `${c.className} (${c.subject})`)
+          }))
+        );
+      }
+      
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Failed to fetch teacher students by subject';
+      console.error('[studentSlice] Error in getStudentsBySubjectForTeacher:', message);
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const studentSlice = createSlice({
   name: 'students',
   initialState,
@@ -258,6 +322,34 @@ export const studentSlice = createSlice({
         state.isError = true;
         state.message = action.payload;
         // CRITICAL FIX: Set empty array on failure to prevent UI errors
+        state.students = [];
+      })
+      .addCase(getStudentsForTeacher.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getStudentsForTeacher.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.students = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(getStudentsForTeacher.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+        state.students = [];
+      })
+      .addCase(getStudentsBySubjectForTeacher.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getStudentsBySubjectForTeacher.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.students = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(getStudentsBySubjectForTeacher.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
         state.students = [];
       });
   },

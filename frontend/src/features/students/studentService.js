@@ -177,10 +177,128 @@ const getStudentsByDirection = async (directionId, token) => {
   }
 };
 
+// Get students for teacher's classes
+const getStudentsForTeacher = async (token) => {
+  if (!token) {
+    console.warn('[studentService] No token provided for getStudentsForTeacher');
+    return [];
+  }
+
+  try {
+    console.log('[studentService] Fetching students for teacher classes');
+    
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
+      params: {
+        _t: new Date().getTime() // Cache buster
+      }
+    };
+
+    const endpointUrl = `${API_URL}/api/students/teacher/classes`;
+    console.log(`[studentService] Making API request to: ${endpointUrl}`);
+    
+    const response = await axios.get(endpointUrl, config);
+    
+    if (!response.data) {
+      console.warn('[studentService] Empty response received for teacher classes');
+      return [];
+    }
+    
+    if (!Array.isArray(response.data)) {
+      console.error('[studentService] Invalid response format - expected array:', response.data);
+      return [];
+    }
+    
+    console.log(`[studentService] Received ${response.data.length} students for teacher classes`);
+    return response.data;
+    
+  } catch (error) {
+    console.error('[studentService] Error fetching students for teacher:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    
+    return [];
+  }
+};
+
+// Get students by subject for teacher's classes
+const getStudentsBySubjectForTeacher = async (subjectId, token) => {
+  if (!subjectId || !token) {
+    console.warn('[studentService] Missing required parameters for getStudentsBySubjectForTeacher:', { subjectId, hasToken: !!token });
+    return [];
+  }
+
+  try {
+    console.log(`[studentService] Fetching students for teacher classes with subject: ${subjectId}`);
+    
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
+      params: {
+        _t: new Date().getTime() // Cache buster
+      }
+    };
+
+    const endpointUrl = `${API_URL}/api/students/teacher/subject/${subjectId}`;
+    console.log(`[studentService] Making API request to: ${endpointUrl}`);
+    
+    const response = await axios.get(endpointUrl, config);
+    
+    if (!response.data) {
+      console.warn('[studentService] Empty response received for teacher subject');
+      return [];
+    }
+    
+    if (!Array.isArray(response.data)) {
+      console.error('[studentService] Invalid response format - expected array:', response.data);
+      return [];
+    }
+    
+    console.log(`[studentService] Received ${response.data.length} students for teacher with subject ${subjectId}`);
+    
+    // Log class information for debugging
+    if (response.data.length > 0 && response.data[0].classes) {
+      console.log('[studentService] Students include class context:', 
+        response.data.slice(0, 2).map(s => ({
+          name: s.name,
+          classCount: s.classes?.length || 0,
+          subjects: s.classes?.map(c => c.subject) || []
+        }))
+      );
+    }
+    
+    return response.data;
+    
+  } catch (error) {
+    console.error('[studentService] Error fetching students by subject for teacher:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    
+    return [];
+  }
+};
+
 const studentService = {
   getStudents,
   getStudentsBySubject,
   getStudentsByDirection,
+  getStudentsForTeacher,
+  getStudentsBySubjectForTeacher,
 };
 
 export default studentService;
