@@ -239,7 +239,9 @@ const CreateGradeSimple = () => {
       await axios.post('/api/grades', gradeData, config);
       
       toast.success('Grade added successfully!');
-      navigate('/teacher/grades');
+      // Fix redirect path to the correct URL format with /app prefix
+      console.log('[CreateGrade] Redirecting to grade management page after successful creation');
+      navigate('/app/teacher/grades/manage');
       
     } catch (error) {
       console.error('[CreateGrade] Error creating grade:', error);

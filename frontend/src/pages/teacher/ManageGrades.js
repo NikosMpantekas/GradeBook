@@ -799,76 +799,48 @@ const ManageGrades = () => {
 
       {/* Edit Grade Dialog */}
       <Dialog open={editDialogOpen} onClose={handleEditCancel} maxWidth="md" fullWidth>
-        <DialogTitle>Edit Grade</DialogTitle>
+        <DialogTitle>
+          Edit Grade for Student: {editGradeData.studentName || students.find(s => s._id === editGradeData.student)?.name || 'Student'} 
+          - Subject: {editGradeData.subjectName || subjects.find(s => s._id === editGradeData.subject)?.name || 'Subject'}
+        </DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
-            {/* Added subject selection */}
-            <FormControl fullWidth margin="dense" required>
-              <InputLabel id="subject-label">Subject</InputLabel>
-              <Select
-                labelId="subject-label"
-                name="subject"
-                value={editGradeData.subject}
-                onChange={handleEditChange}
-                label="Subject"
-              >
-                {Array.isArray(subjects) && subjects.length > 0 ? subjects.map((subject) => (
-                  <MenuItem key={subject._id} value={subject._id}>
-                    {subject.name}
-                  </MenuItem>
-                )) : <MenuItem disabled>No subjects available</MenuItem>}
-              </Select>
-              <FormHelperText>
-                Select the subject for this grade
-              </FormHelperText>
-            </FormControl>
+            {/* Hidden fields for student and subject - these will be submitted but not editable */}
+            <input type="hidden" name="student" value={editGradeData.student || ''} />
+            <input type="hidden" name="subject" value={editGradeData.subject || ''} />
             
-            {/* EMERGENCY FIX: Completely redesigned student selection that always shows the student */}
-            <FormControl fullWidth margin="dense" required>
-              <InputLabel id="student-label">Student</InputLabel>
-              <Select
-                labelId="student-label"
-                name="student"
-                value={editGradeData.student || ''}
-                onChange={handleEditChange}
-                label="Student"
-              >
-                {/* CRITICAL FIX: Always show the current student as first option */}
-                {editGradeData.student && (
-                  <MenuItem key={`current-${editGradeData.student}`} value={editGradeData.student}>
-                    {editGradeData.studentName || students.find(s => s._id === editGradeData.student)?.name || `Student ID: ${editGradeData.student}`}
-                  </MenuItem>
-                )}
-                
-                {/* Then show divider if we're showing additional students */}
-                {editGradeData.student && Array.isArray(students) && students.length > 0 && (
-                  <Divider sx={{ my: 1 }} />
-                )}
-                
-                {/* Then show other available students */}
-                {isLoading ? (
-                  <MenuItem disabled>Loading students...</MenuItem>
-                ) : Array.isArray(students) && students.length > 0 ? (
-                  students
-                    // Filter out duplicates of current student
-                    .filter(student => student._id !== editGradeData.student)
-                    .map((student) => (
-                      <MenuItem key={student._id} value={student._id}>
-                        {student.name}
-                      </MenuItem>
-                    ))
-                ) : (
-                  <MenuItem disabled>No other students available</MenuItem>
-                )}
-              </Select>
-              <FormHelperText sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                {editGradeData.studentName ? 
-                  `Student: ${editGradeData.studentName}` : 
-                  editGradeData.student ? 
-                    `Student ID: ${editGradeData.student}` : 
-                    'Select a student for this grade'}
-              </FormHelperText>
-            </FormControl>
+            {/* Info text to clarify what can be edited */}
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+              Only the grade value, date, and description can be modified. Student and subject cannot be changed.
+            </Typography>
+            
+            {/* Display student info (non-editable) */}
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Student"
+              value={editGradeData.studentName || students.find(s => s._id === editGradeData.student)?.name || 'Student not found'}
+              InputProps={{
+                readOnly: true
+              }}
+              disabled
+              variant="filled"
+              sx={{ mb: 2 }}
+            />
+            
+            {/* Display subject info (non-editable) */}
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Subject"
+              value={editGradeData.subjectName || subjects.find(s => s._id === editGradeData.subject)?.name || 'Subject not found'}
+              InputProps={{
+                readOnly: true
+              }}
+              disabled
+              variant="filled"
+              sx={{ mb: 2 }}
+            />
             
             {/* Grade value field */}
             <TextField
@@ -887,7 +859,7 @@ const ManageGrades = () => {
               helperText="Enter a value between 0 and 100"
             />
             
-            {/* Added date picker */}
+            {/* Date picker */}
             <TextField
               margin="dense"
               name="date"
@@ -917,10 +889,11 @@ const ManageGrades = () => {
                 type="text"
                 fullWidth
                 variant="outlined"
-                value={editGradeData.description}
+                value={editGradeData.description || ''}
                 onChange={handleEditChange}
                 multiline
                 rows={4}
+                helperText="Add optional feedback or notes about this grade"
               />
             )}
           </Box>
