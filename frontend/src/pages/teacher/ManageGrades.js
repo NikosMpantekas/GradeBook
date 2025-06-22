@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { Container, Typography, Box, Snackbar, Alert, Paper } from '@mui/material';
+import { Container, Typography, Box, Snackbar, Alert, Paper, Grid, CircularProgress, Chip } from '@mui/material';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 // Components
 import GradeTable from '../../components/grades/GradeTable';
 import { EditGradeDialog, DeleteGradeDialog } from '../../components/grades/GradeDialogs';
-import GradeFilters from '../../components/grades/GradeFilters';
+import ClassBasedFilter from '../../components/grades/ClassBasedFilter';
 
 // Custom hooks
 import useGradeData from '../../hooks/useGradeData';
@@ -15,22 +16,42 @@ import useGradeDialogs from '../../components/grades/GradeDialogHandlers';
 // Utils
 import { filterGrades } from '../../utils/gradeFilterUtils';
 
+// Icons
+import SchoolIcon from '@mui/icons-material/School';
+import DirectionsIcon from '@mui/icons-material/Directions';
+import BookIcon from '@mui/icons-material/Book';
+import PersonIcon from '@mui/icons-material/Person';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+
 /**
  * ManageGrades Component
- * Shows a paginated table of grades with filtering options
+ * Shows a paginated table of grades with class-based filtering options
  */
 const ManageGrades = () => {
   console.log('[ManageGrades] Component rendering');
   
   // Redux state
   const { grades, isLoading: isGradesLoading, isError: isGradesError } = useSelector(state => state.grades);
-  const { subjects } = useSelector(state => state.subjects);
-  const { students } = useSelector(state => state.students);
   const { user } = useSelector(state => state.auth);
 
-  // Local state
-  const [subjectFilter, setSubjectFilter] = useState('');
-  const [studentFilter, setStudentFilter] = useState('');
+  // Local state for class-based filtering
+  const [filterOptions, setFilterOptions] = useState({
+    schoolBranches: [],
+    directions: [],
+    subjects: []
+  });
+  const [filters, setFilters] = useState({
+    schoolBranch: '',
+    direction: '',
+    subject: '',
+    student: ''
+  });
+  const [students, setStudents] = useState([]);
+  const [loadingFilters, setLoadingFilters] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [branchNames, setBranchNames] = useState({});
+  
+  // Existing state
   const [filteredGrades, setFilteredGrades] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -44,7 +65,7 @@ const ManageGrades = () => {
   } = useGradeData(user);
 
   // Dialog handlers
-  const dialogHandlers = useGradeDialogs({ students, subjects });
+  const dialogHandlers = useGradeDialogs({ students, subjects: filterOptions.subjects });
   const {
     alertState,
     deleteDialogOpen, 
@@ -61,41 +82,177 @@ const ManageGrades = () => {
     handleAlertClose
   } = dialogHandlers;
 
+  // Load filter options when component mounts
+  useEffect(() => {
+    if (user?.token) {
+      loadFilterOptions();
+    }
+  }, [user]);
+
+  // Effect to load branch names when filter options change
+  useEffect(() => {
+    if (filterOptions.schoolBranches && filterOptions.schoolBranches.length > 0 && user?.token) {
+      loadBranchNames();
+    }
+  }, [filterOptions.schoolBranches, user]);
+
+  // Load students when filters change
+  useEffect(() => {
+    if (filters.schoolBranch && filters.direction && filters.subject && user?.token) {
+      loadFilteredStudents();
+    } else {
+      setStudents([]);
+      setFilters(prev => ({ ...prev, student: '' }));
+    }
+  }, [filters.schoolBranch, filters.direction, filters.subject, user]);
+
   // Set up filtered grades when source data changes
   useEffect(() => {
-    console.log('[ManageGrades] Updating filtered grades');
+    console.log('[ManageGrades] Updating filtered grades with class-based filtering');
     
     if (!grades || !Array.isArray(grades)) {
       setFilteredGrades([]);
       return;
     }
     
-    const filtered = filterGrades(grades, subjectFilter, studentFilter);
+    // Apply class-based filtering to grades
+    let filtered = grades;
+    
+    if (filters.subject) {
+      filtered = filtered.filter(grade => grade.subject === filters.subject);
+    }
+    
+    if (filters.student) {
+      filtered = filtered.filter(grade => grade.student?._id === filters.student);
+    }
+    
     setFilteredGrades(filtered);
     
     // Reset to first page when filters change
     setPage(0);
-  }, [grades, subjectFilter, studentFilter]);
+  }, [grades, filters]);
 
-  // Handle filter changes
-  const handleSubjectFilterChange = (event) => {
-    const newSubjectId = event.target.value;
-    console.log(`[ManageGrades] Subject filter changed to: ${newSubjectId}`);
-    setSubjectFilter(newSubjectId);
-    
-    // When subject changes, fetch related students
-    if (newSubjectId) {
-      fetchStudentsBySubject(newSubjectId);
-    } else {
-      // If no subject selected, fetch all available students
-      fetchAllStudents();
+  // Load available filter options (school branches, directions, subjects) for the teacher/admin
+  const loadFilterOptions = async () => {
+    setLoadingFilters(true);
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+      
+      const response = await axios.get('/api/students/teacher/filters', config);
+      setFilterOptions(response.data);
+      console.log(`[ManageGrades] Loaded filter options for ${user.role}:`, response.data);
+    } catch (error) {
+      console.error('[ManageGrades] Error loading filter options:', error);
+      toast.error('Failed to load filter options');
+      setFilterOptions({ schoolBranches: [], directions: [], subjects: [] });
+    } finally {
+      setLoadingFilters(false);
     }
   };
 
-  const handleStudentFilterChange = (event) => {
-    const newStudentId = event.target.value;
-    console.log(`[ManageGrades] Student filter changed to: ${newStudentId}`);
-    setStudentFilter(newStudentId);
+  // Load school branch names
+  const loadBranchNames = async () => {
+    console.log('[ManageGrades] Loading school branch names');
+    try {
+      const branchIds = filterOptions.schoolBranches.map(branch => branch.value);
+      
+      if (!branchIds.length) return;
+      
+      const validBranchIds = branchIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
+      
+      if (!validBranchIds.length) {
+        console.log('[ManageGrades] No valid branch IDs found');
+        return;
+      }
+      
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+      
+      const response = await axios.get(`/api/schools/branches?ids=${validBranchIds.join(',')}`, config);
+      
+      const namesMap = {};
+      response.data.forEach(branch => {
+        namesMap[branch._id] = branch.name;
+      });
+      
+      setBranchNames(namesMap);
+      console.log('[ManageGrades] Loaded branch names:', namesMap);
+    } catch (error) {
+      console.error('[ManageGrades] Error loading branch names:', error);
+    }
+  };
+
+  // Load students based on selected filters using class-based filtering
+  const loadFilteredStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+      
+      const params = new URLSearchParams({
+        schoolBranch: filters.schoolBranch,
+        direction: filters.direction,
+        subject: filters.subject
+      });
+      
+      const response = await axios.get(`/api/students/teacher/filtered?${params}`, config);
+      setStudents(response.data);
+      console.log(`[ManageGrades] Loaded ${response.data.length} students for filters:`, filters);
+    } catch (error) {
+      console.error('[ManageGrades] Error loading filtered students:', error);
+      toast.error('Failed to load students');
+      setStudents([]);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    console.log(`[ManageGrades] ${filterType} filter changed to: ${value}`);
+    
+    setFilters(prev => {
+      const newFilters = { ...prev, [filterType]: value };
+      
+      // Reset dependent filters when parent filter changes
+      if (filterType === 'schoolBranch') {
+        newFilters.direction = '';
+        newFilters.subject = '';
+        newFilters.student = '';
+      } else if (filterType === 'direction') {
+        newFilters.subject = '';
+        newFilters.student = '';
+      } else if (filterType === 'subject') {
+        newFilters.student = '';
+      }
+      
+      return newFilters;
+    });
+  };
+
+  // Get available options based on current filters
+  const getAvailableDirections = () => {
+    if (!filters.schoolBranch) return [];
+    return filterOptions.directions.filter(direction => 
+      filterOptions.schoolBranches.some(branch => 
+        branch.value === filters.schoolBranch && 
+        filterOptions.directions.includes(direction)
+      )
+    );
+  };
+
+  const getAvailableSubjects = () => {
+    if (!filters.direction) return [];
+    return filterOptions.subjects.filter(subject => 
+      filterOptions.directions.some(direction => 
+        direction.value === filters.direction &&
+        filterOptions.subjects.includes(subject)
+      )
+    );
   };
 
   // Pagination handlers
@@ -111,25 +268,128 @@ const ManageGrades = () => {
   return (
     <Container maxWidth="lg" sx={{ my: 4 }}>
       <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Manage Grades
-        </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          View, filter, edit, and delete grades. Use the filters below to find specific grades.
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          {user?.role === 'admin' ? (
+            <AdminPanelSettingsIcon color="primary" sx={{ fontSize: 40 }} />
+          ) : (
+            <BookIcon color="primary" sx={{ fontSize: 40 }} />
+          )}
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Manage Grades
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {user?.role === 'admin' 
+                ? 'View, filter, edit, and delete all grades in your school'
+                : 'View, filter, edit, and delete grades for your assigned classes'
+              }
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Filter Chips Display */}
+        {(filters.schoolBranch || filters.direction || filters.subject || filters.student) && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+            {filters.schoolBranch && (
+              <Chip
+                icon={<SchoolIcon />}
+                label={`Branch: ${branchNames[filters.schoolBranch] || filters.schoolBranch}`}
+                onDelete={() => handleFilterChange('schoolBranch', '')}
+                color="primary"
+                variant="outlined"
+              />
+            )}
+            {filters.direction && (
+              <Chip
+                icon={<DirectionsIcon />}
+                label={`Direction: ${filters.direction}`}
+                onDelete={() => handleFilterChange('direction', '')}
+                color="secondary"
+                variant="outlined"
+              />
+            )}
+            {filters.subject && (
+              <Chip
+                icon={<BookIcon />}
+                label={`Subject: ${filters.subject}`}
+                onDelete={() => handleFilterChange('subject', '')}
+                color="info"
+                variant="outlined"
+              />
+            )}
+            {filters.student && (
+              <Chip
+                icon={<PersonIcon />}
+                label={`Student: ${students.find(s => s._id === filters.student)?.name || filters.student}`}
+                onDelete={() => handleFilterChange('student', '')}
+                color="success"
+                variant="outlined"
+              />
+            )}
+          </Box>
+        )}
       </Paper>
       
       {/* Filter Section */}
-      <GradeFilters
-        subjectFilter={subjectFilter}
-        studentFilter={studentFilter}
-        subjects={subjects}
-        students={students}
-        isLoadingSubjects={isLoadingSubjects}
-        isLoadingStudents={isLoadingStudents}
-        handleSubjectFilterChange={handleSubjectFilterChange}
-        handleStudentFilterChange={handleStudentFilterChange}
-      />
+      <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <SchoolIcon /> Class-Based Filters
+        </Typography>
+        
+        <Grid container spacing={3}>
+          {/* School Branch Filter */}
+          <Grid item xs={12} md={6} lg={3}>
+            <ClassBasedFilter
+              filterType="schoolBranch"
+              value={filters.schoolBranch}
+              options={filterOptions.schoolBranches}
+              loading={loadingFilters}
+              onChange={(value) => handleFilterChange('schoolBranch', value)}
+              label="School Branch"
+              disabled={loadingFilters}
+            />
+          </Grid>
+          
+          {/* Direction Filter */}
+          <Grid item xs={12} md={6} lg={3}>
+            <ClassBasedFilter
+              filterType="direction"
+              value={filters.direction}
+              options={getAvailableDirections()}
+              loading={loadingFilters}
+              onChange={(value) => handleFilterChange('direction', value)}
+              label="Direction"
+              disabled={!filters.schoolBranch || loadingFilters}
+            />
+          </Grid>
+          
+          {/* Subject Filter */}
+          <Grid item xs={12} md={6} lg={3}>
+            <ClassBasedFilter
+              filterType="subject"
+              value={filters.subject}
+              options={getAvailableSubjects()}
+              loading={loadingFilters}
+              onChange={(value) => handleFilterChange('subject', value)}
+              label="Subject"
+              disabled={!filters.direction || loadingFilters}
+            />
+          </Grid>
+          
+          {/* Student Filter */}
+          <Grid item xs={12} md={6} lg={3}>
+            <ClassBasedFilter
+              filterType="student"
+              value={filters.student}
+              options={students.map(student => ({ value: student._id, label: student.name }))}
+              loading={loadingStudents}
+              onChange={(value) => handleFilterChange('student', value)}
+              label="Student"
+              disabled={!filters.subject || loadingStudents}
+            />
+          </Grid>
+        </Grid>
+      </Paper>
       
       {/* Grades Table */}
       <Box sx={{ width: '100%', mb: 4 }}>
@@ -154,7 +414,7 @@ const ManageGrades = () => {
         editGradeData={editGradeData}
         handleEditChange={handleEditChange}
         handleEditSave={handleEditSave}
-        subjects={subjects}
+        subjects={filterOptions.subjects}
         user={user}
       />
       

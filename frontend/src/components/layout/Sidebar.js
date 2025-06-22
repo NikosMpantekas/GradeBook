@@ -28,6 +28,7 @@ import {
   AdminPanelSettings as SuperAdminIcon,
   PersonAdd as AddUserIcon,
   Event as CalendarIcon,
+  Schedule as ScheduleIcon,
   Star as RatingIcon,
   RateReview as RateReviewIcon,
   Class as ClassIcon,
@@ -158,7 +159,25 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'common',
       },
       
-      // 7. Manage Users
+      // 7. Schedule (Weekly Timetable)
+      {
+        text: 'Schedule',
+        icon: <ScheduleIcon />,
+        path: '/app/schedule',
+        roles: ['student', 'teacher', 'admin'],
+        section: 'common',
+      },
+      
+      // 8. Messages and Bug Reports
+      {
+        text: 'My Messages & Bug Reports',
+        icon: <EmailIcon />,
+        path: '/app/contact-messages',
+        roles: ['student', 'teacher', 'admin', 'superadmin'],
+        section: 'common',
+      },
+      
+      // 9. Manage Users
       {
         text: 'Manage Users',
         icon: <UsersIcon />,
@@ -168,7 +187,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'admin',
       },
       
-      // 8. Manage Schools
+      // 10. Manage Schools
       {
         text: 'Manage Schools',
         icon: <SchoolsIcon />,
@@ -178,7 +197,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'admin',
       },
       
-      // 9. Manage Classes
+      // 11. Manage Classes
       {
         text: 'Manage Classes',
         icon: <ClassIcon />,
@@ -189,20 +208,11 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'admin',
       },
       
-      // 10. Profile
+      // 12. Profile
       {
         text: 'Profile',
         icon: <PersonIcon />,
         path: '/app/profile',
-        roles: ['student', 'teacher', 'admin', 'superadmin'],
-        section: 'common',
-      },
-      
-      // 11. Messages and Bug Reports
-      {
-        text: 'My Messages & Bug Reports',
-        icon: <EmailIcon />,
-        path: '/app/contact-messages',
         roles: ['student', 'teacher', 'admin', 'superadmin'],
         section: 'common',
       },
