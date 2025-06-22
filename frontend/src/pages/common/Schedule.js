@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import {
   Box,
   Typography,
@@ -122,8 +122,9 @@ const Schedule = () => {
       const url = `/api/schedule${queryString ? `?${queryString}` : ''}`;
       
       const response = await axios.get(url, config);
-      setScheduleData(response.data);
+      setScheduleData(response.data.schedule);
       setError(null);
+      console.log('Schedule data loaded:', response.data.schedule);
     } catch (error) {
       console.error('Error fetching schedule:', error);
       setError('Failed to load schedule data. Please try again.');
@@ -330,79 +331,90 @@ const Schedule = () => {
           </Box>
         ) : (
           // Desktop view - Calendar grid
-          <Box sx={{ overflow: 'auto' }}>
-            <Grid container>
-              {/* Time column */}
-              <Grid item xs={1}>
-                <Box sx={{ position: 'sticky', left: 0, backgroundColor: 'background.paper', zIndex: 1 }}>
-                  <Typography variant="body2" sx={{ p: 1, height: '60px', display: 'flex', alignItems: 'center' }}>
-                    Time
-                  </Typography>
-                  {timeSlots.map((timeSlot) => (
-                    <Box
-                      key={timeSlot}
-                      sx={{
-                        height: '80px',
-                        borderBottom: '1px solid',
-                        borderColor: 'divider',
-                        display: 'flex',
-                        alignItems: 'center',
-                        px: 1
-                      }}
-                    >
-                      <Typography variant="caption">
-                        {formatTime(timeSlot)}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              </Grid>
+          <Box sx={{ overflow: 'auto', minWidth: '1200px' }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '100px repeat(7, 1fr)', gap: 0 }}>
+              {/* Time column header */}
+              <Box sx={{ 
+                position: 'sticky', 
+                left: 0, 
+                backgroundColor: 'background.paper', 
+                zIndex: 2,
+                borderBottom: '2px solid',
+                borderColor: 'primary.main'
+              }}>
+                <Typography variant="h6" sx={{ p: 1, height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Time
+                </Typography>
+              </Box>
 
-              {/* Days columns */}
+              {/* Day headers */}
               {daysOfWeek.map((day) => (
-                <Grid item xs key={day} sx={{ minWidth: '150px' }}>
-                  <Box>
-                    {/* Day header */}
-                    <Typography 
-                      variant="h6" 
-                      sx={{ 
-                        p: 1, 
-                        textAlign: 'center', 
-                        borderBottom: '2px solid',
-                        borderColor: 'primary.main',
-                        backgroundColor: 'primary.light',
-                        height: '60px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      {day}
-                    </Typography>
-                    
-                    {/* Time slots for this day */}
-                    {timeSlots.map((timeSlot) => {
-                      const events = getEventsForTimeSlot(day, timeSlot);
-                      return (
-                        <Box
-                          key={`${day}-${timeSlot}`}
-                          sx={{
-                            height: '80px',
-                            borderBottom: '1px solid',
-                            borderRight: '1px solid',
-                            borderColor: 'divider',
-                            p: 0.5,
-                            backgroundColor: events.length > 0 ? 'action.hover' : 'transparent'
-                          }}
-                        >
-                          {events.map((event) => renderEvent(event))}
-                        </Box>
-                      );
-                    })}
-                  </Box>
-                </Grid>
+                <Box key={`header-${day}`} sx={{
+                  borderBottom: '2px solid',
+                  borderColor: 'primary.main',
+                  backgroundColor: 'primary.light'
+                }}>
+                  <Typography 
+                    variant="h6" 
+                    sx={{ 
+                      p: 1, 
+                      textAlign: 'center', 
+                      height: '60px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: { xs: '0.9rem', sm: '1.1rem' }
+                    }}
+                  >
+                    {day}
+                  </Typography>
+                </Box>
               ))}
-            </Grid>
+
+              {/* Time slots */}
+              {timeSlots.map((timeSlot) => (
+                <React.Fragment key={timeSlot}>
+                  {/* Time label */}
+                  <Box sx={{
+                    height: '80px',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    alignItems: 'center',
+                    px: 1,
+                    position: 'sticky',
+                    left: 0,
+                    backgroundColor: 'background.paper',
+                    zIndex: 1
+                  }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                      {formatTime(timeSlot)}
+                    </Typography>
+                  </Box>
+
+                  {/* Day cells for this time slot */}
+                  {daysOfWeek.map((day) => {
+                    const events = getEventsForTimeSlot(day, timeSlot);
+                    return (
+                      <Box
+                        key={`${day}-${timeSlot}`}
+                        sx={{
+                          height: '80px',
+                          borderBottom: '1px solid',
+                          borderRight: '1px solid',
+                          borderColor: 'divider',
+                          p: 0.5,
+                          backgroundColor: events.length > 0 ? 'action.hover' : 'transparent',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {events.map((event) => renderEvent(event))}
+                      </Box>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </Box>
           </Box>
         )}
       </Paper>

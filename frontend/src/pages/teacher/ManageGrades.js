@@ -101,23 +101,58 @@ const ManageGrades = () => {
   // Set up filtered grades when source data changes
   useEffect(() => {
     console.log('[ManageGrades] Updating filtered grades with class-based filtering');
+    console.log('[ManageGrades] Current grades:', grades?.length || 0);
+    console.log('[ManageGrades] Current filters:', filters);
     
     if (!grades || !Array.isArray(grades)) {
+      console.log('[ManageGrades] No grades available, setting empty array');
       setFilteredGrades([]);
       return;
     }
     
-    // Apply class-based filtering to grades
-    let filtered = grades;
+    // Start with all grades - show everything by default
+    let filtered = [...grades];
+    console.log('[ManageGrades] Starting with all grades:', filtered.length);
+    
+    // Apply filtering only if filters are actually set
+    if (filters.schoolBranch) {
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(grade => {
+        // Check if grade has class information with schoolBranch
+        const hasMatchingBranch = grade.class?.schoolBranch === filters.schoolBranch ||
+                                  grade.schoolBranch === filters.schoolBranch;
+        return hasMatchingBranch;
+      });
+      console.log(`[ManageGrades] After schoolBranch filter (${filters.schoolBranch}): ${beforeCount} -> ${filtered.length}`);
+    }
+    
+    if (filters.direction) {
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(grade => {
+        const hasMatchingDirection = grade.class?.direction === filters.direction ||
+                                     grade.direction === filters.direction;
+        return hasMatchingDirection;
+      });
+      console.log(`[ManageGrades] After direction filter (${filters.direction}): ${beforeCount} -> ${filtered.length}`);
+    }
     
     if (filters.subject) {
-      filtered = filtered.filter(grade => grade.subject === filters.subject);
+      const beforeCount = filtered.length;
+      filtered = filtered.filter(grade => {
+        const hasMatchingSubject = grade.subject === filters.subject ||
+                                   grade.class?.subject === filters.subject;
+        return hasMatchingSubject;
+      });
+      console.log(`[ManageGrades] After subject filter (${filters.subject}): ${beforeCount} -> ${filtered.length}`);
     }
     
     if (filters.student) {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(grade => grade.student?._id === filters.student);
+      console.log(`[ManageGrades] After student filter (${filters.student}): ${beforeCount} -> ${filtered.length}`);
     }
     
+    console.log(`[ManageGrades] Final filtered grades count: ${filtered.length}`);
     setFilteredGrades(filtered);
     
     // Reset to first page when filters change
