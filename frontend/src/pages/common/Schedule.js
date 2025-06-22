@@ -110,13 +110,20 @@ const Schedule = () => {
         headers: { Authorization: `Bearer ${token}` }
       };
       
+      console.log('Loading filter options for role:', user?.role);
+      
       const response = await axios.get('/api/students/teacher/filters', config);
-      const { schoolBranches, teachers = [] } = response.data;
+      console.log('Filter API response:', response.data);
+      
+      const { schoolBranches = [] } = response.data;
       
       // For admins, also fetch teachers
       let teacherOptions = [];
       if (user?.role === 'admin') {
+        console.log('Loading teacher options for admin');
         const teachersResponse = await axios.get('/api/users/teachers', config);
+        console.log('Teachers API response:', teachersResponse.data);
+        
         teacherOptions = teachersResponse.data.map(teacher => ({
           value: teacher._id,
           label: teacher.name
@@ -124,6 +131,9 @@ const Schedule = () => {
       }
       
       const branches = schoolBranches || [];
+      console.log('Setting filter options - branches:', branches);
+      console.log('Setting filter options - teachers:', teacherOptions);
+      
       setFilterOptions({
         schoolBranches: branches,
         teachers: teacherOptions
@@ -132,7 +142,10 @@ const Schedule = () => {
       // Fetch branch names for display if we have branch IDs
       if (branches.length > 0) {
         const branchIds = branches.map(branch => branch.value);
+        console.log('Fetching branch names for IDs:', branchIds);
         fetchBranchNames(branchIds);
+      } else {
+        console.warn('No branch IDs available to fetch names');
       }
     } catch (error) {
       console.error('Error loading filter options:', error);
@@ -156,10 +169,41 @@ const Schedule = () => {
       const queryString = queryParams.toString();
       const url = `/api/schedule${queryString ? `?${queryString}` : ''}`;
       
+      console.log('Fetching schedule data from URL:', url);
       const response = await axios.get(url, config);
-      setScheduleData(response.data.schedule);
+      
+      // Ensure we have the right data structure
+      if (response.data && response.data.schedule) {
+        console.log('Schedule data loaded:', response.data.schedule);
+        
+        // Extract branch IDs from schedule data for name resolution
+        const branchIds = new Set();
+        
+        // Process each day's events
+        Object.keys(response.data.schedule).forEach(day => {
+          const events = response.data.schedule[day];
+          if (Array.isArray(events)) {
+            events.forEach(event => {
+              if (event.schoolBranch) {
+                branchIds.add(event.schoolBranch);
+              }
+            });
+          }
+        });
+        
+        // Fetch branch names for all events if not already loaded
+        if (branchIds.size > 0) {
+          console.log('Fetching branch names for events:', Array.from(branchIds));
+          fetchBranchNames(Array.from(branchIds));
+        }
+        
+        setScheduleData(response.data.schedule);
+      } else {
+        console.warn('Unexpected schedule data format:', response.data);
+        setScheduleData({});
+      }
+      
       setError(null);
-      console.log('Schedule data loaded:', response.data.schedule);
     } catch (error) {
       console.error('Error fetching schedule:', error);
       setError('Failed to load schedule data. Please try again.');
@@ -173,16 +217,34 @@ const Schedule = () => {
     setFilters(prev => ({ ...prev, [filterType]: value }));
   };
 
-  // Apply filters
+  // Apply filters and trigger data refresh when filters change
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'teacher') {
       fetchScheduleData();
+      
+      // Debug log current filter state
+      console.log('Current filters:', filters);
+      console.log('Current filter options:', filterOptions);
     }
   }, [filters.schoolBranch, filters.teacher]);
 
   // Handle event click
   const handleEventClick = (event) => {
-    setSelectedEvent(event);
+    console.log('Event clicked:', event);
+    
+    // Ensure we have all needed properties for display
+    const enhancedEvent = {
+      ...event,
+      // Ensure we have arrays for teachers and students
+      teacherNames: event.teacherNames || [],
+      studentNames: event.studentNames || [],
+      // Calculate counts if not provided
+      teacherCount: event.teacherCount || (event.teacherNames ? event.teacherNames.length : 0),
+      studentCount: event.studentCount || (event.studentNames ? event.studentNames.length : 0)
+    };
+    
+    console.log('Enhanced event for dialog:', enhancedEvent);
+    setSelectedEvent(enhancedEvent);
     setDialogOpen(true);
   };
 
@@ -211,33 +273,44 @@ const Schedule = () => {
   const renderEvent = (event, isCompact = false) => {
     const duration = calculateDuration(event.startTime, event.endTime);
     
+    // Get branch name if available from our mapping
+    const branchName = event.schoolBranch ? 
+      (branchNames[event.schoolBranch] || event.schoolBranch) : 
+      'Unknown Branch';
+    
+    // Handle teacher display
+    const teacherDisplay = event.teacherNames?.length > 0 ? 
+      ` • ${event.teacherNames[0]}${event.teacherNames.length > 1 ? ` +${event.teacherNames.length - 1}` : ''}` : 
+      '';
+      
     return (
       <Card
-        key={`${event.classId}-${event.startTime}`}
+        key={event._id}
         sx={{
           mb: 0.5,
           cursor: 'pointer',
-          backgroundColor: theme.palette.primary.light,
-          '&:hover': {
-            backgroundColor: theme.palette.primary.main,
-            color: 'white'
-          },
-          minHeight: isCompact ? 'auto' : `${duration * 40}px`,
-          transition: 'all 0.2s ease'
+          bgcolor: 'primary.light',
+          color: 'primary.contrastText',
+          p: isCompact ? 0.5 : 1,
+          '&:hover': { boxShadow: 3 },
+          overflow: 'hidden'
         }}
         onClick={() => handleEventClick(event)}
       >
-        <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-          <Typography variant="caption" component="div" sx={{ fontWeight: 'bold' }}>
-            {event.subject}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {formatTime(event.startTime)} - {formatTime(event.endTime)}
+        <CardContent sx={{ p: isCompact ? '4px !important' : '8px !important' }}>
+          <Typography variant={isCompact ? 'caption' : 'subtitle2'} noWrap fontWeight="bold">
+            {event.subject} 
           </Typography>
           {!isCompact && (
-            <Typography variant="caption" display="block">
-              {event.teacherNames?.join(', ') || 'No teacher assigned'}
-            </Typography>
+            <>
+              <Typography variant="caption" noWrap display="block">
+                {formatTime(event.startTime)} - {formatTime(event.endTime)}
+                {teacherDisplay}
+              </Typography>
+              <Typography variant="caption" noWrap display="block" sx={{ opacity: 0.8 }}>
+                {branchName}
+              </Typography>
+            </>
           )}
         </CardContent>
       </Card>
