@@ -39,11 +39,11 @@ import {
   TrendingUp as TrendingUpIcon,
   Assignment as AssignmentIcon
 } from '@mui/icons-material';
-import { useAuth } from '../../contexts/AuthContext';
+import { useSelector } from 'react-redux';
 import { getStudentStats, getStudentDetailedStats, exportStudentStatsToCSV } from '../../api/studentStatsAPI';
 
 const StudentStats = () => {
-  const { user } = useAuth();
+  const { user } = useSelector((state) => state.auth);
   const [studentStats, setStudentStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
