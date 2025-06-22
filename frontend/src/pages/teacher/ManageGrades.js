@@ -171,8 +171,31 @@ const ManageGrades = () => {
       };
       
       const response = await axios.get('/api/students/teacher/filters', config);
-      setFilterOptions(response.data);
-      console.log(`[ManageGrades] Loaded filter options for ${user.role}:`, response.data);
+      
+      // Enhanced logging to debug school branch data
+      console.log(`[ManageGrades] Raw filter options data:`, response.data);
+      
+      // Ensure school branches are properly formatted with value AND label
+      const processedOptions = {
+        ...response.data,
+        schoolBranches: (response.data?.schoolBranches || []).map(branch => {
+          // If the branch is already an object with value and label, use it as-is
+          if (branch && typeof branch === 'object' && branch.value && branch.label) {
+            return branch;
+          }
+          // If it's just a string or has only value without label, ensure both fields exist
+          const branchValue = branch?.value || branch;
+          const branchLabel = branch?.label || branch;
+          
+          return {
+            value: branchValue,
+            label: branchLabel
+          };
+        })
+      };
+      
+      console.log(`[ManageGrades] Processed filter options for ${user.role}:`, processedOptions);
+      setFilterOptions(processedOptions);
     } catch (error) {
       console.error('[ManageGrades] Error loading filter options:', error);
       toast.error('Failed to load filter options');
