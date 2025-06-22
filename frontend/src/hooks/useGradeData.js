@@ -12,11 +12,11 @@ import {
 import {
   getSubjectsByTeacher,
   getSubjects,
-  getStudentsBySubject,
-  getStudentsBySubjectForTeacher,
 } from '../features/subjects/subjectSlice';
 
 import {
+  getStudentsBySubject,
+  getStudentsBySubjectForTeacher,
   getStudentsForTeacher,
   getStudents,
 } from '../features/students/studentSlice';
