@@ -245,19 +245,29 @@ const getStudentsBySubjectForTeacher = asyncHandler(async (req, res) => {
 
 // @desc    Get filter options for teacher based on their classes (school branches, directions, subjects)
 // @route   GET /api/students/teacher/filters
-// @access  Private/Teacher
+// @access  Private/Teacher/Admin
 const getFilterOptionsForTeacher = asyncHandler(async (req, res) => {
-  console.log('getFilterOptionsForTeacher endpoint called for teacher:', req.user._id);
+  console.log('getFilterOptionsForTeacher endpoint called for user:', req.user._id, 'role:', req.user.role);
   
   try {
-    // Find all classes where this teacher is assigned
-    const teacherClasses = await Class.find({
-      schoolId: req.user.schoolId,
-      teachers: req.user._id,
-      active: true
-    });
+    let teacherClasses = [];
     
-    console.log(`Found ${teacherClasses.length} classes for teacher ${req.user._id}`);
+    if (req.user.role === 'admin') {
+      // Admin can see all classes in their school
+      teacherClasses = await Class.find({
+        schoolId: req.user.schoolId,
+        active: true
+      });
+      console.log(`Admin user - found ${teacherClasses.length} classes in school ${req.user.schoolId}`);
+    } else {
+      // Find all classes where this teacher is assigned
+      teacherClasses = await Class.find({
+        schoolId: req.user.schoolId,
+        teachers: req.user._id,
+        active: true
+      });
+      console.log(`Teacher user - found ${teacherClasses.length} classes for teacher ${req.user._id}`);
+    }
     
     // Extract unique filter options
     const schoolBranches = new Set();
@@ -276,30 +286,34 @@ const getFilterOptionsForTeacher = asyncHandler(async (req, res) => {
       subjects: Array.from(subjects).map(subject => ({ value: subject, label: subject }))
     };
     
-    console.log('Filter options for teacher:', filterOptions);
+    console.log('Filter options for user:', filterOptions);
     
     res.json(filterOptions);
   } catch (error) {
-    console.error('Error in getFilterOptionsForTeacher:', error.message);
+    console.error('Error in getFilterOptionsForTeacher:', error);
     res.status(500);
-    throw new Error('Error retrieving filter options for teacher: ' + error.message);
+    throw new Error('Failed to get filter options');
   }
 });
 
 // @desc    Get students for teacher with multiple filters (school branch, direction, subject)
 // @route   GET /api/students/teacher/filtered
-// @access  Private/Teacher
+// @access  Private/Teacher/Admin
 const getFilteredStudentsForTeacher = asyncHandler(async (req, res) => {
   const { schoolBranch, direction, subject } = req.query;
-  console.log(`getFilteredStudentsForTeacher called for teacher: ${req.user._id}`, { schoolBranch, direction, subject });
+  console.log(`getFilteredStudentsForTeacher called for user: ${req.user._id} (${req.user.role})`, { schoolBranch, direction, subject });
   
   try {
     // Build the filter for classes
     const classFilter = {
       schoolId: req.user.schoolId,
-      teachers: req.user._id,
       active: true
     };
+    
+    // Add teacher filter only if user is not admin
+    if (req.user.role !== 'admin') {
+      classFilter.teachers = req.user._id;
+    }
     
     // Add optional filters
     if (schoolBranch) classFilter.schoolBranch = schoolBranch;
@@ -308,55 +322,46 @@ const getFilteredStudentsForTeacher = asyncHandler(async (req, res) => {
     
     console.log('Class filter:', classFilter);
     
-    // Find classes that match the criteria
-    const teacherClasses = await Class.find(classFilter).populate('students', 'name email');
+    // Find classes matching the criteria
+    const matchingClasses = await Class.find(classFilter).populate('students', 'name email');
     
-    console.log(`Found ${teacherClasses.length} classes matching filter criteria`);
+    console.log(`Found ${matchingClasses.length} matching classes`);
     
-    // Extract unique students from matching classes
-    const studentIds = new Set();
-    const studentsMap = new Map();
+    // Extract unique students from all matching classes
+    const studentMap = new Map();
     
-    teacherClasses.forEach(cls => {
-      console.log(`Processing class: ${cls.name} (${cls.subject}/${cls.direction}/${cls.schoolBranch}) with ${cls.students?.length || 0} students`);
-      
-      if (cls.students && Array.isArray(cls.students)) {
+    matchingClasses.forEach(cls => {
+      if (cls.students && cls.students.length > 0) {
         cls.students.forEach(student => {
-          if (student && student._id) {
-            const studentId = student._id.toString();
-            if (!studentIds.has(studentId)) {
-              studentIds.add(studentId);
-              studentsMap.set(studentId, {
-                _id: student._id,
-                name: student.name,
-                email: student.email,
-                // Add class context information
-                classes: []
-              });
-            }
-            // Add class information to student record
-            studentsMap.get(studentId).classes.push({
-              classId: cls._id,
-              className: cls.name,
-              subject: cls.subject,
-              direction: cls.direction,
-              schoolBranch: cls.schoolBranch
+          if (!studentMap.has(student._id.toString())) {
+            studentMap.set(student._id.toString(), {
+              _id: student._id,
+              name: student.name,
+              email: student.email,
+              classes: []
             });
           }
+          // Add class context to student
+          studentMap.get(student._id.toString()).classes.push({
+            _id: cls._id,
+            name: cls.name,
+            subject: cls.subject,
+            direction: cls.direction,
+            schoolBranch: cls.schoolBranch
+          });
         });
       }
     });
     
-    // Convert to array
-    const students = Array.from(studentsMap.values());
+    const students = Array.from(studentMap.values());
     
-    console.log(`Found ${students.length} unique students for teacher ${req.user._id} with filters`);
+    console.log(`Returning ${students.length} unique students`);
     
     res.json(students);
   } catch (error) {
-    console.error('Error in getFilteredStudentsForTeacher:', error.message);
-    res.status(error.statusCode || 500);
-    throw new Error(error.message || 'Error retrieving filtered students for teacher');
+    console.error('Error in getFilteredStudentsForTeacher:', error);
+    res.status(500);
+    throw new Error('Failed to get filtered students');
   }
 });
 

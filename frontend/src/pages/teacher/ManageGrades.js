@@ -41,6 +41,8 @@ import {
   Add as AddIcon,
   FilterList as FilterIcon,
   Class as ClassIcon,
+  AdminPanelSettings as AdminPanelSettingsIcon,
+  Grade as GradeIcon,
 } from '@mui/icons-material';
 
 import { format } from 'date-fns';
@@ -102,6 +104,40 @@ const ManageGrades = () => {
   });
 
   useEffect(() => {
+    // Force refetch on component mount to avoid stale data issues
+    const fetchData = async () => {
+      if (user && user._id) {
+        try {
+          console.log('[ManageGrades] Fetching grades data');
+          // Clear the grades first to prevent stale data display
+          dispatch(resetGrades());
+          
+          // Fetch grades with a slight delay to ensure reset takes effect
+          setTimeout(() => {
+            // If user is admin, fetch all grades instead of just teacher's grades
+            if (user.role === 'admin') {
+              console.log('[ManageGrades] Admin user detected - fetching ALL grades');
+              dispatch(getAllGrades());
+              dispatch(getSubjects()); // Admin can see all subjects
+              dispatch(getStudents()); // Admin can see all students
+            } else {
+              console.log('[ManageGrades] Teacher user detected - fetching teacher grades');
+              dispatch(getGradesByTeacher(user._id));
+              dispatch(getSubjectsByTeacher(user._id));
+              dispatch(getStudentsForTeacher(user._id));
+            }
+          }, 100);
+        } catch (error) {
+          console.error('[ManageGrades] Error in fetchData:', error);
+          toast.error('Error loading grades data');
+        }
+      }
+    };
+
+    fetchData();
+  }, [dispatch, user]);
+
+  useEffect(() => {
     if (user && user._id && user.role === 'teacher') {
       console.log('[ManageGrades] Fetching classes for teacher:', user._id);
       dispatch(getClassesByTeacher(user._id))
@@ -119,75 +155,10 @@ const ManageGrades = () => {
   }, [dispatch, user]);
 
   useEffect(() => {
-    // Force refetch on component mount to avoid stale data issues
-    const fetchData = async () => {
-      if (user && user._id) {
-        try {
-          console.log('[ManageGrades] Fetching grades data');
-          // Clear the grades first to prevent stale data display
-          dispatch(resetGrades());
-          
-          // Fetch grades with a slight delay to ensure reset takes effect
-          setTimeout(() => {
-            // If user is admin, fetch all grades instead of just teacher's grades
-            if (user.role === 'admin') {
-              console.log('[ManageGrades] Admin user detected - fetching ALL grades');
-              dispatch(getAllGrades())
-                .unwrap()
-                .then(data => {
-                  console.log(`[ManageGrades] Successfully fetched ${data?.length || 0} grades for admin`);
-                  if (data && data.length === 0) {
-                    console.log('[ManageGrades] API returned empty grades array - no grades exist in the system');
-                  }
-                })
-                .catch(error => {
-                  console.error('[ManageGrades] Error fetching all grades:', error);
-                });
-            } else {
-              // Regular teacher - fetch only their grades
-              console.log(`[ManageGrades] Teacher user detected - fetching grades for teacher ID: ${user._id}`);
-              dispatch(getGradesByTeacher(user._id))
-                .unwrap()
-                .then(data => {
-                  console.log(`[ManageGrades] Successfully fetched ${data?.length || 0} grades for teacher ${user._id}`);
-                  if (data && data.length === 0) {
-                    console.log('[ManageGrades] API returned empty grades array - no grades assigned to this teacher');
-                  }
-                })
-                .catch(error => {
-                  console.error('[ManageGrades] Error fetching teacher grades:', error);
-                });
-            }
-          }, 100);
-          
-          // Fetch subjects relevant to the user
-          if (user.role === 'admin') {
-            dispatch(getSubjects());
-          } else {
-            dispatch(getSubjectsByTeacher(user._id));
-          }
-        } catch (error) {
-          console.error('[ManageGrades] Error in initial data fetch:', error);
-        }
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      dispatch(resetGrades());
-    };
-  }, [dispatch, user]);
-
-
-
-  // Initialize filtered subjects when subjects change
-  useEffect(() => {
-    // Initialize filteredSubjects with all available subjects
+    // Initialize filtered subjects when subjects change
     setFilteredSubjects(subjects || []);
   }, [subjects]);
   
-  // Effect to update filtered subjects when class filter changes
   useEffect(() => {
     if (user?.role === 'teacher' && classFilter && teacherClasses.length > 0) {
       const selectedClass = teacherClasses.find(cls => cls._id === classFilter);
@@ -541,20 +512,57 @@ const ManageGrades = () => {
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-          Manage Grades
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {user?.role === 'admin' ? (
+            <AdminPanelSettingsIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+          ) : (
+            <GradeIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+          )}
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+              {user?.role === 'admin' ? 'Admin Grade Management' : 'Manage Grades'}
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              {user?.role === 'admin' 
+                ? 'View and manage grades for all students in your school' 
+                : 'View and manage grades for your assigned classes'
+              }
+            </Typography>
+          </Box>
+        </Box>
         <Button 
           variant="contained" 
           startIcon={<AddIcon />}
           onClick={handleAddGrade}
+          sx={{ 
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 600
+          }}
         >
           Add Grade
         </Button>
       </Box>
 
       {/* Filters */}
-      <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+      <Paper sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'background.paper' }}>
+        {/* Admin Info Panel */}
+        {user?.role === 'admin' && (
+          <Box sx={{ mb: 3, p: 2, bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'primary.main', mb: 1 }}>
+              Administrator Access
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              You have full access to view and manage grades for all students in your school. Use the filters below to narrow down the results.
+            </Typography>
+          </Box>
+        )}
+        
+        <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FilterIcon />
+          Filters & Search
+        </Typography>
+        
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={4}>
             <TextField
@@ -570,6 +578,7 @@ const ManageGrades = () => {
                   </InputAdornment>
                 ),
               }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
           </Grid>
           
@@ -596,6 +605,7 @@ const ManageGrades = () => {
                     </InputAdornment>
                   }
                   disabled={classesLoading || teacherClasses.length === 0}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 >
                   <MenuItem value="">
                     <em>All Classes</em>

@@ -580,34 +580,6 @@ const getUsers = asyncHandler(async (req, res) => {
   }
 });
 
-// Generate JWT
-// Generate main access token (short-lived)
-const generateToken = (id, schoolId = null) => {
-  const payload = { id };
-  if (schoolId) {
-    payload.schoolId = schoolId;
-  }
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: '1d',
-  });
-};
-
-// Generate refresh token (longer-lived)
-const generateRefreshToken = (id, schoolId = null) => {
-  const payload = { id, type: 'refresh' };
-  
-  // Include schoolId in the token payload if provided
-  if (schoolId) {
-    payload.schoolId = schoolId;
-  }
-  
-  // Use the same secret for refresh token
-  // We only need the 'type' field to differentiate between token types
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: '30d', // Refresh tokens typically have longer expiry
-  });
-};
-
 // @desc    Create new user by admin
 // @route   POST /api/users/admin/create
 // @access  Private/Admin
@@ -639,10 +611,18 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       throw new Error('Not authorized - no school context');
     }
 
+    // Use admin's school if no school is provided in request
+    const targetSchool = school || req.user.schoolId;
+    
+    if (!targetSchool) {
+      res.status(400);
+      throw new Error('School is required. Please provide a school or ensure admin has school context.');
+    }
+
     // Check if user exists
     const userExists = await User.findOne({ 
       email, 
-      schoolId: role === 'student' ? school : { $exists: true } 
+      schoolId: role === 'student' ? targetSchool : { $exists: true } 
     });
 
     if (userExists) {
@@ -668,13 +648,13 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     // Set school differently based on role
     if (role === 'student') {
       // Students have a single school
-      userData.school = school;
-      userData.schoolId = school;
+      userData.school = targetSchool;
+      userData.schoolId = targetSchool;
       userData.direction = direction;
       userData.subjects = subjects || [];
     } else if (role === 'teacher') {
       // Teachers can have multiple schools and directions
-      userData.schools = Array.isArray(req.body.schools) ? req.body.schools : [school];
+      userData.schools = Array.isArray(req.body.schools) ? req.body.schools : [targetSchool];
       userData.school = userData.schools[0]; // Set the first school as the primary for compatibility
       userData.schoolId = userData.schools[0];
       
@@ -685,7 +665,7 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       userData.subjects = subjects || [];
     } else if (role === 'secretary') {
       // Secretaries are linked to schools but not to directions
-      userData.schools = Array.isArray(req.body.schools) ? req.body.schools : [school];
+      userData.schools = Array.isArray(req.body.schools) ? req.body.schools : [targetSchool];
       userData.school = userData.schools[0]; // Set the first school as the primary for compatibility
       userData.schoolId = userData.schools[0];
       
@@ -693,8 +673,8 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       userData.subjects = subjects || [];
     } else if (role === 'admin') {
       // Admins are tied to a school but don't have directions or subjects
-      userData.school = school;
-      userData.schoolId = school;
+      userData.school = targetSchool;
+      userData.schoolId = targetSchool;
     }
 
     console.log('Creating user with data:', { ...userData, password: '[HIDDEN]' });
@@ -946,6 +926,34 @@ const updateUser = asyncHandler(async (req, res) => {
     throw new Error('Failed to update user: ' + error.message);
   }
 });
+
+// Generate JWT
+// Generate main access token (short-lived)
+const generateToken = (id, schoolId = null) => {
+  const payload = { id };
+  if (schoolId) {
+    payload.schoolId = schoolId;
+  }
+  return jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: '1d',
+  });
+};
+
+// Generate refresh token (longer-lived)
+const generateRefreshToken = (id, schoolId = null) => {
+  const payload = { id, type: 'refresh' };
+  
+  // Include schoolId in the token payload if provided
+  if (schoolId) {
+    payload.schoolId = schoolId;
+  }
+  
+  // Use the same secret for refresh token
+  // We only need the 'type' field to differentiate between token types
+  return jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: '30d', // Refresh tokens typically have longer expiry
+  });
+};
 
 // Export functions
 module.exports = {

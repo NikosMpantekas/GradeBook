@@ -12,6 +12,11 @@ import {
   Grid,
   CircularProgress,
   Chip,
+  Card,
+  CardContent,
+  Divider,
+  Alert,
+  Container,
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -21,6 +26,8 @@ import BookIcon from '@mui/icons-material/Book';
 import GradeIcon from '@mui/icons-material/Grade';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DirectionsIcon from '@mui/icons-material/Directions';
+import PersonIcon from '@mui/icons-material/Person';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 const CreateGradeSimple = () => {
   const navigate = useNavigate();
@@ -65,7 +72,7 @@ const CreateGradeSimple = () => {
     }
   }, [formData.schoolBranch, formData.direction, formData.subject, user]);
   
-  // Load available filter options (school branches, directions, subjects) for the teacher
+  // Load available filter options (school branches, directions, subjects) for the teacher/admin
   const loadFilterOptions = async () => {
     setLoadingFilters(true);
     try {
@@ -75,7 +82,7 @@ const CreateGradeSimple = () => {
       
       const response = await axios.get('/api/students/teacher/filters', config);
       setFilterOptions(response.data);
-      console.log(`[CreateGrade] Loaded filter options:`, response.data);
+      console.log(`[CreateGrade] Loaded filter options for ${user.role}:`, response.data);
     } catch (error) {
       console.error('[CreateGrade] Error loading filter options:', error);
       toast.error('Failed to load filter options');
@@ -102,22 +109,11 @@ const CreateGradeSimple = () => {
       });
       
       const response = await axios.get(`/api/students/teacher/filtered?${params}`, config);
-      const studentData = Array.isArray(response.data) ? response.data : [];
-      
-      setStudents(studentData);
-      console.log(`[CreateGrade] Loaded ${studentData.length} students for filters:`, {
-        schoolBranch: formData.schoolBranch,
-        direction: formData.direction,
-        subject: formData.subject
-      });
-      
-      if (studentData.length === 0) {
-        toast.info('No students found for the selected filters');
-      }
-      
+      setStudents(response.data);
+      console.log(`[CreateGrade] Loaded ${response.data.length} students for ${user.role}:`, response.data);
     } catch (error) {
       console.error('[CreateGrade] Error loading students:', error);
-      toast.error('Failed to load students for the selected filters');
+      toast.error('Failed to load students');
       setStudents([]);
     } finally {
       setLoadingStudents(false);
@@ -216,222 +212,230 @@ const CreateGradeSimple = () => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto', mt: 4 }}>
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <GradeIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-        <Typography variant="h4" component="h1" gutterBottom>
-          Add New Grade
-        </Typography>
-        <Typography variant="body1" color="textSecondary">
-          Use class-based filtering to select students and add grades
-        </Typography>
-      </Box>
-      
-      {loadingFilters ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-          <Typography sx={{ ml: 2 }}>Loading filter options...</Typography>
-        </Box>
-      ) : (
-        <Box component="form" onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            {/* Filters Section */}
-            <Grid item xs={12}>
-              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                <FilterListIcon sx={{ mr: 1 }} />
-                Class Filters
-              </Typography>
-            </Grid>
-            
-            {/* School Branch Filter */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                select
-                fullWidth
-                required
-                label="School Branch"
-                name="schoolBranch"
-                value={formData.schoolBranch}
-                onChange={handleChange}
-                InputProps={{
-                  startAdornment: <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-              >
-                {filterOptions.schoolBranches.map((branch) => (
-                  <MenuItem key={branch.value} value={branch.value}>
-                    {branch.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            
-            {/* Direction Filter */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                select
-                fullWidth
-                required
-                disabled={!formData.schoolBranch}
-                label="Direction"
-                name="direction"
-                value={formData.direction}
-                onChange={handleChange}
-                InputProps={{
-                  startAdornment: <DirectionsIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-                helperText={!formData.schoolBranch ? 'Select a school branch first' : ''}
-              >
-                {getAvailableDirections().map((direction) => (
-                  <MenuItem key={direction.value} value={direction.value}>
-                    {direction.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            
-            {/* Subject Filter */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                select
-                fullWidth
-                required
-                disabled={!formData.direction}
-                label="Subject"
-                name="subject"
-                value={formData.subject}
-                onChange={handleChange}
-                InputProps={{
-                  startAdornment: <BookIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-                helperText={!formData.direction ? 'Select a direction first' : ''}
-              >
-                {getAvailableSubjects().map((subject) => (
-                  <MenuItem key={subject.value} value={subject.value}>
-                    {subject.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            
-            {/* Active Filters Display */}
-            {(formData.schoolBranch || formData.direction || formData.subject) && (
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Typography variant="body2" color="textSecondary">Active filters:</Typography>
-                  {formData.schoolBranch && (
-                    <Chip label={`Branch: ${formData.schoolBranch}`} size="small" color="primary" />
-                  )}
-                  {formData.direction && (
-                    <Chip label={`Direction: ${formData.direction}`} size="small" color="secondary" />
-                  )}
-                  {formData.subject && (
-                    <Chip label={`Subject: ${formData.subject}`} size="small" color="info" />
-                  )}
-                </Box>
-              </Grid>
+    <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Card>
+        <CardContent>
+          <Box sx={{ mb: 4, textAlign: 'center' }}>
+            {user.role === 'admin' ? (
+              <AdminPanelSettingsIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+            ) : (
+              <GradeIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
             )}
-            
-            {/* Student Selection */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                select
-                fullWidth
-                required
-                disabled={!formData.subject || loadingStudents}
-                label="Student"
-                name="student"
-                value={formData.student}
-                onChange={handleChange}
-                InputProps={{
-                  startAdornment: loadingStudents ? 
-                    <CircularProgress size={20} sx={{ mr: 1 }} /> :
-                    <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-                helperText={
-                  !formData.subject ? 'Select all filters first' :
-                  loadingStudents ? 'Loading students...' :
-                  students.length === 0 ? 'No students found for selected filters' : ''
-                }
-              >
-                {students.map((student) => (
-                  <MenuItem key={student._id} value={student._id}>
-                    {student.name}
-                    {student.classes && student.classes.length > 0 && (
-                      <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
-                        ({student.classes[0].className})
-                      </Typography>
-                    )}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            
-            {/* Grade Value */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                required
-                type="number"
-                label="Grade (0-100)"
-                name="value"
-                value={formData.value}
-                onChange={handleChange}
-                inputProps={{ min: 0, max: 100, step: 0.1 }}
-                InputProps={{
-                  startAdornment: <GradeIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-                }}
-              />
-            </Grid>
-            
-            {/* Date */}
-            <Grid item xs={12} md={6}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <DatePicker
-                  label="Date"
-                  value={formData.date}
-                  onChange={handleDateChange}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </LocalizationProvider>
-            </Grid>
-            
-            {/* Comments */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Comments (Optional)"
-                name="comments"
-                value={formData.comments}
-                onChange={handleChange}
-              />
-            </Grid>
-            
-            {/* Submit Button */}
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
-                <Button
-                  variant="outlined"
-                  onClick={() => navigate('/teacher/grades')}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={loading || !formData.student || !formData.value}
-                  sx={{ minWidth: 120 }}
-                >
-                  {loading ? <CircularProgress size={24} /> : 'Add Grade'}
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </Box>
-      )}
-    </Paper>
+            <Typography variant="h4" component="h1" gutterBottom>
+              {user.role === 'admin' ? 'Admin Grade Management' : 'Add New Grade'}
+            </Typography>
+            <Typography variant="body1" color="textSecondary">
+              {user.role === 'admin' ? 'Manage grades for all students' : 'Use class-based filtering to select students and add grades'}
+            </Typography>
+          </Box>
+          
+          {loadingFilters ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+              <Typography sx={{ ml: 2 }}>Loading filter options...</Typography>
+            </Box>
+          ) : (
+            <Box component="form" onSubmit={handleSubmit}>
+              <Grid container spacing={3}>
+                {/* Filters Section */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                    <FilterListIcon sx={{ mr: 1 }} />
+                    Class Filters
+                  </Typography>
+                </Grid>
+                
+                {/* School Branch Filter */}
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    select
+                    fullWidth
+                    required
+                    label="School Branch"
+                    name="schoolBranch"
+                    value={formData.schoolBranch}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                    }}
+                  >
+                    {filterOptions.schoolBranches.map((branch) => (
+                      <MenuItem key={branch.value} value={branch.value}>
+                        {branch.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                
+                {/* Direction Filter */}
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    select
+                    fullWidth
+                    required
+                    disabled={!formData.schoolBranch}
+                    label="Direction"
+                    name="direction"
+                    value={formData.direction}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: <DirectionsIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                    }}
+                    helperText={!formData.schoolBranch ? 'Select a school branch first' : ''}
+                  >
+                    {getAvailableDirections().map((direction) => (
+                      <MenuItem key={direction.value} value={direction.value}>
+                        {direction.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                
+                {/* Subject Filter */}
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    select
+                    fullWidth
+                    required
+                    disabled={!formData.direction}
+                    label="Subject"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: <BookIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                    }}
+                    helperText={!formData.direction ? 'Select a direction first' : ''}
+                  >
+                    {getAvailableSubjects().map((subject) => (
+                      <MenuItem key={subject.value} value={subject.value}>
+                        {subject.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                
+                {/* Active Filters Display */}
+                {(formData.schoolBranch || formData.direction || formData.subject) && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Typography variant="body2" color="textSecondary">Active filters:</Typography>
+                      {formData.schoolBranch && (
+                        <Chip label={`Branch: ${formData.schoolBranch}`} size="small" color="primary" />
+                      )}
+                      {formData.direction && (
+                        <Chip label={`Direction: ${formData.direction}`} size="small" color="secondary" />
+                      )}
+                      {formData.subject && (
+                        <Chip label={`Subject: ${formData.subject}`} size="small" color="info" />
+                      )}
+                    </Box>
+                  </Grid>
+                )}
+                
+                {/* Student Selection */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    select
+                    fullWidth
+                    required
+                    disabled={!formData.subject || loadingStudents}
+                    label="Student"
+                    name="student"
+                    value={formData.student}
+                    onChange={handleChange}
+                    InputProps={{
+                      startAdornment: loadingStudents ? 
+                        <CircularProgress size={20} sx={{ mr: 1 }} /> :
+                        <PersonIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                    }}
+                    helperText={
+                      !formData.subject ? 'Select all filters first' :
+                      loadingStudents ? 'Loading students...' :
+                      students.length === 0 ? 'No students found for selected filters' : ''
+                    }
+                  >
+                    {students.map((student) => (
+                      <MenuItem key={student._id} value={student._id}>
+                        {student.name}
+                        {student.classes && student.classes.length > 0 && (
+                          <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
+                            ({student.classes[0].className})
+                          </Typography>
+                        )}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                
+                {/* Grade Value */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    type="number"
+                    label="Grade (0-100)"
+                    name="value"
+                    value={formData.value}
+                    onChange={handleChange}
+                    inputProps={{ min: 0, max: 100, step: 0.1 }}
+                    InputProps={{
+                      startAdornment: <GradeIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                    }}
+                  />
+                </Grid>
+                
+                {/* Date */}
+                <Grid item xs={12} md={6}>
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <DatePicker
+                      label="Date"
+                      value={formData.date}
+                      onChange={handleDateChange}
+                      renderInput={(params) => <TextField {...params} fullWidth />}
+                    />
+                  </LocalizationProvider>
+                </Grid>
+                
+                {/* Comments */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Comments (Optional)"
+                    name="comments"
+                    value={formData.comments}
+                    onChange={handleChange}
+                  />
+                </Grid>
+                
+                {/* Submit Button */}
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => navigate('/teacher/grades')}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={loading || !formData.student || !formData.value}
+                      sx={{ minWidth: 120 }}
+                    >
+                      {loading ? <CircularProgress size={24} /> : 'Add Grade'}
+                    </Button>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+    </Container>
   );
 };
 
