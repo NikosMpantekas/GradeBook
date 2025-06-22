@@ -1,11 +1,3 @@
-/* eslint-disable no-restricted-globals, no-undef */
-
-// This service worker can be customized!
-// See https://developers.google.com/web/tools/workbox/modules
-// for the list of available Workbox modules, or add any other
-// code you'd like.
-// You can also remove this file if you'd prefer not to use a
-// service worker, and the Workbox build step will be skipped.
 
 import { clientsClaim } from 'workbox-core';
 import { ExpirationPlugin } from 'workbox-expiration';
@@ -427,7 +419,7 @@ self.addEventListener('message', (event) => {
   
   // Handle update check message from the client
   if (event.data && event.data.type === 'CHECK_UPDATE') {
-    console.log(`Service worker (version ${APP_VERSION}) received update check request`);
+    console.log(`Service worker (version ${self.APP_VERSION || 'unknown'}) received update check request`);
     self.registration.update();
   }
 });

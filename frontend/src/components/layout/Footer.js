@@ -12,8 +12,8 @@ const Footer = () => {
     import('../../config/appConfig.js')
       .then(module => {
         // Get fresh version directly from module
-        setVersion(module.APP_VERSION);
-        console.log('Footer - dynamically loaded APP_VERSION:', module.APP_VERSION);
+        setVersion(module.appConfig.version);
+        console.log('Footer - dynamically loaded version:', module.appConfig.version);
       })
       .catch(error => {
         console.error('Failed to load appConfig:', error);

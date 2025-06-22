@@ -3,7 +3,11 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-export const APP_VERSION = '1.6.0.106';
+export const appConfig = {
+  name: 'GradeBook',
+  version: '1.6.0.107',
+  author: 'GradeBook Team'
+};
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -121,7 +125,7 @@ export {
 
 // Export other configuration settings
 export const APP_CONFIG = {
-  version: APP_VERSION,
+  version: appConfig.version,
   releaseDate: new Date('2025-06-17'), // Updated to today's date
   requireForceUpdate: true, // iOS devices will require updating
   updateCheckIntervalMinutes: 5, // Check for updates every 5 minutes on iOS

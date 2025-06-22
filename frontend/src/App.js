@@ -78,7 +78,7 @@ import { setupPushNotifications } from './services/pushNotificationService';
 import setupAxios from './app/setupAxios';
 import logger from './services/loggerService';
 // Using the ErrorBoundary from ./components/ErrorBoundary
-import { APP_VERSION, initAppConfig } from './config/appConfig';
+import { appConfig, initAppConfig } from './config/appConfig';
 
 // Feature toggles context provider
 import { FeatureToggleProvider } from './context/FeatureToggleContext';
@@ -127,7 +127,7 @@ function App() {
   useEffect(() => {
     try {
       // First, initialize the global error handlers
-      console.log('[App] Initializing global error handlers (v' + APP_VERSION + ')');
+      console.log('[App] Initializing global error handlers (v' + appConfig.version + ')');
       initGlobalErrorHandlers();
       
       // CRITICAL FIX: Apply global safety guards to prevent TypeErrors

@@ -10,7 +10,8 @@ const {
   getUserById,
   createUserByAdmin,
   getUsersByRole,
-  updateUser
+  updateUser,
+  getTeachers
 } = require('../controllers/userController');
 const { protect, admin, adminCanManageUsers } = require('../middleware/authMiddleware');
 
@@ -31,5 +32,8 @@ router.put('/:id', protect, adminCanManageUsers, updateUser); // Update user by 
 
 // Routes to get users filtered by role - accessible by admin, teachers and secretaries
 router.get('/role/:role', protect, getUsersByRole); // Get users by role (student, teacher, etc.)
+
+// Admin-only route to get teachers for filters
+router.get('/teachers', protect, admin, getTeachers); // Get all teachers for admin filters
 
 module.exports = router;

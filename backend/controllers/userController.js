@@ -1042,6 +1042,30 @@ const updateUser = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get all teachers for admin
+// @route   GET /api/users/teachers
+// @access  Private/Admin
+const getTeachers = asyncHandler(async (req, res) => {
+  console.log('getTeachers endpoint called for admin');
+  
+  try {
+    const teachers = await User.find({
+      schoolId: req.user.schoolId,
+      role: 'teacher',
+      isActive: { $ne: false }
+    })
+    .select('_id name email')
+    .lean();
+    
+    console.log(`Found ${teachers.length} teachers for school ${req.user.schoolId}`);
+    res.json(teachers);
+  } catch (error) {
+    console.error('Error fetching teachers:', error);
+    res.status(500);
+    throw new Error('Failed to fetch teachers');
+  }
+});
+
 // Generate JWT
 // Generate main access token (short-lived)
 const generateToken = (id, schoolId = null) => {
@@ -1082,6 +1106,7 @@ module.exports = {
   createUserByAdmin,
   getUsersByRole,
   updateUser,
+  getTeachers,
   generateToken,
   generateRefreshToken
 };

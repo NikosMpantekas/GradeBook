@@ -49,8 +49,7 @@ const ManageGrades = () => {
   const [students, setStudents] = useState([]);
   const [loadingFilters, setLoadingFilters] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
-  const [branchNames, setBranchNames] = useState({});
-  
+
   // Existing state
   const [filteredGrades, setFilteredGrades] = useState([]);
   const [page, setPage] = useState(0);
@@ -88,13 +87,6 @@ const ManageGrades = () => {
       loadFilterOptions();
     }
   }, [user]);
-
-  // Effect to load branch names when filter options change
-  useEffect(() => {
-    if (filterOptions.schoolBranches && filterOptions.schoolBranches.length > 0 && user?.token) {
-      loadBranchNames();
-    }
-  }, [filterOptions.schoolBranches, user]);
 
   // Load students when filters change
   useEffect(() => {
@@ -152,39 +144,6 @@ const ManageGrades = () => {
     }
   };
 
-  // Load school branch names
-  const loadBranchNames = async () => {
-    console.log('[ManageGrades] Loading school branch names');
-    try {
-      const branchIds = filterOptions.schoolBranches.map(branch => branch.value);
-      
-      if (!branchIds.length) return;
-      
-      const validBranchIds = branchIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
-      
-      if (!validBranchIds.length) {
-        console.log('[ManageGrades] No valid branch IDs found');
-        return;
-      }
-      
-      const config = {
-        headers: { Authorization: `Bearer ${user.token}` }
-      };
-      
-      const response = await axios.get(`/api/schools/branches?ids=${validBranchIds.join(',')}`, config);
-      
-      const namesMap = {};
-      response.data.forEach(branch => {
-        namesMap[branch._id] = branch.name;
-      });
-      
-      setBranchNames(namesMap);
-      console.log('[ManageGrades] Loaded branch names:', namesMap);
-    } catch (error) {
-      console.error('[ManageGrades] Error loading branch names:', error);
-    }
-  };
-
   // Load students based on selected filters using class-based filtering
   const loadFilteredStudents = async () => {
     setLoadingStudents(true);
@@ -234,24 +193,19 @@ const ManageGrades = () => {
     });
   };
 
-  // Get available options based on current filters
+  // Get available directions based on selected branch
   const getAvailableDirections = () => {
-    if (!filters.schoolBranch) return [];
+    if (!filters.schoolBranch || !filterOptions.directions) return [];
     return filterOptions.directions.filter(direction => 
-      filterOptions.schoolBranches.some(branch => 
-        branch.value === filters.schoolBranch && 
-        filterOptions.directions.includes(direction)
-      )
+      filterOptions.directions.some(dir => dir.value === direction.value)
     );
   };
 
+  // Get available subjects based on selected direction  
   const getAvailableSubjects = () => {
-    if (!filters.direction) return [];
+    if (!filters.direction || !filterOptions.subjects) return [];
     return filterOptions.subjects.filter(subject => 
-      filterOptions.directions.some(direction => 
-        direction.value === filters.direction &&
-        filterOptions.subjects.includes(subject)
-      )
+      filterOptions.subjects.some(subj => subj.value === subject.value)
     );
   };
 
@@ -293,7 +247,7 @@ const ManageGrades = () => {
             {filters.schoolBranch && (
               <Chip
                 icon={<SchoolIcon />}
-                label={`Branch: ${branchNames[filters.schoolBranch] || filters.schoolBranch}`}
+                label={`Branch: ${filterOptions.schoolBranches?.find(branch => branch.value === filters.schoolBranch)?.label || filters.schoolBranch}`}
                 onDelete={() => handleFilterChange('schoolBranch', '')}
                 color="primary"
                 variant="outlined"
@@ -302,7 +256,7 @@ const ManageGrades = () => {
             {filters.direction && (
               <Chip
                 icon={<DirectionsIcon />}
-                label={`Direction: ${filters.direction}`}
+                label={`Direction: ${filterOptions.directions?.find(dir => dir.value === filters.direction)?.label || filters.direction}`}
                 onDelete={() => handleFilterChange('direction', '')}
                 color="secondary"
                 variant="outlined"
@@ -311,7 +265,7 @@ const ManageGrades = () => {
             {filters.subject && (
               <Chip
                 icon={<BookIcon />}
-                label={`Subject: ${filters.subject}`}
+                label={`Subject: ${filterOptions.subjects?.find(subj => subj.value === filters.subject)?.label || filters.subject}`}
                 onDelete={() => handleFilterChange('subject', '')}
                 color="info"
                 variant="outlined"
@@ -320,7 +274,7 @@ const ManageGrades = () => {
             {filters.student && (
               <Chip
                 icon={<PersonIcon />}
-                label={`Student: ${students.find(s => s._id === filters.student)?.name || filters.student}`}
+                label={`Student: ${students.find(student => student._id === filters.student)?.name || 'Selected Student'}`}
                 onDelete={() => handleFilterChange('student', '')}
                 color="success"
                 variant="outlined"

@@ -7,6 +7,9 @@ const User = require('../models/userModel');
 // @access  Private
 const getSchedule = asyncHandler(async (req, res) => {
   console.log(`getSchedule called for user: ${req.user._id} (${req.user.role})`);
+  console.log('Query parameters:', req.query);
+  
+  const { schoolBranch, teacherId } = req.query;
   
   try {
     let classes = [];
@@ -24,28 +27,49 @@ const getSchedule = asyncHandler(async (req, res) => {
       console.log(`Found ${classes.length} classes for student ${req.user._id}`);
       
     } else if (req.user.role === 'teacher') {
-      // Find classes where the teacher is assigned
-      classes = await Class.find({
+      // Build filter for teacher
+      const teacherFilter = {
         schoolId: req.user.schoolId,
         teachers: req.user._id,
         active: true
-      })
+      };
+      
+      // Add school branch filter if provided
+      if (schoolBranch) {
+        teacherFilter.schoolBranch = schoolBranch;
+      }
+      
+      // Find classes where the teacher is assigned
+      classes = await Class.find(teacherFilter)
       .populate('students', 'name email')
       .lean();
       
-      console.log(`Found ${classes.length} classes for teacher ${req.user._id}`);
+      console.log(`Found ${classes.length} classes for teacher ${req.user._id} with filters:`, teacherFilter);
       
     } else if (req.user.role === 'admin') {
-      // Admin can see all classes in their school
-      classes = await Class.find({
+      // Build filter for admin
+      const adminFilter = {
         schoolId: req.user.schoolId,
         active: true
-      })
+      };
+      
+      // Add school branch filter if provided
+      if (schoolBranch) {
+        adminFilter.schoolBranch = schoolBranch;
+      }
+      
+      // Add teacher filter if provided
+      if (teacherId) {
+        adminFilter.teachers = teacherId;
+      }
+      
+      // Admin can see all classes in their school
+      classes = await Class.find(adminFilter)
       .populate('teachers', 'name email')
       .populate('students', 'name email')
       .lean();
       
-      console.log(`Found ${classes.length} classes for admin in school ${req.user.schoolId}`);
+      console.log(`Found ${classes.length} classes for admin in school ${req.user.schoolId} with filters:`, adminFilter);
     }
     
     // Transform classes into schedule format
