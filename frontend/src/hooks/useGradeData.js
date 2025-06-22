@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import {
   getGradesByTeacher,
   getAllGrades,
-  resetGrades,
+  reset,
 } from '../features/grades/gradeSlice';
 
 import {
@@ -38,7 +38,7 @@ const useGradeData = (user) => {
         try {
           console.log('[useGradeData] Fetching initial grades data');
           // Clear grades first to prevent stale data
-          dispatch(resetGrades());
+          dispatch(reset());
           
           // Fetch grades with slight delay to ensure reset takes effect
           setTimeout(() => {
