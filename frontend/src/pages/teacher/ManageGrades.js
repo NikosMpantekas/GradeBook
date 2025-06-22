@@ -55,6 +55,9 @@ const ManageGrades = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Additional state for branch name lookup (like in CreateGradeSimple)
+  const [branchNames, setBranchNames] = useState({});
+
   // Custom hooks
   const {
     isLoadingSubjects,
@@ -87,6 +90,13 @@ const ManageGrades = () => {
       loadFilterOptions();
     }
   }, [user]);
+  
+  // Effect to load branch names when filter options change - same as in CreateGradeSimple
+  useEffect(() => {
+    if (filterOptions.schoolBranches && filterOptions.schoolBranches.length > 0 && user?.token) {
+      loadBranchNames();
+    }
+  }, [filterOptions.schoolBranches, user]);
 
   // Load students when filters change
   useEffect(() => {
@@ -204,6 +214,49 @@ const ManageGrades = () => {
       setLoadingFilters(false);
     }
   };
+  
+  // Load school branch names - copied from CreateGradeSimple.js
+  const loadBranchNames = async () => {
+    console.log('[ManageGrades] Loading school branch names');
+    try {
+      const branchIds = filterOptions.schoolBranches.map(branch => branch.value);
+      
+      // Skip if there are no valid branch IDs
+      if (!branchIds.length) return;
+      
+      // Filter only valid MongoDB ObjectIds
+      const validBranchIds = branchIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
+      
+      // Skip if no valid IDs after filtering
+      if (!validBranchIds.length) {
+        console.log('[ManageGrades] No valid branch IDs found');
+        return;
+      }
+      
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+      
+      console.log('[ManageGrades] Fetching branch names for IDs:', validBranchIds);
+      
+      const response = await axios.post('/api/branches/batch', {
+        branchIds: validBranchIds
+      }, config);
+      
+      // Create a mapping of branch ID to name
+      const nameMap = {};
+      if (response.data.branches) {
+        response.data.branches.forEach(branch => {
+          nameMap[branch._id] = branch.name;
+        });
+      }
+      
+      console.log('[ManageGrades] Loaded branch names:', nameMap);
+      setBranchNames(nameMap);
+    } catch (error) {
+      console.error('[ManageGrades] Error loading branch names:', error);
+    }
+  };
 
   // Load students based on selected filters using class-based filtering
   const loadFilteredStudents = async () => {
@@ -308,7 +361,7 @@ const ManageGrades = () => {
             {filters.schoolBranch && (
               <Chip
                 icon={<SchoolIcon />}
-                label={`Branch: ${filterOptions.schoolBranches?.find(branch => branch.value === filters.schoolBranch)?.label || 'Unknown'}`}
+                label={`Branch: ${branchNames[filters.schoolBranch] || filterOptions.schoolBranches?.find(branch => branch.value === filters.schoolBranch)?.label || 'Unknown'}`}
                 onDelete={() => handleFilterChange('schoolBranch', '')}
                 color="primary"
                 variant="outlined"
