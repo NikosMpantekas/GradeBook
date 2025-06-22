@@ -59,7 +59,9 @@ import {
 } from '../../features/subjects/subjectSlice';
 import { 
   getStudents, 
-  getStudentsBySubject 
+  getStudentsBySubject,
+  getStudentsForTeacher,
+  getStudentsBySubjectForTeacher
 } from '../../features/students/studentSlice';
 import { getClassesByTeacher } from '../../features/classes/classSlice';
 
@@ -423,8 +425,15 @@ const ManageGrades = () => {
           position: 'bottom-right'
         });
         
-        // Dispatch action to fetch students
-        dispatch(getStudentsBySubject(subjectId))
+        // Dispatch action to fetch students using class-based logic for teachers
+        let studentPromise;
+        if (user.role === 'teacher') {
+          studentPromise = dispatch(getStudentsBySubjectForTeacher(subjectId));
+        } else {
+          studentPromise = dispatch(getStudentsBySubject(subjectId));
+        }
+        
+        studentPromise
           .unwrap()
           .then(fetchedStudents => {
             console.log(`Successfully loaded ${fetchedStudents.length} students`);
@@ -799,7 +808,9 @@ const ManageGrades = () => {
                   </MenuItem>
                 )) : <MenuItem disabled>No subjects available</MenuItem>}
               </Select>
-              <FormHelperText>Select the subject for this grade</FormHelperText>
+              <FormHelperText>
+                Select the subject for this grade
+              </FormHelperText>
             </FormControl>
             
             {/* EMERGENCY FIX: Completely redesigned student selection that always shows the student */}
