@@ -415,6 +415,7 @@ const ManageGrades = () => {
               onChange={(value) => handleFilterChange('schoolBranch', value)}
               label="School Branch"
               disabled={loadingFilters}
+              branchNames={branchNames} // Pass the branchNames mapping to display proper names
             />
           </Grid>
           

@@ -21,6 +21,7 @@ const ClassBasedFilter = ({
   label,
   disabled,
   helperText,
+  branchNames = {}, // Add branchNames mapping parameter with empty object default
   fullWidth = true
 }) => {
   const handleChange = (event) => {
@@ -45,7 +46,11 @@ const ClassBasedFilter = ({
             key={option.value || index} 
             value={option.value || option.label || option}
           >
-            {option.label || option.value || option}
+            {/* Use branchNames mapping for school branch type */}
+            {filterType === 'schoolBranch' && branchNames[option.value] ? 
+              branchNames[option.value] : 
+              (option.label || option.value || option)
+            }
           </MenuItem>
         ))}
       </Select>
