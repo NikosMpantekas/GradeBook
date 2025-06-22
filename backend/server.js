@@ -235,6 +235,7 @@ logger.info('SERVER', 'Routes configured with proper middleware ordering')
 // Routes that may access multiple schools or don't require schoolId filtering
 app.use('/api/schools', require('./routes/schoolRoutes')); // School routes have special handling
 app.use('/api/schools/permissions', require('./routes/schoolPermissionsRoutes')); // School permissions management
+app.use('/api/branches', protect, require('./routes/branchRoutes')); // School branch name lookups
 
 // Migration routes for superadmins
 app.use('/api/admin/migrations', require('./routes/migrationRoutes')); // Migration system for DB updates

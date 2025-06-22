@@ -55,12 +55,22 @@ const CreateGradeSimple = () => {
   const [loadingFilters, setLoadingFilters] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
   
+  // Additional state for branch name lookup
+  const [branchNames, setBranchNames] = useState({});
+  
   // Load filter options when component mounts
   useEffect(() => {
     if (user?.token) {
       loadFilterOptions();
     }
   }, [user]);
+  
+  // Effect to load branch names when filter options change
+  useEffect(() => {
+    if (filterOptions.schoolBranches && filterOptions.schoolBranches.length > 0 && user?.token) {
+      loadBranchNames();
+    }
+  }, [filterOptions.schoolBranches, user]);
   
   // Load students when filters change
   useEffect(() => {
@@ -89,6 +99,49 @@ const CreateGradeSimple = () => {
       setFilterOptions({ schoolBranches: [], directions: [], subjects: [] });
     } finally {
       setLoadingFilters(false);
+    }
+  };
+  
+  // Load school branch names using our new API endpoint
+  const loadBranchNames = async () => {
+    console.log('[CreateGrade] Loading school branch names');
+    try {
+      const branchIds = filterOptions.schoolBranches.map(branch => branch.value);
+      
+      // Skip if there are no valid branch IDs
+      if (!branchIds.length) return;
+      
+      // Filter only valid MongoDB ObjectIds
+      const validBranchIds = branchIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
+      
+      // Skip if no valid IDs after filtering
+      if (!validBranchIds.length) {
+        console.log('[CreateGrade] No valid branch IDs found');
+        return;
+      }
+      
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+      
+      console.log('[CreateGrade] Fetching branch names for IDs:', validBranchIds);
+      
+      const response = await axios.post('/api/branches/batch', {
+        branchIds: validBranchIds
+      }, config);
+      
+      // Create a mapping of branch ID to name
+      const nameMap = {};
+      if (response.data.branches) {
+        response.data.branches.forEach(branch => {
+          nameMap[branch._id] = branch.name;
+        });
+      }
+      
+      console.log('[CreateGrade] Loaded branch names:', nameMap);
+      setBranchNames(nameMap);
+    } catch (error) {
+      console.error('[CreateGrade] Error loading branch names:', error);
     }
   };
   
@@ -261,7 +314,8 @@ const CreateGradeSimple = () => {
                   >
                     {filterOptions.schoolBranches.map((branch) => (
                       <MenuItem key={branch.value} value={branch.value}>
-                        {branch.label}
+                        {/* Show the actual branch name if available in our mapping, otherwise fallback to label */}
+                        {branchNames[branch.value] || branch.label}
                       </MenuItem>
                     ))}
                   </TextField>

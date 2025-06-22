@@ -269,6 +269,9 @@ const getFilterOptionsForTeacher = asyncHandler(async (req, res) => {
       console.log(`Teacher user - found ${teacherClasses.length} classes for teacher ${req.user._id}`);
     }
     
+    // DEBUG: Log the actual class data to see what's in the schoolBranch field
+    console.log('First few classes data:', JSON.stringify(teacherClasses.slice(0, 2), null, 2));
+    
     // Extract unique filter options
     const schoolBranchIds = new Set();
     const directions = new Set();
@@ -284,44 +287,20 @@ const getFilterOptionsForTeacher = asyncHandler(async (req, res) => {
     // Get school data to map branch IDs to names
     const schoolBranches = [];
     
-    // Convert school branch IDs to actual school names if they're ObjectIds
-    if (schoolBranchIds.size > 0) {
-      try {
-        const School = mongoose.model('School');
-        
-        // Create array from Set for processing
-        const branchIdArray = Array.from(schoolBranchIds);
-        
-        // Log for debugging
-        console.log('Looking up school branches for IDs:', branchIdArray);
-        
-        // Find all schools that match these IDs
-        const schools = await School.find({
-          _id: { $in: branchIdArray.filter(id => mongoose.Types.ObjectId.isValid(id)) }
-        }).select('_id name');
-        
-        // Create a mapping of ID to name
-        const schoolMap = {};
-        schools.forEach(school => {
-          schoolMap[school._id.toString()] = school.name;
-        });
-        
-        console.log('Found school name mapping:', schoolMap);
-        
-        // Create options with proper labels
-        Array.from(schoolBranchIds).forEach(branchId => {
-          // Use the school name as label if available, otherwise use the ID
-          const branchName = schoolMap[branchId] || branchId;
-          schoolBranches.push({ value: branchId, label: branchName });
-        });
-      } catch (error) {
-        console.error('Error fetching school names:', error);
-        // Fallback to using IDs if lookup fails
-        Array.from(schoolBranchIds).forEach(branch => {
-          schoolBranches.push({ value: branch, label: branch });
-        });
-      }
-    }
+    // Based on debugging, the schoolBranch field might be storing the name directly,
+    // not an ID that needs to be looked up
+    console.log('School branch value type analysis:');
+    Array.from(schoolBranchIds).forEach(branch => {
+      console.log(`Branch: ${branch}, Type: ${typeof branch}, IsObjectId: ${mongoose.Types.ObjectId.isValid(branch)}`);
+    });
+    
+    // Simply use the values directly as both value and label since they're already names
+    Array.from(schoolBranchIds).forEach(branch => {
+      schoolBranches.push({ value: branch, label: branch });
+    });
+    
+    // Log the final school branches array
+    console.log('Final school branches options:', schoolBranches);
     
     const filterOptions = {
       schoolBranches,
