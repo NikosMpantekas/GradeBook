@@ -1,7 +1,11 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const User = require('../models/userModel');
 const Subject = require('../models/subjectModel');
 const Class = require('../models/classModel');
+
+// Add additional logging to help diagnose issues
+console.log('StudentController loaded with mongoose:', !!mongoose);
 
 // @desc    Get all students
 // @route   GET /api/students
