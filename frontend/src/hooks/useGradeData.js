@@ -31,6 +31,41 @@ const useGradeData = (user) => {
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
 
+  /**
+   * Fetch subjects using the class-based system directly from API
+   */
+  const fetchClassBasedSubjects = async () => {
+    console.log('[useGradeData] Fetching subjects using class-based API');
+    setIsLoadingSubjects(true);
+    
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+      
+      // Use the same endpoint as CreateGradeSimple to get filter options including subjects
+      const response = await axios.get('/api/students/teacher/filters', config);
+      
+      const subjects = response.data.subjects || [];
+      console.log(`[useGradeData] Loaded ${subjects.length} subjects with class-based API:`, subjects);
+      
+      // Update Redux state with the received subjects
+      dispatch({
+        type: user.role === 'admin' ? 'subjects/getAll/fulfilled' : 'subjects/getByTeacher/fulfilled',
+        payload: subjects
+      });
+      
+      setIsLoadingSubjects(false);
+      return subjects;
+      
+    } catch (error) {
+      setIsLoadingSubjects(false);
+      console.error('[useGradeData] Error loading subjects using class-based API:', error);
+      toast.error('Error loading subjects');
+      return [];
+    }
+  };
+
   // Fetch initial data on component mount
   useEffect(() => {
     const fetchData = async () => {
@@ -40,58 +75,22 @@ const useGradeData = (user) => {
           // Clear grades first to prevent stale data
           dispatch(reset());
           
-          // Fetch grades with slight delay to ensure reset takes effect
-          setTimeout(() => {
-            // If user is admin, fetch all grades, otherwise fetch only teacher's grades
-            if (user.role === 'admin') {
-              console.log('[useGradeData] Admin user - fetching ALL grades');
-              dispatch(getAllGrades());
-              
-              // Load subjects for admin
-              setIsLoadingSubjects(true);
-              dispatch(getSubjects())
-                .unwrap()
-                .then(() => setIsLoadingSubjects(false))
-                .catch(() => {
-                  setIsLoadingSubjects(false);
-                  toast.error('Error loading subjects');
-                });
-              
-              // Load students for admin
-              setIsLoadingStudents(true);
-              dispatch(getStudents())
-                .unwrap()
-                .then(() => setIsLoadingStudents(false))
-                .catch(() => {
-                  setIsLoadingStudents(false);
-                  toast.error('Error loading students');
-                });
-            } else {
-              // For teachers, fetch only their assigned grades
-              console.log('[useGradeData] Teacher user - fetching teacher grades');
-              dispatch(getGradesByTeacher());
-              
-              // Load subjects for teacher
-              setIsLoadingSubjects(true);
-              dispatch(getSubjectsByTeacher())
-                .unwrap()
-                .then(() => setIsLoadingSubjects(false))
-                .catch(() => {
-                  setIsLoadingSubjects(false);
-                  toast.error('Error loading subjects');
-                });
-              
-              // Load students for teacher
-              setIsLoadingStudents(true);
-              dispatch(getStudentsForTeacher())
-                .unwrap()
-                .then(() => setIsLoadingStudents(false))
-                .catch(() => {
-                  setIsLoadingStudents(false);
-                  toast.error('Error loading students');
-                });
-            }
-          }, 100);
+          // If user is admin, fetch all grades, otherwise fetch only teacher's grades
+          if (user.role === 'admin') {
+            console.log('[useGradeData] Admin user - fetching ALL grades');
+            dispatch(getAllGrades());
+          } else {
+            // For teachers, fetch only their assigned grades
+            console.log('[useGradeData] Teacher user - fetching teacher grades');
+            dispatch(getGradesByTeacher());
+          }
+          
+          // Fetch subjects using the class-based system
+          await fetchClassBasedSubjects();
+          
+          // Fetch initial students
+          await fetchAllStudents();
+          
         } catch (error) {
           console.error('[useGradeData] Error fetching data:', error);
           toast.error('Failed to load grades data. Please try again.');
@@ -180,7 +179,8 @@ const useGradeData = (user) => {
     isLoadingSubjects,
     isLoadingStudents,
     fetchStudentsBySubject,
-    fetchAllStudents
+    fetchAllStudents,
+    fetchClassBasedSubjects
   };
 };
 

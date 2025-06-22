@@ -59,7 +59,12 @@ const GradeFilters = ({
               {(subjects || []).map((subject) => (
                 subject && subject._id ? (
                   <MenuItem key={subject._id} value={subject._id}>
-                    {subject.name}
+                    {subject.name ? subject.name : subject.value || 'Unknown Subject'}
+                    {subject.className && (
+                      <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
+                        ({subject.className})
+                      </Typography>
+                    )}
                   </MenuItem>
                 ) : null
               ))}
