@@ -1,4 +1,4 @@
-import api from './api';
+import axiosInstance from '../app/axios';
 
 /**
  * Get student statistics with grade averages and counts
@@ -19,7 +19,7 @@ export const getStudentStats = async (search = '') => {
     
     console.log('[StudentStatsAPI] Request URL:', url);
     
-    const response = await api.get(url);
+    const response = await axiosInstance.get(url);
     
     console.log('[StudentStatsAPI] Student stats response:', response.data);
     return response.data;
@@ -45,7 +45,7 @@ export const getStudentDetailedStats = async (studentId) => {
       throw new Error('Student ID is required');
     }
     
-    const response = await api.get(`/stats/students/${studentId}`);
+    const response = await axiosInstance.get(`/stats/students/${studentId}`);
     
     console.log('[StudentStatsAPI] Detailed student stats response:', response.data);
     return response.data;
