@@ -94,6 +94,11 @@ const GradeFilters = ({
                 student && student._id ? (
                   <MenuItem key={student._id} value={student._id}>
                     {student.name}
+                    {student.classes && student.classes.length > 0 && (
+                      <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
+                        ({student.classes[0].name || 'Unknown Class'})
+                      </Typography>
+                    )}
                   </MenuItem>
                 ) : null
               ))}

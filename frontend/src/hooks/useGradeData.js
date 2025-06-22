@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 // Redux Actions
 import {
@@ -14,9 +15,8 @@ import {
   getSubjects,
 } from '../features/subjects/subjectSlice';
 
+// We keep these imports for initial data loading but will use direct API calls for class-based filtering
 import {
-  getStudentsBySubject,
-  getStudentsBySubjectForTeacher,
   getStudentsForTeacher,
   getStudents,
 } from '../features/students/studentSlice';
@@ -103,55 +103,77 @@ const useGradeData = (user) => {
   }, [dispatch, user]);
 
   /**
-   * Fetch students by subject ID
+   * Fetch students by subject ID using direct API call to support class-based system
    * @param {String} subjectId - Subject ID to filter students by
    */
-  const fetchStudentsBySubject = (subjectId) => {
+  const fetchStudentsBySubject = async (subjectId) => {
     if (!subjectId) {
       console.log('[useGradeData] No subject ID provided for student fetch');
       return;
     }
 
-    console.log(`[useGradeData] Fetching students for subject: ${subjectId}`);
+    console.log(`[useGradeData] Fetching students for subject: ${subjectId} using class-based API`);
     setIsLoadingStudents(true);
     
-    // Use appropriate action based on user role
-    const action = user.role === 'admin'
-      ? dispatch(getStudentsBySubject(subjectId))
-      : dispatch(getStudentsBySubjectForTeacher(subjectId));
-    
-    action
-      .unwrap()
-      .then(() => {
-        setIsLoadingStudents(false);
-        console.log('[useGradeData] Successfully loaded students for subject');
-      })
-      .catch((error) => {
-        setIsLoadingStudents(false);
-        console.error('[useGradeData] Error loading students for subject:', error);
-        toast.error('Failed to load students for this subject');
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+      
+      const params = new URLSearchParams({
+        subject: subjectId
       });
+      
+      // Use the new filtered API endpoint that supports the class-based system
+      const response = await axios.get(`/api/students/teacher/filtered?${params}`, config);
+      
+      console.log(`[useGradeData] Loaded ${response.data.length} students with class information:`, response.data);
+      
+      // Update Redux state with the received students data
+      dispatch({
+        type: user.role === 'admin' ? 'students/getBySubject/fulfilled' : 'students/getBySubjectForTeacher/fulfilled',
+        payload: response.data
+      });
+      
+      setIsLoadingStudents(false);
+      
+    } catch (error) {
+      setIsLoadingStudents(false);
+      console.error('[useGradeData] Error loading students for subject using class-based API:', error);
+      toast.error('Failed to load students for this subject');
+    }
   };
 
   /**
-   * Fetch all available students
+   * Fetch all available students using direct API call to support class-based system
    */
-  const fetchAllStudents = () => {
-    console.log('[useGradeData] Fetching all available students');
+  const fetchAllStudents = async () => {
+    console.log('[useGradeData] Fetching all available students using class-based API');
     setIsLoadingStudents(true);
     
-    // Use appropriate action based on user role
-    const action = user.role === 'admin'
-      ? dispatch(getStudents())
-      : dispatch(getStudentsForTeacher());
-    
-    action
-      .unwrap()
-      .then(() => setIsLoadingStudents(false))
-      .catch(() => {
-        setIsLoadingStudents(false);
-        toast.error('Error loading students');
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+      
+      // Use the teacher/filtered API without specific filters to get all available students with class info
+      const response = await axios.get('/api/students/teacher/filtered', config);
+      
+      console.log(`[useGradeData] Loaded ${response.data.length} students with class information:`, response.data);
+      
+      // Update Redux state with the received students data
+      dispatch({
+        type: user.role === 'admin' ? 'students/getAll/fulfilled' : 'students/getForTeacher/fulfilled', 
+        payload: response.data
       });
+      
+      setIsLoadingStudents(false);
+      
+    } catch (error) {
+      setIsLoadingStudents(false);
+      console.error('[useGradeData] Error loading all students using class-based API:', error);
+      toast.error('Error loading students');
+    }
   };
 
   return {
