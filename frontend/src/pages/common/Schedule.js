@@ -60,6 +60,9 @@ const Schedule = () => {
   // Store branch names for display (mapping branch IDs to names)
   const [branchNames, setBranchNames] = useState({});
   
+  // Store subject colors for consistent coloring
+  const [subjectColors, setSubjectColors] = useState({});
+  
   const { user, token } = useSelector((state) => state.auth);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -69,6 +72,94 @@ const Schedule = () => {
     '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
     '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
   ];
+  
+  // Generate consistent color for a subject based on its name
+  const getSubjectColor = (subjectName) => {
+    if (!subjectName) return theme.palette.primary.main;
+    
+    if (subjectColors[subjectName]) {
+      return subjectColors[subjectName];
+    }
+    
+    // Generate a consistent color based on subject name
+    const colors = [
+      '#1976d2', '#d32f2f', '#388e3c', '#f57c00', '#7b1fa2',
+      '#0288d1', '#c2185b', '#00796b', '#5d4037', '#455a64',
+      '#e64a19', '#512da8', '#00695c', '#6a1b9a', '#f9a825'
+    ];
+    
+    // Simple hash function to get consistent color for same subject
+    let hash = 0;
+    for (let i = 0; i < subjectName.length; i++) {
+      hash = subjectName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colorIndex = Math.abs(hash) % colors.length;
+    const color = colors[colorIndex];
+    
+    setSubjectColors(prev => ({ ...prev, [subjectName]: color }));
+    return color;
+  };
+  
+  // Merge consecutive time slots for the same class/subject
+  const mergeConsecutiveClasses = (events) => {
+    if (!events || events.length === 0) return events;
+    
+    // Sort events by start time
+    const sortedEvents = [...events].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const mergedEvents = [];
+    
+    for (let i = 0; i < sortedEvents.length; i++) {
+      const currentEvent = sortedEvents[i];
+      
+      // Look for the next event that might be a continuation
+      let endTime = currentEvent.endTime;
+      let mergedEvent = { ...currentEvent };
+      
+      // Check if next events are consecutive and same subject/class
+      for (let j = i + 1; j < sortedEvents.length; j++) {
+        const nextEvent = sortedEvents[j];
+        
+        // Check if this is a consecutive time slot for the same class
+        if (
+          nextEvent.startTime === endTime &&
+          nextEvent.subject === currentEvent.subject &&
+          nextEvent.schoolBranch === currentEvent.schoolBranch &&
+          nextEvent.direction === currentEvent.direction
+        ) {
+          // Merge this event
+          endTime = nextEvent.endTime;
+          mergedEvent.endTime = endTime;
+          
+          // Merge teacher and student arrays
+          if (nextEvent.teacherNames) {
+            mergedEvent.teacherNames = [...new Set([
+              ...(mergedEvent.teacherNames || []),
+              ...nextEvent.teacherNames
+            ])];
+          }
+          if (nextEvent.studentNames) {
+            mergedEvent.studentNames = [...new Set([
+              ...(mergedEvent.studentNames || []),
+              ...nextEvent.studentNames
+            ])];
+          }
+          
+          // Update counts
+          mergedEvent.teacherCount = mergedEvent.teacherNames?.length || 0;
+          mergedEvent.studentCount = mergedEvent.studentNames?.length || 0;
+          
+          // Skip this event in the next iteration
+          i = j;
+        } else {
+          break;
+        }
+      }
+      
+      mergedEvents.push(mergedEvent);
+    }
+    
+    return mergedEvents;
+  };
   
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'teacher') {
@@ -243,18 +334,46 @@ const Schedule = () => {
   const handleEventClick = (event) => {
     console.log('Event clicked:', event);
     
-    // Ensure we have all needed properties for display
+    // Enhanced event processing for dialog display
     const enhancedEvent = {
       ...event,
-      // Ensure we have arrays for teachers and students
-      teacherNames: event.teacherNames || [],
-      studentNames: event.studentNames || [],
+      // Handle teachers data - check multiple possible formats
+      teacherNames: event.teacherNames || 
+                   (event.teachers ? event.teachers.map(t => t.name || t) : []) ||
+                   (event.teacher ? [typeof event.teacher === 'object' ? event.teacher.name : event.teacher] : []),
+      
+      // Handle students data - check multiple possible formats  
+      studentNames: event.studentNames || 
+                   (event.students ? event.students.map(s => s.name || s) : []) ||
+                   (event.student ? [typeof event.student === 'object' ? event.student.name : event.student] : []),
+      
       // Calculate counts if not provided
-      teacherCount: event.teacherCount || (event.teacherNames ? event.teacherNames.length : 0),
-      studentCount: event.studentCount || (event.studentNames ? event.studentNames.length : 0)
+      teacherCount: event.teacherCount || 
+                   (event.teacherNames ? event.teacherNames.length : 0) ||
+                   (event.teachers ? event.teachers.length : 0) ||
+                   (event.teacher ? 1 : 0),
+                   
+      studentCount: event.studentCount || 
+                   (event.studentNames ? event.studentNames.length : 0) ||
+                   (event.students ? event.students.length : 0) ||
+                   (event.student ? 1 : 0),
+      
+      // Ensure branch name is resolved
+      schoolBranchName: branchNames[event.schoolBranch] || event.schoolBranch || 'Unknown Branch'
     };
     
     console.log('Enhanced event for dialog:', enhancedEvent);
+    console.log('Teachers data:', {
+      original: event.teachers || event.teacher || event.teacherNames,
+      processed: enhancedEvent.teacherNames,
+      count: enhancedEvent.teacherCount
+    });
+    console.log('Students data:', {
+      original: event.students || event.student || event.studentNames,
+      processed: enhancedEvent.studentNames,
+      count: enhancedEvent.studentCount
+    });
+    
     setSelectedEvent(enhancedEvent);
     setDialogOpen(true);
   };
@@ -300,7 +419,7 @@ const Schedule = () => {
         sx={{
           mb: 0.5,
           cursor: 'pointer',
-          bgcolor: 'primary.light',
+          bgcolor: getSubjectColor(event.subject),
           color: 'primary.contrastText',
           p: isCompact ? 0.5 : 1,
           '&:hover': { boxShadow: 3 },
@@ -428,7 +547,7 @@ const Schedule = () => {
       </Paper>
 
       {/* Calendar Grid */}
-      <Paper sx={{ p: 2, borderRadius: 2 }}>
+      <Paper sx={{ p: 2, borderRadius: 2, overflowX: 'auto' }}>
         {isMobile ? (
           // Mobile view - Day by day accordion
           <Box>
@@ -439,7 +558,7 @@ const Schedule = () => {
                     {day}
                   </Typography>
                   {scheduleData && scheduleData[day] && scheduleData[day].length > 0 ? (
-                    scheduleData[day].map((event, index) => renderEvent(event, true))
+                    mergeConsecutiveClasses(scheduleData[day]).map((event, index) => renderEvent(event, true))
                   ) : (
                     <Typography variant="body2" color="text.secondary">
                       No classes scheduled
@@ -451,8 +570,19 @@ const Schedule = () => {
           </Box>
         ) : (
           // Desktop view - Calendar grid
-          <Box sx={{ overflow: 'auto', minWidth: '1200px' }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '100px repeat(7, 1fr)', gap: 0 }}>
+          <Box sx={{ 
+            overflow: 'auto', 
+            minWidth: '100%',
+            maxWidth: '100%',
+            width: '100%'
+          }}>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: '80px repeat(7, minmax(120px, 1fr))', 
+              gap: 0,
+              minWidth: 'fit-content',
+              width: '100%'
+            }}>
               {/* Time column header */}
               <Box sx={{ 
                 position: 'sticky', 
@@ -460,9 +590,19 @@ const Schedule = () => {
                 backgroundColor: 'background.paper', 
                 zIndex: 2,
                 borderBottom: '2px solid',
-                borderColor: 'primary.main'
+                borderColor: 'primary.main',
+                borderRight: '1px solid',
+                borderRightColor: 'divider'
               }}>
-                <Typography variant="h6" sx={{ p: 1, height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Typography variant="subtitle1" sx={{ 
+                  p: 1, 
+                  height: '50px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: '0.9rem',
+                  fontWeight: 'bold'
+                }}>
                   Time
                 </Typography>
               </Box>
@@ -472,18 +612,22 @@ const Schedule = () => {
                 <Box key={`header-${day}`} sx={{
                   borderBottom: '2px solid',
                   borderColor: 'primary.main',
+                  borderRight: '1px solid',
+                  borderRightColor: 'divider',
                   backgroundColor: 'primary.light'
                 }}>
                   <Typography 
-                    variant="h6" 
+                    variant="subtitle1" 
                     sx={{ 
                       p: 1, 
                       textAlign: 'center', 
-                      height: '60px',
+                      height: '50px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: { xs: '0.9rem', sm: '1.1rem' }
+                      fontSize: '0.9rem',
+                      fontWeight: 'bold',
+                      color: 'primary.contrastText'
                     }}
                   >
                     {day}
@@ -491,44 +635,58 @@ const Schedule = () => {
                 </Box>
               ))}
 
-              {/* Time slots */}
+              {/* Time slots and events */}
               {timeSlots.map((timeSlot) => (
                 <React.Fragment key={timeSlot}>
                   {/* Time label */}
                   <Box sx={{
-                    height: '80px',
+                    borderRight: '1px solid',
+                    borderRightColor: 'divider',
                     borderBottom: '1px solid',
-                    borderColor: 'divider',
-                    display: 'flex',
-                    alignItems: 'center',
-                    px: 1,
+                    borderBottomColor: 'divider',
+                    backgroundColor: 'grey.50',
                     position: 'sticky',
                     left: 0,
-                    backgroundColor: 'background.paper',
                     zIndex: 1
                   }}>
-                    <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        p: 1, 
+                        textAlign: 'center',
+                        display: 'block',
+                        fontWeight: 500,
+                        minHeight: '60px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
                       {formatTime(timeSlot)}
                     </Typography>
                   </Box>
 
-                  {/* Day cells for this time slot */}
+                  {/* Day columns */}
                   {daysOfWeek.map((day) => {
                     const events = getEventsForTimeSlot(day, timeSlot);
+                    const mergedEvents = mergeConsecutiveClasses(events);
+                    
                     return (
                       <Box
                         key={`${day}-${timeSlot}`}
                         sx={{
-                          height: '80px',
-                          borderBottom: '1px solid',
                           borderRight: '1px solid',
-                          borderColor: 'divider',
+                          borderRightColor: 'divider',
+                          borderBottom: '1px solid',
+                          borderBottomColor: 'divider',
+                          minHeight: '60px',
                           p: 0.5,
-                          backgroundColor: events.length > 0 ? 'action.hover' : 'transparent',
+                          backgroundColor: 'background.paper',
+                          position: 'relative',
                           overflow: 'hidden'
                         }}
                       >
-                        {events.map((event) => renderEvent(event))}
+                        {mergedEvents.map((event) => renderEvent(event, true))}
                       </Box>
                     );
                   })}
@@ -567,7 +725,7 @@ const Schedule = () => {
                   </Typography>
                   <Typography variant="body1" gutterBottom>
                     <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    School Branch: {branchNames[selectedEvent.schoolBranch] || selectedEvent.schoolBranch}
+                    School Branch: {selectedEvent.schoolBranchName}
                   </Typography>
                   <Typography variant="body1" gutterBottom>
                     Direction: {selectedEvent.direction}

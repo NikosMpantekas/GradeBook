@@ -120,17 +120,24 @@ const ManageGrades = () => {
       return;
     }
     
+    // Debug: Log structure of first grade to understand data format
+    if (grades.length > 0) {
+      console.log('[ManageGrades] Sample grade structure:', grades[0]);
+    }
+    
     // Start with all grades - show everything by default
     let filtered = [...grades];
     console.log('[ManageGrades] Starting with all grades:', filtered.length);
     
-    // Apply filtering only if filters are actually set
+    // Apply filtering based on actual DB structure
+    // Grades have direct fields: schoolId, subject, student, teacher (not nested in class object)
+    
     if (filters.schoolBranch) {
       const beforeCount = filtered.length;
       filtered = filtered.filter(grade => {
-        // Check if grade has class information with schoolBranch
-        const hasMatchingBranch = grade.class?.schoolBranch === filters.schoolBranch ||
-                                  grade.schoolBranch === filters.schoolBranch;
+        // Check direct schoolId field (matches DB structure)
+        const hasMatchingBranch = grade.schoolId === filters.schoolBranch;
+        console.log(`[ManageGrades] Grade ${grade._id}: schoolId=${grade.schoolId}, filter=${filters.schoolBranch}, match=${hasMatchingBranch}`);
         return hasMatchingBranch;
       });
       console.log(`[ManageGrades] After schoolBranch filter (${filters.schoolBranch}): ${beforeCount} -> ${filtered.length}`);
@@ -139,10 +146,10 @@ const ManageGrades = () => {
     if (filters.direction) {
       const beforeCount = filtered.length;
       filtered = filtered.filter(grade => {
-        // Check class-based direction field in grade data
-        const hasMatchingDirection = grade.class?.direction === filters.direction ||
-                                     grade.direction === filters.direction;
-        return hasMatchingDirection;
+        // Check if grade has direction field or if we need to derive it from subject/class data
+        // For now, skip direction filtering until we understand how direction relates to grades
+        console.log(`[ManageGrades] Direction filtering not yet implemented for grade structure`);
+        return true; // Temporarily bypass direction filter
       });
       console.log(`[ManageGrades] After direction filter (${filters.direction}): ${beforeCount} -> ${filtered.length}`);
     }
@@ -150,10 +157,9 @@ const ManageGrades = () => {
     if (filters.subject) {
       const beforeCount = filtered.length;
       filtered = filtered.filter(grade => {
-        // Check subject match - grade.subject should have _id and name
-        const hasMatchingSubject = grade.subject?._id === filters.subject ||
-                                   grade.subject?.name === filters.subject ||
-                                   grade.subject === filters.subject;
+        // Check subject match - grade.subject is an ObjectId in DB
+        const hasMatchingSubject = grade.subject === filters.subject;
+        console.log(`[ManageGrades] Grade ${grade._id}: subject=${grade.subject}, filter=${filters.subject}, match=${hasMatchingSubject}`);
         return hasMatchingSubject;
       });
       console.log(`[ManageGrades] After subject filter (${filters.subject}): ${beforeCount} -> ${filtered.length}`);
@@ -161,7 +167,12 @@ const ManageGrades = () => {
     
     if (filters.student) {
       const beforeCount = filtered.length;
-      filtered = filtered.filter(grade => grade.student?._id === filters.student);
+      filtered = filtered.filter(grade => {
+        // Check student match - grade.student is an ObjectId in DB
+        const hasMatchingStudent = grade.student === filters.student;
+        console.log(`[ManageGrades] Grade ${grade._id}: student=${grade.student}, filter=${filters.student}, match=${hasMatchingStudent}`);
+        return hasMatchingStudent;
+      });
       console.log(`[ManageGrades] After student filter (${filters.student}): ${beforeCount} -> ${filtered.length}`);
     }
     
