@@ -1,310 +1,104 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  TableContainer,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  TablePagination,
-  CircularProgress,
-  TextField,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  InputAdornment,
-  IconButton,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Grid,
-  Divider,
-  Alert,
-  Chip,
-  Snackbar,
-  FormHelperText,
-} from '@mui/material';
-
-import {
-  Search as SearchIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
-  FilterList as FilterIcon,
-  Class as ClassIcon,
-  AdminPanelSettings as AdminPanelSettingsIcon,
-  Grade as GradeIcon,
-} from '@mui/icons-material';
-
-import { format } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { Container, Typography, Box, Snackbar, Alert, Paper } from '@mui/material';
 import { toast } from 'react-toastify';
-import { Link } from 'react-router-dom';
-import { 
-  getGradesByTeacher, 
-  getAllGrades, 
-  reset as resetGrades,
-  updateGrade,
-  deleteGrade
-} from '../../features/grades/gradeSlice';
-import { 
-  getSubjectsByTeacher, 
-  getSubjects 
-} from '../../features/subjects/subjectSlice';
-import { 
-  getStudents, 
-  getStudentsBySubject,
-  getStudentsForTeacher,
-  getStudentsBySubjectForTeacher
-} from '../../features/students/studentSlice';
-import { getClassesByTeacher } from '../../features/classes/classSlice';
 
+// Components
+import GradeTable from '../../components/grades/GradeTable';
+import { EditGradeDialog, DeleteGradeDialog } from '../../components/grades/GradeDialogs';
+import GradeFilters from '../../components/grades/GradeFilters';
+
+// Custom hooks
+import useGradeData from '../../hooks/useGradeData';
+import useGradeDialogs from '../../components/grades/GradeDialogHandlers';
+
+// Utils
+import { filterGrades } from '../../utils/gradeFilterUtils';
+
+/**
+ * ManageGrades Component
+ * Shows a paginated table of grades with filtering options
+ */
 const ManageGrades = () => {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
+  console.log('[ManageGrades] Component rendering');
+  
+  // Redux state
+  const { grades, isLoading: isGradesLoading, isError: isGradesError } = useSelector(state => state.grades);
+  const { subjects } = useSelector(state => state.subjects);
+  const { students } = useSelector(state => state.students);
+  const { user } = useSelector(state => state.auth);
 
-  const { user } = useSelector((state) => state.auth);
-  const { grades, isLoading, isSuccess, isError, message } = useSelector((state) => state.grades);
-  const { subjects } = useSelector((state) => state.subjects);
-  const { students } = useSelector((state) => state.students);
-  const { classes, isLoading: classesLoading } = useSelector((state) => state.classes);
-
+  // Local state
+  const [subjectFilter, setSubjectFilter] = useState('');
+  const [studentFilter, setStudentFilter] = useState('');
+  const [filteredGrades, setFilteredGrades] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [subjectFilter, setSubjectFilter] = useState('');
-  const [classFilter, setClassFilter] = useState('');
-  const [studentFilter, setStudentFilter] = useState('');
-  const [teacherClasses, setTeacherClasses] = useState([]);
-  const [filteredGrades, setFilteredGrades] = useState([]);
-  const [filteredSubjects, setFilteredSubjects] = useState([]);
-  const [filteredStudents, setFilteredStudents] = useState([]);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [gradeToDelete, setGradeToDelete] = useState(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editGradeData, setEditGradeData] = useState({
-    id: '',
-    value: 0,
-    description: '',
-    student: '',
-    subject: '',
-    date: new Date(),
-  });
-  const [alertState, setAlertState] = useState({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
 
+  // Custom hooks
+  const {
+    isLoadingSubjects,
+    isLoadingStudents,
+    fetchStudentsBySubject,
+    fetchAllStudents
+  } = useGradeData(user);
+
+  // Dialog handlers
+  const dialogHandlers = useGradeDialogs({ students, subjects });
+  const {
+    alertState,
+    deleteDialogOpen, 
+    gradeToDelete,
+    editDialogOpen,
+    editGradeData,
+    handleDeleteClick,
+    handleDeleteConfirm,
+    handleDeleteCancel,
+    handleEditClick,
+    handleEditChange,
+    handleEditSave,
+    handleEditCancel,
+    handleAlertClose
+  } = dialogHandlers;
+
+  // Set up filtered grades when source data changes
   useEffect(() => {
-    // Force refetch on component mount to avoid stale data issues
-    const fetchData = async () => {
-      if (user && user._id) {
-        try {
-          console.log('[ManageGrades] Fetching grades data');
-          // Clear the grades first to prevent stale data display
-          dispatch(resetGrades());
-          
-          // Fetch grades with a slight delay to ensure reset takes effect
-          setTimeout(() => {
-            // If user is admin, fetch all grades instead of just teacher's grades
-            if (user.role === 'admin') {
-              console.log('[ManageGrades] Admin user detected - fetching ALL grades');
-              dispatch(getAllGrades());
-              dispatch(getSubjects()); // Admin can see all subjects
-              dispatch(getStudents()); // Admin can see all students
-            } else {
-              console.log('[ManageGrades] Teacher user detected - fetching teacher grades');
-              dispatch(getGradesByTeacher(user._id));
-              dispatch(getSubjectsByTeacher(user._id));
-              dispatch(getStudentsForTeacher(user._id));
-            }
-          }, 100);
-        } catch (error) {
-          console.error('[ManageGrades] Error in fetchData:', error);
-          toast.error('Error loading grades data');
-        }
-      }
-    };
-
-    fetchData();
-  }, [dispatch, user]);
-
-  useEffect(() => {
-    if (user && user._id && user.role === 'teacher') {
-      console.log('[ManageGrades] Fetching classes for teacher:', user._id);
-      dispatch(getClassesByTeacher(user._id))
-        .unwrap()
-        .then(data => {
-          console.log(`[ManageGrades] Successfully loaded ${data?.length || 0} teacher classes`);
-          setTeacherClasses(data || []);
-        })
-        .catch(error => {
-          console.error('[ManageGrades] Error fetching teacher classes:', error);
-          setTeacherClasses([]);
-          toast.error('Error loading class data');
-        });
-    }
-  }, [dispatch, user]);
-
-  useEffect(() => {
-    // Initialize filtered subjects when subjects change
-    setFilteredSubjects(subjects || []);
-  }, [subjects]);
-  
-  useEffect(() => {
-    if (user?.role === 'teacher' && classFilter && teacherClasses.length > 0) {
-      const selectedClass = teacherClasses.find(cls => cls._id === classFilter);
-      
-      if (selectedClass && selectedClass.subject) {
-        console.log(`[ManageGrades] Filtering subjects for class ${selectedClass.name} with subject ${selectedClass.subject}`);
-        
-        // Filter subjects to only show the one assigned to the selected class
-        const classSubjectObj = subjects.find(subj => 
-          subj && subj.name && subj.name.toLowerCase() === selectedClass.subject.toLowerCase());
-        
-        if (classSubjectObj) {
-          setFilteredSubjects([classSubjectObj]);
-          console.log(`[ManageGrades] Found matching subject: ${classSubjectObj.name}`);
-        } else {
-          setFilteredSubjects([]);
-          console.log(`[ManageGrades] No matching subject found for class subject: ${selectedClass.subject}`);
-        }
-      } else {
-        setFilteredSubjects(subjects || []);
-      }
-    } else {
-      // If no class is selected, show all subjects
-      setFilteredSubjects(subjects || []);
-    }
-  }, [classFilter, teacherClasses, subjects, user]);
-
-  useEffect(() => {
-    if (isError) {
-      toast.error(message || 'An error occurred loading grades');
-    }
-
-    if (isSuccess) {
-      if (alertState.message) {
-        setAlertState({
-          ...alertState,
-          open: true,
-        });
-      }
-      
-      // Log success information for debugging
-      console.log(`[ManageGrades] Grade fetch succeeded, received: ${grades?.length || 0} grades`);
-      if (grades && grades.length === 0) {
-        console.log('[ManageGrades] Received empty array of grades from server');
-      }
-    }
-
-    // Always call applyFilters, even if grades is empty array
-    // This ensures the UI updates properly with empty state
-    applyFilters();
+    console.log('[ManageGrades] Updating filtered grades');
     
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grades, isError, isSuccess, message, searchTerm, subjectFilter, classFilter, studentFilter, alertState]);
-
-  const applyFilters = () => {
-    // Safety check that grades exists and is an array
     if (!grades || !Array.isArray(grades)) {
-      console.warn('[ManageGrades] Cannot filter grades: grades is not an array', grades);
       setFilteredGrades([]);
       return;
     }
-
-    console.log(`[ManageGrades] Applying filters to ${grades.length} grades`);
     
-    try {
-      let filtered = [...grades];
-      
-      // Apply class filter if one is selected (for teacher users only)
-      if (classFilter && user?.role === 'teacher') {
-        const selectedClass = teacherClasses.find(cls => cls._id === classFilter);
-        
-        if (selectedClass) {
-          // Get class student IDs as strings
-          const classStudentIds = selectedClass.students
-            ? selectedClass.students.map(student => 
-                typeof student === 'string' ? student : student._id
-              )
-            : [];
-            
-          // Get class subject name
-          const classSubject = selectedClass.subject?.toLowerCase() || '';
-          
-          // Filter grades where the student is in the selected class AND subject matches the class subject
-          filtered = filtered.filter(grade => {
-            const studentId = grade.student?._id || '';
-            const subjectName = grade.subject?.name?.toLowerCase() || '';
-            
-            // Check if this grade's student is in the class AND subject matches
-            const studentInClass = classStudentIds.includes(studentId);
-            const subjectMatches = classSubject === '' || subjectName === classSubject;
-            
-            return studentInClass && subjectMatches;
-          });
-          
-          console.log(`[ManageGrades] After class filter, ${filtered.length} grades remain`);
-        }
-      }
-      
-      // Apply subject filter if one is selected
-      if (subjectFilter) {
-        filtered = filtered.filter(grade => 
-          grade.subject && grade.subject._id === subjectFilter);
-        console.log(`[ManageGrades] After subject filter, ${filtered.length} grades remain`);
-      }
-      
-      // Apply student filter if one is selected
-      if (studentFilter) {
-        filtered = filtered.filter(grade => 
-          grade.student && grade.student._id === studentFilter);
-        console.log(`[ManageGrades] After student filter, ${filtered.length} grades remain`);
-      }
-      
-      // Apply search filter if one exists
-      if (searchTerm.trim() !== '') {
-        const search = searchTerm.toLowerCase().trim();
-        filtered = filtered.filter(grade => {
-          // Check student name
-          const studentName = grade.student?.name?.toLowerCase() || '';
-          // Check subject name
-          const subjectName = grade.subject?.name?.toLowerCase() || '';
-          // Check grade value as string
-          const gradeValue = grade.value?.toString()?.toLowerCase() || '';
-          // Check description
-          const description = grade.description?.toLowerCase() || '';
-          
-          return (
-            studentName.includes(search) ||
-            subjectName.includes(search) ||
-            gradeValue.includes(search) ||
-            description.includes(search)
-          );
-        });
-        console.log(`[ManageGrades] After search filter, ${filtered.length} grades remain`);
-      }
-      
-      console.log(`Final filtered grades: ${filtered.length}`);
-      setFilteredGrades(filtered);
-    } catch (error) {
-      console.error('Error in applyFilters:', error);
-      // Fallback to showing all grades in case of error
-      setFilteredGrades(grades);
+    const filtered = filterGrades(grades, subjectFilter, studentFilter);
+    setFilteredGrades(filtered);
+    
+    // Reset to first page when filters change
+    setPage(0);
+  }, [grades, subjectFilter, studentFilter]);
+
+  // Handle filter changes
+  const handleSubjectFilterChange = (event) => {
+    const newSubjectId = event.target.value;
+    console.log(`[ManageGrades] Subject filter changed to: ${newSubjectId}`);
+    setSubjectFilter(newSubjectId);
+    
+    // When subject changes, fetch related students
+    if (newSubjectId) {
+      fetchStudentsBySubject(newSubjectId);
+    } else {
+      // If no subject selected, fetch all available students
+      fetchAllStudents();
     }
   };
 
+  const handleStudentFilterChange = (event) => {
+    const newStudentId = event.target.value;
+    console.log(`[ManageGrades] Student filter changed to: ${newStudentId}`);
+    setStudentFilter(newStudentId);
+  };
+
+  // Pagination handlers
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -314,743 +108,79 @@ const ManageGrades = () => {
     setPage(0);
   };
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-    setPage(0);
-  };
-
-  const handleSubjectFilterChange = (e) => {
-    setSubjectFilter(e.target.value);
-    
-    // If subject changes, update available students for that subject
-    if (e.target.value) {
-      setIsLoadingStudents(true);
-      console.log(`[ManageGrades] Fetching students for subject: ${e.target.value}`);
-      
-      // Get students for the selected subject
-      if (user && user.role === 'admin') {
-        dispatch(getStudentsBySubject(e.target.value))
-          .unwrap()
-          .then((studentsData) => {
-            console.log(`[ManageGrades] Loaded ${studentsData?.length || 0} students for subject`);
-            setFilteredStudents(studentsData || []);
-            setIsLoadingStudents(false);
-          })
-          .catch((error) => {
-            console.error('[ManageGrades] Error loading students by subject:', error);
-            setFilteredStudents([]);
-            setIsLoadingStudents(false);
-          });
-      } else if (user && user.role === 'teacher') {
-        dispatch(getStudentsBySubjectForTeacher({ subjectId: e.target.value, teacherId: user._id }))
-          .unwrap()
-          .then((studentsData) => {
-            console.log(`[ManageGrades] Loaded ${studentsData?.length || 0} students for subject and teacher`);
-            setFilteredStudents(studentsData || []);
-            setIsLoadingStudents(false);
-          })
-          .catch((error) => {
-            console.error('[ManageGrades] Error loading students by subject for teacher:', error);
-            setFilteredStudents([]);
-            setIsLoadingStudents(false);
-          });
-      }
-      
-      // Reset student filter when subject changes
-      if (studentFilter) {
-        setStudentFilter('');
-      }
-    } else {
-      // If no subject selected, show all available students
-      setFilteredStudents(students || []);
-      
-      // Reset student filter
-      if (studentFilter) {
-        setStudentFilter('');
-      }
-    }
-  };
-  
-  const handleStudentFilterChange = (e) => {
-    setStudentFilter(e.target.value);
-    setPage(0);
-  };
-
-  const handleAddGrade = () => {
-    navigate('/app/teacher/grades/create');
-  };
-
-  // Delete Grade Dialog
-  const handleDeleteClick = (grade) => {
-    setGradeToDelete(grade);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = () => {
-    if (gradeToDelete) {
-      dispatch(deleteGrade(gradeToDelete._id))
-        .then((result) => {
-          if (result.meta.requestStatus === 'fulfilled') {
-            setAlertState({
-              open: true,
-              message: 'Grade deleted successfully',
-              severity: 'success',
-            });
-            setFilteredGrades((prev) => prev.filter(grade => grade._id !== gradeToDelete._id));
-          }
-        });
-    }
-    setDeleteDialogOpen(false);
-    setGradeToDelete(null);
-  };
-
-  const handleDeleteCancel = () => {
-    setDeleteDialogOpen(false);
-    setGradeToDelete(null);
-  };
-
-  // Edit Grade Dialog
-  const handleEditClick = (grade) => {
-    console.log('Edit grade clicked:', grade);
-    
-    // CRITICAL FIX: Store the complete student object for better display
-    const studentObject = typeof grade.student === 'object' ? grade.student : null;
-    const studentId = studentObject ? studentObject._id : grade.student;
-    const studentName = studentObject ? studentObject.name : null;
-    
-    const subjectObject = typeof grade.subject === 'object' ? grade.subject : null;
-    const subjectId = subjectObject ? subjectObject._id : grade.subject;
-    const subjectName = subjectObject ? subjectObject.name : null;
-    
-    // EMERGENCY FIX: Directly preload the student data in memory to avoid reliance on API
-    console.log('CRITICAL FIX - Preloaded student data:', {
-      studentId,
-      studentName,
-      subjectId,
-      subjectName
-    });
-    
-    // Force update the editGradeData with complete student information
-    const newGradeData = {
-      id: grade._id,
-      value: grade.value,
-      description: grade.description || '',
-      student: studentId,
-      subject: subjectId,
-      date: grade.date ? new Date(grade.date) : new Date(),
-      // CRITICAL FIX: Add cached student data to avoid reliance on redux
-      studentObject: studentObject,
-      studentName: studentName,
-      subjectName: subjectName
-    };
-    
-    // Update the form state with the correct data
-    setEditGradeData(newGradeData);
-    
-    // Make sure we have all the necessary data for editing
-    try {
-      // CRITICAL FIX: Force immediate student data retrieval before opening dialog
-      if (subjectId) {
-        // Show loading toast
-        toast.info('Loading students data...', {
-          autoClose: 2000,
-          position: 'bottom-right'
-        });
-        
-        // Dispatch action to fetch students using class-based logic for teachers
-        let studentPromise;
-        if (user.role === 'teacher') {
-          studentPromise = dispatch(getStudentsBySubjectForTeacher(subjectId));
-        } else {
-          studentPromise = dispatch(getStudentsBySubject(subjectId));
-        }
-        
-        studentPromise
-          .unwrap()
-          .then(fetchedStudents => {
-            console.log(`Successfully loaded ${fetchedStudents.length} students`);
-            
-            // Double-check if our student is in the list, add if missing
-            if (studentObject && !fetchedStudents.find(s => s._id === studentId)) {
-              console.log('CRITICAL FIX: Adding missing student to students list');
-              dispatch({
-                type: 'students/studentsLoaded',
-                payload: [...fetchedStudents, studentObject]
-              });
-            }
-            
-            // Open the dialog after data is loaded
-            setEditDialogOpen(true);
-          })
-          .catch(error => {
-            console.error('Failed to load students:', error);
-            // Continue anyway with our cached student data
-            toast.warning('Using cached student data due to API error');
-            setEditDialogOpen(true);
-          });
-      } else {
-        // No subject ID, just open the dialog
-        setEditDialogOpen(true);
-      }
-    } catch (error) {
-      console.error('Critical error in edit process:', error);
-      // Open dialog anyway - we have the cached student data
-      setEditDialogOpen(true);
-    }
-  };
-
-  const handleEditChange = (e) => {
-    const { name, value } = e.target;
-    
-    // For grade value, ensure it's within 0-100 range
-    if (name === 'value') {
-      const numValue = parseInt(value, 10);
-      if (isNaN(numValue)) return;
-      if (numValue < 0) return;
-      if (numValue > 100) return;
-    }
-    
-    setEditGradeData({
-      ...editGradeData,
-      [name]: value,
-    });
-  };
-
-  const handleEditSave = () => {
-    const { id, value, description, student, subject, date } = editGradeData;
-    
-    // Create comprehensive grade data with all editable fields
-    const gradeData = {
-      // Handle empty grade values properly - send null if value is empty
-      value: value === '' || value === undefined ? null : parseInt(value, 10),
-      student: student,
-      subject: subject,
-      date: date instanceof Date ? format(date, 'yyyy-MM-dd') : date
-    };
-    
-    // Add detailed logging for grade value handling
-    console.log('[EDIT GRADE] Processing grade value:', { 
-      originalValue: value,
-      processedValue: gradeData.value,
-      isEmptyOrUndefined: (value === '' || value === undefined)
-    });
-    
-    // Only include description if teacher has permission
-    if (user?.canAddGradeDescriptions !== false && description) {
-      gradeData.description = description;
-    }
-    
-    console.log('Updating grade with data:', { id, gradeData });
-    
-    dispatch(updateGrade({
-      id,
-      gradeData
-    }))
-      .then((result) => {
-        if (result.meta.requestStatus === 'fulfilled') {
-          setAlertState({
-            open: true,
-            message: 'Grade updated successfully',
-            severity: 'success',
-          });
-        }
-      });
-    
-    setEditDialogOpen(false);
-  };
-
-  const handleEditCancel = () => {
-    setEditDialogOpen(false);
-  };
-
-  const handleAlertClose = () => {
-    setAlertState({
-      ...alertState,
-      open: false,
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {user?.role === 'admin' ? (
-            <AdminPanelSettingsIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-          ) : (
-            <GradeIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-          )}
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-              {user?.role === 'admin' ? 'Admin Grade Management' : 'Manage Grades'}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              {user?.role === 'admin' 
-                ? 'View and manage grades for all students in your school' 
-                : 'View and manage grades for your assigned classes'
-              }
-            </Typography>
-          </Box>
-        </Box>
-        <Button 
-          variant="contained" 
-          startIcon={<AddIcon />}
-          onClick={handleAddGrade}
-          sx={{ 
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 600
-          }}
-        >
-          Add Grade
-        </Button>
-      </Box>
-
-      {/* Filters */}
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 2, bgcolor: 'background.paper' }}>
-        {/* Admin Info Panel */}
-        {user?.role === 'admin' && (
-          <Box sx={{ mb: 3, p: 2, bgcolor: 'primary.50', borderRadius: 1, border: '1px solid', borderColor: 'primary.200' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'primary.main', mb: 1 }}>
-              Administrator Access
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              You have full access to view and manage grades for all students in your school. Use the filters below to narrow down the results.
-            </Typography>
-          </Box>
-        )}
-        
-        <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FilterIcon />
-          Filters & Search
+    <Container maxWidth="lg" sx={{ my: 4 }}>
+      <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Manage Grades
         </Typography>
-        
-        <Grid container spacing={2} sx={{ py: 2 }}>
-          {/* Search Field - First Row */}
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              label="Search"
-              placeholder="Search by student, subject, grade..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            />
-          </Grid>
-          
-          {/* Filter Dropdowns - Second Row */}
-          <Grid item xs={12}>
-            <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
-              <FilterIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} /> 
-              Filter Options
-            </Typography>
-          </Grid>
-          
-          {/* Class Filter - Only shown for teachers */}
-          {user && user.role === 'teacher' && (
-            <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth variant="outlined">
-                <InputLabel id="class-filter-label">Filter by Class</InputLabel>
-                <Select
-                  labelId="class-filter-label"
-                  id="class-filter"
-                  value={classFilter}
-                  onChange={(e) => {
-                    setClassFilter(e.target.value);
-                    // Reset subject filter when class changes
-                    if (subjectFilter) {
-                      setSubjectFilter('');
-                    }
-                  }}
-                  label="Filter by Class"
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <ClassIcon />
-                    </InputAdornment>
-                  }
-                  disabled={classesLoading || teacherClasses.length === 0}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                >
-                  <MenuItem value="">
-                    <em>All Classes</em>
-                  </MenuItem>
-                  {teacherClasses.map((classItem) => (
-                    <MenuItem key={classItem._id} value={classItem._id}>
-                      {classItem.name}
-                      {classItem.subject && (
-                        <Chip 
-                          size="small" 
-                          label={classItem.subject} 
-                          color="primary" 
-                          variant="outlined"
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <FormHelperText>
-                  {classesLoading ? 'Loading classes...' : 
-                   teacherClasses.length === 0 ? 'No classes assigned' :
-                   'Filter grades by class'}
-                </FormHelperText>
-              </FormControl>
-            </Grid>
-          )}
-          
-          {/* Subject Filter */}
-          <Grid item xs={12} sm={6} md={user && user.role === 'teacher' ? 4 : 6}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="subject-filter-label">Filter by Subject</InputLabel>
-              <Select
-                labelId="subject-filter-label"
-                id="subject-filter"
-                value={subjectFilter}
-                onChange={handleSubjectFilterChange}
-                label="Filter by Subject"
-                startAdornment={
-                  <InputAdornment position="start">
-                    <FilterIcon />
-                  </InputAdornment>
-                }
-              >
-                <MenuItem value="">
-                  <em>All Subjects</em>
-                </MenuItem>
-                {(filteredSubjects && filteredSubjects.length > 0 ? filteredSubjects : subjects || []).map((subject) => (
-                  subject && subject._id ? (
-                    <MenuItem key={subject._id} value={subject._id}>
-                      {subject.name}
-                      {classFilter && filteredSubjects && filteredSubjects.length === 1 && (
-                        <Chip 
-                          size="small" 
-                          label="Class Subject" 
-                          color="primary" 
-                          variant="outlined"
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </MenuItem>
-                  ) : null
-                ))}
-              </Select>
-              <FormHelperText>
-                Select a subject to filter grades
-              </FormHelperText>
-            </FormControl>
-          </Grid>
-          
-          {/* Student Filter - New */}
-          <Grid item xs={12} sm={6} md={user && user.role === 'teacher' ? 4 : 6}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="student-filter-label">Filter by Student</InputLabel>
-              <Select
-                labelId="student-filter-label"
-                id="student-filter"
-                value={studentFilter}
-                onChange={handleStudentFilterChange}
-                label="Filter by Student"
-                startAdornment={
-                  <InputAdornment position="start">
-                    <GradeIcon />
-                  </InputAdornment>
-                }
-                disabled={isLoadingStudents}
-              >
-                <MenuItem value="">
-                  <em>All Students</em>
-                </MenuItem>
-                {filteredStudents.map((student) => (
-                  student && student._id ? (
-                    <MenuItem key={student._id} value={student._id}>
-                      {student.name || 'Unnamed Student'}
-                      {student.className && (
-                        <Chip 
-                          size="small" 
-                          label={student.className} 
-                          color="secondary" 
-                          variant="outlined"
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </MenuItem>
-                  ) : null
-                ))}
-              </Select>
-              <FormHelperText>
-                {isLoadingStudents ? 'Loading students...' : 
-                 filteredStudents.length === 0 ? 'No students available' :
-                 'Filter grades by student'}
-              </FormHelperText>
-            </FormControl>
-          </Grid>
-        </Grid>
+        <Typography variant="body1" color="text.secondary" paragraph>
+          View, filter, edit, and delete grades. Use the filters below to find specific grades.
+        </Typography>
       </Paper>
-
-
-
+      
+      {/* Filter Section */}
+      <GradeFilters
+        subjectFilter={subjectFilter}
+        studentFilter={studentFilter}
+        subjects={subjects}
+        students={students}
+        isLoadingSubjects={isLoadingSubjects}
+        isLoadingStudents={isLoadingStudents}
+        handleSubjectFilterChange={handleSubjectFilterChange}
+        handleStudentFilterChange={handleStudentFilterChange}
+      />
+      
       {/* Grades Table */}
-      <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
-        <TableContainer>
-          <Table stickyHeader aria-label="grades table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Student</TableCell>
-                <TableCell>Subject</TableCell>
-                <TableCell>Grade</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {Array.isArray(filteredGrades) && filteredGrades.length > 0 ? (
-                filteredGrades
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((grade) => {
-                    if (!grade) return null;
-                    return (
-                      <TableRow hover key={grade._id}>
-                        <TableCell>
-                          {grade.student ? (typeof grade.student === 'object' ? grade.student.name : 'Unknown Student') : 'Unknown Student'}
-                        </TableCell>
-                        <TableCell>
-                          {grade.subject ? (typeof grade.subject === 'object' ? grade.subject.name : 'Unknown Subject') : 'Unknown Subject'}
-                        </TableCell>
-                        <TableCell>
-                          <Typography
-                            sx={{
-                              fontWeight: 'bold',
-                              color: grade.value >= 50 ? 'success.main' : 'error.main',
-                            }}
-                          >
-                            {grade.value}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {grade.description 
-                            ? (grade.description.length > 30 
-                                ? `${grade.description.substring(0, 30)}...` 
-                                : grade.description)
-                            : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {grade.date ? format(new Date(grade.date), 'PP') : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={grade.value >= 50 ? 'Passed' : 'Failed'}
-                            color={grade.value >= 50 ? 'success' : 'error'}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell align="center">
-                          <IconButton
-                            color="primary"
-                            aria-label="edit grade"
-                            onClick={() => handleEditClick(grade)}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            color="error"
-                            aria-label="delete grade"
-                            onClick={() => handleDeleteClick(grade)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                    {isLoading
-                      ? 'Loading grades...'
-                      : isError
-                        ? 'Error loading grades. Please try again.'
-                        : Array.isArray(grades) && grades.length > 0
-                          ? 'No grades match the filter criteria.'
-                          : 'No grades found. Add a grade to get started.'}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={filteredGrades.length}
-          rowsPerPage={rowsPerPage}
+      <Box sx={{ width: '100%', mb: 4 }}>
+        <GradeTable
+          filteredGrades={filteredGrades}
+          isLoading={isGradesLoading}
+          isError={isGradesError}
+          grades={grades}
           page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPage={rowsPerPage}
+          handleChangePage={handleChangePage}
+          handleChangeRowsPerPage={handleChangeRowsPerPage}
+          handleEditClick={handleEditClick}
+          handleDeleteClick={handleDeleteClick}
         />
-      </Paper>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
+      </Box>
+      
+      {/* Dialogs */}
+      <EditGradeDialog
+        open={editDialogOpen}
+        handleClose={handleEditCancel}
+        editGradeData={editGradeData}
+        handleEditChange={handleEditChange}
+        handleEditSave={handleEditSave}
+        subjects={subjects}
+        user={user}
+      />
+      
+      <DeleteGradeDialog
         open={deleteDialogOpen}
-        onClose={handleDeleteCancel}
-      >
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete this grade? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteCancel}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit Grade Dialog */}
-      <Dialog open={editDialogOpen} onClose={handleEditCancel} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Edit Grade for Student: {editGradeData.studentName || students.find(s => s._id === editGradeData.student)?.name || 'Student'} 
-          - Subject: {editGradeData.subjectName || subjects.find(s => s._id === editGradeData.subject)?.name || 'Subject'}
-        </DialogTitle>
-        <DialogContent>
-          <Box component="form" sx={{ mt: 2 }}>
-            {/* Hidden fields for student and subject - these will be submitted but not editable */}
-            <input type="hidden" name="student" value={editGradeData.student || ''} />
-            <input type="hidden" name="subject" value={editGradeData.subject || ''} />
-            
-            {/* Info text to clarify what can be edited */}
-            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-              Only the grade value, date, and description can be modified. Student and subject cannot be changed.
-            </Typography>
-            
-            {/* Display student info (non-editable) */}
-            <TextField
-              fullWidth
-              margin="dense"
-              label="Student"
-              value={editGradeData.studentName || students.find(s => s._id === editGradeData.student)?.name || 'Student not found'}
-              InputProps={{
-                readOnly: true
-              }}
-              disabled
-              variant="filled"
-              sx={{ mb: 2 }}
-            />
-            
-            {/* Display subject info (non-editable) */}
-            <TextField
-              fullWidth
-              margin="dense"
-              label="Subject"
-              value={editGradeData.subjectName || subjects.find(s => s._id === editGradeData.subject)?.name || 'Subject not found'}
-              InputProps={{
-                readOnly: true
-              }}
-              disabled
-              variant="filled"
-              sx={{ mb: 2 }}
-            />
-            
-            {/* Grade value field */}
-            <TextField
-              margin="dense"
-              name="value"
-              label="Grade Value"
-              type="number"
-              fullWidth
-              variant="outlined"
-              value={editGradeData.value}
-              onChange={handleEditChange}
-              InputProps={{
-                inputProps: { min: 0, max: 100 }
-              }}
-              required
-              helperText="Enter a value between 0 and 100"
-            />
-            
-            {/* Date picker */}
-            <TextField
-              margin="dense"
-              name="date"
-              label="Date"
-              type="date"
-              fullWidth
-              variant="outlined"
-              value={editGradeData.date ? format(new Date(editGradeData.date), 'yyyy-MM-dd') : ''}
-              onChange={(e) => {
-                const newDate = e.target.value ? new Date(e.target.value) : new Date();
-                setEditGradeData({
-                  ...editGradeData,
-                  date: newDate
-                });
-              }}
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ max: format(new Date(), 'yyyy-MM-dd') }}
-              helperText="Select the date for this grade"
-            />
-            
-            {/* Description field - only show if teacher has permission */}
-            {(user?.canAddGradeDescriptions !== false) && (
-              <TextField
-                margin="dense"
-                name="description"
-                label="Description / Feedback"
-                type="text"
-                fullWidth
-                variant="outlined"
-                value={editGradeData.description || ''}
-                onChange={handleEditChange}
-                multiline
-                rows={4}
-                helperText="Add optional feedback or notes about this grade"
-              />
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleEditCancel}>Cancel</Button>
-          <Button onClick={handleEditSave} color="primary" variant="contained">
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
+        handleClose={handleDeleteCancel}
+        handleConfirm={handleDeleteConfirm}
+        gradeToDelete={gradeToDelete}
+      />
+      
       {/* Alert Snackbar */}
       <Snackbar
         open={alertState.open}
-        autoHideDuration={5000}
+        autoHideDuration={6000}
         onClose={handleAlertClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert
-          onClose={handleAlertClose}
-          severity={alertState.severity}
+        <Alert 
+          onClose={handleAlertClose} 
+          severity={alertState.severity} 
+          elevation={6} 
           variant="filled"
-          sx={{ width: '100%' }}
         >
           {alertState.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </Container>
   );
 };
 
