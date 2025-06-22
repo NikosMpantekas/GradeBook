@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Grade = require('../models/gradeModel');
 const User = require('../models/userModel');
 const Subject = require('../models/subjectModel');
+const Class = require('../models/classModel');
 const { enforceSchoolFilter } = require('../middleware/schoolIdMiddleware');
 
 // @desc    Create a new grade
@@ -56,6 +57,34 @@ const createGrade = asyncHandler(async (req, res) => {
       throw new Error('Subject not found in this school');
     }
 
+    // Class-based validation: Check if teacher can add grades to this student
+    // Find classes where both teacher and student are present and the subject matches
+    console.log('Checking class-based authorization for teacher:', req.user._id, 'student:', student, 'subject:', subject);
+    
+    const classes = await Class.find({
+      schoolId: req.user.schoolId,
+      teachers: req.user._id,
+      students: student,
+      subject: subjectDoc.name // Use subject name to match class subject
+    });
+    
+    console.log(`Found ${classes.length} classes where teacher and student are both assigned with matching subject`);
+    
+    if (classes.length === 0) {
+      console.log('No shared classes found with matching criteria');
+      res.status(403);
+      throw new Error('You are not authorized to add grades for this student with this subject. The student must be in one of your classes with the matching subject.');
+    }
+    
+    // Log the found classes for debugging
+    console.log('Matching classes:', classes.map(c => ({
+      id: c._id,
+      name: c.name,
+      subject: c.subject,
+      direction: c.direction,
+      schoolBranch: c.schoolBranch
+    })));
+    
     // Convert value to number and ensure it's within valid range (0-100)
     const numericValue = Number(value);
     if (isNaN(numericValue) || numericValue < 0 || numericValue > 100) {
