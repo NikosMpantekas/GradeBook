@@ -11,6 +11,7 @@ import {
   Paper,
   Grid,
   CircularProgress,
+  Chip,
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -18,6 +19,8 @@ import axios from 'axios';
 import SchoolIcon from '@mui/icons-material/School';
 import BookIcon from '@mui/icons-material/Book';
 import GradeIcon from '@mui/icons-material/Grade';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import DirectionsIcon from '@mui/icons-material/Directions';
 
 const CreateGradeSimple = () => {
   const navigate = useNavigate();
@@ -25,8 +28,10 @@ const CreateGradeSimple = () => {
   
   // Form state
   const [formData, setFormData] = useState({
-    student: '',
+    schoolBranch: '',
+    direction: '',
     subject: '',
+    student: '',
     value: '',
     comments: '',
     date: new Date(),
@@ -34,46 +39,55 @@ const CreateGradeSimple = () => {
   
   // Component state
   const [loading, setLoading] = useState(false);
-  const [subjects, setSubjects] = useState([]);
+  const [filterOptions, setFilterOptions] = useState({
+    schoolBranches: [],
+    directions: [],
+    subjects: []
+  });
   const [students, setStudents] = useState([]);
+  const [loadingFilters, setLoadingFilters] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
   
-  // Load subjects when component mounts
+  // Load filter options when component mounts
   useEffect(() => {
     if (user?.token) {
-      loadSubjects();
+      loadFilterOptions();
     }
   }, [user]);
   
-  // Load students when subject changes
+  // Load students when filters change
   useEffect(() => {
-    if (formData.subject && user?.token) {
-      loadStudentsForSubject();
+    if (formData.schoolBranch && formData.direction && formData.subject && user?.token) {
+      loadFilteredStudents();
     } else {
       setStudents([]);
+      setFormData(prev => ({ ...prev, student: '' }));
     }
-  }, [formData.subject, user]);
+  }, [formData.schoolBranch, formData.direction, formData.subject, user]);
   
-  // Load available subjects
-  const loadSubjects = async () => {
+  // Load available filter options (school branches, directions, subjects) for the teacher
+  const loadFilterOptions = async () => {
+    setLoadingFilters(true);
     try {
       const config = {
         headers: { Authorization: `Bearer ${user.token}` }
       };
       
-      const response = await axios.get('/api/subjects', config);
-      setSubjects(Array.isArray(response.data) ? response.data : []);
-      console.log(`[CreateGrade] Loaded ${response.data?.length || 0} subjects`);
+      const response = await axios.get('/api/students/teacher/filters', config);
+      setFilterOptions(response.data);
+      console.log(`[CreateGrade] Loaded filter options:`, response.data);
     } catch (error) {
-      console.error('[CreateGrade] Error loading subjects:', error);
-      toast.error('Failed to load subjects');
-      setSubjects([]);
+      console.error('[CreateGrade] Error loading filter options:', error);
+      toast.error('Failed to load filter options');
+      setFilterOptions({ schoolBranches: [], directions: [], subjects: [] });
+    } finally {
+      setLoadingFilters(false);
     }
   };
   
-  // Load students for selected subject using class-based filtering
-  const loadStudentsForSubject = async () => {
-    if (!formData.subject) return;
+  // Load students based on selected filters using class-based filtering
+  const loadFilteredStudents = async () => {
+    if (!formData.schoolBranch || !formData.direction || !formData.subject) return;
     
     setLoadingStudents(true);
     try {
@@ -81,35 +95,29 @@ const CreateGradeSimple = () => {
         headers: { Authorization: `Bearer ${user.token}` }
       };
       
-      let endpoint;
-      // Use class-based endpoint for teachers, legacy for admins
-      if (user.user?.role === 'teacher') {
-        endpoint = `/api/students/teacher/subject/${formData.subject}`;
-        console.log('[CreateGrade] Using class-based endpoint for teacher');
-      } else {
-        endpoint = `/api/students/subject/${formData.subject}`;
-        console.log('[CreateGrade] Using legacy endpoint for admin');
-      }
+      const params = new URLSearchParams({
+        schoolBranch: formData.schoolBranch,
+        direction: formData.direction,
+        subject: formData.subject
+      });
       
-      const response = await axios.get(endpoint, config);
+      const response = await axios.get(`/api/students/teacher/filtered?${params}`, config);
       const studentData = Array.isArray(response.data) ? response.data : [];
       
       setStudents(studentData);
-      console.log(`[CreateGrade] Loaded ${studentData.length} students for subject`);
+      console.log(`[CreateGrade] Loaded ${studentData.length} students for filters:`, {
+        schoolBranch: formData.schoolBranch,
+        direction: formData.direction,
+        subject: formData.subject
+      });
       
-      // Log class information for teachers
-      if (user.user?.role === 'teacher' && studentData.length > 0 && studentData[0].classes) {
-        console.log('[CreateGrade] Students with class context:', 
-          studentData.slice(0, 3).map(s => ({
-            name: s.name,
-            classes: s.classes?.map(c => c.className)
-          }))
-        );
+      if (studentData.length === 0) {
+        toast.info('No students found for the selected filters');
       }
       
     } catch (error) {
       console.error('[CreateGrade] Error loading students:', error);
-      toast.error('Failed to load students for this subject');
+      toast.error('Failed to load students for the selected filters');
       setStudents([]);
     } finally {
       setLoadingStudents(false);
@@ -124,8 +132,12 @@ const CreateGradeSimple = () => {
       [name]: value
     }));
     
-    // Reset student selection when subject changes
-    if (name === 'subject') {
+    // Reset dependent fields when parent filter changes
+    if (name === 'schoolBranch') {
+      setFormData(prev => ({ ...prev, direction: '', subject: '', student: '' }));
+    } else if (name === 'direction') {
+      setFormData(prev => ({ ...prev, subject: '', student: '' }));
+    } else if (name === 'subject') {
       setFormData(prev => ({ ...prev, student: '' }));
     }
   };
@@ -139,199 +151,286 @@ const CreateGradeSimple = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
-    if (!formData.student || !formData.subject || !formData.value) {
+    if (!formData.student || !formData.value) {
       toast.error('Please fill in all required fields');
-      return;
-    }
-    
-    const gradeValue = parseFloat(formData.value);
-    if (isNaN(gradeValue) || gradeValue < 0 || gradeValue > 100) {
-      toast.error('Grade value must be between 0 and 100');
       return;
     }
     
     setLoading(true);
     
     try {
+      const config = {
+        headers: { 
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        }
+      };
+      
+      // Get the subject ID for the selected subject name
+      // Since we're using subject names in classes, we need to find the subject ID
+      const subjectsResponse = await axios.get('/api/subjects', config);
+      const subjects = subjectsResponse.data;
+      const selectedSubject = subjects.find(s => s.name === formData.subject);
+      
+      if (!selectedSubject) {
+        toast.error('Subject not found');
+        return;
+      }
+      
       const gradeData = {
         student: formData.student,
-        subject: formData.subject,
-        value: gradeValue,
-        comments: formData.comments,
-        date: formData.date,
+        subject: selectedSubject._id, // Use subject ID for grade creation
+        value: Number(formData.value),
+        description: formData.comments,
+        date: formData.date
       };
       
-      const config = {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
-        },
-      };
-      
-      console.log('[CreateGrade] Submitting grade:', {
-        ...gradeData,
-        studentName: students.find(s => s._id === formData.student)?.name
-      });
+      console.log('[CreateGrade] Submitting grade data:', gradeData);
       
       await axios.post('/api/grades', gradeData, config);
       
       toast.success('Grade added successfully!');
-      
-      // Reset form
-      setFormData({
-        student: '',
-        subject: '',
-        value: '',
-        comments: '',
-        date: new Date(),
-      });
-      
-      // Optionally navigate back
-      // navigate('/teacher/grades');
+      navigate('/teacher/grades');
       
     } catch (error) {
-      console.error('[CreateGrade] Error submitting grade:', error);
-      
-      if (error.response?.status === 403) {
-        toast.error('You are not authorized to add grades for this student');
-      } else if (error.response?.status === 400) {
-        toast.error(error.response?.data?.message || 'Invalid grade data');
-      } else {
-        toast.error('Failed to add grade. Please try again.');
-      }
+      console.error('[CreateGrade] Error creating grade:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create grade';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
   
+  // Get available directions based on selected school branch
+  const getAvailableDirections = () => {
+    if (!formData.schoolBranch) return [];
+    return filterOptions.directions.filter(direction => 
+      filterOptions.schoolBranches.some(branch => branch.value === formData.schoolBranch)
+    );
+  };
+  
+  // Get available subjects based on selected direction
+  const getAvailableSubjects = () => {
+    if (!formData.direction) return [];
+    return filterOptions.subjects;
+  };
+
   return (
-    <Paper sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <GradeIcon sx={{ mr: 2, color: 'primary.main' }} />
-        <Typography variant="h5">Add Grade</Typography>
+    <Paper elevation={3} sx={{ p: 4, maxWidth: 800, mx: 'auto', mt: 4 }}>
+      <Box sx={{ mb: 4, textAlign: 'center' }}>
+        <GradeIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+        <Typography variant="h4" component="h1" gutterBottom>
+          Add New Grade
+        </Typography>
+        <Typography variant="body1" color="textSecondary">
+          Use class-based filtering to select students and add grades
+        </Typography>
       </Box>
       
-      <Box component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
-          {/* Subject Selection */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              select
-              fullWidth
-              required
-              label="Subject"
-              name="subject"
-              value={formData.subject}
-              onChange={handleChange}
-              InputProps={{
-                startAdornment: <BookIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-              }}
-            >
-              {subjects.map((subject) => (
-                <MenuItem key={subject._id} value={subject._id}>
-                  {subject.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          
-          {/* Student Selection */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              select
-              fullWidth
-              required
-              disabled={!formData.subject || loadingStudents}
-              label="Student"
-              name="student"
-              value={formData.student}
-              onChange={handleChange}
-              InputProps={{
-                startAdornment: loadingStudents ? 
-                  <CircularProgress size={20} sx={{ mr: 1 }} /> :
-                  <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-              }}
-              helperText={
-                !formData.subject ? 'Select a subject first' :
-                loadingStudents ? 'Loading students...' :
-                students.length === 0 ? 'No students found for this subject' : ''
-              }
-            >
-              {students.map((student) => (
-                <MenuItem key={student._id} value={student._id}>
-                  {student.name}
-                  {student.classes && student.classes.length > 0 && (
-                    <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
-                      ({student.classes[0].className})
-                    </Typography>
+      {loadingFilters ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+          <Typography sx={{ ml: 2 }}>Loading filter options...</Typography>
+        </Box>
+      ) : (
+        <Box component="form" onSubmit={handleSubmit}>
+          <Grid container spacing={3}>
+            {/* Filters Section */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                <FilterListIcon sx={{ mr: 1 }} />
+                Class Filters
+              </Typography>
+            </Grid>
+            
+            {/* School Branch Filter */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                select
+                fullWidth
+                required
+                label="School Branch"
+                name="schoolBranch"
+                value={formData.schoolBranch}
+                onChange={handleChange}
+                InputProps={{
+                  startAdornment: <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                }}
+              >
+                {filterOptions.schoolBranches.map((branch) => (
+                  <MenuItem key={branch.value} value={branch.value}>
+                    {branch.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            
+            {/* Direction Filter */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                select
+                fullWidth
+                required
+                disabled={!formData.schoolBranch}
+                label="Direction"
+                name="direction"
+                value={formData.direction}
+                onChange={handleChange}
+                InputProps={{
+                  startAdornment: <DirectionsIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                }}
+                helperText={!formData.schoolBranch ? 'Select a school branch first' : ''}
+              >
+                {getAvailableDirections().map((direction) => (
+                  <MenuItem key={direction.value} value={direction.value}>
+                    {direction.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            
+            {/* Subject Filter */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                select
+                fullWidth
+                required
+                disabled={!formData.direction}
+                label="Subject"
+                name="subject"
+                value={formData.subject}
+                onChange={handleChange}
+                InputProps={{
+                  startAdornment: <BookIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                }}
+                helperText={!formData.direction ? 'Select a direction first' : ''}
+              >
+                {getAvailableSubjects().map((subject) => (
+                  <MenuItem key={subject.value} value={subject.value}>
+                    {subject.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            
+            {/* Active Filters Display */}
+            {(formData.schoolBranch || formData.direction || formData.subject) && (
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Typography variant="body2" color="textSecondary">Active filters:</Typography>
+                  {formData.schoolBranch && (
+                    <Chip label={`Branch: ${formData.schoolBranch}`} size="small" color="primary" />
                   )}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          
-          {/* Grade Value */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              required
-              type="number"
-              label="Grade (0-100)"
-              name="value"
-              value={formData.value}
-              onChange={handleChange}
-              inputProps={{ min: 0, max: 100, step: 0.1 }}
-            />
-          </Grid>
-          
-          {/* Date */}
-          <Grid item xs={12} md={6}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="Date"
-                value={formData.date}
-                onChange={handleDateChange}
-                renderInput={(params) => <TextField {...params} fullWidth />}
+                  {formData.direction && (
+                    <Chip label={`Direction: ${formData.direction}`} size="small" color="secondary" />
+                  )}
+                  {formData.subject && (
+                    <Chip label={`Subject: ${formData.subject}`} size="small" color="info" />
+                  )}
+                </Box>
+              </Grid>
+            )}
+            
+            {/* Student Selection */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                select
+                fullWidth
+                required
+                disabled={!formData.subject || loadingStudents}
+                label="Student"
+                name="student"
+                value={formData.student}
+                onChange={handleChange}
+                InputProps={{
+                  startAdornment: loadingStudents ? 
+                    <CircularProgress size={20} sx={{ mr: 1 }} /> :
+                    <SchoolIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                }}
+                helperText={
+                  !formData.subject ? 'Select all filters first' :
+                  loadingStudents ? 'Loading students...' :
+                  students.length === 0 ? 'No students found for selected filters' : ''
+                }
+              >
+                {students.map((student) => (
+                  <MenuItem key={student._id} value={student._id}>
+                    {student.name}
+                    {student.classes && student.classes.length > 0 && (
+                      <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
+                        ({student.classes[0].className})
+                      </Typography>
+                    )}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            
+            {/* Grade Value */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                required
+                type="number"
+                label="Grade (0-100)"
+                name="value"
+                value={formData.value}
+                onChange={handleChange}
+                inputProps={{ min: 0, max: 100, step: 0.1 }}
+                InputProps={{
+                  startAdornment: <GradeIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                }}
               />
-            </LocalizationProvider>
+            </Grid>
+            
+            {/* Date */}
+            <Grid item xs={12} md={6}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="Date"
+                  value={formData.date}
+                  onChange={handleDateChange}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                />
+              </LocalizationProvider>
+            </Grid>
+            
+            {/* Comments */}
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                label="Comments (Optional)"
+                name="comments"
+                value={formData.comments}
+                onChange={handleChange}
+              />
+            </Grid>
+            
+            {/* Submit Button */}
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate('/teacher/grades')}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={loading || !formData.student || !formData.value}
+                  sx={{ minWidth: 120 }}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Add Grade'}
+                </Button>
+              </Box>
+            </Grid>
           </Grid>
-          
-          {/* Comments */}
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              label="Comments (Optional)"
-              name="comments"
-              value={formData.comments}
-              onChange={handleChange}
-            />
-          </Grid>
-          
-          {/* Submit Button */}
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-              <Button
-                variant="outlined"
-                onClick={() => navigate('/teacher/grades')}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={loading}
-                sx={{ minWidth: 120 }}
-              >
-                {loading ? <CircularProgress size={24} /> : 'Add Grade'}
-              </Button>
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
+        </Box>
+      )}
     </Paper>
   );
 };

@@ -221,6 +221,7 @@ app.use('/api/contacts', protect, setSchoolContext, addFeatureFlags, require('./
 app.use('/api/patch-notes', protect, setSchoolContext, addFeatureFlags, require('./routes/patchNoteRoutes')); // Patch notes
 app.use('/api/directions', protect, setSchoolContext, addFeatureFlags, require('./routes/directionRoutes')); // Directions API
 app.use('/api/subjects', protect, setSchoolContext, addFeatureFlags, require('./routes/subjectRoutes')); // Subjects API
+app.use('/api/students', protect, setSchoolContext, addFeatureFlags, require('./routes/studentRoutes')); // Students API
 app.use('/api/grades', protect, setSchoolContext, addFeatureFlags, require('./routes/gradeRoutes')); // Grades API
 app.use('/api/classes', protect, setSchoolContext, addFeatureFlags, require('./routes/classRoutes')); // Classes API (new)
 app.use('/api/notifications', protect, setSchoolContext, addFeatureFlags, require('./routes/notificationRoutes')); // Notifications API

@@ -243,10 +243,129 @@ const getStudentsBySubjectForTeacher = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get filter options for teacher based on their classes (school branches, directions, subjects)
+// @route   GET /api/students/teacher/filters
+// @access  Private/Teacher
+const getFilterOptionsForTeacher = asyncHandler(async (req, res) => {
+  console.log('getFilterOptionsForTeacher endpoint called for teacher:', req.user._id);
+  
+  try {
+    // Find all classes where this teacher is assigned
+    const teacherClasses = await Class.find({
+      schoolId: req.user.schoolId,
+      teachers: req.user._id,
+      active: true
+    });
+    
+    console.log(`Found ${teacherClasses.length} classes for teacher ${req.user._id}`);
+    
+    // Extract unique filter options
+    const schoolBranches = new Set();
+    const directions = new Set();
+    const subjects = new Set();
+    
+    teacherClasses.forEach(cls => {
+      if (cls.schoolBranch) schoolBranches.add(cls.schoolBranch);
+      if (cls.direction) directions.add(cls.direction);
+      if (cls.subject) subjects.add(cls.subject);
+    });
+    
+    const filterOptions = {
+      schoolBranches: Array.from(schoolBranches).map(branch => ({ value: branch, label: branch })),
+      directions: Array.from(directions).map(direction => ({ value: direction, label: direction })),
+      subjects: Array.from(subjects).map(subject => ({ value: subject, label: subject }))
+    };
+    
+    console.log('Filter options for teacher:', filterOptions);
+    
+    res.json(filterOptions);
+  } catch (error) {
+    console.error('Error in getFilterOptionsForTeacher:', error.message);
+    res.status(500);
+    throw new Error('Error retrieving filter options for teacher: ' + error.message);
+  }
+});
+
+// @desc    Get students for teacher with multiple filters (school branch, direction, subject)
+// @route   GET /api/students/teacher/filtered
+// @access  Private/Teacher
+const getFilteredStudentsForTeacher = asyncHandler(async (req, res) => {
+  const { schoolBranch, direction, subject } = req.query;
+  console.log(`getFilteredStudentsForTeacher called for teacher: ${req.user._id}`, { schoolBranch, direction, subject });
+  
+  try {
+    // Build the filter for classes
+    const classFilter = {
+      schoolId: req.user.schoolId,
+      teachers: req.user._id,
+      active: true
+    };
+    
+    // Add optional filters
+    if (schoolBranch) classFilter.schoolBranch = schoolBranch;
+    if (direction) classFilter.direction = direction;
+    if (subject) classFilter.subject = subject;
+    
+    console.log('Class filter:', classFilter);
+    
+    // Find classes that match the criteria
+    const teacherClasses = await Class.find(classFilter).populate('students', 'name email');
+    
+    console.log(`Found ${teacherClasses.length} classes matching filter criteria`);
+    
+    // Extract unique students from matching classes
+    const studentIds = new Set();
+    const studentsMap = new Map();
+    
+    teacherClasses.forEach(cls => {
+      console.log(`Processing class: ${cls.name} (${cls.subject}/${cls.direction}/${cls.schoolBranch}) with ${cls.students?.length || 0} students`);
+      
+      if (cls.students && Array.isArray(cls.students)) {
+        cls.students.forEach(student => {
+          if (student && student._id) {
+            const studentId = student._id.toString();
+            if (!studentIds.has(studentId)) {
+              studentIds.add(studentId);
+              studentsMap.set(studentId, {
+                _id: student._id,
+                name: student.name,
+                email: student.email,
+                // Add class context information
+                classes: []
+              });
+            }
+            // Add class information to student record
+            studentsMap.get(studentId).classes.push({
+              classId: cls._id,
+              className: cls.name,
+              subject: cls.subject,
+              direction: cls.direction,
+              schoolBranch: cls.schoolBranch
+            });
+          }
+        });
+      }
+    });
+    
+    // Convert to array
+    const students = Array.from(studentsMap.values());
+    
+    console.log(`Found ${students.length} unique students for teacher ${req.user._id} with filters`);
+    
+    res.json(students);
+  } catch (error) {
+    console.error('Error in getFilteredStudentsForTeacher:', error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Error retrieving filtered students for teacher');
+  }
+});
+
 module.exports = {
   getStudents,
   getStudentsBySubject,
   getStudentsByDirection,
   getStudentsForTeacher,
-  getStudentsBySubjectForTeacher
+  getStudentsBySubjectForTeacher,
+  getFilterOptionsForTeacher,
+  getFilteredStudentsForTeacher
 };

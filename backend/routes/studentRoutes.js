@@ -5,7 +5,9 @@ const {
   getStudentsBySubject,
   getStudentsByDirection,
   getStudentsForTeacher,
-  getStudentsBySubjectForTeacher
+  getStudentsBySubjectForTeacher,
+  getFilterOptionsForTeacher,
+  getFilteredStudentsForTeacher
 } = require('../controllers/studentController');
 const { protect, admin, teacher, canManageStudents } = require('../middleware/authMiddleware');
 
@@ -14,6 +16,8 @@ router.get('/', protect, canManageStudents, getStudents);
 
 // NEW CLASS-BASED ROUTES - Teachers get students from their assigned classes
 router.get('/teacher/classes', protect, teacher, getStudentsForTeacher);
+router.get('/teacher/filters', protect, teacher, getFilterOptionsForTeacher);
+router.get('/teacher/filtered', protect, teacher, getFilteredStudentsForTeacher);
 router.get('/teacher/subject/:id', protect, teacher, getStudentsBySubjectForTeacher);
 
 // LEGACY ROUTES - Keep for backward compatibility during migration
