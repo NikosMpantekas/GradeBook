@@ -3,7 +3,7 @@
  */
 
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
-export const APP_VERSION = '1.6.0.88';
+export const APP_VERSION = '1.6.0.89';
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -121,8 +121,6 @@ export {
 
 // Export other configuration settings
 export const APP_CONFIG = {
-  name: APP_NAME,
-  description: APP_DESCRIPTION,
   version: APP_VERSION,
   releaseDate: new Date('2025-06-17'), // Updated to today's date
   requireForceUpdate: true, // iOS devices will require updating
