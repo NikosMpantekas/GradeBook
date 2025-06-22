@@ -57,6 +57,9 @@ const Schedule = () => {
   });
   const [loadingFilters, setLoadingFilters] = useState(false);
   
+  // Store branch names for display (mapping branch IDs to names)
+  const [branchNames, setBranchNames] = useState({});
+  
   const { user, token } = useSelector((state) => state.auth);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -74,6 +77,31 @@ const Schedule = () => {
     fetchScheduleData();
   }, []);
 
+  // Fetch branch names for display from their IDs
+  const fetchBranchNames = async (branchIds) => {
+    if (!branchIds || branchIds.length === 0) return;
+    
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+      
+      const response = await axios.post('/api/branches/batch', { branchIds }, config);
+      
+      if (response.data && Array.isArray(response.data)) {
+        const branchNameMap = {};
+        response.data.forEach(branch => {
+          branchNameMap[branch._id] = branch.name;
+        });
+        
+        setBranchNames(branchNameMap);
+        console.log('Branch names loaded:', branchNameMap);
+      }
+    } catch (error) {
+      console.error('Error fetching branch names:', error);
+    }
+  };
+  
   // Load filter options for admins and teachers
   const loadFilterOptions = async () => {
     setLoadingFilters(true);
@@ -95,10 +123,17 @@ const Schedule = () => {
         }));
       }
       
+      const branches = schoolBranches || [];
       setFilterOptions({
-        schoolBranches: schoolBranches || [],
+        schoolBranches: branches,
         teachers: teacherOptions
       });
+      
+      // Fetch branch names for display if we have branch IDs
+      if (branches.length > 0) {
+        const branchIds = branches.map(branch => branch.value);
+        fetchBranchNames(branchIds);
+      }
     } catch (error) {
       console.error('Error loading filter options:', error);
     } finally {
@@ -272,7 +307,8 @@ const Schedule = () => {
                     </MenuItem>
                     {filterOptions.schoolBranches.map((branch) => (
                       <MenuItem key={branch.value} value={branch.value}>
-                        {branch.label}
+                        {/* Display branch name from mapping if available, otherwise use label */}
+                        {branchNames[branch.value] || branch.label}
                       </MenuItem>
                     ))}
                   </Select>
@@ -447,7 +483,7 @@ const Schedule = () => {
                   </Typography>
                   <Typography variant="body1" gutterBottom>
                     <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    School Branch: {selectedEvent.schoolBranch}
+                    School Branch: {branchNames[selectedEvent.schoolBranch] || selectedEvent.schoolBranch}
                   </Typography>
                   <Typography variant="body1" gutterBottom>
                     Direction: {selectedEvent.direction}
