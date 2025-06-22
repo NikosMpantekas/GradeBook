@@ -612,12 +612,31 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     }
 
     // Use admin's school if no school is provided in request
-    const targetSchool = school || req.user.schoolId;
+    // Add validation to ensure targetSchool is a valid ObjectId
+    let targetSchool;
     
-    if (!targetSchool) {
+    // Detailed logging for debugging
+    console.log('School from request:', school);
+    console.log('Admin schoolId:', req.user.schoolId);
+    
+    // First try to get a valid school from the request
+    if (school && mongoose.Types.ObjectId.isValid(school)) {
+      targetSchool = school;
+      console.log('Using school from request as targetSchool');
+    } 
+    // Otherwise use admin's school if it's valid
+    else if (req.user.schoolId && mongoose.Types.ObjectId.isValid(req.user.schoolId)) {
+      targetSchool = req.user.schoolId;
+      console.log('Using admin schoolId as targetSchool');
+    } 
+    // Fallback to error if we don't have a valid school
+    else {
+      console.log('No valid school ID found in request or admin context');
       res.status(400);
-      throw new Error('School is required. Please provide a school or ensure admin has school context.');
+      throw new Error('School is required. Please provide a valid school ID or ensure admin has valid school context.');
     }
+    
+    console.log('Final targetSchool:', targetSchool);
 
     // Check if user exists
     const userExists = await User.findOne({ 
@@ -655,49 +674,84 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
         userData.class = req.body.class;
       }
     } else if (role === 'teacher') {
-      // Always use the targetSchool (admin's school) as a fallback
-      // This ensures schoolId is always a valid ObjectId
+      // ALWAYS assign the validated targetSchool as the schoolId
+      // This ensures schoolId is always a valid ObjectId which is required
       userData.schoolId = targetSchool;
       
-      // For debugging purposes
-      console.log('Target school value:', targetSchool);
-      console.log('Request schools value:', req.body.schools);
+      // For detailed logging to track the issue
+      console.log('Creating teacher user with targetSchool:', targetSchool);
+      console.log('targetSchool type:', typeof targetSchool);
+      console.log('targetSchool valid ObjectId:', mongoose.Types.ObjectId.isValid(targetSchool));
       
-      // Initialize schools with admin's school as a safe default
+      // ALWAYS initialize schools array with the validated targetSchool
+      // This ensures we always have at least one valid school
       userData.schools = [targetSchool];
       
-      // Only add schools from the request if they exist and are valid
-      if (req.body.schools && Array.isArray(req.body.schools) && req.body.schools.length > 0) {
-        try {
-          // Only add valid school IDs, ignore any invalid ones
-          const validSchools = req.body.schools.filter(school => {
-            // Skip any null, undefined, empty strings or arrays
-            if (!school || (Array.isArray(school) && school.length === 0)) {
-              return false;
-            }
-            // Try to validate as ObjectId if it's a string
-            if (typeof school === 'string' && mongoose.Types.ObjectId.isValid(school)) {
-              return true;
-            }
-            return false;
-          });
+      // Log request schools for debugging
+      if (req.body.schools) {
+        console.log('Request schools value:', JSON.stringify(req.body.schools));
+        console.log('req.body.schools type:', typeof req.body.schools);
+        console.log('Is array:', Array.isArray(req.body.schools));
+      }
+      
+      // Handle schools from request - with extra validation and error handling
+      try {
+        if (req.body.schools && Array.isArray(req.body.schools)) {
+          // CRITICAL: Create a fresh array with only valid ObjectId schools
+          const validSchools = [];
           
-          // Only replace the default if we have valid schools
+          // Check each item carefully
+          for (const school of req.body.schools) {
+            // Skip empty or invalid values
+            if (!school) {
+              console.log('Skipping empty school value');
+              continue;
+            }
+            
+            // Handle string values
+            if (typeof school === 'string' && mongoose.Types.ObjectId.isValid(school)) {
+              console.log(`Adding valid school ID: ${school}`);
+              validSchools.push(school);
+            } else {
+              console.log(`Skipping invalid school value: ${school}`, typeof school);
+            }
+          }
+          
+          // Only use the collected schools if we found valid ones
           if (validSchools.length > 0) {
+            console.log(`Found ${validSchools.length} valid schools in request`);
             userData.schools = validSchools;
+          } else {
+            console.log('No valid schools in request, using admin school as fallback');
+          }
+        } else {
+          console.log('No schools array in request, using admin school as fallback');
+        }
+      } catch (error) {
+        console.error('Error processing schools array:', error);
+        // Keep using the default admin's school on error
+      }
+      
+      // Optional: Set classes if provided with validation
+      if (req.body.classes) {
+        try {
+          if (Array.isArray(req.body.classes)) {
+            const validClasses = req.body.classes.filter(cls => 
+              cls && typeof cls === 'string' && mongoose.Types.ObjectId.isValid(cls)
+            );
+            
+            if (validClasses.length > 0) {
+              userData.classes = validClasses;
+              console.log(`Added ${validClasses.length} valid classes to teacher`);
+            }
           }
         } catch (error) {
-          console.error('Error processing schools array:', error);
-          // Keep the default admin's school on error
+          console.error('Error processing classes array:', error);
         }
       }
       
-      console.log(`Teacher user: Using schoolId=${userData.schoolId} and schools=`, userData.schools);
-      
-      // Optional: Set classes if provided
-      if (Array.isArray(req.body.classes) && req.body.classes.length > 0) {
-        userData.classes = req.body.classes;
-      }
+      // Final log of what will be used
+      console.log(`Teacher user final data: schoolId=${userData.schoolId}, schools=`, JSON.stringify(userData.schools));
     } else if (role === 'secretary') {
       // Always use the targetSchool (admin's school) as the base schoolId
       // This ensures schoolId is always a valid ObjectId
