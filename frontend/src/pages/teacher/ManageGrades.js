@@ -129,6 +129,7 @@ const ManageGrades = () => {
     if (filters.direction) {
       const beforeCount = filtered.length;
       filtered = filtered.filter(grade => {
+        // Check class-based direction field in grade data
         const hasMatchingDirection = grade.class?.direction === filters.direction ||
                                      grade.direction === filters.direction;
         return hasMatchingDirection;
@@ -139,8 +140,10 @@ const ManageGrades = () => {
     if (filters.subject) {
       const beforeCount = filtered.length;
       filtered = filtered.filter(grade => {
-        const hasMatchingSubject = grade.subject === filters.subject ||
-                                   grade.class?.subject === filters.subject;
+        // Check subject match - grade.subject should have _id and name
+        const hasMatchingSubject = grade.subject?._id === filters.subject ||
+                                   grade.subject?.name === filters.subject ||
+                                   grade.subject === filters.subject;
         return hasMatchingSubject;
       });
       console.log(`[ManageGrades] After subject filter (${filters.subject}): ${beforeCount} -> ${filtered.length}`);
@@ -282,7 +285,7 @@ const ManageGrades = () => {
             {filters.schoolBranch && (
               <Chip
                 icon={<SchoolIcon />}
-                label={`Branch: ${filterOptions.schoolBranches?.find(branch => branch.value === filters.schoolBranch)?.label || filters.schoolBranch}`}
+                label={`Branch: ${filterOptions.schoolBranches?.find(branch => branch.value === filters.schoolBranch)?.label || 'Unknown'}`}
                 onDelete={() => handleFilterChange('schoolBranch', '')}
                 color="primary"
                 variant="outlined"
@@ -291,7 +294,7 @@ const ManageGrades = () => {
             {filters.direction && (
               <Chip
                 icon={<DirectionsIcon />}
-                label={`Direction: ${filterOptions.directions?.find(dir => dir.value === filters.direction)?.label || filters.direction}`}
+                label={`Direction: ${filterOptions.directions?.find(dir => dir.value === filters.direction)?.label || 'Unknown'}`}
                 onDelete={() => handleFilterChange('direction', '')}
                 color="secondary"
                 variant="outlined"
@@ -300,7 +303,7 @@ const ManageGrades = () => {
             {filters.subject && (
               <Chip
                 icon={<BookIcon />}
-                label={`Subject: ${filterOptions.subjects?.find(subj => subj.value === filters.subject)?.label || filters.subject}`}
+                label={`Subject: ${filterOptions.subjects?.find(subj => subj.value === filters.subject)?.label || 'Unknown'}`}
                 onDelete={() => handleFilterChange('subject', '')}
                 color="info"
                 variant="outlined"

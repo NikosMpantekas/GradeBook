@@ -80,9 +80,9 @@ const useGradeData = (user) => {
             console.log('[useGradeData] Admin user - fetching ALL grades');
             dispatch(getAllGrades());
           } else {
-            // For teachers, fetch only their assigned grades
-            console.log('[useGradeData] Teacher user - fetching teacher grades');
-            dispatch(getGradesByTeacher());
+            // For teachers, fetch only their assigned grades - FIXED: Pass teacher ID
+            console.log('[useGradeData] Teacher user - fetching teacher grades for ID:', user._id);
+            dispatch(getGradesByTeacher(user._id));
           }
           
           // Fetch subjects using the class-based system
