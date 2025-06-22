@@ -120,14 +120,25 @@ const Schedule = () => {
       // For admins, also fetch teachers
       let teacherOptions = [];
       if (user?.role === 'admin') {
-        console.log('Loading teacher options for admin');
-        const teachersResponse = await axios.get('/api/users/teachers', config);
-        console.log('Teachers API response:', teachersResponse.data);
-        
-        teacherOptions = teachersResponse.data.map(teacher => ({
-          value: teacher._id,
-          label: teacher.name
-        }));
+        try {
+          console.log('Loading teacher options for admin');
+          
+          // WORKAROUND: Use regular users endpoint and filter for teachers
+          // Since /api/users/teachers endpoint is broken in backend
+          const teachersResponse = await axios.get('/api/users', config);
+          console.log('Users API response found:', teachersResponse.data?.length || 0, 'users');
+          
+          // Extract only teachers from the response
+          const teachers = teachersResponse.data?.filter(user => user.role === 'teacher') || [];
+          console.log('Filtered', teachers.length, 'teachers from users list');
+          
+          teacherOptions = teachers.map(teacher => ({
+            value: teacher._id,
+            label: teacher.name
+          }));
+        } catch (error) {
+          console.error('Error fetching teachers:', error);
+        }
       }
       
       const branches = schoolBranches || [];
