@@ -648,33 +648,44 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     // Set school differently based on role
     if (role === 'student') {
       // Students have a single school
-      userData.school = targetSchool;
       userData.schoolId = targetSchool;
-      userData.direction = direction;
-      userData.subjects = subjects || [];
+      
+      // Optional: Set class if provided
+      if (req.body.class) {
+        userData.class = req.body.class;
+      }
     } else if (role === 'teacher') {
-      // Teachers can have multiple schools and directions
-      userData.schools = Array.isArray(req.body.schools) ? req.body.schools : [targetSchool];
-      userData.school = userData.schools[0]; // Set the first school as the primary for compatibility
-      userData.schoolId = userData.schools[0];
+      // Teachers can have multiple schools
+      const schoolsInput = Array.isArray(req.body.schools) && req.body.schools.length > 0 ? req.body.schools : [targetSchool];
+      userData.schools = schoolsInput;
       
-      // FIX: Don't assign array to direction field, only use directions array field
-      userData.directions = Array.isArray(req.body.directions) ? req.body.directions : (direction ? [direction] : []);
-      // DO NOT set userData.direction for teachers - it expects a single ObjectId, not an array
+      // Always set schoolId from the first school in the list or the admin's school
+      userData.schoolId = schoolsInput[0];
       
-      userData.subjects = subjects || [];
+      console.log(`Teacher user: Setting schoolId=${userData.schoolId}, schools=`, userData.schools);
+      
+      // Optional: Set classes if provided
+      if (Array.isArray(req.body.classes) && req.body.classes.length > 0) {
+        userData.classes = req.body.classes;
+      }
     } else if (role === 'secretary') {
-      // Secretaries are linked to schools but not to directions
-      userData.schools = Array.isArray(req.body.schools) ? req.body.schools : [targetSchool];
-      userData.school = userData.schools[0]; // Set the first school as the primary for compatibility
-      userData.schoolId = userData.schools[0];
+      // Secretaries are linked to schools
+      const schoolsInput = Array.isArray(req.body.schools) && req.body.schools.length > 0 ? req.body.schools : [targetSchool];
+      userData.schools = schoolsInput;
+      userData.schoolId = schoolsInput[0];
       
-      // FIX: Secretaries should not have directions assigned
-      userData.subjects = subjects || [];
+      // Set secretary permissions if provided
+      if (req.body.secretaryPermissions) {
+        userData.secretaryPermissions = req.body.secretaryPermissions;
+      }
     } else if (role === 'admin') {
-      // Admins are tied to a school but don't have directions or subjects
-      userData.school = targetSchool;
+      // Admins are tied to a school
       userData.schoolId = targetSchool;
+      
+      // Set admin permissions if provided
+      if (req.body.adminPermissions) {
+        userData.adminPermissions = req.body.adminPermissions;
+      }
     }
 
     console.log('Creating user with data:', { ...userData, password: '[HIDDEN]' });
@@ -688,9 +699,7 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        school: user.school,
-        direction: user.direction,
-        subjects: user.subjects,
+        schoolId: user.schoolId,
         message: 'User created successfully'
       });
     } else {
