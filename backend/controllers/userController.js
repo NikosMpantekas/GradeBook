@@ -655,24 +655,76 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
         userData.class = req.body.class;
       }
     } else if (role === 'teacher') {
-      // Teachers can have multiple schools
-      const schoolsInput = Array.isArray(req.body.schools) && req.body.schools.length > 0 ? req.body.schools : [targetSchool];
-      userData.schools = schoolsInput;
+      // Always use the targetSchool (admin's school) as a fallback
+      // This ensures schoolId is always a valid ObjectId
+      userData.schoolId = targetSchool;
       
-      // Always set schoolId from the first school in the list or the admin's school
-      userData.schoolId = schoolsInput[0];
+      // For debugging purposes
+      console.log('Target school value:', targetSchool);
+      console.log('Request schools value:', req.body.schools);
       
-      console.log(`Teacher user: Setting schoolId=${userData.schoolId}, schools=`, userData.schools);
+      // Initialize schools with admin's school as a safe default
+      userData.schools = [targetSchool];
+      
+      // Only add schools from the request if they exist and are valid
+      if (req.body.schools && Array.isArray(req.body.schools) && req.body.schools.length > 0) {
+        try {
+          // Only add valid school IDs, ignore any invalid ones
+          const validSchools = req.body.schools.filter(school => {
+            // Skip any null, undefined, empty strings or arrays
+            if (!school || (Array.isArray(school) && school.length === 0)) {
+              return false;
+            }
+            // Try to validate as ObjectId if it's a string
+            if (typeof school === 'string' && mongoose.Types.ObjectId.isValid(school)) {
+              return true;
+            }
+            return false;
+          });
+          
+          // Only replace the default if we have valid schools
+          if (validSchools.length > 0) {
+            userData.schools = validSchools;
+          }
+        } catch (error) {
+          console.error('Error processing schools array:', error);
+          // Keep the default admin's school on error
+        }
+      }
+      
+      console.log(`Teacher user: Using schoolId=${userData.schoolId} and schools=`, userData.schools);
       
       // Optional: Set classes if provided
       if (Array.isArray(req.body.classes) && req.body.classes.length > 0) {
         userData.classes = req.body.classes;
       }
     } else if (role === 'secretary') {
-      // Secretaries are linked to schools
-      const schoolsInput = Array.isArray(req.body.schools) && req.body.schools.length > 0 ? req.body.schools : [targetSchool];
-      userData.schools = schoolsInput;
-      userData.schoolId = schoolsInput[0];
+      // Always use the targetSchool (admin's school) as the base schoolId
+      // This ensures schoolId is always a valid ObjectId
+      userData.schoolId = targetSchool;
+      
+      // Initialize schools with admin's school as a safe default
+      userData.schools = [targetSchool];
+      
+      // Only add schools from the request if they exist and are valid
+      if (req.body.schools && Array.isArray(req.body.schools) && req.body.schools.length > 0) {
+        try {
+          // Only add valid school IDs, ignore any invalid ones
+          const validSchools = req.body.schools.filter(school => 
+            school && typeof school === 'string' && mongoose.Types.ObjectId.isValid(school)
+          );
+          
+          // Only replace the default if we have valid schools
+          if (validSchools.length > 0) {
+            userData.schools = validSchools;
+          }
+        } catch (error) {
+          console.error('Error processing secretary schools array:', error);
+          // Keep the default admin's school on error
+        }
+      }
+      
+      console.log(`Secretary user: Using schoolId=${userData.schoolId} and schools=`, userData.schools);
       
       // Set secretary permissions if provided
       if (req.body.secretaryPermissions) {
