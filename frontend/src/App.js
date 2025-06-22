@@ -38,6 +38,7 @@ import UserContactMessages from './pages/UserContactMessages';
 import ContactMessages from './pages/ContactMessages';
 import Calendar from './pages/Calendar';
 import Schedule from './pages/common/Schedule';
+import StudentStats from './pages/common/StudentStats';
 
 // Student Pages
 import StudentGrades from './pages/student/StudentGrades';
@@ -396,6 +397,11 @@ function App() {
                 <CreateNotification />
               </TeacherRoute>
             } />
+            <Route path="/app/teacher/student-stats" element={
+              <TeacherRoute>
+                <StudentStats />
+              </TeacherRoute>
+            } />
             
             {/* Admin Routes */}
             {/* Admin Dashboard - add both /app/admin and /app/admin/dashboard routes */}
@@ -422,6 +428,11 @@ function App() {
             <Route path="/app/admin/progress/:studentId" element={
               <AdminRoute>
                 <StudentProgress />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/student-stats" element={
+              <AdminRoute>
+                <StudentStats />
               </AdminRoute>
             } />
             <Route path="/app/admin/users/create" element={

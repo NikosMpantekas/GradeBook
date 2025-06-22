@@ -125,59 +125,26 @@ const ManageGrades = () => {
       console.log('[ManageGrades] Sample grade structure:', grades[0]);
     }
     
-    // Start with all grades - show everything by default
-    let filtered = [...grades];
-    console.log('[ManageGrades] Starting with all grades:', filtered.length);
+    // Use the existing filterGrades utility function instead of custom logic
+    // This function already handles both string and object forms properly
+    const filtered = filterGrades(grades, filters.subject, filters.student);
     
-    // Apply filtering based on actual DB structure
-    // Grades have direct fields: schoolId, subject, student, teacher (not nested in class object)
+    // Additional filtering for school branch (not handled by filterGrades utility)
+    let finalFiltered = filtered;
     
     if (filters.schoolBranch) {
-      const beforeCount = filtered.length;
-      filtered = filtered.filter(grade => {
+      const beforeCount = finalFiltered.length;
+      finalFiltered = finalFiltered.filter(grade => {
         // Check direct schoolId field (matches DB structure)
         const hasMatchingBranch = grade.schoolId === filters.schoolBranch;
         console.log(`[ManageGrades] Grade ${grade._id}: schoolId=${grade.schoolId}, filter=${filters.schoolBranch}, match=${hasMatchingBranch}`);
         return hasMatchingBranch;
       });
-      console.log(`[ManageGrades] After schoolBranch filter (${filters.schoolBranch}): ${beforeCount} -> ${filtered.length}`);
+      console.log(`[ManageGrades] After schoolBranch filter (${filters.schoolBranch}): ${beforeCount} -> ${finalFiltered.length}`);
     }
     
-    if (filters.direction) {
-      const beforeCount = filtered.length;
-      filtered = filtered.filter(grade => {
-        // Check if grade has direction field or if we need to derive it from subject/class data
-        // For now, skip direction filtering until we understand how direction relates to grades
-        console.log(`[ManageGrades] Direction filtering not yet implemented for grade structure`);
-        return true; // Temporarily bypass direction filter
-      });
-      console.log(`[ManageGrades] After direction filter (${filters.direction}): ${beforeCount} -> ${filtered.length}`);
-    }
-    
-    if (filters.subject) {
-      const beforeCount = filtered.length;
-      filtered = filtered.filter(grade => {
-        // Check subject match - grade.subject is an ObjectId in DB
-        const hasMatchingSubject = grade.subject === filters.subject;
-        console.log(`[ManageGrades] Grade ${grade._id}: subject=${grade.subject}, filter=${filters.subject}, match=${hasMatchingSubject}`);
-        return hasMatchingSubject;
-      });
-      console.log(`[ManageGrades] After subject filter (${filters.subject}): ${beforeCount} -> ${filtered.length}`);
-    }
-    
-    if (filters.student) {
-      const beforeCount = filtered.length;
-      filtered = filtered.filter(grade => {
-        // Check student match - grade.student is an ObjectId in DB
-        const hasMatchingStudent = grade.student === filters.student;
-        console.log(`[ManageGrades] Grade ${grade._id}: student=${grade.student}, filter=${filters.student}, match=${hasMatchingStudent}`);
-        return hasMatchingStudent;
-      });
-      console.log(`[ManageGrades] After student filter (${filters.student}): ${beforeCount} -> ${filtered.length}`);
-    }
-    
-    console.log(`[ManageGrades] Final filtered grades count: ${filtered.length}`);
-    setFilteredGrades(filtered);
+    console.log(`[ManageGrades] Final filtered grades count: ${finalFiltered.length}`);
+    setFilteredGrades(finalFiltered);
     
     // Reset to first page when filters change
     setPage(0);

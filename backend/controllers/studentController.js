@@ -291,17 +291,43 @@ const getFilterOptionsForTeacher = asyncHandler(async (req, res) => {
     // Get school data to map branch IDs to names
     const schoolBranches = [];
     
-    // Based on debugging, the schoolBranch field might be storing the name directly,
-    // not an ID that needs to be looked up
+    // Look up actual branch names from the branches collection
     console.log('School branch value type analysis:');
-    Array.from(schoolBranchIds).forEach(branch => {
+    const branchIds = Array.from(schoolBranchIds);
+    branchIds.forEach(branch => {
       console.log(`Branch: ${branch}, Type: ${typeof branch}, IsObjectId: ${mongoose.Types.ObjectId.isValid(branch)}`);
     });
     
-    // Simply use the values directly as both value and label since they're already names
-    Array.from(schoolBranchIds).forEach(branch => {
-      schoolBranches.push({ value: branch, label: branch });
-    });
+    try {
+      // Fetch actual branch documents to get names
+      const Branch = require('../models/Branch');
+      const branchDocs = await Branch.find({
+        _id: { $in: branchIds.filter(id => mongoose.Types.ObjectId.isValid(id)) }
+      }).select('_id name');
+      
+      console.log('Found branch documents:', branchDocs.map(b => ({ id: b._id, name: b.name })));
+      
+      // Create mapping of branch IDs to names
+      const branchNameMap = {};
+      branchDocs.forEach(branch => {
+        branchNameMap[branch._id.toString()] = branch.name;
+      });
+      
+      // Create filter options with proper names as labels
+      branchIds.forEach(branchId => {
+        const branchName = branchNameMap[branchId.toString()] || `Branch ${branchId}`;
+        schoolBranches.push({ 
+          value: branchId, 
+          label: branchName 
+        });
+      });
+    } catch (branchError) {
+      console.error('Error fetching branch names:', branchError);
+      // Fallback: use IDs as labels if branch lookup fails
+      branchIds.forEach(branch => {
+        schoolBranches.push({ value: branch, label: branch });
+      });
+    }
     
     // Log the final school branches array
     console.log('Final school branches options:', schoolBranches);

@@ -32,6 +32,7 @@ import {
   Star as RatingIcon,
   RateReview as RateReviewIcon,
   Class as ClassIcon,
+  Analytics as AnalyticsIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { useFeatureToggles } from '../../context/FeatureToggleContext';
@@ -149,6 +150,15 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'teacher',
       },
       
+      // 5.5. Student Statistics (Teacher View)
+      {
+        text: 'Student Statistics',
+        icon: <AnalyticsIcon />,
+        path: '/app/teacher/student-stats',
+        roles: ['teacher', 'admin'],
+        section: 'teacher',
+      },
+      
       // 6. Notifications (My Notifications)
       {
         text: 'My Notifications',
@@ -205,6 +215,15 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin', 'secretary'],
         // Always allow admins to access, for secretary require school management permission
         checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSchools === true),
+        section: 'admin',
+      },
+      
+      // 11.5. Student Statistics (Admin View)
+      {
+        text: 'Student Statistics',
+        icon: <AnalyticsIcon />,
+        path: '/app/admin/student-stats',
+        roles: ['admin'],
         section: 'admin',
       },
       

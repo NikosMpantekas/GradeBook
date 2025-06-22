@@ -63,6 +63,9 @@ const Schedule = () => {
   // Store subject colors for consistent coloring
   const [subjectColors, setSubjectColors] = useState({});
   
+  // Track which events have been rendered to avoid duplicates
+  const [renderedEvents, setRenderedEvents] = useState(new Set());
+  
   const { user, token } = useSelector((state) => state.auth);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -392,16 +395,41 @@ const Schedule = () => {
     
     return scheduleData[day].filter(event => {
       const eventStartHour = parseInt(event.startTime.split(':')[0]);
+      const eventStartMin = parseInt(event.startTime.split(':')[1]);
       const slotHour = parseInt(timeSlot.split(':')[0]);
+      const slotMin = parseInt(timeSlot.split(':')[1]);
       const eventEndHour = parseInt(event.endTime.split(':')[0]);
+      const eventEndMin = parseInt(event.endTime.split(':')[1]);
       
-      return eventStartHour <= slotHour && slotHour < eventEndHour;
+      // Convert to minutes for precise comparison
+      const eventStartMinutes = eventStartHour * 60 + eventStartMin;
+      const eventEndMinutes = eventEndHour * 60 + eventEndMin;
+      const slotMinutes = slotHour * 60 + slotMin;
+      
+      // Event should appear only in its start time slot
+      return eventStartMinutes <= slotMinutes && slotMinutes < eventEndMinutes && 
+             eventStartHour === slotHour;
     });
+  };
+
+  // Calculate how many time slots an event spans
+  const calculateEventHeight = (event) => {
+    const startHour = parseInt(event.startTime.split(':')[0]);
+    const endHour = parseInt(event.endTime.split(':')[0]);
+    const startMin = parseInt(event.startTime.split(':')[1]);
+    const endMin = parseInt(event.endTime.split(':')[1]);
+    
+    // Calculate total duration in hours
+    const durationHours = (endHour * 60 + endMin - startHour * 60 - startMin) / 60;
+    
+    // Each time slot is 1 hour, so return the number of slots this event should span
+    return Math.ceil(durationHours);
   };
 
   // Render event in calendar
   const renderEvent = (event, isCompact = false) => {
     const duration = calculateDuration(event.startTime, event.endTime);
+    const eventHeight = calculateEventHeight(event);
     
     // Get branch name if available from our mapping
     const branchName = event.schoolBranch ? 
@@ -412,6 +440,11 @@ const Schedule = () => {
     const teacherDisplay = event.teacherNames?.length > 0 ? 
       ` • ${event.teacherNames[0]}${event.teacherNames.length > 1 ? ` +${event.teacherNames.length - 1}` : ''}` : 
       '';
+    
+    // Get subject color and ensure good contrast
+    const subjectColor = getSubjectColor(event.subject);
+    const isLightColor = ['#f9a825', '#ffc107', '#ffeb3b'].includes(subjectColor);
+    const textColor = isLightColor ? 'rgba(0, 0, 0, 0.87)' : 'white';
       
     return (
       <Card
@@ -419,25 +452,67 @@ const Schedule = () => {
         sx={{
           mb: 0.5,
           cursor: 'pointer',
-          bgcolor: getSubjectColor(event.subject),
-          color: 'primary.contrastText',
+          bgcolor: subjectColor,
+          color: textColor,
           p: isCompact ? 0.5 : 1,
-          '&:hover': { boxShadow: 3 },
-          overflow: 'hidden'
+          height: eventHeight > 1 ? `${eventHeight * 60 - 8}px` : 'auto', // Span multiple slots if needed
+          minHeight: eventHeight > 1 ? `${eventHeight * 60 - 8}px` : '40px',
+          position: 'relative',
+          zIndex: 2,
+          '&:hover': { 
+            boxShadow: 3,
+            transform: 'scale(1.02)',
+            transition: 'all 0.2s ease-in-out'
+          },
+          overflow: 'hidden',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}
         onClick={() => handleEventClick(event)}
       >
-        <CardContent sx={{ p: isCompact ? '4px !important' : '8px !important' }}>
-          <Typography variant={isCompact ? 'caption' : 'subtitle2'} noWrap fontWeight="bold">
+        <CardContent sx={{ 
+          p: isCompact ? '4px !important' : '8px !important',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
+        }}>
+          <Typography 
+            variant={isCompact ? 'caption' : 'subtitle2'} 
+            noWrap 
+            fontWeight="bold"
+            sx={{ 
+              color: textColor,
+              textShadow: isLightColor ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
+            }}
+          >
             {event.subject} 
           </Typography>
           {!isCompact && (
             <>
-              <Typography variant="caption" noWrap display="block">
+              <Typography 
+                variant="caption" 
+                noWrap 
+                display="block"
+                sx={{ 
+                  color: textColor,
+                  opacity: 0.9,
+                  textShadow: isLightColor ? 'none' : '0 1px 1px rgba(0,0,0,0.3)'
+                }}
+              >
                 {formatTime(event.startTime)} - {formatTime(event.endTime)}
                 {teacherDisplay}
               </Typography>
-              <Typography variant="caption" noWrap display="block" sx={{ opacity: 0.8 }}>
+              <Typography 
+                variant="caption" 
+                noWrap 
+                display="block" 
+                sx={{ 
+                  opacity: 0.8,
+                  color: textColor,
+                  textShadow: isLightColor ? 'none' : '0 1px 1px rgba(0,0,0,0.3)'
+                }}
+              >
                 {branchName}
               </Typography>
             </>
@@ -686,7 +761,11 @@ const Schedule = () => {
                           overflow: 'hidden'
                         }}
                       >
-                        {mergedEvents.map((event) => renderEvent(event, true))}
+                        {mergedEvents.map((event) => {
+                          if (renderedEvents.has(event._id)) return null;
+                          setRenderedEvents(prev => new Set([...prev, event._id]));
+                          return renderEvent(event, true);
+                        })}
                       </Box>
                     );
                   })}
