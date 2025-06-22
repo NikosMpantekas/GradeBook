@@ -379,7 +379,13 @@ const updateGrade = asyncHandler(async (req, res) => {
     }
     
     // Update the grade fields if provided
-    if (value !== undefined) grade.value = value;
+    // Handle null, empty string, or undefined values correctly
+    if (value !== undefined) {
+      console.log(`[UPDATE GRADE] Processing grade value update: ${JSON.stringify(value)}`);
+      // Allow null values to be set (to represent no grade/deleted grade)
+      grade.value = value;
+    }
+    
     if (description !== undefined) grade.description = description;
     if (date !== undefined) grade.date = date;
     
@@ -472,8 +478,18 @@ const deleteGrade = asyncHandler(async (req, res) => {
       throw new Error('Not authorized to delete this grade');
     }
     
-    // Delete the grade
-    await grade.remove();
+    // Delete the grade - using modern Mongoose method instead of deprecated remove()
+    console.log(`[DELETE GRADE] Attempting to delete grade with ID: ${req.params.id}`);
+    
+    // Use findByIdAndDelete instead of the deprecated remove() method
+    const deletedGrade = await Grade.findByIdAndDelete(req.params.id);
+    
+    if (!deletedGrade) {
+      res.status(404);
+      throw new Error('Grade could not be deleted or was already removed');
+    }
+    
+    console.log(`[DELETE GRADE] Successfully deleted grade with ID: ${req.params.id}`);
     res.status(200).json({ message: 'Grade deleted successfully' });
   } catch (error) {
     console.error('Error deleting grade:', error.message);

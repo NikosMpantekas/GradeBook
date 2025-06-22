@@ -460,11 +460,19 @@ const ManageGrades = () => {
     
     // Create comprehensive grade data with all editable fields
     const gradeData = {
-      value: parseInt(value, 10),
+      // Handle empty grade values properly - send null if value is empty
+      value: value === '' || value === undefined ? null : parseInt(value, 10),
       student: student,
       subject: subject,
       date: date instanceof Date ? format(date, 'yyyy-MM-dd') : date
     };
+    
+    // Add detailed logging for grade value handling
+    console.log('[EDIT GRADE] Processing grade value:', { 
+      originalValue: value,
+      processedValue: gradeData.value,
+      isEmptyOrUndefined: (value === '' || value === undefined)
+    });
     
     // Only include description if teacher has permission
     if (user?.canAddGradeDescriptions !== false && description) {
