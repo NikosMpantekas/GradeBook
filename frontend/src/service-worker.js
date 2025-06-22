@@ -1,4 +1,4 @@
-
+/* eslint-disable no-restricted-globals */
 import { clientsClaim } from 'workbox-core';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
@@ -9,6 +9,7 @@ import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 let currentVersion = '0.0.0';
 let previousVersion = null;
 
+/* eslint-disable no-restricted-globals */
 // The app version is injected during service worker registration
 // This ensures we only need to update the version in one place: src/config/appConfig.js
 self.addEventListener('message', (event) => {
