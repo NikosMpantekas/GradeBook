@@ -82,10 +82,12 @@ const ManageGrades = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
   const [classFilter, setClassFilter] = useState('');
+  const [studentFilter, setStudentFilter] = useState('');
   const [teacherClasses, setTeacherClasses] = useState([]);
   const [filteredGrades, setFilteredGrades] = useState([]);
   const [filteredSubjects, setFilteredSubjects] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [gradeToDelete, setGradeToDelete] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -211,7 +213,7 @@ const ManageGrades = () => {
     applyFilters();
     
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grades, isError, isSuccess, message, searchTerm, subjectFilter, classFilter, alertState]);
+  }, [grades, isError, isSuccess, message, searchTerm, subjectFilter, classFilter, studentFilter, alertState]);
 
   const applyFilters = () => {
     // Safety check that grades exists and is an array
@@ -264,6 +266,13 @@ const ManageGrades = () => {
         console.log(`[ManageGrades] After subject filter, ${filtered.length} grades remain`);
       }
       
+      // Apply student filter if one is selected
+      if (studentFilter) {
+        filtered = filtered.filter(grade => 
+          grade.student && grade.student._id === studentFilter);
+        console.log(`[ManageGrades] After student filter, ${filtered.length} grades remain`);
+      }
+      
       // Apply search filter if one exists
       if (searchTerm.trim() !== '') {
         const search = searchTerm.toLowerCase().trim();
@@ -305,13 +314,65 @@ const ManageGrades = () => {
     setPage(0);
   };
 
-  const handleSearchChange = (event) => {
-    setSearchTerm(event.target.value);
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
     setPage(0);
   };
 
-  const handleSubjectFilterChange = (event) => {
-    setSubjectFilter(event.target.value);
+  const handleSubjectFilterChange = (e) => {
+    setSubjectFilter(e.target.value);
+    
+    // If subject changes, update available students for that subject
+    if (e.target.value) {
+      setIsLoadingStudents(true);
+      console.log(`[ManageGrades] Fetching students for subject: ${e.target.value}`);
+      
+      // Get students for the selected subject
+      if (user && user.role === 'admin') {
+        dispatch(getStudentsBySubject(e.target.value))
+          .unwrap()
+          .then((studentsData) => {
+            console.log(`[ManageGrades] Loaded ${studentsData?.length || 0} students for subject`);
+            setFilteredStudents(studentsData || []);
+            setIsLoadingStudents(false);
+          })
+          .catch((error) => {
+            console.error('[ManageGrades] Error loading students by subject:', error);
+            setFilteredStudents([]);
+            setIsLoadingStudents(false);
+          });
+      } else if (user && user.role === 'teacher') {
+        dispatch(getStudentsBySubjectForTeacher({ subjectId: e.target.value, teacherId: user._id }))
+          .unwrap()
+          .then((studentsData) => {
+            console.log(`[ManageGrades] Loaded ${studentsData?.length || 0} students for subject and teacher`);
+            setFilteredStudents(studentsData || []);
+            setIsLoadingStudents(false);
+          })
+          .catch((error) => {
+            console.error('[ManageGrades] Error loading students by subject for teacher:', error);
+            setFilteredStudents([]);
+            setIsLoadingStudents(false);
+          });
+      }
+      
+      // Reset student filter when subject changes
+      if (studentFilter) {
+        setStudentFilter('');
+      }
+    } else {
+      // If no subject selected, show all available students
+      setFilteredStudents(students || []);
+      
+      // Reset student filter
+      if (studentFilter) {
+        setStudentFilter('');
+      }
+    }
+  };
+  
+  const handleStudentFilterChange = (e) => {
+    setStudentFilter(e.target.value);
     setPage(0);
   };
 
@@ -571,12 +632,14 @@ const ManageGrades = () => {
           Filters & Search
         </Typography>
         
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
+        <Grid container spacing={2} sx={{ py: 2 }}>
+          {/* Search Field - First Row */}
+          <Grid item xs={12}>
             <TextField
               fullWidth
               variant="outlined"
-              placeholder="Search by student or subject"
+              label="Search"
+              placeholder="Search by student, subject, grade..."
               value={searchTerm}
               onChange={handleSearchChange}
               InputProps={{
@@ -590,9 +653,17 @@ const ManageGrades = () => {
             />
           </Grid>
           
+          {/* Filter Dropdowns - Second Row */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
+              <FilterIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} /> 
+              Filter Options
+            </Typography>
+          </Grid>
+          
           {/* Class Filter - Only shown for teachers */}
           {user && user.role === 'teacher' && (
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} sm={6} md={4}>
               <FormControl fullWidth variant="outlined">
                 <InputLabel id="class-filter-label">Filter by Class</InputLabel>
                 <Select
@@ -642,7 +713,8 @@ const ManageGrades = () => {
             </Grid>
           )}
           
-          <Grid item xs={12} md={user && user.role === 'teacher' ? 4 : 6}>
+          {/* Subject Filter */}
+          <Grid item xs={12} sm={6} md={user && user.role === 'teacher' ? 4 : 6}>
             <FormControl fullWidth variant="outlined">
               <InputLabel id="subject-filter-label">Filter by Subject</InputLabel>
               <Select
@@ -677,6 +749,54 @@ const ManageGrades = () => {
                   ) : null
                 ))}
               </Select>
+              <FormHelperText>
+                Select a subject to filter grades
+              </FormHelperText>
+            </FormControl>
+          </Grid>
+          
+          {/* Student Filter - New */}
+          <Grid item xs={12} sm={6} md={user && user.role === 'teacher' ? 4 : 6}>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel id="student-filter-label">Filter by Student</InputLabel>
+              <Select
+                labelId="student-filter-label"
+                id="student-filter"
+                value={studentFilter}
+                onChange={handleStudentFilterChange}
+                label="Filter by Student"
+                startAdornment={
+                  <InputAdornment position="start">
+                    <GradeIcon />
+                  </InputAdornment>
+                }
+                disabled={isLoadingStudents}
+              >
+                <MenuItem value="">
+                  <em>All Students</em>
+                </MenuItem>
+                {filteredStudents.map((student) => (
+                  student && student._id ? (
+                    <MenuItem key={student._id} value={student._id}>
+                      {student.name || 'Unnamed Student'}
+                      {student.className && (
+                        <Chip 
+                          size="small" 
+                          label={student.className} 
+                          color="secondary" 
+                          variant="outlined"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
+                    </MenuItem>
+                  ) : null
+                ))}
+              </Select>
+              <FormHelperText>
+                {isLoadingStudents ? 'Loading students...' : 
+                 filteredStudents.length === 0 ? 'No students available' :
+                 'Filter grades by student'}
+              </FormHelperText>
             </FormControl>
           </Grid>
         </Grid>
