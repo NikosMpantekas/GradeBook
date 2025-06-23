@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -26,14 +26,18 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { Person as PersonIcon, Print as PrintIcon } from '@mui/icons-material';
 import { getStudentDetailedStats } from '../../api/studentStatsAPI';
+import PrintableGradeTable from './PrintableGradeTable';
 
 const StudentGradeDetails = ({ 
   open, 
   onClose, 
   student 
 }) => {
+  const printWindowRef = useRef(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [classAverages, setClassAverages] = useState({});
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState('');
   const [studentDetails, setStudentDetails] = useState(null);
@@ -81,13 +85,50 @@ const StudentGradeDetails = ({
   };
 
   const handlePrintableTable = () => {
-    // We'll implement this in the future
     console.log('[StudentGradeDetails] Generating printable table for student:', student?.student?.name);
     
-    // For now, just alert the user that this is coming soon
-    alert('Printable table feature will be implemented in the next update!');
+    // Mock class averages data - in a real implementation, this would come from an API call
+    // Ideally, we'd add a new endpoint to get class averages for comparison
+    const mockClassAverages = {};
+    
+    // Generate mock class averages based on student's subjects
+    // In a real implementation, these would come from the backend
+    if (studentDetails && studentDetails.subjectBreakdown) {
+      Object.keys(studentDetails.subjectBreakdown).forEach(subject => {
+        // Create a realistic class average that's sometimes higher, sometimes lower than the student's
+        const studentAvg = studentDetails.subjectBreakdown[subject].average;
+        const variance = Math.random() * 20 - 10; // Random variance between -10 and +10
+        mockClassAverages[subject] = Math.min(100, Math.max(0, studentAvg + variance));
+      });
+    }
+    
+    setClassAverages(mockClassAverages);
+    setShowPrintPreview(true);
+    
+    // In a production app, you might want to open this in a new window
+    // const printWindow = window.open('', '_blank', 'width=1000,height=800');
+    // printWindowRef.current = printWindow;
   };
 
+  const handleClosePrintPreview = () => {
+    setShowPrintPreview(false);
+  };
+  
+  // If print preview is active, show the printable table component
+  if (showPrintPreview && studentDetails) {
+    return (
+      <PrintableGradeTable 
+        student={student}
+        startDate={startDate}
+        endDate={endDate}
+        grades={studentDetails.grades}
+        subjectBreakdown={studentDetails.subjectBreakdown}
+        classAverages={classAverages}
+        onClose={handleClosePrintPreview}
+      />
+    );
+  }
+  
   return (
     <Dialog
       open={open}
