@@ -226,7 +226,25 @@ const PrintGradePage = () => {
     
     Object.entries(subjectBreakdown).forEach(([subject, stats]) => {
       // Create a realistic class average that's sometimes higher, sometimes lower than the student's
-      const studentAvg = stats.average;
+      // Added defensive programming to handle different data shapes
+      let studentAvg = 0;
+      
+      if (typeof stats === 'object' && stats !== null) {
+        if (typeof stats.average === 'number') {
+          studentAvg = stats.average;
+        } else if (typeof stats.averageGrade === 'number') {
+          studentAvg = stats.averageGrade;
+        } else if (typeof stats.grade === 'number') {
+          studentAvg = stats.grade;
+        }
+      }
+      
+      // Debug actual value being used
+      console.log(`[PrintGradePage] Subject ${subject} breakdown:`, {
+        stats,
+        extractedAverage: studentAvg
+      });
+      
       const variance = Math.random() * 20 - 10; // Random variance between -10 and +10
       mockAverages[subject] = Math.min(100, Math.max(0, studentAvg + variance));
     });
@@ -356,11 +374,46 @@ const PrintGradePage = () => {
                       console.error('[PrintGradePage] Error formatting date:', err);
                     }
                     
-                    // Safe grade value with fallback
-                    const safeGrade = typeof grade.grade === 'number' ? grade.grade : 
-                                     (typeof grade.grade === 'object' && grade.grade !== null) ?
-                                       (grade.grade.value || 0) : 
-                                       parseFloat(grade.grade) || 0;
+                    // Safe grade value with fallback - improved extraction logic
+                    let safeGrade = 0;
+                    
+                    try {
+                      console.log('[PrintGradePage] Raw grade value:', {
+                        grade: grade.grade,
+                        type: typeof grade.grade,
+                        isObject: typeof grade.grade === 'object' && grade.grade !== null
+                      });
+                      
+                      if (typeof grade.grade === 'number') {
+                        // Direct number value
+                        safeGrade = grade.grade;
+                      } else if (typeof grade.grade === 'object' && grade.grade !== null) {
+                        // Object with value property
+                        if ('value' in grade.grade && typeof grade.grade.value === 'number') {
+                          safeGrade = grade.grade.value;
+                        } else if ('grade' in grade.grade && typeof grade.grade.grade === 'number') {
+                          safeGrade = grade.grade.grade;
+                        }
+                      } else if (typeof grade.value === 'number') {
+                        // Alternative property name
+                        safeGrade = grade.value;
+                      } else if (typeof grade.grade === 'string') {
+                        // Try to parse string as number
+                        const parsed = parseFloat(grade.grade);
+                        if (!isNaN(parsed)) {
+                          safeGrade = parsed;
+                        }
+                      }
+                      
+                      // Fallback for any unexpected scenarios
+                      if (safeGrade === 0) {
+                        console.warn('[PrintGradePage] Could not extract grade value, using direct value:', grade);
+                        // Try direct access as a last resort
+                        safeGrade = grade.grade || grade.value || 0;
+                      }
+                    } catch (err) {
+                      console.error('[PrintGradePage] Error extracting grade value:', err);
+                    }
                     
                     // Determine grade color based on safe grade value
                     const gradeColor = safeGrade >= 70 ? 'success.main' : 
@@ -379,7 +432,7 @@ const PrintGradePage = () => {
                         >
                           {typeof safeGrade === 'number' ? safeGrade : '0'}
                         </TableCell>
-                        <TableCell align="center">{typeof classAvg === 'number' ? classAvg.toFixed(1) : '0.0'}</TableCell>
+                        <TableCell align="center">{typeof classAvg === 'number' && !isNaN(classAvg) ? classAvg.toFixed(1) : 'N/A'}</TableCell>
                       </TableRow>
                     );
                   })
