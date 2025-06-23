@@ -299,8 +299,31 @@ const PrintGradePage = () => {
               <TableBody>
                 {studentData.grades && studentData.grades.length > 0 ? (
                   studentData.grades.map((grade) => {
-                    // Get class average for this subject
-                    const classAvg = classAverages[grade.subject] || 0;
+                    // Get class average for this subject - with improved defensive coding
+                    // Add extra type checking to prevent React Error #31
+                    let classAvg = 0;
+                    try {
+                      // Debug the actual value to help diagnose issues
+                      console.log(`[PrintGradePage] Class average for ${grade.subject}:`, {
+                        value: classAverages[grade.subject],
+                        type: typeof classAverages[grade.subject],
+                        isNumber: !isNaN(Number(classAverages[grade.subject])),
+                        subjectExists: grade.subject in classAverages
+                      });
+                      
+                      // Safely convert to number
+                      const rawValue = classAverages[grade.subject];
+                      if (typeof rawValue === 'number' && !isNaN(rawValue)) {
+                        classAvg = rawValue;
+                      } else if (rawValue && typeof rawValue === 'object' && !isNaN(Number(rawValue.average))) {
+                        // If it's an object with average property, use that
+                        classAvg = Number(rawValue.average);
+                      } else {
+                        console.warn(`[PrintGradePage] Invalid class average for ${grade.subject}:`, rawValue);
+                      }
+                    } catch (err) {
+                      console.error(`[PrintGradePage] Error processing class average for ${grade.subject}:`, err);
+                    }
                     
                     return (
                       <TableRow key={grade._id || `grade-${grade.subject}-${grade.date}`}>
@@ -316,7 +339,7 @@ const PrintGradePage = () => {
                         >
                           {grade.grade}
                         </TableCell>
-                        <TableCell align="center">{classAvg.toFixed(1)}</TableCell>
+                        <TableCell align="center">{typeof classAvg === 'number' ? classAvg.toFixed(1) : '0.0'}</TableCell>
                       </TableRow>
                     );
                   })
