@@ -213,7 +213,6 @@ app.use('/api/users', require('./routes/userRoutes'));
 
 // Setup global middleware for the main routes - all routes here need auth & school context
 const { protect } = require('./middleware/authMiddleware');
-const { setSchoolContext } = require('./middleware/schoolIdMiddleware');
 const { addFeatureFlags, checkCalendarEnabled, checkRatingEnabled } = require('./middleware/featureToggleMiddleware');
 
 // Setup routes that need school context middlewares
