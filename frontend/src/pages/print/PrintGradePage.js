@@ -174,13 +174,23 @@ const PrintGradePage = () => {
               name: studentName || 'Student Name',
               email: studentEmail || ''
             },
-            grades: apiData.grades || [],
+            // Map recentGrades to grades - this is where the issue was
+            grades: apiData.recentGrades || [],
             subjectBreakdown: apiData.subjectBreakdown || {},
-            totalAverage: apiData.totalAverage || 0,
-            totalGrades: apiData.totalGrades || 0,
+            // Get totalAverage from overview.averageGrade
+            totalAverage: apiData.overview?.averageGrade || 0,
+            // Get totalGrades from overview.gradeCount
+            totalGrades: apiData.overview?.gradeCount || 0,
             startDate,
             endDate
           };
+          
+          // Add additional debug logging for grades
+          console.log('[PrintGradePage] API grades available:', {
+            recentGrades: Array.isArray(apiData?.recentGrades),
+            recentGradesCount: apiData?.recentGrades?.length || 0,
+            firstGrade: apiData?.recentGrades?.[0]
+          });
           
           console.log('[PrintGradePage] Processed API data:', {
             studentName: processedApiData.student.name,

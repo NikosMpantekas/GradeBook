@@ -71,7 +71,29 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
       console.log('[StudentGradeDetails] With query params:', queryString);
       
       const data = await getStudentDetailedStats(student.student._id, queryString);
-      setStudentDetails(data);
+      
+      // Debug API response structure
+      console.log('[StudentGradeDetails] API response received:', {
+        hasRecentGrades: Array.isArray(data?.recentGrades),
+        recentGradesCount: data?.recentGrades?.length || 0,
+        hasOverview: !!data?.overview,
+        overviewFields: data?.overview ? Object.keys(data?.overview) : [],
+        hasSubjectBreakdown: !!data?.subjectBreakdown,
+        subjectCount: data?.subjectBreakdown ? Object.keys(data?.subjectBreakdown).length : 0
+      });
+      
+      // Map API data to expected structure for this component
+      const processedData = {
+        // Keep original fields
+        ...data,
+        // Map the recentGrades field to grades (expected by UI)
+        grades: data.recentGrades || [],
+        // Extract overview fields to root level for backward compatibility
+        totalAverage: data.overview?.averageGrade || 0,
+        totalGrades: data.overview?.gradeCount || 0
+      };
+      
+      setStudentDetails(processedData);
     } catch (error) {
       console.error('[StudentGradeDetails] Error fetching student details:', error);
       setDetailsError(error.message || 'Failed to load student details');
