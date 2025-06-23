@@ -60,36 +60,57 @@ const PrintGradePage = () => {
         
         // Try to get data from localStorage first
         const savedData = localStorage.getItem('printGradeData');
+        console.log('[PrintGradePage] localStorage data:', savedData ? 'Found' : 'Not found');
+        
         if (savedData) {
-          data = JSON.parse(savedData);
-          // Clear the localStorage after retrieving data
-          localStorage.removeItem('printGradeData');
-          
-          if (data && data.student && data.grades) {
-            setStudentData({
-              student: {
-                _id: studentId,
-                name: studentName || data.student.student?.name || 'Student Name',
-                email: studentEmail || data.student.student?.email || ''
-              },
-              grades: data.grades || [],
-              subjectBreakdown: data.subjectBreakdown || {},
-              totalAverage: data.totalAverage || 0,
-              totalGrades: data.totalGrades || 0,
-              startDate,
-              endDate
+          try {
+            data = JSON.parse(savedData);
+            console.log('[PrintGradePage] Parsed localStorage data:', {
+              hasStudent: !!data?.student,
+              hasGrades: Array.isArray(data?.grades),
+              gradeCount: data?.grades?.length || 0,
+              hasSubjectBreakdown: !!data?.subjectBreakdown
             });
             
-            // Generate mock class averages if we don't have real ones
-            generateMockClassAverages(data.subjectBreakdown || {});
+            // DON'T clear the localStorage yet - only after successful processing
             
-            setLoading(false);
-            return;
+            if (data && (data.student || data.student?.student) && Array.isArray(data.grades)) {
+              // Handle both nested and flat student object structures
+              const studentObj = data.student.student || data.student;
+              
+              setStudentData({
+                student: {
+                  _id: studentId,
+                  name: studentName || studentObj?.name || 'Student Name',
+                  email: studentEmail || studentObj?.email || ''
+                },
+                grades: data.grades || [],
+                subjectBreakdown: data.subjectBreakdown || {},
+                totalAverage: data.totalAverage || 0,
+                totalGrades: data.totalGrades || 0,
+                startDate,
+                endDate
+              });
+              
+              // Generate mock class averages if we don't have real ones
+              generateMockClassAverages(data.subjectBreakdown || {});
+              
+              // Only clear localStorage after successful processing
+              localStorage.removeItem('printGradeData');
+              
+              setLoading(false);
+              return;
+            } else {
+              console.log('[PrintGradePage] localStorage data found but incomplete!');
+            }
+          } catch (parseError) {
+            console.error('[PrintGradePage] Error parsing localStorage data:', parseError);
+            // Continue to API fallback
           }
         }
         
         // If no data in localStorage, fetch from API
-        console.log('[PrintGradePage] Fetching student data from API');
+        console.log('[PrintGradePage] Fetching student data from API for student ID:', studentId);
         
         // Build query parameters for date filtering
         const queryParams = [];
@@ -97,25 +118,37 @@ const PrintGradePage = () => {
         if (endDate) queryParams.push(`endDate=${endDate}`);
         const queryString = queryParams.length > 0 ? queryParams.join('&') : '';
         
-        // Fetch detailed stats from API
-        const apiData = await getStudentDetailedStats(studentId, queryString);
+        console.log('[PrintGradePage] API query params:', queryString);
         
-        setStudentData({
-          student: {
-            _id: studentId,
-            name: studentName || 'Student Name',
-            email: studentEmail || ''
-          },
-          grades: apiData.grades || [],
-          subjectBreakdown: apiData.subjectBreakdown || {},
-          totalAverage: apiData.totalAverage || 0,
-          totalGrades: apiData.totalGrades || 0,
-          startDate,
-          endDate
-        });
-        
-        // Generate mock class averages
-        generateMockClassAverages(apiData.subjectBreakdown || {});
+        try {
+          // Fetch detailed stats from API
+          const apiData = await getStudentDetailedStats(studentId, queryString);
+          console.log('[PrintGradePage] API data received:', {
+            hasGrades: Array.isArray(apiData?.grades),
+            gradeCount: apiData?.grades?.length || 0,
+            hasSubjectBreakdown: !!apiData?.subjectBreakdown
+          });
+          
+          setStudentData({
+            student: {
+              _id: studentId,
+              name: studentName || 'Student Name',
+              email: studentEmail || ''
+            },
+            grades: apiData.grades || [],
+            subjectBreakdown: apiData.subjectBreakdown || {},
+            totalAverage: apiData.totalAverage || 0,
+            totalGrades: apiData.totalGrades || 0,
+            startDate,
+            endDate
+          });
+          
+          // Generate mock class averages
+          generateMockClassAverages(apiData.subjectBreakdown || {});
+        } catch (apiError) {
+          console.error('[PrintGradePage] API fetch error:', apiError);
+          throw apiError; // Rethrow to be caught by outer catch
+        }
         
       } catch (err) {
         console.error('[PrintGradePage] Error loading data:', err);
@@ -165,6 +198,20 @@ const PrintGradePage = () => {
       </Box>
     );
   }
+  
+  // Add a window level debug function to help troubleshoot
+  useEffect(() => {
+    window.debugPrintPage = () => {
+      console.log('Print Page Debug Info:', {
+        studentData,
+        classAverages
+      });
+    };
+    
+    return () => {
+      delete window.debugPrintPage;
+    };
+  }, [studentData, classAverages]);
   
   return (
     <PrintGradeLayout

@@ -20,7 +20,8 @@ import {
   TableRow,
   TableCell,
   Paper,
-  IconButton
+  IconButton,
+  useTheme
 } from '@mui/material';
 import { 
   Close as CloseIcon,
@@ -39,6 +40,7 @@ const formatDateForApi = (date) => {
 };
 
 const StudentGradeDetails = ({ open, onClose, student }) => {
+  const theme = useTheme();
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -85,6 +87,12 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
   const handlePrintableTable = () => {
     if (!student?.student?._id || !studentDetails) return;
 
+    console.log('[StudentGradeDetails] Preparing printable table for:', student.student.name);
+    console.log('[StudentGradeDetails] Student details data:', {
+      gradesCount: studentDetails?.grades?.length || 0,
+      hasSubjectBreakdown: !!studentDetails?.subjectBreakdown
+    });
+
     // Generate query parameters for the new window
     const params = new URLSearchParams();
     params.append('studentId', student.student._id);
@@ -94,16 +102,28 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
     if (startDate) params.append('startDate', formatDateForApi(startDate));
     if (endDate) params.append('endDate', formatDateForApi(endDate));
     
-    // Store data in localStorage for the print page to access
-    localStorage.setItem('printGradeData', JSON.stringify({
-      student: student,
+    // Flatten the student object to prevent nesting issues
+    const studentObj = {
+      _id: student.student._id,
+      name: student.student.name,
+      email: student.student.email || ''
+    };
+    
+    // Structure data more explicitly to avoid nesting issues
+    const printData = {
+      student: studentObj,
       grades: studentDetails.grades || [],
       subjectBreakdown: studentDetails.subjectBreakdown || {},
       totalAverage: studentDetails.totalAverage || 0,
       totalGrades: studentDetails.totalGrades || 0,
       startDate: startDate ? formatDateForApi(startDate) : null,
       endDate: endDate ? formatDateForApi(endDate) : null
-    }));
+    };
+    
+    // Store data as string in localStorage
+    const dataString = JSON.stringify(printData);
+    localStorage.setItem('printGradeData', dataString);
+    console.log('[StudentGradeDetails] Data stored in localStorage, size:', dataString.length);
 
     // Open a new window for printing
     const printWindow = window.open(`/print-grades?${params.toString()}`, '_blank', 'width=1200,height=800');
@@ -124,7 +144,7 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
         sx: { borderRadius: 2 }
       }}
     >
-      <DialogTitle sx={{ borderBottom: '1px solid #eee', p: 2 }}>
+      <DialogTitle sx={{ borderBottom: `1px solid ${theme.palette.divider}`, p: 2 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Typography variant="h6">
             Student Grade Details
@@ -135,7 +155,7 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
         </Box>
       </DialogTitle>
       
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: 3, bgcolor: theme.palette.mode === 'dark' ? theme.palette.background.default : '#f9f9f9' }}>
         {student ? (
           <>
             <Box mb={3}>
@@ -154,10 +174,13 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
                       <Box display="flex" justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
                         <Button
                           variant="contained"
-                          color="primary"
+                          color="primary" 
+                          variant="contained" 
+                          onClick={handlePrintableTable} 
                           startIcon={<PrintIcon />}
-                          onClick={handlePrintableTable}
-                          disabled={detailsLoading || !studentDetails}
+                          sx={{ 
+                            borderRadius: 1
+                          }}
                         >
                           Printable Table
                         </Button>
@@ -308,55 +331,7 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
                       </Card>
                     </Box>
 
-                    <Box>
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Typography variant="h6" gutterBottom>
-                            Individual Grades
-                          </Typography>
-                          <TableContainer component={Paper} variant="outlined">
-                            <Table>
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>Date</TableCell>
-                                  <TableCell>Subject</TableCell>
-                                  <TableCell align="center">Grade</TableCell>
-                                  <TableCell>Comment</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {(studentDetails.grades || []).map((grade) => (
-                                  <TableRow key={grade._id}>
-                                    <TableCell>
-                                      {new Date(grade.date).toLocaleDateString()}
-                                    </TableCell>
-                                    <TableCell>{grade.subject}</TableCell>
-                                    <TableCell 
-                                      align="center"
-                                      sx={{ 
-                                        fontWeight: 'bold',
-                                        color: grade.grade >= 70 ? 'success.main' : 
-                                               grade.grade >= 50 ? 'warning.main' : 'error.main'
-                                      }}
-                                    >
-                                      {grade.grade}
-                                    </TableCell>
-                                    <TableCell>{grade.comment || '-'}</TableCell>
-                                  </TableRow>
-                                ))}
-                                {(studentDetails.grades || []).length === 0 && (
-                                  <TableRow>
-                                    <TableCell colSpan={4} align="center">
-                                      No grades found for this student
-                                    </TableCell>
-                                  </TableRow>
-                                )}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                        </CardContent>
-                      </Card>
-                    </Box>
+                    {/* Individual Grades section removed as requested */}
                   </>
                 ) : (
                   <Alert severity="info">
@@ -373,7 +348,7 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
         )}
       </DialogContent>
       
-      <DialogActions sx={{ borderTop: '1px solid #eee', p: 2 }}>
+      <DialogActions sx={{ borderTop: `1px solid ${theme.palette.divider}`, p: 2 }}>
         <Button onClick={onClose} color="primary">
           Close
         </Button>
