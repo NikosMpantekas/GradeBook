@@ -39,6 +39,7 @@ import ContactMessages from './pages/ContactMessages';
 import Calendar from './pages/Calendar';
 import Schedule from './pages/common/Schedule';
 import StudentStats from './pages/common/StudentStats';
+import PrintGradePage from './pages/print/PrintGradePage';
 
 // Student Pages
 import StudentGrades from './pages/student/StudentGrades';
@@ -514,6 +515,9 @@ function App() {
               </SuperAdminRoute>
             } />
           </Route>
+          
+          {/* Print Grade Page - Standalone route without layout */}
+          <Route path="/print-grades" element={<PrintGradePage />} />
           
           {/* 404 Page */}
           <Route path="*" element={<NotFound />} />
