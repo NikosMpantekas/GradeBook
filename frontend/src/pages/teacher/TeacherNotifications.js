@@ -43,7 +43,7 @@ import {
   markNotificationAsRead,
   updateNotification,
 } from '../../features/notifications/notificationSlice';
-import { getDirections } from '../../features/directions/directionSlice';
+import { getDirections, safeValidateDirectionData } from '../../features/directions/directionSlice';
 
 const TeacherNotifications = () => {
   const navigate = useNavigate();
@@ -76,9 +76,21 @@ const TeacherNotifications = () => {
   useEffect(() => {
     console.log('TeacherNotifications component mounted - loading notifications');
     
+    // First ensure any existing directions data is valid
+    safeValidateDirectionData(dispatch);
+    
     // Fetch directions for filtering
     dispatch(getDirections())
       .unwrap()
+      .then(directionsData => {
+        console.log('Directions data received:', {
+          isArray: Array.isArray(directionsData),
+          length: Array.isArray(directionsData) ? directionsData.length : 'not an array'
+        });
+        
+        // Validate directions again after fetching
+        safeValidateDirectionData(dispatch);
+      })
       .catch(error => {
         console.error('Failed to load directions:', error);
         toast.error(`Failed to load directions: ${error.message || 'Unknown error'}`);
@@ -708,12 +720,16 @@ const TeacherNotifications = () => {
               <option value="all">All Directions</option>
               {isDirectionsLoading ? (
                 <option disabled>Loading directions...</option>
-              ) : (
+              ) : Array.isArray(directions) ? (
                 directions.map((direction) => (
-                  <option key={direction._id} value={direction._id}>
-                    {direction.name}
-                  </option>
+                  direction && typeof direction === 'object' ? (
+                    <option key={direction._id || 'unknown'} value={direction._id || 'unknown'}>
+                      {direction.name || 'Unnamed Direction'}
+                    </option>
+                  ) : null
                 ))
+              ) : (
+                <option disabled>Error loading directions</option>
               )}
             </TextField>
           )}
