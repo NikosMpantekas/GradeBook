@@ -72,9 +72,10 @@ export const getStudentStats = async (search = '') => {
 /**
  * Get detailed statistics for a specific student
  * @param {string} studentId - ID of the student to get detailed stats for
+ * @param {string} queryParams - Optional query parameters for date filtering
  * @returns {Promise} - Promise that resolves to detailed student stats data
  */
-export const getStudentDetailedStats = async (studentId) => {
+export const getStudentDetailedStats = async (studentId, queryParams = '') => {
   try {
     console.log('[StudentStatsAPI] Fetching detailed stats for student:', studentId);
     
@@ -82,12 +83,25 @@ export const getStudentDetailedStats = async (studentId) => {
       throw new Error('Student ID is required');
     }
     
-    const response = await axiosInstance.get(`/api/stats/students/${studentId}`);
+    const url = `/api/stats/students/${studentId}${queryParams ? `?${queryParams}` : ''}`;
+    console.log('[StudentStatsAPI] Request URL with params:', url);
+    
+    const response = await axiosInstance.get(url);
     
     console.log('[StudentStatsAPI] Detailed student stats response:', response.data);
     return response.data;
   } catch (error) {
     console.error('[StudentStatsAPI] Error fetching detailed student stats:', error);
+    console.error('[StudentStatsAPI] Error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      config: error.config ? {
+        url: error.config.url,
+        method: error.config.method,
+        baseURL: error.config.baseURL
+      } : 'No config'
+    });
     
     // Extract meaningful error message
     const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch detailed student statistics';
