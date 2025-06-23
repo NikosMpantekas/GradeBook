@@ -22,7 +22,7 @@ export const getStudentStats = async (search = '') => {
     }
     
     const queryString = params.toString();
-    const url = `/stats/students${queryString ? `?${queryString}` : ''}`;
+    const url = `/api/stats/students${queryString ? `?${queryString}` : ''}`;
     
     console.log('[StudentStatsAPI] Request URL:', url);
     
@@ -82,7 +82,7 @@ export const getStudentDetailedStats = async (studentId) => {
       throw new Error('Student ID is required');
     }
     
-    const response = await axiosInstance.get(`/stats/students/${studentId}`);
+    const response = await axiosInstance.get(`/api/stats/students/${studentId}`);
     
     console.log('[StudentStatsAPI] Detailed student stats response:', response.data);
     return response.data;
