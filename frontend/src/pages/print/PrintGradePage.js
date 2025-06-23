@@ -38,6 +38,20 @@ const PrintGradePage = () => {
   const [studentData, setStudentData] = useState(null);
   const [classAverages, setClassAverages] = useState({});
   
+  // Add a window level debug function to help troubleshoot
+  useEffect(() => {
+    window.debugPrintPage = () => {
+      console.log('Print Page Debug Info:', {
+        studentData,
+        classAverages
+      });
+    };
+    
+    return () => {
+      delete window.debugPrintPage;
+    };
+  }, [studentData, classAverages]);
+  
   useEffect(() => {
     // Parse URL parameters
     const params = new URLSearchParams(location.search);
@@ -199,19 +213,7 @@ const PrintGradePage = () => {
     );
   }
   
-  // Add a window level debug function to help troubleshoot
-  useEffect(() => {
-    window.debugPrintPage = () => {
-      console.log('Print Page Debug Info:', {
-        studentData,
-        classAverages
-      });
-    };
-    
-    return () => {
-      delete window.debugPrintPage;
-    };
-  }, [studentData, classAverages]);
+  // Debug function now placed at the top level of component
   
   return (
     <PrintGradeLayout
