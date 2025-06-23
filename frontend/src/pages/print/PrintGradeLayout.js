@@ -4,7 +4,9 @@ import {
   Typography, 
   Button, 
   Divider, 
-  Paper
+  Paper,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { 
@@ -15,7 +17,8 @@ import {
 
 // Styled components for print-specific elements
 const PrintableContainer = styled(Box)(({ theme }) => ({
-  backgroundColor: '#ffffff',
+  backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.paper : '#ffffff',
+  color: theme.palette.text.primary,
   padding: theme.spacing(4),
   margin: 'auto',
   maxWidth: '1000px',
@@ -24,7 +27,9 @@ const PrintableContainer = styled(Box)(({ theme }) => ({
     padding: theme.spacing(1),
     width: '100%',
     boxShadow: 'none',
-    pageBreakInside: 'avoid'
+    pageBreakInside: 'avoid',
+    backgroundColor: '#ffffff',
+    color: '#000000'
   }
 }));
 
@@ -68,6 +73,7 @@ const PrintGradeLayout = ({
   children, 
   onClose 
 }) => {
+  const theme = useTheme();
   // Format dates for display
   const formatDate = (dateString) => {
     if (!dateString) return 'Not specified';

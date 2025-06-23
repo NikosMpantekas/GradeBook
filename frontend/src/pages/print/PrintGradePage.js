@@ -1,19 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { CircularProgress, Box, Alert } from '@mui/material';
+import { 
+  CircularProgress, 
+  Box, 
+  Alert, 
+  Typography, 
+  Paper, 
+  Table, 
+  TableContainer, 
+  TableHead, 
+  TableBody, 
+  TableRow, 
+  TableCell,
+  useTheme
+} from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getStudentDetailedStats } from '../../api/studentStatsAPI';
 
-// Import all the modular components
+// Only import the layout - we're simplifying
 import PrintGradeLayout from './PrintGradeLayout';
-import GradeSummarySection from './GradeSummarySection';
-import GradeComparisonChart from './GradeComparisonChart';
-import SubjectPerformanceRadar from './SubjectPerformanceRadar';
-import GradeProgressionChart from './GradeProgressionChart';
-import DetailedGradeList from './DetailedGradeList';
+import { styled } from '@mui/material/styles';
+
+const PrintSection = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(4),
+  pageBreakInside: 'avoid',
+  '@media print': {
+    marginBottom: theme.spacing(2)
+  }
+}));
 
 const PrintGradePage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const theme = useTheme();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -156,30 +174,63 @@ const PrintGradePage = () => {
       endDate={studentData.endDate}
       onClose={handleClose}
     >
-      {/* Render all the modular components with proper data */}
-      <GradeSummarySection 
-        subjectBreakdown={studentData.subjectBreakdown}
-        classAverages={classAverages}
-      />
-      
-      <GradeComparisonChart 
-        grades={studentData.grades}
-        subjectBreakdown={studentData.subjectBreakdown}
-        classAverages={classAverages}
-      />
-      
-      <SubjectPerformanceRadar 
-        subjectBreakdown={studentData.subjectBreakdown}
-        classAverages={classAverages}
-      />
-      
-      <GradeProgressionChart 
-        grades={studentData.grades}
-      />
-      
-      <DetailedGradeList 
-        grades={studentData.grades}
-      />
+      {/* Simplified grade list with class averages */}
+      <PrintSection>
+        <Typography variant="h6" gutterBottom>
+          Grades and Class Averages
+        </Typography>
+        <Paper 
+          elevation={0} 
+          variant="outlined" 
+          sx={{ 
+            backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.default : '#ffffff',
+            color: theme.palette.text.primary
+          }}
+        >
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.paper : '#f5f5f5' }}>
+                  <TableCell><strong>Subject</strong></TableCell>
+                  <TableCell><strong>Date</strong></TableCell>
+                  <TableCell align="center"><strong>Grade</strong></TableCell>
+                  <TableCell align="center"><strong>Class Average</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {studentData.grades.length > 0 ? (
+                  studentData.grades.map((grade) => {
+                    // Get class average for this subject
+                    const classAvg = classAverages[grade.subject] || 0;
+                    
+                    return (
+                      <TableRow key={grade._id}>
+                        <TableCell>{grade.subject}</TableCell>
+                        <TableCell>{new Date(grade.date).toLocaleDateString()}</TableCell>
+                        <TableCell 
+                          align="center"
+                          sx={{ 
+                            fontWeight: 'bold',
+                            color: grade.grade >= 70 ? 'success.main' : 
+                                   grade.grade >= 50 ? 'warning.main' : 'error.main'
+                          }}
+                        >
+                          {grade.grade}
+                        </TableCell>
+                        <TableCell align="center">{classAvg.toFixed(1)}</TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} align="center">No grades found for the selected period</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      </PrintSection>
     </PrintGradeLayout>
   );
 };
