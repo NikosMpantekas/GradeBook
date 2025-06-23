@@ -337,8 +337,13 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
 
   // Create the drawer content
   const drawer = (
-    <div>
-      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <Box sx={{ 
+      height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column',
+      overflow: 'hidden' // Prevent the container from scrolling
+    }}>
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
         <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
           {isSuperAdminRoute ? 'Super Admin' : 'GradeBook'}
         </Typography>
@@ -348,31 +353,58 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
           </Typography>
         )}
       </Box>
-      <Divider />
-      <List>
-        {getMenuItems().map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton 
-              onClick={() => handleNavigate(item.path)}
-              selected={isPathSelected(item.path)}
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'primary.light',
-                  borderRight: '4px solid',
-                  borderColor: 'primary.main',
-                },
-                '&.Mui-selected:hover': {
-                  backgroundColor: 'primary.light', 
-                }
-              }}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-    </div>
+      <Divider sx={{ flexShrink: 0 }} />
+      <Box sx={{ 
+        flex: 1, 
+        overflow: 'auto', // Enable scrolling for the menu items
+        '&::-webkit-scrollbar': {
+          width: '8px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'rgba(0,0,0,0.1)',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: 'rgba(0,0,0,0.3)',
+          borderRadius: '4px',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          background: 'rgba(0,0,0,0.5)',
+        },
+      }}>
+        <List sx={{ py: 1 }}>
+          {getMenuItems().map((item) => (
+            <ListItem key={item.text} disablePadding>
+              <ListItemButton 
+                onClick={() => handleNavigate(item.path)}
+                selected={isPathSelected(item.path)}
+                sx={{
+                  minHeight: 48, // Ensure consistent height for zoom responsiveness
+                  px: 2,
+                  py: 1,
+                  '&.Mui-selected': {
+                    backgroundColor: 'primary.light',
+                    borderRight: '4px solid',
+                    borderColor: 'primary.main',
+                  },
+                  '&.Mui-selected:hover': {
+                    backgroundColor: 'primary.light', 
+                  }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                <ListItemText 
+                  primary={item.text} 
+                  primaryTypographyProps={{
+                    fontSize: '0.875rem',
+                    fontWeight: 'medium'
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Box>
+    </Box>
   );
 
   return (

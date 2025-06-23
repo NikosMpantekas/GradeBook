@@ -33,7 +33,7 @@ import {
   Person as PersonIcon,
   School as SchoolIcon,
   AdminPanelSettings as AdminIcon,
-  TeachingIcon,
+  Teaching as TeachingIcon,
   Visibility as ViewIcon,
   GetApp as ExportIcon,
   TrendingUp as TrendingUpIcon,
@@ -41,6 +41,19 @@ import {
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { getStudentStats, getStudentDetailedStats, exportStudentStatsToCSV } from '../../api/studentStatsAPI';
+
+// Simple debounce function implementation
+const debounce = (func, wait) => {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+};
 
 const StudentStats = () => {
   const { user } = useSelector((state) => state.auth);
@@ -516,18 +529,5 @@ const StudentStats = () => {
     </Container>
   );
 };
-
-// Debounce utility function
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
 
 export default StudentStats;

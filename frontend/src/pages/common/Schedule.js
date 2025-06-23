@@ -180,19 +180,34 @@ const Schedule = () => {
         headers: { Authorization: `Bearer ${token}` }
       };
       
+      console.log('Fetching branch names for IDs:', branchIds);
       const response = await axios.post('/api/branches/batch', { branchIds }, config);
       
       if (response.data && Array.isArray(response.data)) {
         const branchNameMap = {};
         response.data.forEach(branch => {
-          branchNameMap[branch._id] = branch.name;
+          if (branch && branch._id && branch.name) {
+            branchNameMap[branch._id] = branch.name;
+          }
         });
         
-        setBranchNames(branchNameMap);
+        setBranchNames(prev => ({ ...prev, ...branchNameMap }));
         console.log('Branch names loaded:', branchNameMap);
+      } else {
+        console.warn('Invalid branch data format received:', response.data);
       }
     } catch (error) {
       console.error('Error fetching branch names:', error);
+      // Set fallback branch names to avoid showing IDs
+      const fallbackNames = {};
+      branchIds.forEach(id => {
+        if (id && !branchNames[id]) {
+          fallbackNames[id] = `Branch ${id.slice(-4)}`;
+        }
+      });
+      if (Object.keys(fallbackNames).length > 0) {
+        setBranchNames(prev => ({ ...prev, ...fallbackNames }));
+      }
     }
   };
   
@@ -217,8 +232,7 @@ const Schedule = () => {
         try {
           console.log('Loading teacher options for admin');
           
-          // WORKAROUND: Use regular users endpoint and filter for teachers
-          // Since /api/users/teachers endpoint is broken in backend
+          // Use regular users endpoint and filter for teachers
           const teachersResponse = await axios.get('/api/users', config);
           console.log('Users API response found:', teachersResponse.data?.length || 0, 'users');
           
@@ -246,14 +260,17 @@ const Schedule = () => {
       
       // Fetch branch names for display if we have branch IDs
       if (branches.length > 0) {
-        const branchIds = branches.map(branch => branch.value);
-        console.log('Fetching branch names for IDs:', branchIds);
-        fetchBranchNames(branchIds);
+        const branchIds = branches.map(branch => branch.value || branch._id || branch.id).filter(Boolean);
+        if (branchIds.length > 0) {
+          console.log('Fetching branch names for filter IDs:', branchIds);
+          fetchBranchNames(branchIds);
+        }
       } else {
-        console.warn('No branch IDs available to fetch names');
+        console.warn('No branch data available in filter options');
       }
     } catch (error) {
       console.error('Error loading filter options:', error);
+      setError('Failed to load filter options. Some features may not work properly.');
     } finally {
       setLoadingFilters(false);
     }

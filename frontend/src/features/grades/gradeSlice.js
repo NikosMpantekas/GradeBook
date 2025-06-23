@@ -170,11 +170,18 @@ export const updateGrade = createAsyncThunk(
 // Delete grade
 export const deleteGrade = createAsyncThunk(
   'grades/delete',
-  async (id, thunkAPI) => {
+  async (gradeId, thunkAPI) => {
     try {
+      console.log('Dispatching deleteGrade action for grade:', gradeId);
       const token = thunkAPI.getState().auth.user.token;
-      return await gradeService.deleteGrade(id, token);
+      
+      await gradeService.deleteGrade(gradeId, token);
+      console.log('Grade deleted successfully from backend');
+      
+      // Return the gradeId so the reducer can filter it out
+      return { id: gradeId };
     } catch (error) {
+      console.error('Error in deleteGrade thunk:', error);
       const message =
         (error.response &&
           error.response.data &&
