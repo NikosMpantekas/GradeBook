@@ -155,11 +155,11 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
         </Box>
       </DialogTitle>
       
-      <DialogContent sx={{ p: 3, bgcolor: theme.palette.mode === 'dark' ? theme.palette.background.default : '#f9f9f9' }}>
+      <DialogContent sx={{ p: 3, bgcolor: theme.palette.background.default }}>
         {student ? (
           <>
             <Box mb={3}>
-              <Card variant="outlined" sx={{ bgcolor: '#f9f9f9' }}>
+              <Card variant="outlined" sx={{ bgcolor: theme.palette.background.paper }}>
                 <CardContent>
                   <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} md={6}>
@@ -175,7 +175,6 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
                         <Button
                           variant="contained"
                           color="primary" 
-                          variant="contained" 
                           onClick={handlePrintableTable} 
                           startIcon={<PrintIcon />}
                           sx={{ 
@@ -192,7 +191,7 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
             </Box>
 
             <Box mb={3}>
-              <Card variant="outlined">
+              <Card variant="outlined" sx={{ bgcolor: theme.palette.background.paper }}>
                 <CardContent>
                   <Typography variant="subtitle1" gutterBottom>
                     <CalendarIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
@@ -247,7 +246,7 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
                 {studentDetails ? (
                   <>
                     <Box mb={3}>
-                      <Card variant="outlined">
+                      <Card variant="outlined" sx={{ bgcolor: theme.palette.background.paper }}>
                         <CardContent>
                           <Typography variant="h6" gutterBottom>
                             Grade Summary
@@ -289,12 +288,12 @@ const StudentGradeDetails = ({ open, onClose, student }) => {
                     </Box>
 
                     <Box mb={3}>
-                      <Card variant="outlined">
+                      <Card variant="outlined" sx={{ bgcolor: theme.palette.background.paper }}>
                         <CardContent>
                           <Typography variant="h6" gutterBottom>
                             Subject Performance
                           </Typography>
-                          <TableContainer component={Paper} variant="outlined">
+                          <TableContainer component={Paper} variant="outlined" sx={{ bgcolor: theme.palette.background.paper }}>
                             <Table>
                               <TableHead>
                                 <TableRow>

@@ -61,6 +61,14 @@ const PrintGradePage = () => {
     const startDate = params.get('startDate');
     const endDate = params.get('endDate');
     
+    console.log('[PrintGradePage] Initializing with URL params:', {
+      studentId,
+      studentName,
+      studentEmail,
+      startDate,
+      endDate
+    });
+    
     if (!studentId) {
       setError('No student ID provided');
       setLoading(false);
@@ -81,20 +89,23 @@ const PrintGradePage = () => {
             data = JSON.parse(savedData);
             console.log('[PrintGradePage] Parsed localStorage data:', {
               hasStudent: !!data?.student,
+              studentId: data?.student?._id,
+              studentName: data?.student?.name,
               hasGrades: Array.isArray(data?.grades),
               gradeCount: data?.grades?.length || 0,
-              hasSubjectBreakdown: !!data?.subjectBreakdown
+              hasSubjectBreakdown: !!data?.subjectBreakdown,
+              subjects: Object.keys(data?.subjectBreakdown || {})
             });
             
             // DON'T clear the localStorage yet - only after successful processing
             
-            if (data && (data.student || data.student?.student) && Array.isArray(data.grades)) {
-              // Handle both nested and flat student object structures
-              const studentObj = data.student.student || data.student;
+            if (data && data.student && Array.isArray(data.grades)) {
+              // Handle the student object structure
+              const studentObj = data.student;
               
-              setStudentData({
+              const processedData = {
                 student: {
-                  _id: studentId,
+                  _id: studentId || studentObj?._id,
                   name: studentName || studentObj?.name || 'Student Name',
                   email: studentEmail || studentObj?.email || ''
                 },
@@ -104,7 +115,15 @@ const PrintGradePage = () => {
                 totalGrades: data.totalGrades || 0,
                 startDate,
                 endDate
+              };
+              
+              console.log('[PrintGradePage] Processed data from localStorage:', {
+                studentName: processedData.student.name,
+                gradeCount: processedData.grades.length,
+                subjects: Object.keys(processedData.subjectBreakdown)
               });
+              
+              setStudentData(processedData);
               
               // Generate mock class averages if we don't have real ones
               generateMockClassAverages(data.subjectBreakdown || {});
@@ -112,10 +131,15 @@ const PrintGradePage = () => {
               // Only clear localStorage after successful processing
               localStorage.removeItem('printGradeData');
               
-              setLoading(false);
-              return;
+              // Check if we have actual grades
+              if (processedData.grades.length === 0) {
+                console.log('[PrintGradePage] No grades found in localStorage data, falling back to API');
+              } else {
+                setLoading(false);
+                return;
+              }
             } else {
-              console.log('[PrintGradePage] localStorage data found but incomplete!');
+              console.log('[PrintGradePage] localStorage data found but incomplete or invalid structure!', data);
             }
           } catch (parseError) {
             console.error('[PrintGradePage] Error parsing localStorage data:', parseError);
@@ -123,7 +147,7 @@ const PrintGradePage = () => {
           }
         }
         
-        // If no data in localStorage, fetch from API
+        // If no valid data in localStorage, fetch from API
         console.log('[PrintGradePage] Fetching student data from API for student ID:', studentId);
         
         // Build query parameters for date filtering
@@ -140,10 +164,11 @@ const PrintGradePage = () => {
           console.log('[PrintGradePage] API data received:', {
             hasGrades: Array.isArray(apiData?.grades),
             gradeCount: apiData?.grades?.length || 0,
-            hasSubjectBreakdown: !!apiData?.subjectBreakdown
+            hasSubjectBreakdown: !!apiData?.subjectBreakdown,
+            subjects: Object.keys(apiData?.subjectBreakdown || {})
           });
           
-          setStudentData({
+          const processedApiData = {
             student: {
               _id: studentId,
               name: studentName || 'Student Name',
@@ -155,10 +180,20 @@ const PrintGradePage = () => {
             totalGrades: apiData.totalGrades || 0,
             startDate,
             endDate
+          };
+          
+          console.log('[PrintGradePage] Processed API data:', {
+            studentName: processedApiData.student.name,
+            gradeCount: processedApiData.grades.length,
+            subjects: Object.keys(processedApiData.subjectBreakdown)
           });
           
+          setStudentData(processedApiData);
+          
           // Generate mock class averages
-          generateMockClassAverages(apiData.subjectBreakdown || {});
+          const subjectData = apiData.subjectBreakdown || {};
+          console.log('[PrintGradePage] Generating class averages for subjects:', Object.keys(subjectData));
+          generateMockClassAverages(subjectData);
         } catch (apiError) {
           console.error('[PrintGradePage] API fetch error:', apiError);
           throw apiError; // Rethrow to be caught by outer catch
@@ -184,6 +219,11 @@ const PrintGradePage = () => {
       const studentAvg = stats.average;
       const variance = Math.random() * 20 - 10; // Random variance between -10 and +10
       mockAverages[subject] = Math.min(100, Math.max(0, studentAvg + variance));
+    });
+    
+    console.log('[PrintGradePage] Generated class averages:', {
+      subjects: Object.keys(mockAverages),
+      averageValues: Object.values(mockAverages).map(avg => avg.toFixed(1))
     });
     
     setClassAverages(mockAverages);
@@ -247,13 +287,13 @@ const PrintGradePage = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {studentData.grades.length > 0 ? (
+                {studentData.grades && studentData.grades.length > 0 ? (
                   studentData.grades.map((grade) => {
                     // Get class average for this subject
                     const classAvg = classAverages[grade.subject] || 0;
                     
                     return (
-                      <TableRow key={grade._id}>
+                      <TableRow key={grade._id || `grade-${grade.subject}-${grade.date}`}>
                         <TableCell>{grade.subject}</TableCell>
                         <TableCell>{new Date(grade.date).toLocaleDateString()}</TableCell>
                         <TableCell 
@@ -272,7 +312,11 @@ const PrintGradePage = () => {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} align="center">No grades found for the selected period</TableCell>
+                    <TableCell colSpan={4} align="center">
+                      <Typography color="error">
+                        No grades found for the selected period. Please try again or contact support.
+                      </Typography>
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
