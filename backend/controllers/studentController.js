@@ -291,7 +291,7 @@ const getFilterOptionsForTeacher = asyncHandler(async (req, res) => {
     // Get school data to map branch IDs to names
     const schoolBranches = [];
     
-    // Look up actual branch names from the branches collection
+    // Look up actual branch names from the schools collection
     console.log('School branch value type analysis:');
     const branchIds = Array.from(schoolBranchIds);
     branchIds.forEach(branch => {
@@ -299,13 +299,13 @@ const getFilterOptionsForTeacher = asyncHandler(async (req, res) => {
     });
     
     try {
-      // Fetch actual branch documents to get names
-      const Branch = require('../models/Branch');
-      const branchDocs = await Branch.find({
+      // Fetch actual school branch documents to get names
+      const School = require('../models/schoolModel');
+      const branchDocs = await School.find({
         _id: { $in: branchIds.filter(id => mongoose.Types.ObjectId.isValid(id)) }
       }).select('_id name');
       
-      console.log('Found branch documents:', branchDocs.map(b => ({ id: b._id, name: b.name })));
+      console.log('Found school branch documents:', branchDocs.map(b => ({ id: b._id, name: b.name })));
       
       // Create mapping of branch IDs to names
       const branchNameMap = {};
