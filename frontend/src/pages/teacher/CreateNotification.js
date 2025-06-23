@@ -3,9 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { createNotification, reset } from '../../features/notifications/notificationSlice';
 import { getUsersByRole } from '../../features/users/userSlice';
-import { getSchools } from '../../features/schools/schoolSlice';
-import { getDirections } from '../../features/directions/directionSlice';
-import { getSubjects } from '../../features/subjects/subjectSlice';
+// Removed unused imports for simplified filtering
 import { toast } from 'react-toastify';
 import {
   Box,
@@ -56,22 +54,14 @@ const CreateNotification = () => {
     }
   }, [user, navigate]);
   const { users, filteredUsers, isLoading: isUsersLoading } = useSelector((state) => state.users);
-  const { schools, isLoading: isSchoolsLoading } = useSelector((state) => state.schools);
-  const { directions, isLoading: isDirectionsLoading } = useSelector((state) => state.directions);
-  const { subjects, isLoading: isSubjectsLoading } = useSelector((state) => state.subjects);
   
   const [availableUsers, setAvailableUsers] = useState([]);
-  const [filteredSubjects, setFilteredSubjects] = useState([]);
   const [formData, setFormData] = useState({
     recipients: [],         // Array of recipient IDs (multiple selection)
     title: '',
     message: '',
     sendToAll: false,
     filterByRole: 'student', // Default to student role
-    useFilters: false,       // Whether to use advanced filters
-    selectedSchools: [],     // Array of school IDs
-    selectedDirections: [],  // Array of direction IDs
-    selectedSubjects: [],    // Array of subject IDs
     isImportant: false       // Whether this is an important notification
   });
   const [formErrors, setFormErrors] = useState({});
@@ -79,46 +69,22 @@ const CreateNotification = () => {
   
   // Loading state for all reference data
   // eslint-disable-next-line no-unused-vars
-  const isLoadingOptions = isSchoolsLoading || isDirectionsLoading || isSubjectsLoading || isUsersLoading;
+  const isLoadingOptions = isUsersLoading;
   
-  // Fetch all required data when component mounts
+  // Fetch data when component mounts - simplified to only users based on role
   useEffect(() => {
     console.log('Fetching data for notification creation...');
     
-    // Load users based on default role (student)
+    // Load users based on user role - respecting class-based filtering
     dispatch(getUsersByRole(formData.filterByRole))
       .unwrap()
+      .then(users => {
+        console.log(`Loaded ${users?.length || 0} ${formData.filterByRole}s`);
+        // Users will be filtered by class in backend for teachers
+      })
       .catch(error => {
         console.error(`Failed to load ${formData.filterByRole}s:`, error);
         toast.error(`Failed to load users: ${error.message || 'Unknown error'}`);
-      });
-    
-    // Fetch schools
-    dispatch(getSchools())
-      .unwrap()
-      .catch(error => {
-        console.error('Failed to load schools:', error);
-        toast.error(`Failed to load schools: ${error.message || 'Unknown error'}`);
-      });
-    
-    // Fetch directions
-    dispatch(getDirections())
-      .unwrap()
-      .catch(error => {
-        console.error('Failed to load directions:', error);
-        toast.error(`Failed to load directions: ${error.message || 'Unknown error'}`);
-      });
-    
-    // Fetch subjects
-    dispatch(getSubjects())
-      .unwrap()
-      .then(data => {
-        // Initialize filtered subjects with all subjects initially
-        setFilteredSubjects(data);
-      })
-      .catch(error => {
-        console.error('Failed to load subjects:', error);
-        toast.error(`Failed to load subjects: ${error.message || 'Unknown error'}`);
       });
   }, [dispatch]);
 
@@ -137,193 +103,47 @@ const CreateNotification = () => {
       setAvailableUsers([]);
     }
   }, [filteredUsers, formData.filterByRole]);
-  
-  // Reload users when role filter changes
+
+  // Handle the filter related change in role
   useEffect(() => {
-    console.log('Role filter changed to:', formData.filterByRole);
+    // Reset filters when role changes
+    setFormData(prev => ({
+      ...prev,
+      recipients: [], // Reset recipients when role changes
+    }));
+    
+    // Load new users - with class-based filtering applied in backend for teachers
+    console.log(`Role changed to ${formData.filterByRole}, loading users...`);
     dispatch(getUsersByRole(formData.filterByRole));
-  }, [dispatch, formData.filterByRole]);
+  }, [formData.filterByRole, dispatch]);
 
   // Use refs to track component state
   const isInitialMount = React.useRef(true);
   const hasSubmitted = React.useRef(false);
   
-  // Initialize filtered subjects when subjects change
-  useEffect(() => {
-    if (subjects && subjects.length > 0) {
-      // If directions are selected, filter subjects by those directions
-      if (formData.selectedDirections && formData.selectedDirections.length > 0) {
-        const directionSubjects = subjects.filter(subject => 
-          subject.directions && 
-          // Check if any of the selected directions match with this subject's directions
-          subject.directions.some(dir => {
-            // Handle both string IDs and object references
-            const dirId = typeof dir === 'object' ? dir._id : dir;
-            return formData.selectedDirections.includes(dirId);
-          })
-        );
-        setFilteredSubjects(directionSubjects);
-      } else {
-        // If no directions selected, show all subjects
-        setFilteredSubjects(subjects);
-      }
-    }
-  }, [subjects, formData.selectedDirections]);
-  
-  // Add comprehensive debugging
-  console.log('CreateNotification render state:', {
-    isInitialMount: isInitialMount.current,
-    hasSubmitted: hasSubmitted.current,
-    isSuccess,
-    isError,
-    message,
-    usersCount: Array.isArray(users) ? users.length : 'not an array',
-    filteredSubjectsCount: filteredSubjects.length
-  });
-
-  // Force reset notification state on initial load
-  useEffect(() => {
-    console.log('Initial mount effect running');
-    // Always reset notification state when component mounts
-    dispatch(reset());
-    
-    // Set initial mount to false after a small delay to ensure state is reset
-    const timer = setTimeout(() => {
-      console.log('Setting isInitialMount to false after timeout');
-      isInitialMount.current = false;
-    }, 300);
-    
-    return () => {
-      clearTimeout(timer);
-      console.log('Component unmounting - resetting notification state');
-      dispatch(reset());
-    };
-  }, [dispatch]);
-  
-  // Handle success/error states separately from initial loading
-  useEffect(() => {
-    // Only process state changes if not the first mount and we've submitted the form
-    if (!isInitialMount.current && hasSubmitted.current) {
-      console.log('Processing notification state change:', { isSuccess, isError, message });
-      
-      if (isError) {
-        toast.error(message || 'Failed to send notification');
-        hasSubmitted.current = false;
-      }
-      
-      if (isSuccess) {
-        toast.success('Notification created successfully');
-        navigate('/app/teacher/notifications');
-        hasSubmitted.current = false;
-        dispatch(reset());
-      }
-    }
-  }, [isError, isSuccess, message, navigate, dispatch]);
-  
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Clear the error for this field when it's modified
-    if (formErrors[name]) {
-      setFormErrors({
-        ...formErrors,
-        [name]: '',
-      });
-    }
-    
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-  
-  // Special handler for multiple recipients selection
-  const handleRecipientsChange = (e) => {
-    const selectedIds = e.target.value;
-    
-    // Clear any related errors
-    if (formErrors.recipients) {
-      setFormErrors({
-        ...formErrors,
-        recipients: '',
-      });
-    }
-    
-    setFormData({
-      ...formData,
-      recipients: selectedIds,
-    });
-  };
-  
-  // Handle multi-select changes (for schools, directions, subjects)
-  const handleMultiSelectChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Clear any errors for this field
-    if (formErrors[name]) {
-      setFormErrors({
-        ...formErrors,
-        [name]: '',
-      });
-    }
-    
-    // Special handling for directions selection to filter subjects
-    if (name === 'selectedDirections') {
-      // Reset subjects selection when directions change
-      setFormData({
-        ...formData,
-        [name]: value,
-        selectedSubjects: [] // Clear subject selection when directions change
-      });
-      
-      // Filter subjects based on selected directions
-      if (value && value.length > 0 && subjects && subjects.length > 0) {
-        const directionSubjects = subjects.filter(subject => 
-          subject.directions && 
-          // Check if any of the selected directions match with this subject's directions
-          subject.directions.some(dir => {
-            // Handle both string IDs and object references
-            const dirId = typeof dir === 'object' ? dir._id : dir;
-            return value.includes(dirId);
-          })
-        );
-        setFilteredSubjects(directionSubjects);
-      } else {
-        // If no directions selected, show all subjects
-        setFilteredSubjects(subjects);
-      }
-    } else {
-      // Normal behavior for other fields
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    }
-  };
-  
-  // Handle select all button clicks
-  const handleSelectAll = (field, items) => {
-    if (!items || !Array.isArray(items)) return;
-    
-    const allIds = items.map(item => item._id);
-    
-    setFormData({
-      ...formData,
-      [field]: allIds,
-    });
-  };
-  
-  // Handle clear selection button clicks
-  const handleClearSelection = (field) => {
-    setFormData({
-      ...formData,
-      [field]: [],
-    });
-  };
-  
+  // Handle switch change - simplified just for sendToAll
   const handleSwitchChange = (e) => {
     const { name, checked } = e.target;
     
+    if (name === 'sendToAll') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked
+      }));
+      
+      // Clear errors related to recipient selection
+      if (checked) {
+        setFormErrors(prev => ({
+          ...prev,
+          recipients: ''
+        }));
+      }
+    } else {
+      // Regular switch handling (for isImportant)
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked
+      }));
     setFormData({
       ...formData,
       [name]: checked,
@@ -362,21 +182,9 @@ const CreateNotification = () => {
       errors.message = 'Message must be less than 1000 characters';
     }
     
-    // Recipient selection validation
-    if (!formData.sendToAll) {
-      if (formData.useFilters) {
-        // When using filters, at least one filter must be selected
-        if (
-          formData.selectedSchools.length === 0 &&
-          formData.selectedDirections.length === 0 &&
-          formData.selectedSubjects.length === 0
-        ) {
-          errors.filters = 'Please select at least one school, direction, or subject';
-        }
-      } else if (formData.recipients.length === 0) {
-        // When not using filters or sendToAll, at least one recipient must be selected
-        errors.recipients = 'Please select at least one recipient or use filters or send to all';
-      }
+    // Recipient selection validation - simplified
+    if (!formData.sendToAll && formData.recipients.length === 0) {
+      errors.recipients = 'Please select at least one recipient or send to all';
     }
     
     setFormErrors(errors);
@@ -408,23 +216,11 @@ const CreateNotification = () => {
         targetRole: formData.filterByRole,
       };
       
-      // Handle different recipient selection methods
+      // Handle different recipient selection methods - simplified
       if (formData.sendToAll) {
         // Send to all users (possibly filtered by role)
         notificationData.sendToAll = true;
-      } else if (formData.useFilters) {
-        // Use filter-based targeting
-        if (formData.selectedSchools.length > 0) {
-          notificationData.schools = formData.selectedSchools;
-        }
-        
-        if (formData.selectedDirections.length > 0) {
-          notificationData.directions = formData.selectedDirections;
-        }
-        
-        if (formData.selectedSubjects.length > 0) {
-          notificationData.subjects = formData.selectedSubjects;
-        }
+        // Class filtering will be applied in backend for teachers
       } else {
         // Send to specific recipients (multiple selection supported)
         notificationData.recipients = formData.recipients;

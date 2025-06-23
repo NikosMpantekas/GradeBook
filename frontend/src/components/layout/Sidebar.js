@@ -142,7 +142,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'Send Notifications',
         icon: <NotificationsIcon />,
-        path: '/app/teacher/notifications',
+        path: '/app/teacher/notifications/create',
         roles: ['teacher', 'admin', 'secretary'],
         checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
                             (user.role === 'secretary' && user.secretaryPermissions?.canSendNotifications)) && 
