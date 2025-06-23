@@ -150,15 +150,6 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'teacher',
       },
       
-      // 5.5. Student Statistics (Teacher View)
-      {
-        text: 'Student Statistics',
-        icon: <AnalyticsIcon />,
-        path: '/app/teacher/student-stats',
-        roles: ['teacher', 'admin'],
-        section: 'teacher',
-      },
-      
       // 6. Notifications (My Notifications)
       {
         text: 'My Notifications',

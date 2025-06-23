@@ -9,13 +9,25 @@ const Class = require('../models/classModel');
 const getStudentStats = asyncHandler(async (req, res) => {
   try {
     const { search } = req.query;
-    console.log(`[StudentStats] Request from ${req.user.role}:`, { search, schoolId: req.user.schoolId });
+    console.log(`[StudentStats] Request from ${req.user.role}:`, { search, schoolId: req.user.schoolId, userId: req.user._id });
+    
+    // Debug log current user details
+    console.log('[StudentStats] Current user:', {
+      id: req.user._id,
+      role: req.user.role,
+      schoolId: req.user.schoolId,
+      name: req.user.name,
+      email: req.user.email
+    });
 
     // Build base query for students in the same school
     let studentQuery = {
       role: 'student',
       schoolId: req.user.schoolId
     };
+    
+    // Log the base query
+    console.log('[StudentStats] Base student query:', JSON.stringify(studentQuery));
 
     // Add search filter if provided
     if (search && search.trim()) {

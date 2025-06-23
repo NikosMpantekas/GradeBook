@@ -9,6 +9,13 @@ export const getStudentStats = async (search = '') => {
   try {
     console.log('[StudentStatsAPI] Fetching student stats with search:', search);
     
+    // Log HTTP headers for debugging auth issues
+    const currentToken = localStorage.getItem('token');
+    console.log('[StudentStatsAPI] Auth token exists:', !!currentToken);
+    if (currentToken) {
+      console.log('[StudentStatsAPI] Token snippet:', currentToken.substring(0, 20) + '...');
+    }
+    
     const params = new URLSearchParams();
     if (search && search.trim()) {
       params.append('search', search.trim());
@@ -19,12 +26,42 @@ export const getStudentStats = async (search = '') => {
     
     console.log('[StudentStatsAPI] Request URL:', url);
     
+    // Add request with complete config logging
+    console.log('[StudentStatsAPI] Making request with headers:', {
+      Authorization: currentToken ? 'Bearer [...]' : undefined,
+    });
+    
     const response = await axiosInstance.get(url);
     
-    console.log('[StudentStatsAPI] Student stats response:', response.data);
+    console.log('[StudentStatsAPI] Student stats response status:', response.status);
+    console.log('[StudentStatsAPI] Student stats response data:', response.data);
+    console.log('[StudentStatsAPI] Students found:', response.data?.students?.length || 0);
+    
+    // Inspect students and their grades if any
+    if (response.data?.students?.length > 0) {
+      console.log('[StudentStatsAPI] First student sample:', response.data.students[0]);
+      console.log('[StudentStatsAPI] Grade counts:', response.data.students.map(s => ({
+        name: s.student.name,
+        grades: s.statistics.gradeCount
+      })));
+    } else {
+      console.log('[StudentStatsAPI] No students found in response');
+    }
+    
     return response.data;
   } catch (error) {
     console.error('[StudentStatsAPI] Error fetching student stats:', error);
+    console.error('[StudentStatsAPI] Error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      config: error.config ? {
+        url: error.config.url,
+        method: error.config.method,
+        baseURL: error.config.baseURL,
+        headers: error.config.headers ? 'Headers present' : 'No headers'
+      } : 'No config'
+    });
     
     // Extract meaningful error message
     const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch student statistics';

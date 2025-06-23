@@ -397,11 +397,7 @@ function App() {
                 <CreateNotification />
               </TeacherRoute>
             } />
-            <Route path="/app/teacher/student-stats" element={
-              <TeacherRoute>
-                <StudentStats />
-              </TeacherRoute>
-            } />
+            {/* Teacher student-stats route removed to avoid duplication - use admin version only */}
             
             {/* Admin Routes */}
             {/* Admin Dashboard - add both /app/admin and /app/admin/dashboard routes */}
