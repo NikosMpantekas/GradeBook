@@ -433,19 +433,53 @@ const StudentProgress = () => {
   // Fetch all users, grades for admin, and subjects
   useEffect(() => {
     if (user && user.role === 'admin') {
-      dispatch(getUsers());
+      console.log('👤 Admin user detected, fetching all data...');
+      
+      // Fetch users
+      dispatch(getUsers())
+        .unwrap()
+        .then(data => {
+          console.log(`✅ Successfully fetched ${data?.length || 0} users`);
+        })
+        .catch(error => {
+          console.error('❌ Error fetching users:', error);
+        });
+      
+      // Fetch grades with detailed logging
       dispatch(getAllGrades())
         .unwrap()
         .then(data => {
-          console.log(`Successfully fetched ${data?.length || 0} grades for admin`);
+          console.log(`✅ Successfully fetched ${data?.length || 0} grades for admin`);
+          console.log('📊 Sample grades data:', data?.slice(0, 3));
+          
+          // Log grade structure for debugging
+          if (data && data.length > 0) {
+            console.log('🔍 Grade structure analysis:', {
+              firstGrade: data[0],
+              studentField: data[0]?.student,
+              subjectField: data[0]?.subject,
+              valueField: data[0]?.value,
+              dateField: data[0]?.date
+            });
+          }
         })
         .catch(error => {
-          console.error('Error fetching all grades:', error);
+          console.error('❌ Error fetching all grades:', error);
+          logError('Failed to fetch grades', error);
         });
-      dispatch(getSubjects());
+      
+      // Fetch subjects
+      dispatch(getSubjects())
+        .unwrap()
+        .then(data => {
+          console.log(`✅ Successfully fetched ${data?.length || 0} subjects`);
+        })
+        .catch(error => {
+          console.error('❌ Error fetching subjects:', error);
+        });
     }
   }, [dispatch, user]);
-  
+
   // Filter students based on search term
   useEffect(() => {
     if (Array.isArray(users)) {
@@ -548,28 +582,60 @@ const StudentProgress = () => {
   
   // Filter grades for selected student
   useEffect(() => {
+    console.log('🔄 Filtering grades for selected student...');
+    console.log('Selected student:', selectedStudent?._id, selectedStudent?.name);
+    console.log('Total grades available:', grades?.length || 0);
+    console.log('Grades array is valid:', Array.isArray(grades));
+    
     try {
-      if (selectedStudent && Array.isArray(grades)) {
-        // Filter grades for this student
+      if (selectedStudent && Array.isArray(grades) && grades.length > 0) {
+        console.log('📋 Starting grade filtering process...');
+        
+        // Filter grades for this student with enhanced debugging
         let studentGradesList = [];
         try {
           studentGradesList = grades.filter(grade => {
-            // Defensive null/undefined checks
-            if (!grade) return false;
-            if (!grade.student) return false;
+            // Comprehensive null/undefined checks
+            if (!grade) {
+              console.warn('⚠️ Null/undefined grade found');
+              return false;
+            }
+            if (!grade.student) {
+              console.warn('⚠️ Grade missing student field:', grade._id);
+              return false;
+            }
             
-            // Handle both object and string IDs
+            // Handle both object and string student IDs
             try {
-              const studentId = typeof grade.student === 'object' 
-                ? (grade.student?._id || '') 
-                : grade.student;
-              return studentId === selectedStudent._id;
+              const gradeStudentId = typeof grade.student === 'object' 
+                ? (grade.student?._id || grade.student?.toString()) 
+                : grade.student.toString();
+              
+              const selectedStudentId = selectedStudent._id.toString();
+              
+              const isMatch = gradeStudentId === selectedStudentId;
+              
+              if (isMatch) {
+                console.log('✅ Grade match found:', {
+                  gradeId: grade._id,
+                  gradeStudentId,
+                  selectedStudentId,
+                  subject: grade.subject?.name || grade.subject,
+                  value: grade.value
+                });
+              }
+              
+              return isMatch;
             } catch (idError) {
-              logError('Error comparing student IDs', idError, { grade });
+              console.error('❌ Error comparing student IDs:', idError, { grade });
               return false;
             }
           });
+          
+          console.log(`📊 Found ${studentGradesList.length} grades for student ${selectedStudent.name}`);
+          
         } catch (filterError) {
+          console.error('❌ Error filtering student grades:', filterError);
           logError('Error filtering student grades', filterError, { selectedStudent: selectedStudent?._id });
           displayErrorMessage(new Error(`Error loading grades for ${selectedStudent?.name || 'student'}: ${filterError.message}`));
           studentGradesList = [];
@@ -579,6 +645,7 @@ const StudentProgress = () => {
           // Filter by subject if needed
           let filteredGrades = studentGradesList;
           if (subjectFilter) {
+            console.log('🔍 Applying subject filter:', subjectFilter);
             filteredGrades = studentGradesList.filter(grade => {
               // Skip invalid entries
               if (!grade || !grade.subject) return false;
@@ -588,30 +655,41 @@ const StudentProgress = () => {
                 : grade.subject;
               return subjectId === subjectFilter;
             });
+            console.log(`📋 After subject filter: ${filteredGrades.length} grades`);
           }
           
           // Make sure dates are valid before sorting
-          filteredGrades = filteredGrades.filter(grade => grade && grade.date);
+          filteredGrades = filteredGrades.filter(grade => {
+            if (!grade || !grade.date) {
+              console.warn('⚠️ Grade missing date:', grade?._id);
+              return false;
+            }
+            return true;
+          });
           
           // Sort grades by date (most recent first)
           filteredGrades.sort((a, b) => {
             try {
               return new Date(b.date) - new Date(a.date);
             } catch (e) {
-              console.error('Error sorting dates:', e);
+              console.error('❌ Error sorting dates:', e);
               return 0; // Keep original order if date parsing fails
             }
           });
           
+          console.log(`📈 Final filtered and sorted grades: ${filteredGrades.length}`);
           setStudentGrades(filteredGrades);
           
           // Calculate statistics safely
           if (filteredGrades.length > 0) {
+            console.log('📊 Calculating grade statistics...');
             try {
               // Extract valid grade values
               const gradeValues = filteredGrades
-                .filter(g => g && typeof g.value === 'number')
+                .filter(g => g && typeof g.value === 'number' && !isNaN(g.value))
                 .map(g => g.value);
+              
+              console.log('📈 Valid grade values:', gradeValues);
               
               // Only calculate if we have valid grades
               if (gradeValues.length > 0) {
@@ -626,6 +704,7 @@ const StudentProgress = () => {
                 
                 // Group grades by subject
                 const subjectGrades = {};
+                
                 // Process each grade safely
                 filteredGrades.forEach(grade => {
                   if (!grade || !grade.subject) return;
@@ -644,65 +723,68 @@ const StudentProgress = () => {
                         average: 0
                       };
                     }
-                  } catch (err) {
-                    logError('Error initializing subject entry', err, { subjectId, subjectName });
-                    // Create a default entry if there's an error
-                    subjectGrades[subjectId] = {
-                      id: subjectId || 'unknown',
-                      name: 'Unknown Subject',
-                      grades: [],
-                      average: 0
-                    };
-                  }
-                  
-                  // Add grade to subject and calculate average in a try-catch block
-                  try {
-                    // Only add valid numeric grades
-                    if (typeof grade.value === 'number') {
+                    
+                    // Add grade to subject
+                    if (typeof grade.value === 'number' && !isNaN(grade.value)) {
                       subjectGrades[subjectId].grades.push(grade.value);
-                      
-                      // Calculate new average
-                      const subjectSum = subjectGrades[subjectId].grades.reduce((a, b) => a + b, 0);
-                      subjectGrades[subjectId].average = subjectSum / subjectGrades[subjectId].grades.length;
                     }
                   } catch (err) {
-                    logError('Error processing grade for subject', err, { subjectId, grade: grade?.value });
-                    // Set default average if calculation fails
-                    subjectGrades[subjectId].average = 0;
+                    console.error('❌ Error processing subject grade:', err, { subjectId, subjectName });
                   }
                 });
                 
-                // Update grade statistics state
-                setGradeStats({
-                  averageGrade: avg.toFixed(1),
+                // Calculate averages for each subject
+                Object.values(subjectGrades).forEach(subject => {
+                  if (subject.grades.length > 0) {
+                    const subjectSum = subject.grades.reduce((a, b) => a + b, 0);
+                    subject.average = Math.round((subjectSum / subject.grades.length) * 100) / 100;
+                  }
+                });
+                
+                const newStats = {
+                  averageGrade: Math.round(avg * 100) / 100,
                   highestGrade: highest,
                   lowestGrade: lowest,
-                  passRate: passRate.toFixed(1),
+                  passRate: Math.round(passRate * 100) / 100,
                   totalGrades: gradeValues.length,
                   gradesBySubject: subjectGrades
-                });
+                };
+                
+                console.log('📊 Calculated statistics:', newStats);
+                setGradeStats(newStats);
               } else {
-                // No valid grades to calculate stats
+                console.warn('⚠️ No valid grade values found for statistics');
                 resetGradeStats();
               }
-            } catch (error) {
-              logError('Error calculating grade statistics', error, { studentId: selectedStudent?._id });
-              displayErrorMessage(error);
+            } catch (statsError) {
+              console.error('❌ Error calculating statistics:', statsError);
+              logError('Error calculating grade statistics', statsError);
               resetGradeStats();
             }
           } else {
-            // No grades available
+            console.log('📋 No grades found, resetting statistics');
             resetGradeStats();
           }
-        } catch (error) {
-          logError('Error processing student grades', error, { studentId: selectedStudent?._id });
-          displayErrorMessage(error);
+        } catch (processingError) {
+          console.error('❌ Error processing filtered grades:', processingError);
+          logError('Error processing filtered grades', processingError);
+          setStudentGrades([]);
           resetGradeStats();
         }
+        
+      } else {
+        console.log('📋 No student selected or no grades available');
+        if (!selectedStudent) console.log('❌ No student selected');
+        if (!Array.isArray(grades)) console.log('❌ Grades is not an array:', typeof grades);
+        if (Array.isArray(grades) && grades.length === 0) console.log('❌ Grades array is empty');
+        
+        setStudentGrades([]);
+        resetGradeStats();
       }
     } catch (error) {
-      logError('Error in student grades effect', error, { studentId: selectedStudent?._id });
-      displayErrorMessage(error);
+      console.error('❌ Critical error in grade filtering useEffect:', error);
+      logError('Critical error in grade filtering', error);
+      setStudentGrades([]);
       resetGradeStats();
     }
   }, [selectedStudent, grades, subjectFilter]);
