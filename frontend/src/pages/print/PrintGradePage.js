@@ -325,19 +325,59 @@ const PrintGradePage = () => {
                       console.error(`[PrintGradePage] Error processing class average for ${grade.subject}:`, err);
                     }
                     
+                    // Debug the grade object structure before rendering
+                    console.log('[PrintGradePage] Grade object structure:', {
+                      grade,
+                      subjectType: typeof grade.subject,
+                      isSubjectObject: typeof grade.subject === 'object' && grade.subject !== null,
+                      gradeType: typeof grade.grade,
+                      isGradeObject: typeof grade.grade === 'object' && grade.grade !== null,
+                      dateType: typeof grade.date,
+                      isDateObject: typeof grade.date === 'object' && grade.date !== null && !(grade.date instanceof Date),
+                      dateValid: !isNaN(new Date(grade.date).getTime())
+                    });
+                    
+                    // Safely extract values from the grade object to avoid React error #31
+                    const safeSubject = typeof grade.subject === 'string' ? grade.subject : 
+                                      (typeof grade.subject === 'object' && grade.subject !== null) ? 
+                                        (grade.subject.name || JSON.stringify(grade.subject)) : 
+                                        String(grade.subject || 'Unknown');
+                      
+                    // Safe date formatting with fallback
+                    let safeDate = 'Unknown';
+                    try {
+                      if (grade.date) {
+                        const dateObj = new Date(grade.date);
+                        if (!isNaN(dateObj.getTime())) {
+                          safeDate = dateObj.toLocaleDateString();
+                        }
+                      }
+                    } catch (err) {
+                      console.error('[PrintGradePage] Error formatting date:', err);
+                    }
+                    
+                    // Safe grade value with fallback
+                    const safeGrade = typeof grade.grade === 'number' ? grade.grade : 
+                                     (typeof grade.grade === 'object' && grade.grade !== null) ?
+                                       (grade.grade.value || 0) : 
+                                       parseFloat(grade.grade) || 0;
+                    
+                    // Determine grade color based on safe grade value
+                    const gradeColor = safeGrade >= 70 ? 'success.main' : 
+                                      safeGrade >= 50 ? 'warning.main' : 'error.main';
+                    
                     return (
-                      <TableRow key={grade._id || `grade-${grade.subject}-${grade.date}`}>
-                        <TableCell>{grade.subject}</TableCell>
-                        <TableCell>{new Date(grade.date).toLocaleDateString()}</TableCell>
+                      <TableRow key={grade._id || `grade-${safeSubject}-${grade.date}`}>
+                        <TableCell>{safeSubject}</TableCell>
+                        <TableCell>{safeDate}</TableCell>
                         <TableCell 
                           align="center"
                           sx={{ 
                             fontWeight: 'bold',
-                            color: grade.grade >= 70 ? 'success.main' : 
-                                   grade.grade >= 50 ? 'warning.main' : 'error.main'
+                            color: gradeColor
                           }}
                         >
-                          {grade.grade}
+                          {typeof safeGrade === 'number' ? safeGrade : '0'}
                         </TableCell>
                         <TableCell align="center">{typeof classAvg === 'number' ? classAvg.toFixed(1) : '0.0'}</TableCell>
                       </TableRow>
