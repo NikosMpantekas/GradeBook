@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { createNotification, reset } from '../../features/notifications/notificationSlice';
+import { reset } from '../../features/notifications/notificationSlice';
 import { getUsersByRole } from '../../features/users/userSlice';
 import { toast } from 'react-toastify';
 
@@ -24,6 +24,7 @@ import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
 import NotificationForm from './components/NotificationForm';
 import NotificationRecipients from './components/NotificationRecipients';
+import NotificationService from './components/NotificationService';
 
 /**
  * CreateNotification - Main component for creating notifications
@@ -85,23 +86,45 @@ const CreateNotification = () => {
   useEffect(() => {
     console.log('Fetching data for notification creation...');
     
+    // Explicitly set default role for consistency
+    const role = formData.filterByRole || 'student';
+    
     // Only fetch users if we have a valid role
-    if (formData.filterByRole && ['student', 'teacher', 'admin', 'parent', 'secretary'].includes(formData.filterByRole)) {
-      console.log(`Fetching users with role: ${formData.filterByRole}`);
+    if (['student', 'teacher', 'admin', 'parent', 'secretary'].includes(role)) {
+      console.log(`Fetching users with role: ${role}`);
       
       // Load users based on user role - respecting class-based filtering
-      dispatch(getUsersByRole(formData.filterByRole))
+      dispatch(getUsersByRole(role))
         .unwrap()
         .then(users => {
-          console.log(`Loaded ${users?.length || 0} ${formData.filterByRole}s`);
+          console.log(`Loaded ${users?.length || 0} ${role}s`);
           // Users will be filtered by class in backend for teachers
+          if (users?.length === 0) {
+            console.log(`No ${role}s found but API call was successful`);
+          }
         })
         .catch(error => {
-          console.error(`Failed to load ${formData.filterByRole}s:`, error);
-          toast.error(`Failed to load users: ${error.message || 'Unknown error'}`);
+          // Add detailed error logging
+          console.error(`Failed to load ${role}s:`, error);
+          console.error('Error details:', {
+            status: error.status || error.response?.status,
+            message: error.message,
+            data: error.response?.data
+          });
+          
+          // If we get a 404 for 'all', try 'student' instead
+          if ((error.response?.status === 404 || error.status === 404) && role !== 'student') {
+            console.log('Falling back to role="student" after 404 error');
+            setFormData(prev => ({
+              ...prev,
+              filterByRole: 'student'
+            }));
+          } else {
+            toast.error(`Failed to load users: ${error.message || 'Unknown error'}`);
+          }
         });
     } else {
-      console.error(`Invalid role specified: ${formData.filterByRole}`);
+      console.error(`Invalid role specified: ${role}`);
       // Default to students if role is invalid
       setFormData(prev => ({
         ...prev,
@@ -109,6 +132,17 @@ const CreateNotification = () => {
       }));
     }
   }, [dispatch, formData.filterByRole]);
+  
+  // Update availableUsers when users are loaded from Redux
+  useEffect(() => {
+    if (users && Array.isArray(users)) {
+      console.log(`Updating availableUsers with ${users.length} users from Redux store`);
+      setAvailableUsers(users);
+    } else {
+      console.log('Users from Redux store is not an array:', users);
+      setAvailableUsers([]);
+    }
+  }, [users]);
   
   // Function to handle role change and trigger re-fetching of users
   const handleRoleChange = (role) => {
@@ -190,91 +224,46 @@ const CreateNotification = () => {
     }
   };
   
-  // Form validation
+  // Form validation using NotificationService
   const validate = () => {
-    const errors = {};
-    
-    // Basic fields validation
-    if (!formData.title.trim()) {
-      errors.title = 'Please enter a title';
-    } else if (formData.title.length > 100) {
-      errors.title = 'Title must be less than 100 characters';
-    }
-    
-    if (!formData.message.trim()) {
-      errors.message = 'Please enter a message';
-    } else if (formData.message.length > 1000) {
-      errors.message = 'Message must be less than 1000 characters';
-    }
-    
-    // Recipient selection validation - simplified
-    if (!formData.sendToAll && formData.recipients.length === 0) {
-      errors.recipients = 'Please select at least one recipient or send to all';
-    }
-    
+    const errors = NotificationService.validate(formData);
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
   
-  // Form submission
+  // Form submission using NotificationService
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Form submission attempted');
     
-    if (validate()) {
-      console.log('Form validation passed, submitting notification');
-      
-      // Set our submission tracking flag
-      hasSubmitted.current = true;
-      
-      // Show loading indicator or disable the submit button
-      setIsSubmitting(true);
-      
-      // Make sure we're not in the initial mount state
-      isInitialMount.current = false;
-      
-      // Create the notification data
-      const notificationData = {
-        sender: user._id,
-        title: formData.title,
-        message: formData.message,
-        isImportant: formData.isImportant,
-        targetRole: formData.filterByRole,
-      };
-      
-      // Handle different recipient selection methods - simplified
-      if (formData.sendToAll) {
-        // Send to all users (filtered by role and teacher class access)
-        notificationData.sendToAll = true;
-        console.log(`Sending to all users with role: ${formData.filterByRole}`);
-        // Class filtering will be applied in backend for teachers
-      } else {
-        // Send to specific recipients (multiple selection supported)
-        notificationData.recipients = formData.recipients;
-        console.log(`Sending to ${formData.recipients.length} specific recipients`);
+    setIsSubmitting(true);
+    hasSubmitted.current = true;
+    
+    // Use NotificationService to validate and send the notification
+    const result = NotificationService.sendNotification(
+      dispatch,
+      formData,
+      user,
+      // Success callback
+      (result) => {
+        console.log('Notification created successfully:', result);
+        // Success handling is done in the useEffect
+      },
+      // Error callback
+      (error) => {
+        console.error('Failed to create notification:', error);
+        hasSubmitted.current = false;
+      },
+      // Complete callback
+      () => {
+        setIsSubmitting(false);
       }
-      
-      console.log('Dispatching createNotification with data:', notificationData);
-      
-      // First ensure any previous notification state is reset
-      dispatch(reset());
-      
-      // Then dispatch the new notification
-      dispatch(createNotification(notificationData))
-        .unwrap()
-        .then((result) => {
-          console.log('Notification created successfully:', result);
-          // Success handling is done in the useEffect
-        })
-        .catch((error) => {
-          console.error('Failed to create notification:', error);
-          toast.error(`Failed to send notification: ${error.message || 'Unknown error'}`);
-          hasSubmitted.current = false;
-        })
-        .finally(() => {
-          setIsSubmitting(false);
-        });
-    } else {
+    );
+    
+    // Update form errors if validation failed
+    if (!result.valid) {
+      setFormErrors(result.errors);
+      setIsSubmitting(false);
       console.log('Form validation failed');
     }
   };
