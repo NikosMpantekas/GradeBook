@@ -45,11 +45,12 @@ const CreateNotification = () => {
     title: '',
     message: '',
     sendToAll: false,
-    filterByRole: user?.role === 'teacher' ? 'student' : 'all', // Default to student role for teachers
+    filterByRole: user?.role === 'teacher' ? 'student' : 'student', // Default to student role
     isImportant: false      // Whether this is an important notification
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(user?.role === 'teacher' ? 'student' : 'student');
   
   // Refs to track component state
   const isInitialMount = useRef(true);
@@ -84,18 +85,40 @@ const CreateNotification = () => {
   useEffect(() => {
     console.log('Fetching data for notification creation...');
     
-    // Load users based on user role - respecting class-based filtering
-    dispatch(getUsersByRole(formData.filterByRole))
-      .unwrap()
-      .then(users => {
-        console.log(`Loaded ${users?.length || 0} ${formData.filterByRole}s`);
-        // Users will be filtered by class in backend for teachers
-      })
-      .catch(error => {
-        console.error(`Failed to load ${formData.filterByRole}s:`, error);
-        toast.error(`Failed to load users: ${error.message || 'Unknown error'}`);
-      });
+    // Only fetch users if we have a valid role
+    if (formData.filterByRole && ['student', 'teacher', 'admin', 'parent', 'secretary'].includes(formData.filterByRole)) {
+      console.log(`Fetching users with role: ${formData.filterByRole}`);
+      
+      // Load users based on user role - respecting class-based filtering
+      dispatch(getUsersByRole(formData.filterByRole))
+        .unwrap()
+        .then(users => {
+          console.log(`Loaded ${users?.length || 0} ${formData.filterByRole}s`);
+          // Users will be filtered by class in backend for teachers
+        })
+        .catch(error => {
+          console.error(`Failed to load ${formData.filterByRole}s:`, error);
+          toast.error(`Failed to load users: ${error.message || 'Unknown error'}`);
+        });
+    } else {
+      console.error(`Invalid role specified: ${formData.filterByRole}`);
+      // Default to students if role is invalid
+      setFormData(prev => ({
+        ...prev,
+        filterByRole: 'student'
+      }));
+    }
   }, [dispatch, formData.filterByRole]);
+  
+  // Function to handle role change and trigger re-fetching of users
+  const handleRoleChange = (role) => {
+    if (['student', 'teacher', 'admin', 'parent', 'secretary'].includes(role)) {
+      setFormData(prev => ({
+        ...prev,
+        filterByRole: role
+      }));
+    }
+  };
 
   // Update available users when filteredUsers data changes
   useEffect(() => {
@@ -221,12 +244,14 @@ const CreateNotification = () => {
       
       // Handle different recipient selection methods - simplified
       if (formData.sendToAll) {
-        // Send to all users (possibly filtered by role)
+        // Send to all users (filtered by role and teacher class access)
         notificationData.sendToAll = true;
+        console.log(`Sending to all users with role: ${formData.filterByRole}`);
         // Class filtering will be applied in backend for teachers
       } else {
         // Send to specific recipients (multiple selection supported)
         notificationData.recipients = formData.recipients;
+        console.log(`Sending to ${formData.recipients.length} specific recipients`);
       }
       
       console.log('Dispatching createNotification with data:', notificationData);

@@ -85,9 +85,10 @@ const NotificationForm = ({
               label="Target Role"
               onChange={handleChange}
             >
-              <MenuItem value="all">All Users</MenuItem>
               <MenuItem value="student">Students Only</MenuItem>
               <MenuItem value="teacher">Teachers Only</MenuItem>
+              <MenuItem value="parent">Parents Only</MenuItem>
+              <MenuItem value="secretary">Secretaries Only</MenuItem>
               {user?.role === 'admin' && (
                 <MenuItem value="admin">Admins Only</MenuItem>
               )}
