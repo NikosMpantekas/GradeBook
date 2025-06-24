@@ -521,8 +521,21 @@ const Schedule = () => {
     
     console.log(`Schedule - Rendering event: ${event.subject} at ${event.startTime}-${event.endTime}, ID: ${event._id}`);
     
+    // Get branch name if available from our mapping
+    const branchName = event.schoolBranch ? 
+      (branchNames[event.schoolBranch] || event.schoolBranch) : 
+      'Unknown Branch';
+      
+    // Handle teacher display
+    const teacherDisplay = event.teacherNames?.length > 0 ? 
+      ` • ${event.teacherNames[0]}${event.teacherNames.length > 1 ? ` +${event.teacherNames.length - 1}` : ''}` : 
+      '';
+    
     // Determine color based on subject
     const backgroundColor = getSubjectColor(event.subject);
+    
+    // Check if it's a light color for contrast
+    const isLightColor = ['#f9a825', '#ffc107', '#ffeb3b'].includes(backgroundColor);
     
     // Calculate contrast color for text based on background color
     const getContrastText = (hexColor) => {
