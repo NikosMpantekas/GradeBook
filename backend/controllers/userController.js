@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
 const User = require('../models/userModel');
+const Class = require('../models/classModel');
 const logger = require('../utils/logger');
 // Single database architecture - no need for multiDbConnect
 
@@ -826,7 +827,7 @@ const getUsersByRole = asyncHandler(async (req, res) => {
   const { role } = req.params;
   const validRoles = ['admin', 'teacher', 'student', 'secretary', 'parent'];
   
-  console.log(`getUsersByRole endpoint called for role: ${role}`);
+  console.log(`getUsersByRole endpoint called for role: ${role} by user ${req.user.name} (${req.user.role})`);
   
   if (!validRoles.includes(role)) {
     res.status(400);
@@ -847,9 +848,52 @@ const getUsersByRole = asyncHandler(async (req, res) => {
       filter.schoolId = req.user.schoolId;
     }
     
+    // CLASS-BASED FILTERING FOR TEACHERS
+    // If teacher is looking for students, only show students from their classes
+    let users = [];
+    
+    if (req.user.role === 'teacher' && role === 'student') {
+      // Get the teacher's classes first
+      console.log(`Teacher ${req.user.name} (${req.user._id}) fetching their students`);
+      
+      // Find classes where this teacher is assigned
+      const teacherClasses = await Class.find({
+        teachers: req.user._id
+      }).lean();
+      
+      if (teacherClasses && teacherClasses.length > 0) {
+        console.log(`Teacher has ${teacherClasses.length} assigned classes:`, 
+          teacherClasses.map(c => c.name || c._id));
+        
+        // Get all student IDs from these classes
+        const studentIds = [];
+        for (const cls of teacherClasses) {
+          if (cls.students && cls.students.length > 0) {
+            studentIds.push(...cls.students);
+          }
+        }
+        
+        // Remove duplicates from studentIds
+        const uniqueStudentIds = [...new Set(studentIds)];
+        console.log(`Found ${uniqueStudentIds.length} unique students in teacher's classes`);
+        
+        // Add student IDs to filter
+        if (uniqueStudentIds.length > 0) {
+          filter._id = { $in: uniqueStudentIds };
+        } else {
+          // If teacher has no students, return empty array instead of all students
+          console.log(`Teacher has no students in their classes, returning empty array`);
+          return res.json([]); 
+        }
+      } else {
+        console.log(`Teacher has no assigned classes, returning empty array`);
+        return res.json([]);
+      }
+    }
+    
     console.log(`Fetching ${role}s with filter:`, filter);
     
-    const users = await User.find(filter)
+    users = await User.find(filter)
       .select('-password')
       .populate('school', 'name')
       .populate('direction', 'name')
@@ -859,11 +903,13 @@ const getUsersByRole = asyncHandler(async (req, res) => {
       .lean();
     
     console.log(`Found ${users.length} ${role}s`);
-    res.json(users);
+    return res.json(users); // Added return to ensure response completes
   } catch (error) {
     console.error(`Error in getUsersByRole (${role}):`, error.message);
-    res.status(error.statusCode || 500);
-    throw new Error(error.message || `Error retrieving ${role} list`);
+    // Ensure we return proper error response
+    return res.status(error.statusCode || 500).json({
+      message: error.message || `Error retrieving ${role} list`
+    });
   }
 });
 
