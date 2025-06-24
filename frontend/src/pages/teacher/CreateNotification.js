@@ -1,51 +1,62 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { createNotification, reset } from '../../features/notifications/notificationSlice';
 import { getUsersByRole } from '../../features/users/userSlice';
-// Removed unused imports for simplified filtering
 import { toast } from 'react-toastify';
+
+// Material UI imports
 import {
   Box,
   Typography,
-  TextField,
   Button,
-  Grid,
-  MenuItem,
-  FormControl,
-  Select,
-  InputLabel,
   Paper,
-  FormHelperText,
-  FormControlLabel,
-  Switch,
-  CircularProgress,
-  // Divider, // Unused import
-  Chip,
-  ListItemText,
-  Checkbox,
-  OutlinedInput
+  CircularProgress
 } from '@mui/material';
 import { 
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
   Notifications as NotificationsIcon
-  // FilterList as FilterIcon // Unused import
 } from '@mui/icons-material';
 
 // Import our custom components
 import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
+import NotificationForm from './components/NotificationForm';
+import NotificationRecipients from './components/NotificationRecipients';
 
+/**
+ * CreateNotification - Main component for creating notifications
+ * Integrates NotificationForm and NotificationRecipients components
+ */
 const CreateNotification = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
+  // Redux state
   const { user } = useSelector((state) => state.auth);
   const { isLoading, isError, isSuccess, message } = useSelector((state) => state.notifications);
+  const { users, filteredUsers, isLoading: isUsersLoading } = useSelector((state) => state.users);
+  
+  // Component state
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [formData, setFormData] = useState({
+    recipients: [],         // Array of recipient IDs (multiple selection)
+    title: '',
+    message: '',
+    sendToAll: false,
+    filterByRole: user?.role === 'teacher' ? 'student' : 'all', // Default to student role for teachers
+    isImportant: false      // Whether this is an important notification
+  });
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Refs to track component state
+  const isInitialMount = useRef(true);
+  const hasSubmitted = useRef(false);
   
   // Check if teacher has permission to send notifications
-  React.useEffect(() => {
+  useEffect(() => {
     // Only applies to teachers, not admins
     if (user?.role === 'teacher' && user?.canSendNotifications === false) {
       // Teacher doesn't have permission to send notifications
@@ -53,23 +64,21 @@ const CreateNotification = () => {
       navigate('/app/teacher/dashboard');
     }
   }, [user, navigate]);
-  const { users, filteredUsers, isLoading: isUsersLoading } = useSelector((state) => state.users);
-  
-  const [availableUsers, setAvailableUsers] = useState([]);
-  const [formData, setFormData] = useState({
-    recipients: [],         // Array of recipient IDs (multiple selection)
-    title: '',
-    message: '',
-    sendToAll: false,
-    filterByRole: 'student', // Default to student role
-    isImportant: false       // Whether this is an important notification
-  });
-  const [formErrors, setFormErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Loading state for all reference data
-  // eslint-disable-next-line no-unused-vars
-  const isLoadingOptions = isUsersLoading;
+
+  // Handle notification creation success
+  useEffect(() => {
+    if (isSuccess && hasSubmitted.current) {
+      toast.success('Notification sent successfully');
+      navigate('/app/teacher/notifications');
+    }
+    
+    return () => {
+      // Reset the notification state when component unmounts
+      if (isSuccess) {
+        dispatch(reset());
+      }
+    };
+  }, [isSuccess, dispatch, navigate]);
   
   // Fetch data when component mounts - simplified to only users based on role
   useEffect(() => {
@@ -86,12 +95,12 @@ const CreateNotification = () => {
         console.error(`Failed to load ${formData.filterByRole}s:`, error);
         toast.error(`Failed to load users: ${error.message || 'Unknown error'}`);
       });
-  }, [dispatch]);
+  }, [dispatch, formData.filterByRole]);
 
-  // Update available users when filteredUsers data changes or role filter changes
+  // Update available users when filteredUsers data changes
   useEffect(() => {
     if (filteredUsers && Array.isArray(filteredUsers)) {
-      console.log(`Setting ${filteredUsers.length} users for role ${formData.filterByRole}:`, filteredUsers);
+      console.log(`Setting ${filteredUsers.length} users for role ${formData.filterByRole}`);
       // Only include users with valid data
       const validUsers = filteredUsers.filter(user => 
         user && user._id && user.name && typeof user.name === 'string'
@@ -104,28 +113,28 @@ const CreateNotification = () => {
     }
   }, [filteredUsers, formData.filterByRole]);
 
-  // Handle the filter related change in role
-  useEffect(() => {
-    // Reset filters when role changes
+  // Handle form field changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    
     setFormData(prev => ({
       ...prev,
-      recipients: [], // Reset recipients when role changes
+      [name]: value
     }));
     
-    // Load new users - with class-based filtering applied in backend for teachers
-    console.log(`Role changed to ${formData.filterByRole}, loading users...`);
-    dispatch(getUsersByRole(formData.filterByRole));
-  }, [formData.filterByRole, dispatch]);
-
-  // Use refs to track component state
-  const isInitialMount = React.useRef(true);
-  const hasSubmitted = React.useRef(false);
+    // Clear errors for this field
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
   
-  // Handle switch change - simplified just for sendToAll and isImportant
+  // Handle switch toggles (sendToAll, isImportant)
   const handleSwitchChange = (e) => {
     const { name, checked } = e.target;
     
-    // Update form data based on switch name
     setFormData(prev => ({
       ...prev,
       [name]: checked
@@ -140,6 +149,25 @@ const CreateNotification = () => {
     }
   };
   
+  // Handle recipients selection change
+  const handleRecipientsChange = (e) => {
+    const { value } = e.target;
+    
+    setFormData(prev => ({
+      ...prev,
+      recipients: value
+    }));
+    
+    // Clear any errors related to recipients
+    if (formErrors.recipients) {
+      setFormErrors(prev => ({
+        ...prev,
+        recipients: ''
+      }));
+    }
+  };
+  
+  // Form validation
   const validate = () => {
     const errors = {};
     
@@ -165,6 +193,7 @@ const CreateNotification = () => {
     return Object.keys(errors).length === 0;
   };
   
+  // Form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Form submission attempted');
@@ -225,6 +254,7 @@ const CreateNotification = () => {
     }
   };
   
+  // Navigation
   const handleBack = () => {
     navigate('/app/teacher/notifications');
   };
@@ -284,427 +314,47 @@ const CreateNotification = () => {
         </Box>
         
         <Box component="form" onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            {/* Send To All Switch */}
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.sendToAll}
-                    onChange={handleSwitchChange}
-                    name="sendToAll"
-                    color="primary"
-                  />
-                }
-                label="Send to all recipients"
+          {/* Notification Form Component */}
+          <NotificationForm 
+            formData={formData}
+            formErrors={formErrors}
+            handleChange={handleChange}
+            handleSwitchChange={handleSwitchChange}
+            disabled={isSubmitting}
+            user={user}
+          />
+          
+          {/* Recipients Selection - Only show if NOT sending to all */}
+          {!formData.sendToAll && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Select Recipients
+              </Typography>
+              
+              <NotificationRecipients 
+                availableUsers={availableUsers}
+                selectedRecipients={formData.recipients}
+                onRecipientsChange={handleRecipientsChange}
+                error={formErrors.recipients}
+                disabled={isSubmitting}
+                loading={isUsersLoading}
               />
-            </Grid>
-            
-            {/* Important Notification Switch */}
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.isImportant}
-                    onChange={handleSwitchChange}
-                    name="isImportant"
-                    color="error"
-                  />
-                }
-                label="Mark as important notification"
-              />
-            </Grid>
-            
-            {/* Role Filter - Always visible */}
-            <Grid item xs={12} md={6}>
-                {/* For teachers, restrict sending to students only */}
-                {user.role === 'teacher' ? (
-                  <Box sx={{ my: 2, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
-                    <Typography variant="body2">
-                      <strong>Note:</strong> As a teacher, you can only send notifications to students.
-                    </Typography>
-                  </Box>
-                ) : (
-                  <FormControl fullWidth>
-                    <InputLabel>Target Role</InputLabel>
-                    <Select
-                      name="filterByRole"
-                      value={formData.filterByRole}
-                      label="Target Role"
-                      onChange={handleChange}
-                    >
-                      <MenuItem value="all">All Users</MenuItem>
-                      <MenuItem value="student">Students Only</MenuItem>
-                      <MenuItem value="teacher">Teachers Only</MenuItem>
-                      {user.role === 'admin' && (
-                        <MenuItem value="admin">Admins Only</MenuItem>
-                      )}
-                    </Select>
-                    <FormHelperText>Select which type of users should receive this notification</FormHelperText>
-                  </FormControl>
-                )}
-            </Grid>
-            
-            {/* Use Advanced Filters Switch */}
-            {!formData.sendToAll && (
-              <Grid item xs={12} md={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.useFilters}
-                      onChange={handleSwitchChange}
-                      name="useFilters"
-                      color="primary"
-                    />
-                  }
-                  label="Use advanced filtering"
-                />
-                <FormHelperText>Filter recipients by school, direction, and subject</FormHelperText>
-              </Grid>
-            )}
-            
-            {/* Multiple Recipients Selection - Only show if NOT sending to all AND NOT using filters */}
-            {!formData.sendToAll && !formData.useFilters && (
-              <Grid item xs={12}>
-                <FormControl 
-                  fullWidth 
-                  error={!!formErrors.recipients}
-                >
-                  <InputLabel id="recipients-label">Recipients *</InputLabel>
-                  <Select
-                    labelId="recipients-label"
-                    id="recipients"
-                    multiple
-                    value={formData.recipients}
-                    label="Recipients *"
-                    onChange={handleRecipientsChange}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => {
-                          const selectedUser = availableUsers.find(user => user._id === value);
-                          return (
-                            <Chip 
-                              key={value} 
-                              label={selectedUser?.name || value} 
-                              size="small" 
-                            />
-                          );
-                        })}
-                      </Box>
-                    )}
-                    MenuProps={{
-                      PaperProps: {
-                        style: { maxHeight: 300 },
-                      },
-                    }}
-                  >
-                    {isUsersLoading ? (
-                      <MenuItem disabled>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <CircularProgress size={20} sx={{ mr: 1 }} />
-                          Loading users...
-                        </Box>
-                      </MenuItem>
-                    ) : availableUsers.length > 0 ? (
-                      availableUsers.map((user) => (
-                        <MenuItem key={user._id} value={user._id}>
-                          <Checkbox checked={formData.recipients.indexOf(user._id) > -1} />
-                          <ListItemText primary={user.name} secondary={user.email} />
-                        </MenuItem>
-                      ))
-                    ) : (
-                      <MenuItem disabled>No users available for this role</MenuItem>
-                    )}
-                  </Select>
-                  <FormHelperText>
-                    {formErrors.recipients || 
-                    (isUsersLoading ? `Loading ${formData.filterByRole}s...` : 
-                      availableUsers.length === 0 ? `No ${formData.filterByRole}s available` :
-                      `Select one or more ${formData.filterByRole}s to send the notification to`)}
-                  </FormHelperText>
-                </FormControl>
-              </Grid>
-            )}
-            
-            {/* Advanced Filtering Options */}
-            {!formData.sendToAll && formData.useFilters && (
-              <>
-                {/* Filter by Schools */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                    Filter by Schools
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      onClick={() => handleSelectAll('selectedSchools', schools)}
-                      disabled={isSchoolsLoading || !schools || schools.length === 0}
-                    >
-                      Select All
-                    </Button>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      onClick={() => handleClearSelection('selectedSchools')}
-                      disabled={formData.selectedSchools.length === 0}
-                    >
-                      Clear
-                    </Button>
-                  </Box>
-                  <FormControl 
-                    fullWidth
-                    error={!!formErrors.selectedSchools}
-                  >
-                    <InputLabel>Schools</InputLabel>
-                    <Select
-                      multiple
-                      name="selectedSchools"
-                      value={formData.selectedSchools}
-                      onChange={handleMultiSelectChange}
-                      input={<OutlinedInput label="Schools" />}
-                      disabled={isSchoolsLoading}
-                      renderValue={(selected) => (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map((value) => {
-                            const school = schools?.find(s => s._id === value);
-                            return (
-                              <Chip key={value} label={school ? school.name : value} />
-                            );
-                          })}
-                        </Box>
-                      )}
-                    >
-                      {isSchoolsLoading ? (
-                        <MenuItem disabled>
-                          <CircularProgress size={20} sx={{ mr: 1 }} />
-                          Loading schools...
-                        </MenuItem>
-                      ) : schools && schools.length > 0 ? (
-                        schools.map((school) => (
-                          <MenuItem key={school._id} value={school._id}>
-                            <Checkbox checked={formData.selectedSchools.indexOf(school._id) > -1} />
-                            <ListItemText primary={school.name} />
-                          </MenuItem>
-                        ))
-                      ) : (
-                        <MenuItem disabled>No schools available</MenuItem>
-                      )}
-                    </Select>
-                    <FormHelperText>
-                      {formErrors.selectedSchools || 'Select schools to filter recipients'}
-                    </FormHelperText>
-                  </FormControl>
-                </Grid>
-                
-                {/* Filter by Directions */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                    Filter by Directions
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      onClick={() => handleSelectAll('selectedDirections', directions)}
-                      disabled={isDirectionsLoading || !directions || directions.length === 0}
-                    >
-                      Select All
-                    </Button>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      onClick={() => handleClearSelection('selectedDirections')}
-                      disabled={formData.selectedDirections.length === 0}
-                    >
-                      Clear
-                    </Button>
-                  </Box>
-                  <FormControl 
-                    fullWidth
-                    error={!!formErrors.selectedDirections}
-                  >
-                    <InputLabel>Directions</InputLabel>
-                    <Select
-                      multiple
-                      name="selectedDirections"
-                      value={formData.selectedDirections}
-                      onChange={handleMultiSelectChange}
-                      input={<OutlinedInput label="Directions" />}
-                      disabled={isDirectionsLoading}
-                      renderValue={(selected) => (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map((value) => {
-                            const direction = directions?.find(d => d._id === value);
-                            return (
-                              <Chip key={value} label={direction ? direction.name : value} />
-                            );
-                          })}
-                        </Box>
-                      )}
-                    >
-                      {isDirectionsLoading ? (
-                        <MenuItem disabled>
-                          <CircularProgress size={20} sx={{ mr: 1 }} />
-                          Loading directions...
-                        </MenuItem>
-                      ) : directions && directions.length > 0 ? (
-                        directions.map((direction) => (
-                          <MenuItem key={direction._id} value={direction._id}>
-                            <Checkbox checked={formData.selectedDirections.indexOf(direction._id) > -1} />
-                            <ListItemText primary={direction.name} />
-                          </MenuItem>
-                        ))
-                      ) : (
-                        <MenuItem disabled>No directions available</MenuItem>
-                      )}
-                    </Select>
-                    <FormHelperText>
-                      {formErrors.selectedDirections || 'Select directions to filter recipients'}
-                    </FormHelperText>
-                  </FormControl>
-                </Grid>
-                
-                {/* Filter by Subjects */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                    Filter by Subjects
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      onClick={() => handleSelectAll('selectedSubjects', filteredSubjects)}
-                      disabled={isSubjectsLoading || !filteredSubjects || filteredSubjects.length === 0}
-                    >
-                      Select All
-                    </Button>
-                    <Button 
-                      size="small" 
-                      variant="outlined" 
-                      onClick={() => handleClearSelection('selectedSubjects')}
-                      disabled={formData.selectedSubjects.length === 0}
-                    >
-                      Clear
-                    </Button>
-                  </Box>
-                  <FormControl 
-                    fullWidth
-                    error={!!formErrors.selectedSubjects}
-                  >
-                    <InputLabel>Subjects</InputLabel>
-                    <Select
-                      multiple
-                      name="selectedSubjects"
-                      value={formData.selectedSubjects}
-                      onChange={handleMultiSelectChange}
-                      input={<OutlinedInput label="Subjects" />}
-                      disabled={isSubjectsLoading}
-                      renderValue={(selected) => (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map((value) => {
-                            const subject = subjects?.find(s => s._id === value);
-                            return (
-                              <Chip key={value} label={subject ? subject.name : value} />
-                            );
-                          })}
-                        </Box>
-                      )}
-                    >
-                      {isSubjectsLoading ? (
-                        <MenuItem disabled>
-                          <CircularProgress size={20} sx={{ mr: 1 }} />
-                          Loading subjects...
-                        </MenuItem>
-                      ) : filteredSubjects && filteredSubjects.length > 0 ? (
-                        filteredSubjects.map((subject) => (
-                          <MenuItem key={subject._id} value={subject._id}>
-                            <Checkbox checked={formData.selectedSubjects.indexOf(subject._id) > -1} />
-                            <ListItemText 
-                              primary={subject.name} 
-                              secondary={
-                                subject.directions && subject.directions.length > 0 ?
-                                subject.directions.map(dir => {
-                                  if (typeof dir === 'object' && dir.name) {
-                                    return dir.name;
-                                  } else {
-                                    const dirObj = directions?.find(d => d._id === dir);
-                                    return dirObj ? dirObj.name : '';
-                                  }
-                                }).filter(Boolean).join(', ') : ''
-                              }
-                            />
-                          </MenuItem>
-                        ))
-                      ) : formData.selectedDirections && formData.selectedDirections.length > 0 ? (
-                        <MenuItem disabled>No subjects found for selected directions</MenuItem>
-                      ) : (
-                        <MenuItem disabled>No subjects available</MenuItem>
-                      )}
-                    </Select>
-                    <FormHelperText>
-                      {formErrors.selectedSubjects || 'Select subjects to filter recipients'}
-                    </FormHelperText>
-                  </FormControl>
-                </Grid>
-                
-                {/* Filter Error Message */}
-                {formErrors.filters && (
-                  <Grid item xs={12}>
-                    <Typography color="error">{formErrors.filters}</Typography>
-                  </Grid>
-                )}
-              </>
-            )}
-
-            {/* Title Field */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Title *"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                error={!!formErrors.title}
-                helperText={formErrors.title || 'Enter a descriptive title for your notification'}
-                inputProps={{ maxLength: 100 }}
-              />
-            </Grid>
-            
-            {/* Message Field */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Message *"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                multiline
-                rows={6}
-                error={!!formErrors.message}
-                helperText={
-                  formErrors.message || 
-                  `${formData.message.length}/1000 characters. Enter your notification message.`
-                }
-                inputProps={{ maxLength: 1000 }}
-              />
-            </Grid>
-            
-            {/* Submit Button */}
-            <Grid item xs={12}>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                size="large"
-                startIcon={isSubmitting ? <CircularProgress size={24} color="inherit" /> : <SaveIcon />}
-                sx={{ mt: 3 }}
-                disabled={isSubmitting || isLoading}
-              >
-                {isSubmitting ? 'Sending...' : 'Send Notification'}
-              </Button>
-            </Grid>
-          </Grid>
+            </Box>
+          )}
+          
+          {/* Submit Button */}
+          <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              size="large"
+              startIcon={isSubmitting ? <CircularProgress size={24} color="inherit" /> : <SaveIcon />}
+              disabled={isSubmitting || isLoading}
+            >
+              {isSubmitting ? 'Sending...' : 'Send Notification'}
+            </Button>
+          </Box>
         </Box>
       </Paper>
     </Box>
