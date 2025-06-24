@@ -437,6 +437,11 @@ function App() {
                 <StudentStats />
               </AdminRoute>
             } />
+            <Route path="/app/admin/notifications/create" element={
+              <AdminRoute>
+                <CreateNotification />
+              </AdminRoute>
+            } />
             <Route path="/app/admin/users/create" element={
               <AdminRoute>
                 <CreateUserErrorWrapper />
