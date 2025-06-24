@@ -291,19 +291,49 @@ const Schedule = () => {
       const queryString = queryParams.toString();
       const url = `/api/schedule${queryString ? `?${queryString}` : ''}`;
       
-      console.log('Fetching schedule data from URL:', url);
+      console.log('Schedule - Fetching data for role:', user?.role);
+      console.log('Schedule - Request URL:', url);
+      console.log('Schedule - Current filters:', filters);
+      
       const response = await axios.get(url, config);
       
       // Ensure we have the right data structure
       if (response.data && response.data.schedule) {
-        console.log('Schedule data loaded:', response.data.schedule);
+        console.log('Schedule - API success, raw data:', response.data);
+        console.log('Schedule - Total classes reported by API:', response.data.totalClasses || 0);
+        
+        // Check if we have any classes at all
+        let totalEvents = 0;
+        Object.keys(response.data.schedule).forEach(day => {
+          const events = response.data.schedule[day];
+          if (Array.isArray(events)) {
+            totalEvents += events.length;
+            console.log(`Schedule - Day ${day}: ${events.length} events`);
+          }
+        });
+        console.log('Schedule - Total events across all days:', totalEvents);
+        
+        // Process schedule data and ensure each event has a unique ID
+        const processedSchedule = {};
+        Object.keys(response.data.schedule).forEach(day => {
+          const events = response.data.schedule[day];
+          if (Array.isArray(events)) {
+            processedSchedule[day] = events.map((event, index) => {
+              // Ensure each event has a unique ID for rendering
+              return { 
+                ...event,
+                _id: event._id || event.classId || `event-${day}-${index}`
+              };
+            });
+          } else {
+            processedSchedule[day] = [];
+          }
+        });
         
         // Extract branch IDs from schedule data for name resolution
         const branchIds = new Set();
-        
-        // Process each day's events
-        Object.keys(response.data.schedule).forEach(day => {
-          const events = response.data.schedule[day];
+        Object.keys(processedSchedule).forEach(day => {
+          const events = processedSchedule[day];
           if (Array.isArray(events)) {
             events.forEach(event => {
               if (event.schoolBranch) {
@@ -315,20 +345,21 @@ const Schedule = () => {
         
         // Fetch branch names for all events if not already loaded
         if (branchIds.size > 0) {
-          console.log('Fetching branch names for events:', Array.from(branchIds));
+          console.log('Schedule - Fetching branch names for events:', Array.from(branchIds));
           fetchBranchNames(Array.from(branchIds));
         }
         
-        setScheduleData(response.data.schedule);
+        setScheduleData(processedSchedule);
+        console.log('Schedule - Data processed and set to state');
       } else {
-        console.warn('Unexpected schedule data format:', response.data);
+        console.warn('Schedule - Unexpected data format received:', response.data);
         setScheduleData({});
       }
       
       setError(null);
     } catch (error) {
-      console.error('Error fetching schedule:', error);
-      setError('Failed to load schedule data. Please try again.');
+      console.error('Schedule - Error fetching data:', error);
+      setError(`Failed to load schedule data: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -408,25 +439,38 @@ const Schedule = () => {
 
   // Get events for a specific day and time slot
   const getEventsForTimeSlot = (day, timeSlot) => {
-    if (!scheduleData || !scheduleData[day]) return [];
+    if (!scheduleData || !scheduleData[day] || !Array.isArray(scheduleData[day])) {
+      return [];
+    }
     
-    return scheduleData[day].filter(event => {
-      const eventStartHour = parseInt(event.startTime.split(':')[0]);
-      const eventStartMin = parseInt(event.startTime.split(':')[1]);
-      const slotHour = parseInt(timeSlot.split(':')[0]);
-      const slotMin = parseInt(timeSlot.split(':')[1]);
-      const eventEndHour = parseInt(event.endTime.split(':')[0]);
-      const eventEndMin = parseInt(event.endTime.split(':')[1]);
+    const allDayEvents = scheduleData[day] || [];
+    
+    // Apply debugging only for the first time slot to avoid console spam
+    if (timeSlot === timeSlots[0]) {
+      console.log(`Schedule - ${day} has ${allDayEvents.length} total events`);
+    }
+    
+    const matchingEvents = allDayEvents.filter(event => {
+      if (!event || !event.startTime) {
+        console.warn('Schedule - Invalid event data:', event);
+        return false;
+      }
       
-      // Convert to minutes for precise comparison
-      const eventStartMinutes = eventStartHour * 60 + eventStartMin;
-      const eventEndMinutes = eventEndHour * 60 + eventEndMin;
-      const slotMinutes = slotHour * 60 + slotMin;
+      const eventStart = event.startTime.split(':').map(Number);
+      const eventStartHour = eventStart[0];
       
-      // Event should appear only in its start time slot
-      return eventStartMinutes <= slotMinutes && slotMinutes < eventEndMinutes && 
-             eventStartHour === slotHour;
+      const slotTime = timeSlot.split(':').map(Number);
+      const slotHour = slotTime[0];
+      
+      return eventStartHour === slotHour;
     });
+    
+    // Apply debugging only for the first time slot to avoid console spam
+    if (timeSlot === timeSlots[0] && matchingEvents.length > 0) {
+      console.log(`Schedule - ${day} at ${timeSlot}: Found ${matchingEvents.length} matching events`);
+    }
+    
+    return matchingEvents;
   };
 
   // Calculate how many time slots an event spans

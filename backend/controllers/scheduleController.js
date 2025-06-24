@@ -6,7 +6,9 @@ const User = require('../models/userModel');
 // @route   GET /api/schedule
 // @access  Private
 const getSchedule = asyncHandler(async (req, res) => {
+  console.log(`======= SCHEDULE REQUEST =======`);
   console.log(`getSchedule called for user: ${req.user._id} (${req.user.role})`);
+  console.log(`School ID: ${req.user.schoolId}`);
   console.log('Query parameters:', req.query);
   
   const { schoolBranch, teacherId } = req.query;
@@ -203,8 +205,26 @@ const getTeacherSchedule = asyncHandler(async (req, res) => {
 
 // Helper function to transform classes data into weekly schedule format
 const transformClassesToSchedule = (classes, userRole) => {
+  console.log(`Transforming ${classes.length} classes to schedule format for role: ${userRole}`);
+  
+  // Log class data summary for debugging
+  if (classes.length > 0) {
+    console.log('Class data sample:', {
+      _id: classes[0]._id,
+      name: classes[0].name,
+      subject: classes[0].subject,
+      hasSchedule: Boolean(classes[0].schedule),
+      scheduleLength: classes[0].schedule ? classes[0].schedule.length : 0,
+      teachersLength: classes[0].teachers ? classes[0].teachers.length : 0,
+      studentsLength: classes[0].students ? classes[0].students.length : 0,
+    });
+  } else {
+    console.log('No classes found to transform');
+  }
+  
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const schedule = {};
+  let totalScheduleItems = 0;
   
   // Initialize empty schedule
   daysOfWeek.forEach(day => {
@@ -212,38 +232,94 @@ const transformClassesToSchedule = (classes, userRole) => {
   });
   
   // Process each class and its schedule
-  classes.forEach(cls => {
-    if (cls.schedule && Array.isArray(cls.schedule)) {
-      cls.schedule.forEach(scheduleItem => {
-        if (schedule[scheduleItem.day]) {
-          const classInfo = {
-            classId: cls._id,
-            className: cls.name,
-            subject: cls.subject,
-            direction: cls.direction,
-            schoolBranch: cls.schoolBranch,
-            startTime: scheduleItem.startTime,
-            endTime: scheduleItem.endTime,
-            day: scheduleItem.day
-          };
-          
-          // Add role-specific information
-          if (userRole === 'student') {
-            classInfo.teachers = cls.teachers || [];
-          } else if (userRole === 'teacher') {
-            classInfo.students = cls.students || [];
-            classInfo.studentCount = cls.students ? cls.students.length : 0;
-          } else if (userRole === 'admin') {
-            classInfo.teachers = cls.teachers || [];
-            classInfo.students = cls.students || [];
-            classInfo.teacherCount = cls.teachers ? cls.teachers.length : 0;
-            classInfo.studentCount = cls.students ? cls.students.length : 0;
-          }
-          
-          schedule[scheduleItem.day].push(classInfo);
-        }
-      });
+  classes.forEach((cls, index) => {
+    // Validate class object
+    if (!cls) {
+      console.warn(`Class at index ${index} is undefined or null`);
+      return;
     }
+    
+    // Validate schedule property
+    if (!cls.schedule) {
+      console.warn(`Class ${cls._id} (${cls.name}) has no schedule property`);
+      return;
+    }
+    
+    if (!Array.isArray(cls.schedule)) {
+      console.warn(`Class ${cls._id} (${cls.name}) schedule is not an array`);
+      return;
+    }
+    
+    // Log class debug info if it has a schedule
+    if (cls.schedule.length === 0) {
+      console.warn(`Class ${cls._id} (${cls.name}) has empty schedule array`);
+      return;
+    } else {
+      console.log(`Processing class ${cls.name} (${cls._id}) with ${cls.schedule.length} schedule items`);
+    }
+    
+    // Process each schedule item
+    cls.schedule.forEach(scheduleItem => {
+      // Validate schedule item
+      if (!scheduleItem) {
+        console.warn(`Schedule item in class ${cls._id} is undefined or null`);
+        return;
+      }
+      
+      if (!scheduleItem.day) {
+        console.warn(`Schedule item in class ${cls._id} missing day property`);
+        return;
+      }
+      
+      if (!scheduleItem.startTime || !scheduleItem.endTime) {
+        console.warn(`Schedule item in class ${cls._id} missing time properties`);
+        return;
+      }
+      
+      // Ensure day is valid
+      if (!daysOfWeek.includes(scheduleItem.day)) {
+        console.warn(`Invalid day '${scheduleItem.day}' in class ${cls._id}`);
+        return;
+      }
+      
+      if (schedule[scheduleItem.day]) {
+        const classInfo = {
+          _id: `${cls._id}-${scheduleItem.day}-${scheduleItem.startTime}`, // Create a unique ID
+          classId: cls._id,
+          className: cls.name,
+          subject: cls.subject || "Unknown Subject",
+          direction: cls.direction || "",
+          schoolBranch: cls.schoolBranch || "",
+          startTime: scheduleItem.startTime,
+          endTime: scheduleItem.endTime,
+          day: scheduleItem.day
+        };
+        
+        // Add role-specific information
+        if (userRole === 'student') {
+          classInfo.teachers = cls.teachers || [];
+          classInfo.teacherNames = Array.isArray(cls.teachers) ? 
+            cls.teachers.map(t => (typeof t === 'object' && t.name) ? t.name : t) : [];
+        } else if (userRole === 'teacher') {
+          classInfo.students = cls.students || [];
+          classInfo.studentCount = Array.isArray(cls.students) ? cls.students.length : 0;
+          classInfo.studentNames = Array.isArray(cls.students) ? 
+            cls.students.map(s => (typeof s === 'object' && s.name) ? s.name : s) : [];
+        } else if (userRole === 'admin') {
+          classInfo.teachers = cls.teachers || [];
+          classInfo.students = cls.students || [];
+          classInfo.teacherCount = Array.isArray(cls.teachers) ? cls.teachers.length : 0;
+          classInfo.studentCount = Array.isArray(cls.students) ? cls.students.length : 0;
+          classInfo.teacherNames = Array.isArray(cls.teachers) ? 
+            cls.teachers.map(t => (typeof t === 'object' && t.name) ? t.name : t) : [];
+          classInfo.studentNames = Array.isArray(cls.students) ? 
+            cls.students.map(s => (typeof s === 'object' && s.name) ? s.name : s) : [];
+        }
+        
+        schedule[scheduleItem.day].push(classInfo);
+        totalScheduleItems++;
+      }
+    });
   });
   
   // Sort each day's classes by start time
@@ -251,8 +327,11 @@ const transformClassesToSchedule = (classes, userRole) => {
     schedule[day].sort((a, b) => {
       return a.startTime.localeCompare(b.startTime);
     });
+    
+    console.log(`Day ${day}: ${schedule[day].length} events added to schedule`);
   });
   
+  console.log(`Transformation complete: ${totalScheduleItems} total events across all days`);
   return schedule;
 };
 
