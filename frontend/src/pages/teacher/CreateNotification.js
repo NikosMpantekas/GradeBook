@@ -121,48 +121,22 @@ const CreateNotification = () => {
   const isInitialMount = React.useRef(true);
   const hasSubmitted = React.useRef(false);
   
-  // Handle switch change - simplified just for sendToAll
+  // Handle switch change - simplified just for sendToAll and isImportant
   const handleSwitchChange = (e) => {
     const { name, checked } = e.target;
     
-    if (name === 'sendToAll') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: checked
-      }));
-      
-      // Clear errors related to recipient selection
-      if (checked) {
-        setFormErrors(prev => ({
-          ...prev,
-          recipients: ''
-        }));
-      }
-    } else {
-      // Regular switch handling (for isImportant)
-      setFormData(prev => ({
-        ...prev,
-        [name]: checked
-      }));
-    setFormData({
-      ...formData,
-      [name]: checked,
-      // If sending to all students, clear the recipient field
-      ...(name === 'sendToAll' && checked ? { recipient: '' } : {}),
-      // If turning off filters, clear all filter selections
-      ...(name === 'useFilters' && !checked ? { 
-        selectedSchools: [],
-        selectedDirections: [],
-        selectedSubjects: [] 
-      } : {}),
-    });
+    // Update form data based on switch name
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked
+    }));
     
-    // Clear any errors related to recipient when switching to sendToAll
-    if (name === 'sendToAll' && checked && formErrors.recipient) {
-      setFormErrors({
-        ...formErrors,
-        recipient: '',
-      });
+    // Clear errors if needed
+    if (name === 'sendToAll' && checked && formErrors.recipients) {
+      setFormErrors(prev => ({
+        ...prev,
+        recipients: ''
+      }));
     }
   };
   
