@@ -73,7 +73,8 @@ const Schedule = () => {
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const timeSlots = [
     '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', 
+    '21:00', '22:00', '23:00'
   ];
   
   // Generate consistent color for a subject based on its name
@@ -403,6 +404,12 @@ const Schedule = () => {
   // Handle event click
   const handleEventClick = (event) => {
     console.log('Event clicked:', event);
+    
+    // Log branch info for debugging
+    if (event.schoolBranch) {
+      console.log('School branch ID:', event.schoolBranch);
+      console.log('Mapped branch name:', branchNames[event.schoolBranch] || 'Not found in mapping');
+    }
     
     // Enhanced event processing for dialog display
     const enhancedEvent = {
@@ -911,7 +918,9 @@ const Schedule = () => {
                   </Typography>
                   <Typography variant="body1" gutterBottom>
                     <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    School Branch: {selectedEvent.schoolBranchName}
+                    School Branch: {selectedEvent.schoolBranch ? (
+                      branchNames[selectedEvent.schoolBranch] || selectedEvent.schoolBranchName || selectedEvent.schoolBranch
+                    ) : 'Unknown Branch'}
                   </Typography>
                   <Typography variant="body1" gutterBottom>
                     Direction: {selectedEvent.direction}
