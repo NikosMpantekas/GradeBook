@@ -63,8 +63,8 @@ const Schedule = () => {
   // Store subject colors for consistent coloring
   const [subjectColors, setSubjectColors] = useState({});
   
-  // Track which events have been rendered to avoid duplicates
-  const [renderedEvents, setRenderedEvents] = useState(new Set());
+  // Event rendering reference to avoid duplicates
+  const renderedEventsRef = React.useRef(new Set());
   
   const { user, token } = useSelector((state) => state.auth);
   const theme = useTheme();
@@ -381,6 +381,25 @@ const Schedule = () => {
     }
   }, [filters.schoolBranch, filters.teacher]);
 
+  // Clear rendered events ref when schedule data changes
+  useEffect(() => {
+    renderedEventsRef.current = new Set();
+    fetchScheduleData();
+    loadFilterOptions();
+  }, [user?.role, filters]);
+
+  // Load filter options once on component mount
+  useEffect(() => {
+    if (user?.role === 'admin' || user?.role === 'teacher') {
+      loadFilterOptions();
+    }
+  }, [user?.role]);
+
+  // Reset rendered events on each render
+  useEffect(() => {
+    renderedEventsRef.current = new Set();
+  });
+
   // Handle event click
   const handleEventClick = (event) => {
     console.log('Event clicked:', event);
@@ -439,39 +458,31 @@ const Schedule = () => {
 
   // Get events for a specific day and time slot
   const getEventsForTimeSlot = (day, timeSlot) => {
-    if (!scheduleData || !scheduleData[day] || !Array.isArray(scheduleData[day])) {
+    if (!scheduleData || !scheduleData[day]) {
+      console.log(`Schedule - No data for day: ${day}`);
       return [];
     }
     
-    const allDayEvents = scheduleData[day] || [];
-    
-    // Apply debugging only for the first time slot to avoid console spam
-    if (timeSlot === timeSlots[0]) {
-      console.log(`Schedule - ${day} has ${allDayEvents.length} total events`);
-    }
-    
-    const matchingEvents = allDayEvents.filter(event => {
-      if (!event || !event.startTime) {
-        console.warn('Schedule - Invalid event data:', event);
-        return false;
-      }
+    // Find events that include this time slot
+    const events = scheduleData[day].filter(event => {
+      const startHour = parseInt(event.startTime.split(':')[0]);
+      const timeSlotHour = parseInt(timeSlot.split(':')[0]);
       
-      const eventStart = event.startTime.split(':').map(Number);
-      const eventStartHour = eventStart[0];
+      // Find events that start at this time slot or earlier and end after this time slot
+      const endHour = parseInt(event.endTime.split(':')[0]);
       
-      const slotTime = timeSlot.split(':').map(Number);
-      const slotHour = slotTime[0];
-      
-      return eventStartHour === slotHour;
+      // Check if this time slot falls within the event duration
+      const isInTimeSlot = startHour <= timeSlotHour && endHour > timeSlotHour;
+      return isInTimeSlot;
     });
     
-    // Apply debugging only for the first time slot to avoid console spam
-    if (timeSlot === timeSlots[0] && matchingEvents.length > 0) {
-      console.log(`Schedule - ${day} at ${timeSlot}: Found ${matchingEvents.length} matching events`);
+    if (events.length > 0) {
+      console.log(`Schedule - Day: ${day}, TimeSlot: ${timeSlot}, Events found: ${events.length}`);
+      console.log('Schedule - Event subjects:', events.map(e => e.subject).join(', '));
     }
     
-    return matchingEvents;
-  };
+    return events;
+  };  
 
   // Calculate how many time slots an event spans
   const calculateEventHeight = (event) => {
@@ -489,35 +500,55 @@ const Schedule = () => {
 
   // Render event in calendar
   const renderEvent = (event, isCompact = false) => {
-    const duration = calculateDuration(event.startTime, event.endTime);
-    const eventHeight = calculateEventHeight(event);
+    if (!event) {
+      console.log('Schedule - Attempt to render null event');
+      return null;
+    }
     
-    // Get branch name if available from our mapping
-    const branchName = event.schoolBranch ? 
-      (branchNames[event.schoolBranch] || event.schoolBranch) : 
-      'Unknown Branch';
+    // Calculate height based on duration
+    const height = calculateEventHeight(event) * 60;
+    const startHour = parseInt(event.startTime.split(':')[0]);
+    const endHour = parseInt(event.endTime.split(':')[0]);
+    const teacherCount = event.teacherNames?.length || 0;
+    const studentCount = event.studentNames?.length || 0;
     
-    // Handle teacher display
-    const teacherDisplay = event.teacherNames?.length > 0 ? 
-      ` • ${event.teacherNames[0]}${event.teacherNames.length > 1 ? ` +${event.teacherNames.length - 1}` : ''}` : 
-      '';
+    // Skip rendering if this is not the first occurrence in grid
+    const timeSlotHour = parseInt(event.startTime.split(':')[0]);
+    if (startHour !== timeSlotHour) {
+      console.log(`Schedule - Skipping event ${event._id} rendering at non-start hour ${timeSlotHour}`);
+      return null;
+    }
     
-    // Get subject color and ensure good contrast
-    const subjectColor = getSubjectColor(event.subject);
-    const isLightColor = ['#f9a825', '#ffc107', '#ffeb3b'].includes(subjectColor);
-    const textColor = isLightColor ? 'rgba(0, 0, 0, 0.87)' : 'white';
+    console.log(`Schedule - Rendering event: ${event.subject} at ${event.startTime}-${event.endTime}, ID: ${event._id}`);
+    
+    // Determine color based on subject
+    const backgroundColor = getSubjectColor(event.subject);
+    
+    // Calculate contrast color for text based on background color
+    const getContrastText = (hexColor) => {
+      // Convert hex to RGB
+      const r = parseInt(hexColor.slice(1, 3), 16);
+      const g = parseInt(hexColor.slice(3, 5), 16);
+      const b = parseInt(hexColor.slice(5, 7), 16);
       
+      // Calculate luminance - lighter colors need dark text
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      return luminance > 0.5 ? '#000000' : '#ffffff';
+    };
+    
+    const textColor = getContrastText(backgroundColor);
+    
     return (
       <Card
         key={event._id}
         sx={{
           mb: 0.5,
           cursor: 'pointer',
-          bgcolor: subjectColor,
+          bgcolor: backgroundColor,
           color: textColor,
           p: isCompact ? 0.5 : 1,
-          height: eventHeight > 1 ? `${eventHeight * 60 - 8}px` : 'auto', // Span multiple slots if needed
-          minHeight: eventHeight > 1 ? `${eventHeight * 60 - 8}px` : '40px',
+          height: height - 8,
+          minHeight: height - 8,
           position: 'relative',
           zIndex: 2,
           '&:hover': { 
@@ -750,7 +781,7 @@ const Schedule = () => {
                   borderColor: 'primary.main',
                   borderRight: '1px solid',
                   borderRightColor: 'divider',
-                  backgroundColor: 'primary.light'
+                  backgroundColor: theme.palette.mode === 'dark' ? 'background.default' : 'primary.main',
                 }}>
                   <Typography 
                     variant="subtitle1" 
@@ -763,7 +794,7 @@ const Schedule = () => {
                       justifyContent: 'center',
                       fontSize: '0.9rem',
                       fontWeight: 'bold',
-                      color: 'primary.contrastText'
+                      color: theme.palette.mode === 'dark' ? 'primary.contrastText' : 'primary.contrastText'
                     }}
                   >
                     {day}
@@ -780,7 +811,8 @@ const Schedule = () => {
                     borderRightColor: 'divider',
                     borderBottom: '1px solid',
                     borderBottomColor: 'divider',
-                    backgroundColor: 'grey.50',
+                    backgroundColor: theme.palette.mode === 'dark' ? 'background.paper' : 'grey.50',
+                    color: theme.palette.text.primary,
                     position: 'sticky',
                     left: 0,
                     zIndex: 1
@@ -817,14 +849,15 @@ const Schedule = () => {
                           borderBottomColor: 'divider',
                           minHeight: '60px',
                           p: 0.5,
-                          backgroundColor: 'background.paper',
+                          backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.background.paper,
                           position: 'relative',
                           overflow: 'hidden'
                         }}
                       >
                         {mergedEvents.map((event) => {
-                          if (renderedEvents.has(event._id)) return null;
-                          setRenderedEvents(prev => new Set([...prev, event._id]));
+                          const eventKey = `${event._id}-${timeSlot}`;
+                          if (renderedEventsRef.current.has(eventKey)) return null;
+                          renderedEventsRef.current.add(eventKey);
                           return renderEvent(event, true);
                         })}
                       </Box>
