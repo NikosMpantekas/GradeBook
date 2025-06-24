@@ -142,7 +142,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'Send Notifications',
         icon: <NotificationsIcon />,
-        path: '/app/teacher/notifications/create',
+        // Dynamic path based on user role
+        path: (user) => user.role === 'admin' ? '/app/admin/notifications/create' : '/app/teacher/notifications/create',
         roles: ['teacher', 'admin', 'secretary'],
         checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
                             (user.role === 'secretary' && user.secretaryPermissions?.canSendNotifications)) && 
@@ -265,12 +266,15 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   };  
       
   const handleNavigate = (path) => {
-    console.log('Navigation to path:', path);
+    // Handle function paths that depend on user role
+    const actualPath = typeof path === 'function' ? path(user) : path;
+    
+    console.log('Navigation to path:', actualPath);
     console.log('Navigation state before:', { isAdmin, isSuperAdmin, isActuallyPermanent });
     
     // Check if we're navigating to a special route
-    const isNavigatingToSuperAdmin = path.includes('/superadmin/');
-    const isNavigatingToAdmin = path.includes('/admin/') || isNavigatingToSuperAdmin;
+    const isNavigatingToSuperAdmin = actualPath.includes('/superadmin/');
+    const isNavigatingToAdmin = actualPath.includes('/admin/') || isNavigatingToSuperAdmin;
     
     // Store current section in localStorage for persistence across refreshes
     if (isNavigatingToSuperAdmin) {
@@ -280,7 +284,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     }
     
     // First navigate to the path
-    navigate(path);
+    navigate(actualPath);
     
     // IMPORTANT: NEVER close the drawer for admin/superadmin users or admin routes
     if (isAdmin || isNavigatingToAdmin || isActuallyPermanent) {
@@ -297,8 +301,11 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
 
   // Enhanced item selection logic to handle nested routes
   const isPathSelected = (itemPath) => {
+    // Handle function paths
+    const actualPath = typeof itemPath === 'function' ? itemPath(user) : itemPath;
+    
     // Exact match
-    if (location.pathname === itemPath) return true;
+    if (location.pathname === actualPath) return true;
     
     // Special case for superadmin dashboard
     if (itemPath === '/superadmin/dashboard' && location.pathname.startsWith('/superadmin') && 

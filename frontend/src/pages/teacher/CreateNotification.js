@@ -46,24 +46,30 @@ const CreateNotification = () => {
     title: '',
     message: '',
     sendToAll: false,
-    filterByRole: user?.role === 'teacher' ? 'student' : 'student', // Default to student role
+    filterByRole: 'student', // Default to student role for all user types
     isImportant: false      // Whether this is an important notification
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedRole, setSelectedRole] = useState(user?.role === 'teacher' ? 'student' : 'student');
+  const [selectedRole, setSelectedRole] = useState('student'); // Default to student role
   
   // Refs to track component state
   const isInitialMount = useRef(true);
   const hasSubmitted = useRef(false);
   
-  // Check if teacher has permission to send notifications
+  // Check if user has permission to send notifications
   useEffect(() => {
-    // Only applies to teachers, not admins
     if (user?.role === 'teacher' && user?.canSendNotifications === false) {
       // Teacher doesn't have permission to send notifications
       toast.error('You do not have permission to send notifications');
       navigate('/app/teacher/dashboard');
+    } else if (user?.role === 'admin') {
+      // Admin always has permission, nothing to check
+      console.log('Admin user accessing notification creation');
+    } else if (user?.role === 'secretary' && !user?.secretaryPermissions?.canSendNotifications) {
+      // Secretary without proper permissions
+      toast.error('You do not have permission to send notifications');
+      navigate('/app/admin');
     }
   }, [user, navigate]);
 
@@ -71,7 +77,12 @@ const CreateNotification = () => {
   useEffect(() => {
     if (isSuccess && hasSubmitted.current) {
       toast.success('Notification sent successfully');
-      navigate('/app/teacher/notifications');
+      // Dynamic navigation based on user role
+      if (user?.role === 'admin') {
+        navigate('/app/admin/notifications');
+      } else {
+        navigate('/app/teacher/notifications');
+      }
     }
     
     return () => {
@@ -268,9 +279,16 @@ const CreateNotification = () => {
     }
   };
   
-  // Navigation
+  // Navigation with role-based paths
   const handleBack = () => {
-    navigate('/app/teacher/notifications');
+    // Dynamic navigation based on user role
+    if (user?.role === 'admin') {
+      console.log('Admin navigating back to admin notifications');
+      navigate('/app/admin/notifications');
+    } else {
+      console.log('Teacher navigating back to teacher notifications');
+      navigate('/app/teacher/notifications');
+    }
   };
   
   // Display loading state while fetching users data
