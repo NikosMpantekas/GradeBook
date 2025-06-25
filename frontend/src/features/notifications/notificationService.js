@@ -6,15 +6,76 @@ const API_SUBSCRIPTIONS = `${API_URL}/api/subscriptions/`;
 
 // Create new notification
 const createNotification = async (notificationData, token) => {
+  const timestamp = new Date().toISOString();
+  const endpoint = API_NOTIFICATIONS;
+  
+  console.log('[NOTIFICATION API] Creating notification at:', timestamp);
+  console.log('[NOTIFICATION API] Endpoint:', endpoint);
+  console.log('[NOTIFICATION API] Request data:', {
+    ...notificationData,
+    recipients: notificationData.recipients ? `${notificationData.recipients.length} recipients` : 'undefined'
+  });
+  
   const config = {
     headers: {
       Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
     },
   };
+  
+  console.log('[NOTIFICATION API] Request headers:', {
+    Authorization: 'Bearer [REDACTED]',
+    'Content-Type': config.headers['Content-Type']
+  });
 
-  const response = await axiosInstance.post(API_NOTIFICATIONS, notificationData, config);
-
-  return response.data;
+  try {
+    const response = await axiosInstance.post(endpoint, notificationData, config);
+    
+    console.log('[NOTIFICATION API] Success response:', {
+      status: response.status,
+      statusText: response.statusText,
+      timestamp: new Date().toISOString(),
+      responseSize: JSON.stringify(response.data).length
+    });
+    
+    return response.data;
+  } catch (error) {
+    const errorDetails = {
+      timestamp: new Date().toISOString(),
+      endpoint,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      message: error.message,
+      responseData: error.response?.data,
+      requestData: {
+        ...notificationData,
+        recipients: notificationData.recipients ? `${notificationData.recipients.length} recipients` : 'undefined'
+      }
+    };
+    
+    console.error('[NOTIFICATION API] Request failed:', errorDetails);
+    
+    // Special handling for 404 errors
+    if (error.response?.status === 404) {
+      console.error('[NOTIFICATION API] 404 ERROR DETAILS:', {
+        possibleCauses: [
+          'API endpoint not found',
+          'Backend server not running',
+          'Incorrect API_URL configuration',
+          'Route not properly registered'
+        ],
+        currentApiUrl: API_URL,
+        fullEndpoint: endpoint,
+        timestamp: errorDetails.timestamp
+      });
+    }
+    
+    // Re-throw the error with enhanced context
+    const enhancedError = new Error(error.message);
+    enhancedError.originalError = error;
+    enhancedError.requestDetails = errorDetails;
+    throw enhancedError;
+  }
 };
 
 // Get all notifications (admin only)

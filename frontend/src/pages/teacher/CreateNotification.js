@@ -165,21 +165,46 @@ const CreateNotification = () => {
     setIsSubmitting(true);
     hasSubmitted.current = true;
     
-    try {
-      console.log('Submitting notification with data:', formData);
-      
-      // Use the NotificationService to send the notification
-      await NotificationService.createNotification(formData);
-      
-      console.log('Notification submitted successfully');
-      
-    } catch (error) {
-      console.error('Error submitting notification:', error);
-      toast.error(error.message || 'Failed to send notification');
-      hasSubmitted.current = false;
-    } finally {
-      setIsSubmitting(false);
-    }
+    console.log('[NOTIFICATION CREATION] Starting submission process with data:', formData);
+    console.log('[NOTIFICATION CREATION] User context:', { role: user?.role, id: user?.id });
+    
+    // Use the NotificationService to send the notification with proper callback handling
+    NotificationService.sendNotification(
+      dispatch,
+      formData,
+      user,
+      // Success callback
+      (result) => {
+        console.log('[NOTIFICATION CREATION] Notification sent successfully:', result);
+        toast.success('Notification sent successfully!');
+        
+        // Reset form
+        setFormData({
+          recipients: [],
+          title: '',
+          message: '',
+          isImportant: false,
+          filterByRole: '',
+          sendToAll: false
+        });
+        setFormErrors({});
+        hasSubmitted.current = false;
+        
+        // Navigate back to notifications list
+        handleBack();
+      },
+      // Error callback
+      (error) => {
+        console.error('[NOTIFICATION CREATION] Failed to send notification:', error);
+        toast.error(error.message || 'Failed to send notification');
+        hasSubmitted.current = false;
+      },
+      // Complete callback (always called)
+      () => {
+        console.log('[NOTIFICATION CREATION] Submission process completed');
+        setIsSubmitting(false);
+      }
+    );
   };
 
   // Handle back navigation
