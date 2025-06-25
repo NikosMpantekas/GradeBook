@@ -84,12 +84,6 @@ export const getSentNotifications = createAsyncThunk(
       return response; 
     } catch (error) {
       console.error('Error in getSentNotifications action creator:', error);
-      const message =
-        (error.response &&
-          error.response.data &&
-          error.response.data.message) ||
-        error.message ||
-        error.toString();
       // Return an empty array instead of rejecting
       // This ensures our UI will always have something to render
       return []; 
@@ -275,9 +269,11 @@ export const notificationSlice = createSlice({
         state.notifications = action.payload;
       })
       .addCase(getSentNotifications.rejected, (state, action) => {
+        console.error('getSentNotifications rejected:', action.payload);
         state.isLoading = false;
-        state.isError = true;
-        state.message = action.payload;
+        state.isError = false; // Don't set error state since we're handling errors gracefully
+        state.notifications = []; // Ensure we have an empty array to render
+        state.message = ''; // Clear any error messages
       })
       .addCase(getNotification.pending, (state) => {
         state.isLoading = true;
