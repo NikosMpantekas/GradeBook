@@ -12,7 +12,7 @@ const createNotification = async (notificationData, token) => {
     },
   };
 
-  const response = await axiosInstance.post(API_URL, notificationData, config);
+  const response = await axiosInstance.post(API_NOTIFICATIONS, notificationData, config);
 
   return response.data;
 };
@@ -25,7 +25,7 @@ const getAllNotifications = async (token) => {
     },
   };
 
-  const response = await axiosInstance.get(API_URL, config);
+  const response = await axiosInstance.get(API_NOTIFICATIONS, config);
 
   return response.data;
 };
@@ -33,7 +33,7 @@ const getAllNotifications = async (token) => {
 // Get my notifications
 const getMyNotifications = async (token) => {
   try {
-    const endpoint = API_URL + 'me';
+    const endpoint = `${API_NOTIFICATIONS}/me`;
     console.log('Fetching my notifications from:', endpoint);
     const config = {
       headers: {
@@ -83,7 +83,7 @@ const getSentNotifications = async (token) => {
       },
     };
 
-    const response = await axiosInstance.get(API_URL + 'sent', config);
+    const response = await axiosInstance.get(`${API_NOTIFICATIONS}/sent`, config);
     console.log(`Received ${response.data.length} sent notifications`);
     
     // Ensure we always return an array, even if the API returns null/undefined
@@ -109,7 +109,7 @@ const getNotification = async (notificationId, token) => {
     },
   };
 
-  const response = await axiosInstance.get(API_URL + notificationId, config);
+  const response = await axiosInstance.get(`${API_NOTIFICATIONS}/${notificationId}`, config);
 
   return response.data;
 };
@@ -123,7 +123,7 @@ const updateNotification = async (notificationId, notificationData, token) => {
   };
 
   const response = await axiosInstance.put(
-    API_URL + notificationId,
+    `${API_NOTIFICATIONS}/${notificationId}`,
     notificationData,
     config
   );
@@ -139,7 +139,7 @@ const deleteNotification = async (notificationId, token) => {
     },
   };
 
-  const response = await axiosInstance.delete(API_URL + notificationId, config);
+  const response = await axiosInstance.delete(`${API_NOTIFICATIONS}/${notificationId}`, config);
 
   return response.data;
 };
@@ -153,7 +153,7 @@ const markNotificationAsRead = async (notificationId, token) => {
   };
 
   const response = await axiosInstance.put(
-    API_URL + notificationId + '/read',
+    `${API_NOTIFICATIONS}/${notificationId}/read`,
     {},
     config
   );

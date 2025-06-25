@@ -417,6 +417,185 @@ const getFilteredStudentsForTeacher = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get filter options for notification recipients (supports both students and teachers)
+// @route   GET /api/students/notification/filters
+// @access  Private (Teachers and Admins)
+const getFilterOptionsForNotifications = asyncHandler(async (req, res) => {
+  console.log(`getFilterOptionsForNotifications called for user: ${req.user._id} (${req.user.role})`);
+  
+  try {
+    // Build the filter for classes
+    const classFilter = {
+      schoolId: req.user.schoolId,
+      active: true
+    };
+    
+    // Add teacher filter only if user is not admin
+    if (req.user.role !== 'admin') {
+      classFilter.teachers = req.user._id;
+    }
+    
+    console.log('Class filter for notifications:', classFilter);
+    
+    // Find all classes the user has access to
+    const classes = await Class.find(classFilter);
+    console.log(`Found ${classes.length} accessible classes for notification filtering`);
+    
+    // Extract unique filter options
+    const schoolBranchIds = new Set();
+    const directions = new Set();
+    const subjects = new Set();
+    
+    classes.forEach(cls => {
+      if (cls.schoolBranch) schoolBranchIds.add(cls.schoolBranch);
+      if (cls.direction) directions.add(cls.direction);
+      if (cls.subject) subjects.add(cls.subject);
+    });
+    
+    // Get school data to map branch IDs to names
+    const schoolBranches = [];
+    
+    try {
+      const School = require('../models/schoolModel');
+      const branchIds = Array.from(schoolBranchIds);
+      const branchDocs = await School.find({
+        _id: { $in: branchIds.filter(id => mongoose.Types.ObjectId.isValid(id)) }
+      }).select('_id name');
+      
+      const branchNameMap = {};
+      branchDocs.forEach(branch => {
+        branchNameMap[branch._id.toString()] = branch.name;
+      });
+      
+      branchIds.forEach(branchId => {
+        const branchName = branchNameMap[branchId.toString()] || `Branch ${branchId}`;
+        schoolBranches.push({ 
+          value: branchId, 
+          label: branchName 
+        });
+      });
+    } catch (branchError) {
+      console.error('Error fetching branch names for notifications:', branchError);
+      Array.from(schoolBranchIds).forEach(branch => {
+        schoolBranches.push({ value: branch, label: branch });
+      });
+    }
+    
+    const filterOptions = {
+      schoolBranches,
+      directions: Array.from(directions).map(direction => ({ value: direction, label: direction })),
+      subjects: Array.from(subjects).map(subject => ({ value: subject, label: subject }))
+    };
+    
+    console.log('Notification filter options for user:', filterOptions);
+    
+    res.json(filterOptions);
+  } catch (error) {
+    console.error('Error in getFilterOptionsForNotifications:', error);
+    res.status(500);
+    throw new Error('Failed to get notification filter options');
+  }
+});
+
+// @desc    Get filtered users for notifications (students and teachers)
+// @route   GET /api/students/notification/filtered
+// @access  Private (Teachers and Admins)
+const getFilteredUsersForNotifications = asyncHandler(async (req, res) => {
+  const { schoolBranch, direction, subject, userRole } = req.query;
+  console.log(`getFilteredUsersForNotifications called for user: ${req.user._id} (${req.user.role})`, { 
+    schoolBranch, direction, subject, userRole 
+  });
+  
+  try {
+    // Build the filter for classes
+    const classFilter = {
+      schoolId: req.user.schoolId,
+      active: true
+    };
+    
+    // Add teacher filter only if user is not admin
+    if (req.user.role !== 'admin') {
+      classFilter.teachers = req.user._id;
+    }
+    
+    // Add optional filters
+    if (schoolBranch) classFilter.schoolBranch = schoolBranch;
+    if (direction) classFilter.direction = direction;
+    if (subject) classFilter.subject = subject;
+    
+    console.log('Class filter for notification users:', classFilter);
+    
+    // Find classes matching the criteria
+    const matchingClasses = await Class.find(classFilter)
+      .populate('students', 'name email role')
+      .populate('teachers', 'name email role');
+    
+    console.log(`Found ${matchingClasses.length} matching classes for notification filtering`);
+    
+    // Extract unique users from all matching classes
+    const userMap = new Map();
+    
+    matchingClasses.forEach(cls => {
+      // Add students if userRole is 'student' or 'all'
+      if ((userRole === 'student' || userRole === 'all' || !userRole) && cls.students && cls.students.length > 0) {
+        cls.students.forEach(student => {
+          if (!userMap.has(student._id.toString())) {
+            userMap.set(student._id.toString(), {
+              _id: student._id,
+              name: student.name,
+              email: student.email,
+              role: 'student',
+              classes: []
+            });
+          }
+          userMap.get(student._id.toString()).classes.push({
+            _id: cls._id,
+            name: cls.name,
+            subject: cls.subject,
+            direction: cls.direction,
+            schoolBranch: cls.schoolBranch
+          });
+        });
+      }
+      
+      // Add teachers if userRole is 'teacher' or 'all'
+      if ((userRole === 'teacher' || userRole === 'all') && cls.teachers && cls.teachers.length > 0) {
+        cls.teachers.forEach(teacher => {
+          // Don't include the current user in the recipient list
+          if (teacher._id.toString() !== req.user._id.toString()) {
+            if (!userMap.has(teacher._id.toString())) {
+              userMap.set(teacher._id.toString(), {
+                _id: teacher._id,
+                name: teacher.name,
+                email: teacher.email,
+                role: 'teacher',
+                classes: []
+              });
+            }
+            userMap.get(teacher._id.toString()).classes.push({
+              _id: cls._id,
+              name: cls.name,
+              subject: cls.subject,
+              direction: cls.direction,
+              schoolBranch: cls.schoolBranch
+            });
+          }
+        });
+      }
+    });
+    
+    const users = Array.from(userMap.values());
+    
+    console.log(`Returning ${users.length} unique users for notifications (${users.filter(u => u.role === 'student').length} students, ${users.filter(u => u.role === 'teacher').length} teachers)`);
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error in getFilteredUsersForNotifications:', error);
+    res.status(500);
+    throw new Error('Failed to get filtered users for notifications');
+  }
+});
+
 module.exports = {
   getStudents,
   getStudentsBySubject,
@@ -424,5 +603,7 @@ module.exports = {
   getStudentsForTeacher,
   getStudentsBySubjectForTeacher,
   getFilterOptionsForTeacher,
-  getFilteredStudentsForTeacher
+  getFilteredStudentsForTeacher,
+  getFilterOptionsForNotifications,
+  getFilteredUsersForNotifications
 };
