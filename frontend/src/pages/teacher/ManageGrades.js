@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { Container, Typography, Box, Snackbar, Alert, Paper, Grid, CircularProgress, Chip } from '@mui/material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
 // Components
 import GradeTable from '../../components/grades/GradeTable';
@@ -154,11 +155,12 @@ const ManageGrades = () => {
   const loadFilterOptions = async () => {
     setLoadingFilters(true);
     try {
+      const endpoint = `${API_URL}/api/students/teacher/filters`;
       const config = {
         headers: { Authorization: `Bearer ${user.token}` }
       };
       
-      const response = await axios.get('/api/students/teacher/filters', config);
+      const response = await axios.get(endpoint, config);
       
       // Enhanced logging to debug school branch data
       console.log(`[ManageGrades] Raw filter options data:`, response.data);
@@ -240,17 +242,19 @@ const ManageGrades = () => {
   const loadFilteredStudents = async () => {
     setLoadingStudents(true);
     try {
+      const params = new URLSearchParams();
+      if (filters.schoolBranch) params.append('schoolBranch', filters.schoolBranch);
+      if (filters.direction) params.append('direction', filters.direction);
+      if (filters.subject) params.append('subject', filters.subject);
+      
+      console.log('Loading filtered students with params:', params.toString());
+      
+      const endpoint = `${API_URL}/api/students/teacher/filtered?${params}`;
       const config = {
         headers: { Authorization: `Bearer ${user.token}` }
       };
       
-      const params = new URLSearchParams({
-        schoolBranch: filters.schoolBranch,
-        direction: filters.direction,
-        subject: filters.subject
-      });
-      
-      const response = await axios.get(`/api/students/teacher/filtered?${params}`, config);
+      const response = await axios.get(endpoint, config);
       setStudents(response.data);
       console.log(`[ManageGrades] Loaded ${response.data.length} students for filters:`, filters);
     } catch (error) {

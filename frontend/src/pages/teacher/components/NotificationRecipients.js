@@ -33,6 +33,7 @@ import {
   SelectAll as SelectAllIcon
 } from '@mui/icons-material';
 import axios from 'axios';
+import { API_URL } from '../../../config/appConfig';
 
 /**
  * NotificationRecipients component with class-based filtering system
@@ -115,7 +116,8 @@ const NotificationRecipients = ({
     
     try {
       console.log('Loading notification filter options...');
-      const response = await axios.get('/api/students/notification/filters', getAuthConfig());
+      const endpoint = `${API_URL}/api/students/notification/filters`;
+      const response = await axios.get(endpoint, getAuthConfig());
       
       console.log('Filter options loaded:', response.data);
       setFilterOptions(response.data);
@@ -141,7 +143,8 @@ const NotificationRecipients = ({
       
       console.log('Loading filtered users with params:', params.toString());
       
-      const response = await axios.get(`/api/students/notification/filtered?${params}`, getAuthConfig());
+      const endpoint = `${API_URL}/api/students/notification/filtered?${params}`;
+      const response = await axios.get(endpoint, getAuthConfig());
       
       console.log(`Loaded ${response.data.length} filtered users:`, response.data);
       setAllUsers(response.data);

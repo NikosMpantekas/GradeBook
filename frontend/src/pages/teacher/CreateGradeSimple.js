@@ -21,6 +21,7 @@ import {
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 import SchoolIcon from '@mui/icons-material/School';
 import BookIcon from '@mui/icons-material/Book';
 import GradeIcon from '@mui/icons-material/Grade';
@@ -90,7 +91,8 @@ const CreateGradeSimple = () => {
         headers: { Authorization: `Bearer ${user.token}` }
       };
       
-      const response = await axios.get('/api/students/teacher/filters', config);
+      const endpoint = `${API_URL}/api/students/teacher/filters`;
+      const response = await axios.get(endpoint, config);
       setFilterOptions(response.data);
       console.log(`[CreateGrade] Loaded filter options for ${user.role}:`, response.data);
     } catch (error) {
@@ -126,7 +128,8 @@ const CreateGradeSimple = () => {
       
       console.log('[CreateGrade] Fetching branch names for IDs:', validBranchIds);
       
-      const response = await axios.post('/api/branches/batch', {
+      const endpoint = `${API_URL}/api/branches/batch`;
+      const response = await axios.post(endpoint, {
         branchIds: validBranchIds
       }, config);
       
@@ -161,7 +164,8 @@ const CreateGradeSimple = () => {
         subject: formData.subject
       });
       
-      const response = await axios.get(`/api/students/teacher/filtered?${params}`, config);
+      const endpoint = `${API_URL}/api/students/teacher/filtered?${params}`;
+      const response = await axios.get(endpoint, config);
       setStudents(response.data);
       console.log(`[CreateGrade] Loaded ${response.data.length} students for ${user.role}:`, response.data);
     } catch (error) {
@@ -217,7 +221,8 @@ const CreateGradeSimple = () => {
       
       // Get the subject ID for the selected subject name
       // Since we're using subject names in classes, we need to find the subject ID
-      const subjectsResponse = await axios.get('/api/subjects', config);
+      const subjectsEndpoint = `${API_URL}/api/subjects`;
+      const subjectsResponse = await axios.get(subjectsEndpoint, config);
       const subjects = subjectsResponse.data;
       const selectedSubject = subjects.find(s => s.name === formData.subject);
       
@@ -236,7 +241,8 @@ const CreateGradeSimple = () => {
       
       console.log('[CreateGrade] Submitting grade data:', gradeData);
       
-      await axios.post('/api/grades', gradeData, config);
+      const endpoint = `${API_URL}/api/grades`;
+      await axios.post(endpoint, gradeData, config);
       
       toast.success('Grade added successfully!');
       // Fix redirect path to the correct URL format with /app prefix

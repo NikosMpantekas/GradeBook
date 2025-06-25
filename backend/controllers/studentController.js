@@ -291,16 +291,10 @@ const getFilterOptionsForTeacher = asyncHandler(async (req, res) => {
     // Get school data to map branch IDs to names
     const schoolBranches = [];
     
-    // Look up actual branch names from the schools collection
-    console.log('School branch value type analysis:');
-    const branchIds = Array.from(schoolBranchIds);
-    branchIds.forEach(branch => {
-      console.log(`Branch: ${branch}, Type: ${typeof branch}, IsObjectId: ${mongoose.Types.ObjectId.isValid(branch)}`);
-    });
-    
     try {
       // Fetch actual school branch documents to get names
       const School = require('../models/schoolModel');
+      const branchIds = Array.from(schoolBranchIds);
       const branchDocs = await School.find({
         _id: { $in: branchIds.filter(id => mongoose.Types.ObjectId.isValid(id)) }
       }).select('_id name');
@@ -421,7 +415,9 @@ const getFilteredStudentsForTeacher = asyncHandler(async (req, res) => {
 // @route   GET /api/students/notification/filters
 // @access  Private (Teachers and Admins)
 const getFilterOptionsForNotifications = asyncHandler(async (req, res) => {
-  console.log(`getFilterOptionsForNotifications called for user: ${req.user._id} (${req.user.role})`);
+  console.log(`[NOTIFICATION FILTERS] getFilterOptionsForNotifications called for user: ${req.user._id} (${req.user.role})`);
+  console.log(`[NOTIFICATION FILTERS] School ID: ${req.user.schoolId}`);
+  console.log(`[NOTIFICATION FILTERS] Request headers:`, req.headers);
   
   try {
     // Build the filter for classes
@@ -435,11 +431,11 @@ const getFilterOptionsForNotifications = asyncHandler(async (req, res) => {
       classFilter.teachers = req.user._id;
     }
     
-    console.log('Class filter for notifications:', classFilter);
+    console.log('[NOTIFICATION FILTERS] Class filter for notifications:', classFilter);
     
     // Find all classes the user has access to
     const classes = await Class.find(classFilter);
-    console.log(`Found ${classes.length} accessible classes for notification filtering`);
+    console.log(`[NOTIFICATION FILTERS] Found ${classes.length} accessible classes for notification filtering`);
     
     // Extract unique filter options
     const schoolBranchIds = new Set();
@@ -475,7 +471,7 @@ const getFilterOptionsForNotifications = asyncHandler(async (req, res) => {
         });
       });
     } catch (branchError) {
-      console.error('Error fetching branch names for notifications:', branchError);
+      console.error('[NOTIFICATION FILTERS] Error fetching branch names for notifications:', branchError);
       Array.from(schoolBranchIds).forEach(branch => {
         schoolBranches.push({ value: branch, label: branch });
       });
@@ -487,11 +483,12 @@ const getFilterOptionsForNotifications = asyncHandler(async (req, res) => {
       subjects: Array.from(subjects).map(subject => ({ value: subject, label: subject }))
     };
     
-    console.log('Notification filter options for user:', filterOptions);
+    console.log('[NOTIFICATION FILTERS] Notification filter options for user:', filterOptions);
+    console.log(`[NOTIFICATION FILTERS] Returning ${filterOptions.schoolBranches.length} branches, ${filterOptions.directions.length} directions, ${filterOptions.subjects.length} subjects`);
     
     res.json(filterOptions);
   } catch (error) {
-    console.error('Error in getFilterOptionsForNotifications:', error);
+    console.error('[NOTIFICATION FILTERS] Error in getFilterOptionsForNotifications:', error);
     res.status(500);
     throw new Error('Failed to get notification filter options');
   }
@@ -502,9 +499,11 @@ const getFilterOptionsForNotifications = asyncHandler(async (req, res) => {
 // @access  Private (Teachers and Admins)
 const getFilteredUsersForNotifications = asyncHandler(async (req, res) => {
   const { schoolBranch, direction, subject, userRole } = req.query;
-  console.log(`getFilteredUsersForNotifications called for user: ${req.user._id} (${req.user.role})`, { 
+  console.log(`[FILTERED USERS] getFilteredUsersForNotifications called for user: ${req.user._id} (${req.user.role})`, { 
     schoolBranch, direction, subject, userRole 
   });
+  console.log(`[FILTERED USERS] School ID: ${req.user.schoolId}`);
+  console.log(`[FILTERED USERS] Request headers:`, req.headers);
   
   try {
     // Build the filter for classes
@@ -513,84 +512,82 @@ const getFilteredUsersForNotifications = asyncHandler(async (req, res) => {
       active: true
     };
     
+    // Add specific filters
+    if (schoolBranch) classFilter.schoolBranch = schoolBranch;
+    if (direction) classFilter.direction = direction;
+    if (subject) classFilter.subject = subject;
+    
     // Add teacher filter only if user is not admin
     if (req.user.role !== 'admin') {
       classFilter.teachers = req.user._id;
     }
     
-    // Add optional filters
-    if (schoolBranch) classFilter.schoolBranch = schoolBranch;
-    if (direction) classFilter.direction = direction;
-    if (subject) classFilter.subject = subject;
+    console.log('[FILTERED USERS] Class filter for notifications:', classFilter);
     
-    console.log('Class filter for notification users:', classFilter);
+    // Find all classes matching the criteria
+    const classes = await Class.find(classFilter);
+    console.log(`[FILTERED USERS] Found ${classes.length} matching classes`);
     
-    // Find classes matching the criteria
-    const matchingClasses = await Class.find(classFilter)
-      .populate('students', 'name email role')
-      .populate('teachers', 'name email role');
+    if (classes.length === 0) {
+      console.log('[FILTERED USERS] No classes found matching criteria - returning empty array');
+      return res.json([]);
+    }
     
-    console.log(`Found ${matchingClasses.length} matching classes for notification filtering`);
+    // Get all student IDs from these classes
+    const studentIds = new Set();
+    const teacherIds = new Set();
     
-    // Extract unique users from all matching classes
-    const userMap = new Map();
-    
-    matchingClasses.forEach(cls => {
-      // Add students if userRole is 'student' or 'all'
-      if ((userRole === 'student' || userRole === 'all' || !userRole) && cls.students && cls.students.length > 0) {
-        cls.students.forEach(student => {
-          if (!userMap.has(student._id.toString())) {
-            userMap.set(student._id.toString(), {
-              _id: student._id,
-              name: student.name,
-              email: student.email,
-              role: 'student',
-              classes: []
-            });
-          }
-          userMap.get(student._id.toString()).classes.push({
-            _id: cls._id,
-            name: cls.name,
-            subject: cls.subject,
-            direction: cls.direction,
-            schoolBranch: cls.schoolBranch
-          });
-        });
+    classes.forEach(cls => {
+      if (cls.students && cls.students.length > 0) {
+        cls.students.forEach(studentId => studentIds.add(studentId.toString()));
       }
-      
-      // Add teachers if userRole is 'teacher' or 'all'
-      if ((userRole === 'teacher' || userRole === 'all') && cls.teachers && cls.teachers.length > 0) {
-        cls.teachers.forEach(teacher => {
-          // Don't include the current user in the recipient list
-          if (teacher._id.toString() !== req.user._id.toString()) {
-            if (!userMap.has(teacher._id.toString())) {
-              userMap.set(teacher._id.toString(), {
-                _id: teacher._id,
-                name: teacher.name,
-                email: teacher.email,
-                role: 'teacher',
-                classes: []
-              });
-            }
-            userMap.get(teacher._id.toString()).classes.push({
-              _id: cls._id,
-              name: cls.name,
-              subject: cls.subject,
-              direction: cls.direction,
-              schoolBranch: cls.schoolBranch
-            });
-          }
-        });
+      if (cls.teachers && cls.teachers.length > 0) {
+        cls.teachers.forEach(teacherId => teacherIds.add(teacherId.toString()));
       }
     });
     
-    const users = Array.from(userMap.values());
+    console.log(`[FILTERED USERS] Found ${studentIds.size} unique students and ${teacherIds.size} unique teachers from classes`);
     
-    console.log(`Returning ${users.length} unique users for notifications (${users.filter(u => u.role === 'student').length} students, ${users.filter(u => u.role === 'teacher').length} teachers)`);
+    let users = [];
+    
+    // Determine which users to fetch based on userRole
+    if (!userRole || userRole === 'all' || userRole === 'student') {
+      // Fetch students
+      const students = await User.find({
+        _id: { $in: Array.from(studentIds) },
+        role: 'student',
+        schoolId: req.user.schoolId
+      })
+      .select('_id name email role')
+      .lean();
+      
+      console.log(`[FILTERED USERS] Found ${students.length} students in database`);
+      users = users.concat(students);
+    }
+    
+    if (!userRole || userRole === 'all' || userRole === 'teacher') {
+      // Fetch teachers
+      const teachers = await User.find({
+        _id: { $in: Array.from(teacherIds) },
+        role: 'teacher',
+        schoolId: req.user.schoolId
+      })
+      .select('_id name email role')
+      .lean();
+      
+      console.log(`[FILTERED USERS] Found ${teachers.length} teachers in database`);
+      users = users.concat(teachers);
+    }
+    
+    // Sort users by name for better UX
+    users.sort((a, b) => a.name.localeCompare(b.name));
+    
+    console.log(`[FILTERED USERS] Returning ${users.length} total users for notifications`);
+    console.log(`[FILTERED USERS] User breakdown: ${users.filter(u => u.role === 'student').length} students, ${users.filter(u => u.role === 'teacher').length} teachers`);
     
     res.json(users);
   } catch (error) {
-    console.error('Error in getFilteredUsersForNotifications:', error);
+    console.error('[FILTERED USERS] Error in getFilteredUsersForNotifications:', error);
     res.status(500);
     throw new Error('Failed to get filtered users for notifications');
   }
