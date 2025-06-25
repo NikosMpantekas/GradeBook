@@ -1,27 +1,32 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  getSchoolPermissions, 
-  updateSchoolPermissions, 
-  checkFeatureEnabled,
-  migrateSchoolPermissions
-} = require('../controllers/schoolPermissionsController');
 
-const { protect, superadmin } = require('../middleware/authMiddleware');
+// DISABLED: School permissions system completely removed per user requirements
+// All school permission/feature restriction logic has been disabled to allow unrestricted access
+// const { 
+//   getSchoolPermissions, 
+//   updateSchoolPermissions, 
+//   checkFeatureEnabled,
+//   migrateSchoolPermissions
+// } = require('../controllers/schoolPermissionsController');
 
-// All routes protected by authentication
-router.use(protect);
+// const { protect, superadmin } = require('../middleware/authMiddleware');
 
-// Get permissions for a school - restricted to admin of that school and superadmin
-router.get('/:schoolId', getSchoolPermissions);
+// DISABLED: All school permissions routes are now disabled
+// This removes the superadmin enable/disable features functionality
+router.use('*', (req, res) => {
+  res.status(200).json({
+    message: 'School permissions system has been disabled. All features are now enabled by default.',
+    disabled: true,
+    timestamp: new Date().toISOString()
+  });
+});
 
-// Update permissions for a school - restricted to superadmin only
-router.put('/:schoolId', superadmin, updateSchoolPermissions);
-
-// Check if a specific feature is enabled for a school
-router.get('/:schoolId/feature/:featureName', checkFeatureEnabled);
-
-// Migration route - for superadmin only
-router.post('/migrate', superadmin, migrateSchoolPermissions);
+// DISABLED ROUTES - All functionality removed:
+// router.use(protect);
+// router.get('/:schoolId', getSchoolPermissions);
+// router.put('/:schoolId', superadmin, updateSchoolPermissions);
+// router.get('/:schoolId/feature/:featureName', checkFeatureEnabled);
+// router.post('/migrate', superadmin, migrateSchoolPermissions);
 
 module.exports = router;

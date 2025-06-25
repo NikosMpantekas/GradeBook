@@ -3,72 +3,31 @@ const SchoolPermissions = require('../models/schoolPermissionsModel');
 const logger = require('../utils/logger');
 
 /**
- * Middleware to check if a specific feature is enabled for a school
- * This middleware should be used after the auth middleware (protect)
- * @param {string} featureName - The name of the feature to check (e.g., 'enableCalendar')
- * @returns {function} Express middleware
+ * DISABLED: Feature toggle middleware - All school permission checks removed
+ * This middleware has been disabled to eliminate all school permission restrictions
+ * All features are now enabled by default regardless of school configuration
+ * @param {string} featureName - The name of the feature (no longer checked)
+ * @returns {function} Express middleware that always allows access
  */
 const checkFeatureEnabled = (featureName) => {
   return asyncHandler(async (req, res, next) => {
-    // Skip feature checks for superadmin users
-    if (req.isSuperadmin) {
-      logger.info('FEATURE', `Superadmin bypassing ${featureName} feature check`);
-      // Set a flag to indicate the feature is enabled for the frontend
-      req.featureEnabled = true;
-      return next();
-    }
-
-    // Ensure user has schoolId
-    if (!req.user || !req.user.schoolId) {
-      logger.error('FEATURE', `No schoolId available to check ${featureName} feature`);
-      res.status(403);
-      throw new Error('School context required to access this feature');
-    }
-
-    try {
-      // Find school permissions
-      const schoolPermissions = await SchoolPermissions.findOne({ 
-        schoolId: req.user.schoolId 
-      });
-
-      if (!schoolPermissions) {
-        logger.warn('FEATURE', `No permissions found for school ${req.user.schoolId}`);
-        res.status(403);
-        throw new Error('School not configured for this feature');
-      }
-
-      // Check if the specific feature is enabled
-      const isEnabled = schoolPermissions.features && 
-                       schoolPermissions.features[featureName] === true;
-
-      if (!isEnabled) {
-        logger.warn('FEATURE', `${featureName} is disabled for school ${req.user.schoolId}`);
-        res.status(403);
-        throw new Error('This feature is not enabled for your school');
-      }
-
-      // Set a flag to indicate the feature is enabled for the frontend
-      req.featureEnabled = true;
-      logger.info('FEATURE', `${featureName} is enabled for school ${req.user.schoolId}`);
-      next();
-    } catch (error) {
-      if (error.message === 'This feature is not enabled for your school' || 
-          error.message === 'School not configured for this feature') {
-        throw error;
-      }
-      
-      logger.error('FEATURE', `Error checking ${featureName} feature:`, {
-        error: error.message,
-        schoolId: req.user.schoolId,
-        stack: error.stack
-      });
-      res.status(500);
-      throw new Error('Error checking feature availability');
-    }
+    // DISABLED: All permission checks removed - always allow access
+    logger.info('FEATURE', `Feature toggle checking DISABLED - allowing access to ${featureName}`, {
+      userId: req.user?.id,
+      userRole: req.user?.role,
+      schoolId: req.user?.schoolId,
+      path: req.path,
+      method: req.method,
+      note: 'School permissions system has been completely disabled'
+    });
+    
+    // Always set feature as enabled and proceed
+    req.featureEnabled = true;
+    next();
   });
 };
 
-// Specific middleware instances for each feature
+// DISABLED: Specific middleware instances - all now return enabled by default
 const checkCalendarEnabled = checkFeatureEnabled('enableCalendar');
 const checkRatingEnabled = checkFeatureEnabled('enableRatingSystem');
 
@@ -78,59 +37,13 @@ const checkRatingEnabled = checkFeatureEnabled('enableRatingSystem');
  * for use in subsequent middleware or controllers
  */
 const addFeatureFlags = asyncHandler(async (req, res, next) => {
-  // Skip for superadmin - all features are available
-  if (req.isSuperadmin) {
-    res.locals.features = {
-      enableCalendar: true,
-      enableRatingSystem: true
-    };
-    return next();
-  }
-
-  // Check if we have a school context
-  if (!req.user || !req.user.schoolId) {
-    res.locals.features = {
-      enableCalendar: false,
-      enableRatingSystem: false
-    };
-    return next();
-  }
-
-  try {
-    // Find school permissions
-    const schoolPermissions = await SchoolPermissions.findOne({ 
-      schoolId: req.user.schoolId 
-    });
-
-    if (!schoolPermissions) {
-      res.locals.features = {
-        enableCalendar: false,
-        enableRatingSystem: false
-      };
-    } else {
-      // Set feature flags based on school permissions
-      res.locals.features = {
-        enableCalendar: schoolPermissions.features?.enableCalendar === true,
-        enableRatingSystem: schoolPermissions.features?.enableRatingSystem === true
-      };
-    }
-
-    logger.debug('FEATURE', `Feature flags set for school ${req.user.schoolId}`, res.locals.features);
-    next();
-  } catch (error) {
-    logger.error('FEATURE', `Error setting feature flags:`, {
-      error: error.message,
-      schoolId: req.user.schoolId,
-      stack: error.stack
-    });
-    
-    // Don't block the request, just set features as disabled
-    res.locals.features = {
-      enableCalendar: false,
-      enableRatingSystem: false
-    };
-    next();
-  }
+  // Always set features as enabled
+  res.locals.features = {
+    enableCalendar: true,
+    enableRatingSystem: true
+  };
+  logger.debug('FEATURE', `Feature flags set for school ${req.user?.schoolId}`, res.locals.features);
+  next();
 });
 
 module.exports = {

@@ -19,21 +19,20 @@ const {
 } = require('../controllers/vapidController');
 const { protect, admin, teacher, canSendNotifications } = require('../middleware/authMiddleware');
 
-// Import feature permission middleware to enforce feature toggles
-const { requireFeature } = require('../middleware/featurePermissionMiddleware');
+// REMOVED: Feature permission middleware - no longer restricting notification access based on school features
+// const { requireFeature } = require('../middleware/featurePermissionMiddleware');
 
-// Protected routes with feature permission check
-// All notification endpoints require the enableNotifications feature to be enabled
+// Protected routes - removed all requireFeature middleware to eliminate school permission restrictions
 // CRITICAL FIX: Add /vapid endpoint BEFORE the /:id route to prevent conflicts
-router.get('/vapid', protect, requireFeature('enableNotifications'), getVapidPublicKey);
-router.get('/me', protect, requireFeature('enableNotifications'), getMyNotifications);
-router.get('/sent', protect, requireFeature('enableNotifications'), getSentNotifications);
-router.get('/:id', protect, requireFeature('enableNotifications'), getNotificationById);
-router.put('/:id/read', protect, requireFeature('enableNotifications'), markNotificationRead);
+router.get('/vapid', protect, getVapidPublicKey);
+router.get('/me', protect, getMyNotifications);
+router.get('/sent', protect, getSentNotifications);
+router.get('/:id', protect, getNotificationById);
+router.put('/:id/read', protect, markNotificationRead);
 
 // Teacher & Admin routes (with secretary support where appropriate)
-// Now also enforcing the enableNotifications feature permission
-router.post('/', protect, requireFeature('enableNotifications'), (req, res, next) => {
+// REMOVED: requireFeature('enableNotifications') - notifications now always available
+router.post('/', protect, (req, res, next) => {
   // Allow teachers, admins, and secretaries with notification permission
   if (req.user.role === 'teacher' || req.user.role === 'admin' || 
       (req.user.role === 'secretary' && req.user.secretaryPermissions?.canSendNotifications === true)) {
