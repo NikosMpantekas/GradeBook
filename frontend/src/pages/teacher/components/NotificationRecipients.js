@@ -40,12 +40,10 @@ import axios from 'axios';
  * Supports role-based filtering and "Select All" functionality
  */
 const NotificationRecipients = ({
-  availableUsers,
   selectedRecipients,
   onRecipientsChange,
   error,
-  disabled,
-  loading
+  disabled
 }) => {
   // Filter states
   const [filterOptions, setFilterOptions] = useState({
@@ -64,6 +62,7 @@ const NotificationRecipients = ({
   
   // User data and search
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Loading states
@@ -99,15 +98,15 @@ const NotificationRecipients = ({
   // Apply search filter to available users
   useEffect(() => {
     if (!searchTerm) {
-      setFilteredUsers(availableUsers);
+      setFilteredUsers(allUsers);
     } else {
-      const filtered = availableUsers.filter(user => 
+      const filtered = allUsers.filter(user => 
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredUsers(filtered);
     }
-  }, [searchTerm, availableUsers]);
+  }, [searchTerm, allUsers]);
 
   // Load filter options from backend
   const loadFilterOptions = async () => {
@@ -145,6 +144,7 @@ const NotificationRecipients = ({
       const response = await axios.get(`/api/students/notification/filtered?${params}`, getAuthConfig());
       
       console.log(`Loaded ${response.data.length} filtered users:`, response.data);
+      setAllUsers(response.data);
       setFilteredUsers(response.data);
     } catch (error) {
       console.error('Error loading filtered users:', error);
@@ -483,7 +483,7 @@ const NotificationRecipients = ({
                   </Box>
                 </MenuItem>
               ))
-            ) : availableUsers.length === 0 && (selectedFilters.schoolBranch || selectedFilters.direction || selectedFilters.subject) ? (
+            ) : selectedFilters.schoolBranch || selectedFilters.direction || selectedFilters.subject ? (
               <MenuItem disabled>
                 No users found with the selected filters
               </MenuItem>
