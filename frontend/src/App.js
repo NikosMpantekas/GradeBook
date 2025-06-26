@@ -393,11 +393,6 @@ function App() {
             <Route path="/app/ratings" element={<RatingSubmission />} />
             
             {/* Teacher Routes */}
-            <Route path="/app/teacher" element={
-              <TeacherRoute>
-                <TeacherGrades />
-              </TeacherRoute>
-            } />
             <Route path="/app/teacher/grades/manage" element={
               <TeacherRoute>
                 <ManageGrades />
