@@ -519,6 +519,26 @@ const Schedule = () => {
     };
   };
 
+  // Utility function to determine if a color is light or dark
+  const isLightBackground = (color) => {
+    // For hex colors
+    if (color.startsWith('#')) {
+      const hex = color.replace('#', '');
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness > 128;
+    }
+    // For named colors or rgb/rgba format, default to assuming it's dark
+    return false;
+  };
+
+  // Utility function to get appropriate text color based on background
+  const getTextColor = (backgroundColor) => {
+    return isLightBackground(backgroundColor) ? '#000000' : '#ffffff';
+  };
+
   // Mobile-specific event rendering function to prevent floating classes
   const renderMobileEvent = (event, index) => {
     const backgroundColor = getSubjectColor(event.subject);
