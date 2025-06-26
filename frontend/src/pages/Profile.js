@@ -11,10 +11,6 @@ import {
   Paper,
   CircularProgress,
   Divider,
-  Switch,
-  FormControlLabel,
-  Card,
-  CardContent
 } from '@mui/material';
 import { 
   Save as SaveIcon,
@@ -33,7 +29,6 @@ const Profile = () => {
   const { user, isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.auth
   );
-  const { darkMode } = useSelector((state) => state.ui);
   
   // Initialize with empty data, will be updated when user data is available
   const [formData, setFormData] = useState({
@@ -41,8 +36,6 @@ const Profile = () => {
     email: '',
     password: '',
     password2: '',
-    darkMode: darkMode,
-    saveCredentials: false,
     colorTheme: localStorage.getItem('themeColor') || 'blue', // Default theme color
   });
   
@@ -53,12 +46,11 @@ const Profile = () => {
         ...prev,
         name: user.name || '',
         email: user.email || '',
-        saveCredentials: user.saveCredentials || false
       }));
     }
   }, [user]);
 
-  const { name, email, password, password2, saveCredentials } = formData;
+  const { name, email, password, password2 } = formData;
 
   const dispatch = useDispatch();
 
@@ -101,7 +93,6 @@ const Profile = () => {
     const userData = {
       name,
       email,
-      saveCredentials,
     };
 
     if (password) {
@@ -206,46 +197,11 @@ const Profile = () => {
               <Typography variant="h6" sx={{ mb: 2 }}>
                 <Box display="flex" alignItems="center">
                   <SecurityIcon color="primary" sx={{ mr: 1 }} />
-                  Security & Preferences
+                  Theme Preferences
                 </Box>
               </Typography>
               
               <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={saveCredentials}
-                        onChange={onChange}
-                        name="saveCredentials"
-                        color="primary"
-                      />
-                    }
-                    label="Remember me on this device"
-                  />
-                  <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 4, mt: -0.5 }}>
-                    Keeps you logged in across browser sessions
-                  </Typography>
-                </Grid>
-                
-                {/* Dark Mode Toggle */}
-                <Grid item xs={12}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={formData.darkMode}
-                        onChange={onChange}
-                        name="darkMode"
-                        color="primary"
-                      />
-                    }
-                    label="Dark Mode"
-                  />
-                  <Typography variant="caption" color="text.secondary" display="block" sx={{ ml: 4, mt: -0.5 }}>
-                    Switch between light and dark theme
-                  </Typography>
-                </Grid>
-                
                 {/* UI Theme Color Picker */}
                 <Grid item xs={12}>
                   <Typography variant="subtitle1" gutterBottom>
@@ -357,24 +313,6 @@ const Profile = () => {
                   </Typography>
                 </Grid>
               </Grid>
-              
-              <Divider sx={{ my: 3 }} />
-              <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px dashed', borderColor: 'primary.main' }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  Looking for Support or Want to Report a Bug?
-                </Typography>
-                <Typography variant="body2" paragraph>
-                  Support and bug reporting have been moved to a dedicated page. You can also view patch notes and updates there.
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  component="a" 
-                  href="/app/contact-messages"
-                >
-                  Go to Support & Messages
-                </Button>
-              </Box>
               
               <Button
                 type="submit"

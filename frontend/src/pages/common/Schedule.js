@@ -23,7 +23,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Divider
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  ExpandMoreIcon
 } from '@mui/material';
 import {
   Schedule as ScheduleIcon,
@@ -515,6 +519,116 @@ const Schedule = () => {
     };
   };
 
+  // Mobile-specific event rendering function to prevent floating classes
+  const renderMobileEvent = (event, index) => {
+    const backgroundColor = getSubjectColor(event.subject);
+    const textColor = getTextColor(backgroundColor);
+    const isLightColor = isLightBackground(backgroundColor);
+    
+    // Get teacher and student counts
+    const teacherCount = event.teacherNames ? event.teacherNames.length : 0;
+    const studentCount = event.studentNames ? event.studentNames.length : 0;
+    const teacherDisplay = event.teacherNames && event.teacherNames.length > 0 
+      ? event.teacherNames.slice(0, 2).join(', ') + (event.teacherNames.length > 2 ? '...' : '')
+      : null;
+
+    return (
+      <Card
+        key={`mobile-${event._id}-${index}`}
+        sx={{
+          mb: 1.5,
+          bgcolor: backgroundColor,
+          color: textColor,
+          cursor: 'pointer',
+          '&:hover': { 
+            boxShadow: 3,
+            transform: 'translateY(-2px)',
+            transition: 'all 0.2s ease-in-out'
+          },
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: 2
+        }}
+        onClick={() => handleEventClick(event)}
+      >
+        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+            <Typography 
+              variant="subtitle1" 
+              fontWeight="bold"
+              sx={{ 
+                color: textColor,
+                textShadow: isLightColor ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
+              }}
+            >
+              {event.subject}
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: textColor,
+                opacity: 0.9,
+                textShadow: isLightColor ? 'none' : '0 1px 2px rgba(0,0,0,0.3)',
+                fontWeight: 'bold'
+              }}
+            >
+              {event.startTime} - {event.endTime}
+            </Typography>
+          </Box>
+          
+          {teacherDisplay && (
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: textColor,
+                opacity: 0.9,
+                mb: 1,
+                textShadow: isLightColor ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
+              }}
+            >
+              👨‍🏫 {teacherDisplay}
+            </Typography>
+          )}
+          
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 1, 
+            flexWrap: 'wrap',
+            alignItems: 'center'
+          }}>
+            {teacherCount > 0 && (
+              <Chip
+                size="small"
+                icon={<PersonIcon sx={{ fontSize: '14px !important' }} />}
+                label={`${teacherCount} Teacher${teacherCount > 1 ? 's' : ''}`}
+                sx={{
+                  height: '20px',
+                  '& .MuiChip-label': { fontSize: '0.75rem', px: 0.5 },
+                  '& .MuiChip-icon': { fontSize: '12px', ml: 0.5 },
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: textColor
+                }}
+              />
+            )}
+            {studentCount > 0 && (
+              <Chip
+                size="small"
+                icon={<GroupIcon sx={{ fontSize: '14px !important' }} />}
+                label={`${studentCount} Student${studentCount > 1 ? 's' : ''}`}
+                sx={{
+                  height: '20px',
+                  '& .MuiChip-label': { fontSize: '0.75rem', px: 0.5 },
+                  '& .MuiChip-icon': { fontSize: '12px', ml: 0.5 },
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: textColor
+                }}
+              />
+            )}
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
+
   // Render event in calendar with proper fractional positioning
   const renderEvent = (event, isCompact = false) => {
     if (!event) {
@@ -767,23 +881,70 @@ const Schedule = () => {
       {/* Calendar Grid */}
       <Paper sx={{ p: 2, borderRadius: 2, overflowX: 'auto' }}>
         {isMobile ? (
-          // Mobile view - Day by day accordion
+          // Mobile view - Improved day by day list
           <Box>
             {daysOfWeek.map((day) => (
-              <Card key={day} sx={{ mb: 2 }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
+              <Accordion key={day} sx={{ mb: 1 }} defaultExpanded>
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  sx={{
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                    '&.Mui-expanded': {
+                      minHeight: 48,
+                    },
+                    '& .MuiAccordionSummary-content': {
+                      '&.Mui-expanded': {
+                        margin: '12px 0',
+                      },
+                    },
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                     {day}
                   </Typography>
-                  {scheduleData && scheduleData[day] && scheduleData[day].length > 0 ? (
-                    mergeConsecutiveClasses(scheduleData[day]).map((event, index) => renderEvent(event, true))
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No classes scheduled
-                    </Typography>
+                  {scheduleData && scheduleData[day] && scheduleData[day].length > 0 && (
+                    <Chip
+                      size="small"
+                      label={`${scheduleData[day].length} class${scheduleData[day].length > 1 ? 'es' : ''}`}
+                      sx={{ 
+                        ml: 2, 
+                        bgcolor: 'rgba(255,255,255,0.2)', 
+                        color: 'primary.contrastText',
+                        fontSize: '0.7rem'
+                      }}
+                    />
                   )}
-                </CardContent>
-              </Card>
+                </AccordionSummary>
+                <AccordionDetails sx={{ p: 2, bgcolor: 'background.paper' }}>
+                  {scheduleData && scheduleData[day] && scheduleData[day].length > 0 ? (
+                    <Box>
+                      {mergeConsecutiveClasses(scheduleData[day])
+                        .sort((a, b) => {
+                          // Sort by start time
+                          const timeA = parseInt(a.startTime.replace(':', ''));
+                          const timeB = parseInt(b.startTime.replace(':', ''));
+                          return timeA - timeB;
+                        })
+                        .map((event, index) => renderMobileEvent(event, index))
+                      }
+                    </Box>
+                  ) : (
+                    <Box sx={{ 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      py: 3,
+                      color: 'text.secondary'
+                    }}>
+                      <CalendarIcon sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
+                      <Typography variant="body1" color="text.secondary">
+                        No classes scheduled
+                      </Typography>
+                    </Box>
+                  )}
+                </AccordionDetails>
+              </Accordion>
             ))}
           </Box>
         ) : (

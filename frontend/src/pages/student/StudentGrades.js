@@ -35,7 +35,6 @@ import { format } from 'date-fns';
 import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title } from 'chart.js';
 import { Pie, Line } from 'react-chartjs-2';
 import { getStudentGrades } from '../../features/grades/gradeSlice';
-import { getSubjects } from '../../features/subjects/subjectSlice';
 
 // Register ChartJS components
 ChartJS.register(ArcElement, ChartTooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title);
@@ -48,12 +47,10 @@ const StudentGrades = () => {
   
   const { user } = useSelector((state) => state.auth);
   const { grades, isLoading } = useSelector((state) => state.grades);
-  const { subjects } = useSelector((state) => state.subjects);
   
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
-  const [subjectFilter, setSubjectFilter] = useState('');
   const [filteredGrades, setFilteredGrades] = useState([]);
   const [displayedGrades, setDisplayedGrades] = useState([]);
   const [gradeStats, setGradeStats] = useState({
@@ -67,7 +64,6 @@ const StudentGrades = () => {
 
   useEffect(() => {
     dispatch(getStudentGrades(user._id));
-    dispatch(getSubjects());
   }, [dispatch, user._id]);
 
   useEffect(() => {
@@ -75,19 +71,12 @@ const StudentGrades = () => {
       applyFilters();
       calculateStats();
     }
-  }, [grades, searchTerm, subjectFilter]);
+  }, [grades, searchTerm]);
 
   const applyFilters = () => {
     if (!grades) return;
     
     let filtered = [...grades];
-    
-    // Apply subject filter
-    if (subjectFilter) {
-      filtered = filtered.filter((grade) => 
-        grade.subject && grade.subject._id === subjectFilter
-      );
-    }
     
     // Apply search filter
     if (searchTerm) {
@@ -177,11 +166,6 @@ const StudentGrades = () => {
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
-    setPage(0);
-  };
-
-  const handleSubjectFilterChange = (event) => {
-    setSubjectFilter(event.target.value);
     setPage(0);
   };
 
@@ -481,26 +465,6 @@ const StudentGrades = () => {
               }}
               sx={{ flexGrow: 1 }}
             />
-            <FormControl variant="outlined" size="small" sx={{ 
-              minWidth: { xs: '100%', sm: 200 },
-              width: { xs: '100%', sm: 'auto' }
-            }}>
-              <InputLabel>Filter by Subject</InputLabel>
-              <Select
-                value={subjectFilter}
-                onChange={handleSubjectFilterChange}
-                label="Filter by Subject"
-              >
-                <MenuItem value="">
-                  <em>All Subjects</em>
-                </MenuItem>
-                {subjects.map((subject) => (
-                  <MenuItem key={subject._id} value={subject._id}>
-                    {subject.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
           </Box>
           
           {/* Responsive Grades Table - MOBILE FIRST APPROACH */}

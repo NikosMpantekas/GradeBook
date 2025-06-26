@@ -33,6 +33,7 @@ import {
   RateReview as RateReviewIcon,
   Class as ClassIcon,
   Analytics as AnalyticsIcon,
+  Support as SupportIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { useFeatureToggles } from '../../context/FeatureToggleContext';
@@ -94,9 +95,76 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   // Generate menu items based on user role and school permissions
   const getMenuItems = () => {
     const menuItems = [
-      // EXACTLY FOLLOWING THE REQUESTED MENU ORDER
+      // STUDENT MENU ITEMS (in requested order)
       
-      // 1. Admin Dashboard
+      // 1. Student Dashboard
+      {
+        text: 'Dashboard',
+        icon: <DashboardIcon />,
+        path: '/app/student',
+        roles: ['student'],
+        section: 'student',
+      },
+      
+      // 2. My Grades (Student)
+      {
+        text: 'My Grades',
+        icon: <GradesIcon />,
+        path: '/app/grades',
+        roles: ['student'],
+        checkPermission: (user) => isFeatureEnabled('enableGrades'),
+        section: 'student',
+      },
+      
+      // 3. My Notifications (Student)
+      {
+        text: 'My Notifications',
+        icon: <NotificationsIcon />,
+        path: '/app/notifications',
+        roles: ['student'],
+        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
+        section: 'student',
+      },
+      
+      // 4. Schedule (Student)
+      {
+        text: 'Schedule',
+        icon: <ScheduleIcon />,
+        path: '/app/schedule',
+        roles: ['student'],
+        section: 'student',
+      },
+      
+      // 5. Profile (Student)
+      {
+        text: 'Profile',
+        icon: <PersonIcon />,
+        path: '/app/profile',
+        roles: ['student'],
+        section: 'student',
+      },
+      
+      // 6. Messages (Student)
+      {
+        text: 'My Messages',
+        icon: <EmailIcon />,
+        path: '/app/contact-messages',
+        roles: ['student'],
+        section: 'student',
+      },
+      
+      // 7. Contact Support (Student) - renamed from Bug Reports
+      {
+        text: 'Contact Support',
+        icon: <EmailIcon />,
+        path: '/app/contact-support',
+        roles: ['student'],
+        section: 'student',
+      },
+      
+      // ADMIN MENU ITEMS
+      
+      // Admin Dashboard
       {
         text: 'Admin Dashboard',
         icon: <AdminIcon />,
@@ -105,7 +173,9 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'admin',
       },
       
-      // 2. Teacher Dashboard
+      // TEACHER MENU ITEMS
+      
+      // Teacher Dashboard
       {
         text: 'Teacher Dashboard',
         icon: <SchoolIcon />,
@@ -114,7 +184,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'teacher',
       },
       
-      // 3. Add Grade
+      // Add Grade
       {
         text: 'Add Grade',
         icon: <AddIcon />,
@@ -126,7 +196,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'teacher',
       },
       
-      // 4. Manage Grades
+      // Manage Grades
       {
         text: 'Manage Grades',
         icon: <GradesIcon />,
@@ -138,7 +208,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'teacher',
       },
       
-      // 5. Add Notifications (Send Notifications)
+      // Send Notifications (Teacher/Admin)
       {
         text: 'Send Notifications',
         icon: <NotificationsIcon />,
@@ -151,35 +221,39 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'teacher',
       },
       
-      // 6. Notifications (My Notifications)
+      // COMMON MENU ITEMS (for teacher/admin)
+      
+      // My Notifications (Teacher/Admin)
       {
         text: 'My Notifications',
         icon: <NotificationsIcon />,
         path: '/app/notifications',
-        roles: ['student', 'teacher', 'admin'],
+        roles: ['teacher', 'admin'],
         checkPermission: (user) => isFeatureEnabled('enableNotifications'),
         section: 'common',
       },
       
-      // 7. Schedule (Weekly Timetable)
+      // Schedule (Teacher/Admin)
       {
         text: 'Schedule',
         icon: <ScheduleIcon />,
         path: '/app/schedule',
-        roles: ['student', 'teacher', 'admin'],
+        roles: ['teacher', 'admin'],
         section: 'common',
       },
       
-      // 8. Messages and Bug Reports
+      // Contact Support (Teacher/Admin) - renamed from Bug Reports
       {
-        text: 'My Messages & Bug Reports',
+        text: 'Contact Support',
         icon: <EmailIcon />,
-        path: '/app/contact-messages',
-        roles: ['student', 'teacher', 'admin', 'superadmin'],
+        path: '/app/contact-support',
+        roles: ['teacher', 'admin', 'superadmin'],
         section: 'common',
       },
       
-      // 9. Manage Users
+      // ADMIN-SPECIFIC MENU ITEMS
+      
+      // Manage Users
       {
         text: 'Manage Users',
         icon: <UsersIcon />,
@@ -189,7 +263,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'admin',
       },
       
-      // 10. Manage Schools
+      // Manage Schools
       {
         text: 'Manage Schools',
         icon: <SchoolsIcon />,
@@ -199,7 +273,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'admin',
       },
       
-      // 11. Manage Classes
+      // Manage Classes
       {
         text: 'Manage Classes',
         icon: <ClassIcon />,
@@ -210,7 +284,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'admin',
       },
       
-      // 11.5. Student Statistics (Admin View)
+      // Student Statistics (Admin View)
       {
         text: 'Student Statistics',
         icon: <AnalyticsIcon />,
@@ -219,7 +293,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'admin',
       },
       
-      // 11.6. Student Statistics (Teacher View)
+      // Student Statistics (Teacher View)
       {
         text: 'Student Statistics',
         icon: <AnalyticsIcon />,
@@ -228,26 +302,14 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'teacher',
       },
       
-      // 12. Profile
+      // Profile (Teacher/Admin)
       {
         text: 'Profile',
         icon: <PersonIcon />,
         path: '/app/profile',
-        roles: ['student', 'teacher', 'admin', 'superadmin'],
+        roles: ['teacher', 'admin', 'superadmin'],
         section: 'common',
       },
-      
-      // Student's view of grades
-      {
-        text: 'My Grades',
-        icon: <GradesIcon />,
-        path: '/app/grades',
-        roles: ['student'],
-        checkPermission: (user) => isFeatureEnabled('enableGrades'),
-        section: 'student',
-      },
-      
-      // Removed general dashboard to avoid duplication
     ];
 
     // Filter menu items based on user role and permissions

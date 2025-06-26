@@ -42,6 +42,7 @@ import StudentStats from './pages/common/StudentStats';
 import PrintGradePage from './pages/print/PrintGradePage';
 
 // Student Pages
+import StudentDashboard from './pages/student/StudentDashboard';
 import StudentGrades from './pages/student/StudentGrades';
 import GradeDetail from './pages/student/GradeDetail';
 import RatingSubmission from './pages/student/RatingSubmission';
@@ -366,6 +367,7 @@ function App() {
             <Route path="/app/schedule" element={<Schedule />} />
             
             {/* Student Routes */}
+            <Route path="/app/student/dashboard" element={<StudentDashboard />} />
             <Route path="/app/grades" element={<StudentGrades />} />
             <Route path="/app/grades/:id" element={<GradeDetail />} />
             <Route path="/app/ratings" element={<RatingSubmission />} />
