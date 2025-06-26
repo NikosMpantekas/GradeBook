@@ -463,70 +463,72 @@ const Schedule = () => {
     return `${hour12}:${minutes} ${ampm}`;
   };
 
-  // Get events for a specific day and time slot
+  // Get events for a specific day and time slot - UPDATED to prevent splitting
   const getEventsForTimeSlot = (day, timeSlot) => {
     if (!scheduleData || !scheduleData[day]) {
       console.log(`Schedule - No data for day: ${day}`);
       return [];
     }
     
-    // Find events that include this time slot
+    // Only return events that START at this time slot (not events that span through it)
+    const timeSlotHour = parseInt(timeSlot.split(':')[0]);
     const events = scheduleData[day].filter(event => {
       const startHour = parseInt(event.startTime.split(':')[0]);
-      const timeSlotHour = parseInt(timeSlot.split(':')[0]);
+      const startMinute = parseInt(event.startTime.split(':')[1]);
       
-      // Find events that start at this time slot or earlier and end after this time slot
-      const endHour = parseInt(event.endTime.split(':')[0]);
-      
-      // Check if this time slot falls within the event duration
-      const isInTimeSlot = startHour <= timeSlotHour && endHour > timeSlotHour;
-      return isInTimeSlot;
+      // Only include events that start exactly at this hour (regardless of minutes)
+      return startHour === timeSlotHour;
     });
     
     if (events.length > 0) {
-      console.log(`Schedule - Day: ${day}, TimeSlot: ${timeSlot}, Events found: ${events.length}`);
-      console.log('Schedule - Event subjects:', events.map(e => e.subject).join(', '));
+      console.log(`Schedule - Day: ${day}, TimeSlot: ${timeSlot}, Events starting at this hour: ${events.length}`);
+      console.log('Schedule - Event subjects:', events.map(e => `${e.subject} (${e.startTime}-${e.endTime})`).join(', '));
     }
     
     return events;
-  };  
-
-  // Calculate how many time slots an event spans
-  const calculateEventHeight = (event) => {
-    const startHour = parseInt(event.startTime.split(':')[0]);
-    const endHour = parseInt(event.endTime.split(':')[0]);
-    const startMin = parseInt(event.startTime.split(':')[1]);
-    const endMin = parseInt(event.endTime.split(':')[1]);
-    
-    // Calculate total duration in hours
-    const durationHours = (endHour * 60 + endMin - startHour * 60 - startMin) / 60;
-    
-    // Each time slot is 1 hour, so return the number of slots this event should span
-    return Math.ceil(durationHours);
   };
 
-  // Render event in calendar
+  // Calculate how many time slots an event spans and its exact positioning
+  const calculateEventDimensions = (event) => {
+    const [startHour, startMin] = event.startTime.split(':').map(Number);
+    const [endHour, endMin] = event.endTime.split(':').map(Number);
+    
+    // Calculate total duration in minutes
+    const startTotalMinutes = startHour * 60 + startMin;
+    const endTotalMinutes = endHour * 60 + endMin;
+    const durationMinutes = endTotalMinutes - startTotalMinutes;
+    
+    // Calculate fractional positioning within the hour slot
+    const minuteOffset = startMin; // How many minutes past the hour does this event start
+    const fractionalOffset = (minuteOffset / 60) * 60; // Convert to pixels (assuming 60px per hour)
+    
+    // Calculate height based on actual duration (60px = 1 hour)
+    const height = (durationMinutes / 60) * 60;
+    
+    console.log(`Schedule - Event ${event.subject}: Start ${event.startTime}, End ${event.endTime}`);
+    console.log(`Schedule - Calculated: offset=${fractionalOffset}px, height=${height}px, duration=${durationMinutes}min`);
+    
+    return {
+      height,
+      topOffset: fractionalOffset,
+      durationMinutes
+    };
+  };
+
+  // Render event in calendar with proper fractional positioning
   const renderEvent = (event, isCompact = false) => {
     if (!event) {
       console.log('Schedule - Attempt to render null event');
       return null;
     }
     
-    // Calculate height based on duration
-    const height = calculateEventHeight(event) * 60;
-    const startHour = parseInt(event.startTime.split(':')[0]);
-    const endHour = parseInt(event.endTime.split(':')[0]);
+    // Calculate precise dimensions and positioning
+    const { height, topOffset } = calculateEventDimensions(event);
     const teacherCount = event.teacherNames?.length || 0;
     const studentCount = event.studentNames?.length || 0;
     
-    // Skip rendering if this is not the first occurrence in grid
-    const timeSlotHour = parseInt(event.startTime.split(':')[0]);
-    if (startHour !== timeSlotHour) {
-      console.log(`Schedule - Skipping event ${event._id} rendering at non-start hour ${timeSlotHour}`);
-      return null;
-    }
-    
     console.log(`Schedule - Rendering event: ${event.subject} at ${event.startTime}-${event.endTime}, ID: ${event._id}`);
+    console.log(`Schedule - Position: top=${topOffset}px, height=${height}px`);
     
     // Get branch name if available from our mapping
     const branchName = event.schoolBranch ? 
@@ -562,19 +564,22 @@ const Schedule = () => {
       <Card
         key={event._id}
         sx={{
-          mb: 0.5,
+          position: 'absolute',
+          top: `${topOffset}px`,
+          left: '2px',
+          right: '2px',
           cursor: 'pointer',
           bgcolor: backgroundColor,
           color: textColor,
           p: isCompact ? 0.5 : 1,
-          height: height - 8,
-          minHeight: height - 8,
-          position: 'relative',
-          zIndex: 2,
+          height: `${height - 4}px`,
+          minHeight: `${height - 4}px`,
+          zIndex: 3,
           '&:hover': { 
             boxShadow: 3,
             transform: 'scale(1.02)',
-            transition: 'all 0.2s ease-in-out'
+            transition: 'all 0.2s ease-in-out',
+            zIndex: 4
           },
           overflow: 'hidden',
           border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -598,47 +603,73 @@ const Schedule = () => {
               textShadow: isLightColor ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
             }}
           >
-            {event.subject} 
+            {event.subject}
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                fontSize: '0.7rem',
+                opacity: 0.9,
+                color: textColor,
+                display: 'block',
+                lineHeight: 1.2
+              }}
+            >
+              {event.startTime} - {event.endTime}
+            </Typography>
           </Typography>
-          {!isCompact && (
-            <>
-              <Typography 
-                variant="caption" 
-                noWrap 
-                display="block"
-                sx={{ 
-                  color: textColor,
-                  opacity: 0.9,
-                  textShadow: isLightColor ? 'none' : '0 1px 1px rgba(0,0,0,0.3)'
-                }}
-              >
-                {formatTime(event.startTime)} - {formatTime(event.endTime)}
-                {teacherDisplay}
-              </Typography>
-              <Typography 
-                variant="caption" 
-                noWrap 
-                display="block" 
-                sx={{ 
-                  opacity: 0.8,
-                  color: textColor,
-                  textShadow: isLightColor ? 'none' : '0 1px 1px rgba(0,0,0,0.3)'
-                }}
-              >
-                {branchName}
-              </Typography>
-            </>
+          {!isCompact && teacherDisplay && (
+            <Typography 
+              variant="caption" 
+              noWrap
+              sx={{ 
+                color: textColor,
+                opacity: 0.9,
+                textShadow: isLightColor ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
+              }}
+            >
+              {teacherDisplay}
+            </Typography>
+          )}
+          {!isCompact && (teacherCount > 0 || studentCount > 0) && (
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 0.5, 
+              mt: 0.5,
+              flexWrap: 'wrap'
+            }}>
+              {teacherCount > 0 && (
+                <Chip
+                  size="small"
+                  icon={<PersonIcon sx={{ fontSize: '12px !important' }} />}
+                  label={teacherCount}
+                  sx={{
+                    height: '16px',
+                    '& .MuiChip-label': { fontSize: '0.65rem', px: 0.5 },
+                    '& .MuiChip-icon': { fontSize: '10px', ml: 0.5 },
+                    bgcolor: 'rgba(255,255,255,0.2)',
+                    color: textColor
+                  }}
+                />
+              )}
+              {studentCount > 0 && (
+                <Chip
+                  size="small"
+                  icon={<GroupIcon sx={{ fontSize: '12px !important' }} />}
+                  label={studentCount}
+                  sx={{
+                    height: '16px',
+                    '& .MuiChip-label': { fontSize: '0.65rem', px: 0.5 },
+                    '& .MuiChip-icon': { fontSize: '10px', ml: 0.5 },
+                    bgcolor: 'rgba(255,255,255,0.2)',
+                    color: textColor
+                  }}
+                />
+              )}
+            </Box>
           )}
         </CardContent>
       </Card>
     );
-  };
-
-  // Calculate duration in hours
-  const calculateDuration = (startTime, endTime) => {
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-    return (endHour * 60 + endMin - startHour * 60 - startMin) / 60;
   };
 
   if (loading) {
@@ -868,10 +899,9 @@ const Schedule = () => {
                           borderBottom: '1px solid',
                           borderBottomColor: 'divider',
                           minHeight: '60px',
-                          p: 0.5,
                           backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.default : theme.palette.background.paper,
                           position: 'relative',
-                          overflow: 'hidden'
+                          overflow: 'visible' // Changed from 'hidden' to allow absolute positioned events
                         }}
                       >
                         {mergedEvents.map((event) => {

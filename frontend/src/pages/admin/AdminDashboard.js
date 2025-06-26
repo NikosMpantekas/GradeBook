@@ -28,10 +28,8 @@ import {
 import {
   School as SchoolIcon,
   Group as GroupIcon,
-  MenuBook as MenuBookIcon,
   Notifications as NotificationsIcon,
   Person as PersonIcon,
-  TrendingUp as TrendingUpIcon,
   ArrowForward as ArrowForwardIcon,
   PeopleAlt as PeopleAltIcon,
   SupervisorAccount as SupervisorAccountIcon,
@@ -39,7 +37,10 @@ import {
   Assessment as AssessmentIcon,
   Email as EmailIcon,
   Phone as PhoneIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Send as SendIcon,
+  Class as ClassIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
@@ -48,8 +49,6 @@ import { Pie, Bar } from 'react-chartjs-2';
 // Import action creators
 import { getUsers } from '../../features/users/userSlice';
 import { getSchools } from '../../features/schools/schoolSlice';
-import { getSubjects } from '../../features/subjects/subjectSlice';
-import { getDirections } from '../../features/directions/directionSlice';
 import { getMyNotifications } from '../../features/notifications/notificationSlice';
 
 // Register ChartJS components
@@ -62,19 +61,15 @@ const AdminDashboard = () => {
   // Get data from Redux store
   const { users } = useSelector((state) => state.users);
   const { schools } = useSelector((state) => state.schools);
-  const { subjects } = useSelector((state) => state.subjects);
-  const { directions } = useSelector((state) => state.directions);
   const { notifications } = useSelector((state) => state.notifications);
   
   // Loading and error states
   const { isLoading: usersLoading, isError: usersError } = useSelector((state) => state.users);
   const { isLoading: schoolsLoading, isError: schoolsError } = useSelector((state) => state.schools);
-  const { isLoading: subjectsLoading, isError: subjectsError } = useSelector((state) => state.subjects);
-  const { isLoading: directionsLoading, isError: directionsError } = useSelector((state) => state.directions);
   const { isLoading: notificationsLoading, isError: notificationsError } = useSelector((state) => state.notifications);
   
-  const isLoading = usersLoading || schoolsLoading || subjectsLoading || directionsLoading || notificationsLoading;
-  const hasError = usersError || schoolsError || subjectsError || directionsError || notificationsError;
+  const isLoading = usersLoading || schoolsLoading || notificationsLoading;
+  const hasError = usersError || schoolsError || notificationsError;
   
   // Debug logs to track data loading
   console.log('Admin Dashboard state:', {
@@ -82,8 +77,6 @@ const AdminDashboard = () => {
     dataError: hasError,
     users: users ? users.length : 'null/undefined',
     schools: schools ? schools.length : 'null/undefined',
-    subjects: subjects ? subjects.length : 'null/undefined',
-    directions: directions ? directions.length : 'null/undefined',
     notifications: notifications ? notifications.length : 'null/undefined'
   });
   
@@ -92,91 +85,32 @@ const AdminDashboard = () => {
     totalStudents: 0,
     totalTeachers: 0,
     totalSchools: 0,
-    totalSubjects: 0,
-    totalDirections: 0,
-    totalNotifications: 0,
-    recentUsers: []
+    totalNotifications: 0
   });
   
-  // Filter state for user contact directory
-  const [userFilter, setUserFilter] = useState(null);
-  const [schoolFilter, setSchoolFilter] = useState(null);
-  const [directionFilter, setDirectionFilter] = useState(null);
+  // Search state for user contact directory
+  const [nameSearch, setNameSearch] = useState('');
   
   // Filtered users for contact directory
   const getFilteredUsers = useCallback(() => {
     if (!Array.isArray(users)) return [];
     
-    console.log('Filtering users with:', { userFilter, schoolFilter, directionFilter });
+    console.log('Filtering users with search term:', nameSearch);
     console.log('Sample user data:', users.length > 0 ? users[0] : 'No users');
     
     return users.filter(user => {
-      // Filter by role
-      if (userFilter && user.role !== userFilter) {
-        return false;
-      }
-      
-      // Filter by school - check if user.schools array includes the selected school ID
-      if (schoolFilter && schoolFilter !== '') {
-        // Enhanced school filtering with proper type checking
-        // Handle both cases: user.schools as array or as single value
-        const userSchools = Array.isArray(user.schools) 
-          ? user.schools 
-          : (user.school ? [user.school] : []);
-          
-        // Also check school._id and school properties for more robust filtering
-        const userSchoolIds = userSchools.map(school => {
-          if (typeof school === 'object' && school !== null) {
-            return String(school._id || school.id || school);
-          }
-          return String(school);
-        });
+      // Filter by name search
+      if (nameSearch && nameSearch.trim() !== '') {
+        const searchTerm = nameSearch.toLowerCase().trim();
+        const userName = (user.name || '').toLowerCase();
+        const userEmail = (user.email || '').toLowerCase();
         
-        // Log for debugging
-        console.log('School filtering for user:', {
-          userName: user.name,
-          userSchools: userSchoolIds,
-          schoolFilter: String(schoolFilter),
-          match: userSchoolIds.includes(String(schoolFilter))
-        });
-        
-        if (!userSchoolIds.includes(String(schoolFilter))) {
-          return false;
-        }
-      }
-      
-      // Filter by direction - check if user.directions array includes the selected direction ID
-      if (directionFilter && directionFilter !== '') {
-        // Enhanced direction filtering with proper type checking
-        // Handle both cases: user.directions as array or as single value
-        const userDirections = Array.isArray(user.directions) 
-          ? user.directions 
-          : (user.direction ? [user.direction] : []);
-          
-        // Also check direction._id and direction properties for more robust filtering
-        const userDirectionIds = userDirections.map(direction => {
-          if (typeof direction === 'object' && direction !== null) {
-            return String(direction._id || direction.id || direction);
-          }
-          return String(direction);
-        });
-        
-        // Log for debugging
-        console.log('Direction filtering for user:', {
-          userName: user.name,
-          userDirections: userDirectionIds,
-          directionFilter: String(directionFilter),
-          match: userDirectionIds.includes(String(directionFilter))
-        });
-        
-        if (!userDirectionIds.includes(String(directionFilter))) {
-          return false;
-        }
+        return userName.includes(searchTerm) || userEmail.includes(searchTerm);
       }
       
       return true;
     });
-  }, [users, userFilter, schoolFilter, directionFilter]);
+  }, [users, nameSearch]);
   
   // Update stats when data changes
   useEffect(() => {
@@ -184,39 +118,15 @@ const AdminDashboard = () => {
     const studentCount = Array.isArray(users) ? users.filter(user => user && user.role === 'student').length : 0;
     const teacherCount = Array.isArray(users) ? users.filter(user => user && user.role === 'teacher').length : 0;
     const schoolCount = Array.isArray(schools) ? schools.length : 0;
-    const subjectCount = Array.isArray(subjects) ? subjects.length : 0;
-    const directionCount = Array.isArray(directions) ? directions.length : 0;
     const notificationCount = Array.isArray(notifications) ? notifications.length : 0;
-    
-    // Get recent users (at most 5)
-    let recentUsersList = [];
-    if (Array.isArray(users) && users.length > 0) {
-      // Sort users by creation date (newest first)
-      const sortedUsers = [...users]
-        .filter(user => user && user.createdAt)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
-      // Take the first 5
-      recentUsersList = sortedUsers.slice(0, 5).map(user => ({
-        id: user._id,
-        name: user.name,
-        role: user.role,
-        avatar: user.avatar,
-        email: user.email,
-        createdAt: user.createdAt
-      }));
-    }
     
     setStats({
       totalStudents: studentCount,
       totalTeachers: teacherCount,
       totalSchools: schoolCount,
-      totalSubjects: subjectCount,
-      totalDirections: directionCount,
-      totalNotifications: notificationCount,
-      recentUsers: recentUsersList
+      totalNotifications: notificationCount
     });
-  }, [users, schools, subjects, directions, notifications]);
+  }, [users, schools, notifications]);
   
   // Fetch data on component mount with force refresh  
   useEffect(() => {
@@ -225,8 +135,6 @@ const AdminDashboard = () => {
     // Now fetch fresh data
     dispatch(getUsers());
     dispatch(getSchools());
-    dispatch(getSubjects());
-    dispatch(getDirections());
     dispatch(getMyNotifications());
   }, [dispatch]);
   
@@ -237,8 +145,6 @@ const AdminDashboard = () => {
     try {
       localStorage.removeItem('persist:users');
       localStorage.removeItem('persist:schools');
-      localStorage.removeItem('persist:subjects');
-      localStorage.removeItem('persist:directions');
       localStorage.removeItem('persist:notifications');
     } catch (e) {
       console.error('Error clearing localStorage:', e);
@@ -247,8 +153,6 @@ const AdminDashboard = () => {
     // Dispatch data loading actions again
     dispatch(getUsers());
     dispatch(getSchools());
-    dispatch(getSubjects());
-    dispatch(getDirections());
     dispatch(getMyNotifications());
   };
   
@@ -275,11 +179,11 @@ const AdminDashboard = () => {
   
   // Bar chart data for entity counts
   const entitiesData = {
-    labels: ['Schools', 'Directions', 'Subjects', 'Notifications'],
+    labels: ['Schools', 'Notifications'],
     datasets: [
       {
         label: 'Count',
-        data: [stats.totalSchools, stats.totalDirections, stats.totalSubjects, stats.totalNotifications],
+        data: [stats.totalSchools, stats.totalNotifications],
         backgroundColor: 'rgba(75, 192, 192, 0.6)',
         borderColor: 'rgba(75, 192, 192, 1)',
         borderWidth: 1,
@@ -322,22 +226,18 @@ const AdminDashboard = () => {
   // 1. Check if we have at least some data to display
   const hasUsers = Array.isArray(users) && users.length > 0;
   const hasSchools = Array.isArray(schools) && schools.length > 0;
-  const hasSubjects = Array.isArray(subjects) && subjects.length > 0;
-  const hasDirections = Array.isArray(directions) && directions.length > 0;
   const hasNotifications = Array.isArray(notifications) && notifications.length > 0;
   
   // 2. Check if ALL data is missing - only show full error state in this case
-  const allDataMissing = !hasUsers && !hasSchools && !hasSubjects && !hasDirections && !hasNotifications;
+  const allDataMissing = !hasUsers && !hasSchools && !hasNotifications;
   
   // 3. Check if we have partial data load success
-  const hasPartialData = (hasUsers || hasSchools || hasSubjects || hasDirections || hasNotifications);
+  const hasPartialData = (hasUsers || hasSchools || hasNotifications);
   
   // Log the data availability for debugging
   console.log('Data availability:', {
     hasUsers,
     hasSchools,
-    hasSubjects,
-    hasDirections,
     hasNotifications,
     hasPartialData,
     allDataMissing
@@ -444,19 +344,19 @@ const AdminDashboard = () => {
           <Card sx={{ bgcolor: 'success.light', color: 'white', height: '100%' }}>
             <CardContent>
               <Typography variant="h5" component="div">
-                Subjects
+                Schools
               </Typography>
               <Typography variant="h3" sx={{ my: 2 }}>
-                {stats.totalSubjects}
+                {stats.totalSchools}
               </Typography>
               <Button 
                 variant="contained" 
                 color="success" 
                 fullWidth 
                 component={RouterLink}
-                to="/app/admin/subjects"
+                to="/app/admin/schools"
               >
-                Manage Subjects
+                Manage Schools
               </Button>
             </CardContent>
           </Card>
@@ -465,19 +365,19 @@ const AdminDashboard = () => {
           <Card sx={{ bgcolor: 'info.light', color: 'white', height: '100%' }}>
             <CardContent>
               <Typography variant="h5" component="div">
-                Directions
+                Notifications
               </Typography>
               <Typography variant="h3" sx={{ my: 2 }}>
-                {stats.totalDirections}
+                {stats.totalNotifications}
               </Typography>
               <Button 
                 variant="contained" 
                 color="info" 
                 fullWidth 
                 component={RouterLink}
-                to="/app/admin/directions"
+                to="/app/admin/notifications"
               >
-                Manage Directions
+                Manage Notifications
               </Button>
             </CardContent>
           </Card>
@@ -493,163 +393,108 @@ const AdminDashboard = () => {
               User Contact Directory
             </Typography>
             
-            {/* Filtering Options as Dropdowns */}
+            {/* Name Search Bar */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={4}>
-                <FormControl fullWidth variant="outlined" size="small">
-                  <InputLabel id="user-role-filter-label">User Role</InputLabel>
-                  <Select
-                    labelId="user-role-filter-label"
-                    value={userFilter || ''}
-                    onChange={(e) => setUserFilter(e.target.value || null)}
-                    label="User Role"
-                  >
-                    <MenuItem value="">All Users</MenuItem>
-                    <MenuItem value="student">Students</MenuItem>
-                    <MenuItem value="teacher">Teachers</MenuItem>
-                    <MenuItem value="admin">Administrators</MenuItem>
-                    <MenuItem value="secretary">Secretaries</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} sm={4}>
-                <FormControl fullWidth variant="outlined" size="small">
-                  <InputLabel id="school-filter-label">School Branch</InputLabel>
-                  <Select
-                    labelId="school-filter-label"
-                    value={schoolFilter || ''}
-                    onChange={(e) => setSchoolFilter(e.target.value || null)}
-                    label="School Branch"
-                  >
-                    <MenuItem value="">All School Branches</MenuItem>
-                    {(schools || []).map(school => (
-                      <MenuItem key={school._id} value={school._id}>
-                        {school.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Grid item xs={12} sm={4}>
-                <FormControl fullWidth variant="outlined" size="small">
-                  <InputLabel id="direction-filter-label">Direction</InputLabel>
-                  <Select
-                    labelId="direction-filter-label"
-                    value={directionFilter || ''}
-                    onChange={(e) => setDirectionFilter(e.target.value || null)}
-                    label="Direction"
-                  >
-                    <MenuItem value="">All Directions</MenuItem>
-                    {(directions || []).map(direction => (
-                      <MenuItem key={direction._id} value={direction._id}>
-                        {direction.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  placeholder="Search users by name or email..."
+                  value={nameSearch}
+                  onChange={(e) => setNameSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                  }}
+                />
               </Grid>
             </Grid>
             
             {/* User Contact List */}
             <Typography variant="subtitle1" gutterBottom>Contact Information Directory</Typography>
-            <List sx={{ maxHeight: 500, overflow: 'auto', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 1 }}>
+            <List sx={{ maxHeight: 500, overflow: 'auto', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 2 }}>
               {getFilteredUsers().length > 0 ? (
                 getFilteredUsers().map((user) => (
                   <ListItem key={user._id} divider>
                     <ListItemIcon>
                       <Avatar sx={{ 
-                        width: 56, 
-                        height: 56,
+                        width: 48, 
+                        height: 48,
                         bgcolor: user.role === 'student' ? 'primary.main' : 
                                  user.role === 'teacher' ? 'secondary.main' : 
                                  user.role === 'admin' ? 'success.main' : 
-                                 user.role === 'secretary' ? 'info.main' : 'grey.500'
+                                 user.role === 'secretary' ? 'info.main' : 'grey.500',
+                        borderRadius: 2,
+                        fontWeight: 'bold'
                       }}>
                         {user.name ? user.name[0].toUpperCase() : '?'}
                       </Avatar>
                     </ListItemIcon>
                     <ListItemText 
                       primary={
-                        <Typography variant="subtitle1" component="div">
+                        <Typography variant="subtitle1" component="div" sx={{ fontWeight: 'bold' }}>
                           {user.name} 
-                          <Typography component="span" variant="caption" sx={{ ml: 1, bgcolor: 'rgba(0,0,0,0.05)', p: 0.5, borderRadius: 1 }}>
-                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                          </Typography>
+                          <Chip 
+                            label={user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                            size="small"
+                            sx={{ 
+                              ml: 1, 
+                              height: 24,
+                              fontSize: '0.75rem',
+                              bgcolor: user.role === 'student' ? 'primary.light' : 
+                                       user.role === 'teacher' ? 'secondary.light' : 
+                                       user.role === 'admin' ? 'success.light' : 
+                                       user.role === 'secretary' ? 'info.light' : 'grey.200'
+                            }}
+                          />
                         </Typography>
                       }
                       secondary={
-                        <React.Fragment>
-                          {/* Primary Contact Information */}
-                          <Box sx={{ mt: 1 }}>
-                            <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                              Contact Details:
-                            </Typography>
+                        <Box sx={{ mt: 1 }}>
+                          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { xs: 'flex-start', sm: 'center' } }}>
+                            {/* Email */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                              <EmailIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />
+                              <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                                {user.personalEmail || user.email || 'No email provided'}
+                              </Typography>
+                            </Box>
                             
-                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-                              {/* Personal Email */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                <EmailIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />
-                                <Typography variant="body2">
-                                  {user.personalEmail || user.email || 'No email provided'}
-                                  {user.personalEmail && user.personalEmail !== user.email && (
-                                    <Chip 
-                                      size="small" 
-                                      label="Personal" 
-                                      sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
-                                      color="primary"
-                                    />
-                                  )}
-                                </Typography>
-                              </Box>
-                              
-                              {/* Mobile Phone */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                <PhoneIcon fontSize="small" sx={{ color: 'secondary.main', mr: 1 }} />
-                                <Typography variant="body2">
-                                  {user.mobilePhone || user.phone || 'No phone provided'}
-                                  {user.mobilePhone && (
-                                    <Chip 
-                                      size="small" 
-                                      label="Mobile" 
-                                      sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
-                                      color="secondary"
-                                    />
-                                  )}
-                                </Typography>
-                              </Box>
+                            {/* Phone */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                              <PhoneIcon fontSize="small" sx={{ color: 'secondary.main', mr: 1 }} />
+                              <Typography variant="body2">
+                                {user.mobilePhone || user.phone || 'No phone provided'}
+                              </Typography>
                             </Box>
                           </Box>
                           
-                          {/* School Branch Information */}
+                          {/* School Information */}
                           {Array.isArray(user.schools) && user.schools.length > 0 && (
-                            <Box sx={{ mt: 1 }}>
-                              <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                                Assigned to School Branch(es):
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {(schools || []).filter(s => user.schools.includes(s._id)).map(s => (
-                                  <Chip 
-                                    key={s._id} 
-                                    label={s.name} 
-                                    size="small" 
-                                    icon={<SchoolIcon fontSize="small" />} 
-                                    variant="outlined" 
-                                    color="primary"
-                                  />
-                                ))}
-                              </Box>
+                            <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                              <SchoolIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                              {(schools || []).filter(s => user.schools.includes(s._id)).map(s => (
+                                <Chip 
+                                  key={s._id} 
+                                  label={s.name} 
+                                  size="small" 
+                                  variant="outlined" 
+                                  sx={{ height: 20, fontSize: '0.7rem' }}
+                                />
+                              ))}
                             </Box>
                           )}
-                        </React.Fragment>
+                        </Box>
                       } 
                     />
                   </ListItem>
                 ))
               ) : (
                 <ListItem>
-                  <ListItemText primary="No users match the current filters" />
+                  <ListItemText 
+                    primary={nameSearch ? "No users match your search" : "No users found"} 
+                    sx={{ textAlign: 'center', py: 4 }}
+                  />
                 </ListItem>
               )}
             </List>
@@ -657,44 +502,15 @@ const AdminDashboard = () => {
         </Grid>
       </Grid>
       
-      {/* Quick Actions */}
+      {/* Quick Actions Only */}
       <Grid container spacing={3} sx={{ mt: 3 }}>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Recent Users
-            </Typography>
-            <List>
-              {stats.recentUsers.length > 0 ? (
-                stats.recentUsers.map((user) => (
-                  <ListItem key={user.id} divider>
-                    <ListItemIcon>
-                      <Avatar>
-                        {user.name ? user.name[0].toUpperCase() : '?'}
-                      </Avatar>
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={user.name} 
-                      secondary={`${user.role.charAt(0).toUpperCase() + user.role.slice(1)} • ${user.email}`} 
-                    />
-                  </ListItem>
-                ))
-              ) : (
-                <ListItem>
-                  <ListItemText primary="No recent users found" />
-                </ListItem>
-              )}
-            </List>
-          </Paper>
-        </Grid>
-        
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
               Quick Actions
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={6} md={3}>
                 <Button
                   variant="outlined"
                   fullWidth
@@ -707,7 +523,7 @@ const AdminDashboard = () => {
                   Add New User
                 </Button>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={6} md={3}>
                 <Button
                   variant="outlined"
                   fullWidth
@@ -720,30 +536,30 @@ const AdminDashboard = () => {
                   Manage Schools
                 </Button>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={6} md={3}>
                 <Button
                   variant="outlined"
                   fullWidth
                   size="large"
                   component={RouterLink}
-                  to="/app/admin/subjects"
-                  startIcon={<MenuBookIcon />}
+                  to="/app/notifications/create"
+                  startIcon={<SendIcon />}
                   sx={{ py: 1.5, justifyContent: 'flex-start' }}
                 >
-                  Manage Subjects
+                  Send Notification
                 </Button>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={6} md={3}>
                 <Button
                   variant="outlined"
                   fullWidth
                   size="large"
                   component={RouterLink}
-                  to="/app/admin/directions"
-                  startIcon={<TrendingUpIcon />}
+                  to="/app/admin/classes"
+                  startIcon={<ClassIcon />}
                   sx={{ py: 1.5, justifyContent: 'flex-start' }}
                 >
-                  Manage Directions
+                  Manage Classes
                 </Button>
               </Grid>
             </Grid>
