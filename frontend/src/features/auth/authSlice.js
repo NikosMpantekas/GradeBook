@@ -222,15 +222,25 @@ export const authSlice = createSlice({
         state.user = null;
       })
       .addCase(login.pending, (state) => {
+        console.log('=== REDUX LOGIN PENDING ===');
+        console.log('Setting isLoading to true');
         state.isLoading = true;
       })
       .addCase(login.fulfilled, (state, action) => {
+        console.log('=== REDUX LOGIN FULFILLED START ===');
+        console.log('Login successful, processing user data...');
+        console.log('Raw action payload:', action.payload);
+        console.log('Payload user role:', action.payload?.role);
+        console.log('Payload has token:', !!action.payload?.token);
+        console.log('Payload token length:', action.payload?.token?.length);
+        
         state.isLoading = false;
         state.isSuccess = true;
         
         // Process the user's school features properly
         // Special handling for superadmin users to ensure all required fields exist
         if (action.payload?.role === 'superadmin') {
+          console.log('Processing superadmin user...');
           // This is CRITICAL to prevent white screens and routing issues
           // Ensure all required fields are present for superadmin
           const superadminUser = {
@@ -251,8 +261,16 @@ export const authSlice = createSlice({
             email: action.payload.email || 'admin@system.com'
           };
           
+          console.log('Processed superadmin user:', {
+            id: superadminUser._id,
+            role: superadminUser.role,
+            hasToken: !!superadminUser.token,
+            email: superadminUser.email
+          });
+          
           state.user = superadminUser;
         } else {
+          console.log('Processing regular user...');
           // Process regular user with special handling for school features
           const processedUser = {
             ...action.payload,
@@ -260,10 +278,51 @@ export const authSlice = createSlice({
             schoolFeatures: action.payload.schoolFeatures || action.payload.features || {}
           };
           
+          console.log('Processed regular user:', {
+            id: processedUser._id,
+            role: processedUser.role,
+            hasToken: !!processedUser.token,
+            email: processedUser.email,
+            name: processedUser.name
+          });
+          
           state.user = processedUser;
+        }
+        
+        console.log('=== REDUX LOGIN FULFILLED END ===');
+        console.log('Final Redux state user:', {
+          hasUser: !!state.user,
+          userId: state.user?._id,
+          userRole: state.user?.role,
+          hasToken: !!state.user?.token,
+          isSuccess: state.isSuccess,
+          isLoading: state.isLoading,
+          isError: state.isError
+        });
+        
+        // Force storage update to ensure persistence
+        if (state.user) {
+          console.log('Updating localStorage with user data...');
+          try {
+            localStorage.setItem('user', JSON.stringify(state.user));
+            console.log('localStorage updated successfully');
+          } catch (error) {
+            console.error('Failed to update localStorage:', error);
+            // Fallback to sessionStorage
+            try {
+              sessionStorage.setItem('user', JSON.stringify(state.user));
+              console.log('sessionStorage updated as fallback');
+            } catch (sessionError) {
+              console.error('Failed to update sessionStorage:', sessionError);
+            }
+          }
         }
       })
       .addCase(login.rejected, (state, action) => {
+        console.log('=== REDUX LOGIN REJECTED ===');
+        console.log('Login failed:', action.payload);
+        console.log('Error details:', action.error);
+        
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload || 'Login failed';

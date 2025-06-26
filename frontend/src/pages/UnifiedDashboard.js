@@ -70,13 +70,14 @@ const UnifiedDashboard = () => {
     quickActions: []
   });
   
-  const { user, token } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
+  const token = user?.token; // Token is INSIDE user object, not separate field
   const navigate = useNavigate();
 
   // Debug logging
   console.log('UNIFIED DASHBOARD - Component mounted');
   console.log('UNIFIED DASHBOARD - User:', user);
-  console.log('UNIFIED DASHBOARD - Token:', token ? 'Present' : 'Missing');
+  console.log('UNIFIED DASHBOARD - Token from user object:', token ? 'Present' : 'Missing');
   console.log('UNIFIED DASHBOARD - User role:', user?.role);
   console.log('UNIFIED DASHBOARD - Current URL:', window.location.href);
   console.log('UNIFIED DASHBOARD - Current pathname:', window.location.pathname);
@@ -85,7 +86,7 @@ const UnifiedDashboard = () => {
     console.log('=== UNIFIED DASHBOARD useEffect START ===');
     console.log('UNIFIED DASHBOARD - useEffect triggered at:', new Date().toISOString());
     console.log('UNIFIED DASHBOARD - User in useEffect:', user);
-    console.log('UNIFIED DASHBOARD - Token in useEffect:', token ? 'Present' : 'Missing');
+    console.log('UNIFIED DASHBOARD - Token from user object:', token ? 'Present' : 'Missing');
     console.log('UNIFIED DASHBOARD - Current location:', window.location.href);
     
     // Emergency check for authentication state
@@ -97,7 +98,7 @@ const UnifiedDashboard = () => {
     if (!user || !token) {
       console.error('=== EMERGENCY: NO USER OR TOKEN DETECTED ===');
       console.error('User object:', user);
-      console.error('Token value:', token);
+      console.error('Token value (from user.token):', token);
       console.error('About to redirect to /login from:', window.location.pathname);
       console.error('Redux auth state might be corrupted or not hydrated');
       
@@ -113,7 +114,7 @@ const UnifiedDashboard = () => {
     
     console.log('=== AUTH CHECK PASSED - FETCHING DATA ===');
     console.log('User role confirmed:', user.role);
-    console.log('Token confirmed present');
+    console.log('Token confirmed present from user object');
     
     fetchDashboardData();
     console.log('=== UNIFIED DASHBOARD useEffect END ===');
