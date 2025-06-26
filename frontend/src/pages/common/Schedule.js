@@ -26,8 +26,7 @@ import {
   Divider,
   Accordion,
   AccordionSummary,
-  AccordionDetails,
-  ExpandMoreIcon
+  AccordionDetails
 } from '@mui/material';
 import {
   Schedule as ScheduleIcon,
@@ -38,7 +37,8 @@ import {
   AccessTime as TimeIcon,
   CalendarMonth as CalendarIcon,
   AdminPanelSettings as AdminIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
