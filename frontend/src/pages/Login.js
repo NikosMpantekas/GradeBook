@@ -37,16 +37,48 @@ const Login = () => {
 
   useEffect(() => {
     // Debug the login state
-    console.log('Login component - Auth state:', { isSuccess, isError, user: !!user });
+    console.log('=== LOGIN COMPONENT AUTH STATE CHECK ===');
+    console.log('Login component - Auth state:', { 
+      isSuccess, 
+      isError, 
+      user: !!user,
+      userRole: user?.role,
+      hasToken: !!user?.token 
+    });
+    console.log('Current URL:', window.location.href);
     
     if (isError) {
+      console.error('Login error:', message);
       toast.error(message);
     }
 
     if (isSuccess || user) {
-      console.log('Login successful, redirecting to app dashboard');
-      // Use the proper app-prefixed dashboard route
-      navigate('/app/dashboard');
+      console.log('=== LOGIN SUCCESSFUL - DETERMINING REDIRECT ===');
+      console.log('User role:', user?.role);
+      
+      // Navigate directly to role-specific route instead of /app/dashboard
+      // This prevents redirect loops through /app/dashboard
+      let redirectPath;
+      switch (user?.role) {
+        case 'superadmin':
+          redirectPath = '/superadmin/dashboard';
+          break;
+        case 'admin':
+          redirectPath = '/app/admin';
+          break;
+        case 'teacher':
+          redirectPath = '/app/teacher';
+          break;
+        case 'student':
+          redirectPath = '/app/student';
+          break;
+        default:
+          console.error('Unknown user role:', user?.role);
+          redirectPath = '/app/dashboard'; // Fallback
+      }
+      
+      console.log('LOGIN REDIRECT: Navigating to', redirectPath);
+      navigate(redirectPath);
     }
 
     return () => {

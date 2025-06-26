@@ -336,24 +336,53 @@ function App() {
           
           {/* Root redirect based on role */}
           <Route path="/" element={
-            !user ? <Navigate to="/login" replace /> :
-            user.role === 'superadmin' ? <Navigate to="/superadmin/dashboard" replace /> :
-            user.role === 'admin' ? <Navigate to="/app/admin" replace /> :
-            user.role === 'teacher' ? <Navigate to="/app/teacher" replace /> :
-            user.role === 'student' ? <Navigate to="/app/student" replace /> :
-            <Navigate to="/login" replace />
+            (() => {
+              console.log('=== ROOT ROUTE REDIRECT LOGIC ===');
+              console.log('Current URL:', window.location.href);
+              console.log('User object:', user);
+              console.log('User role:', user?.role);
+              console.log('Auth state:', { isAuthenticated: !!user, hasToken: !!user?.token });
+              
+              if (!user) {
+                console.log('ROOT REDIRECT: No user found, redirecting to /login');
+                return <Navigate to="/login" replace />;
+              }
+              
+              const redirectPath = 
+                user.role === 'superadmin' ? '/superadmin/dashboard' :
+                user.role === 'admin' ? '/app/admin' :
+                user.role === 'teacher' ? '/app/teacher' :
+                user.role === 'student' ? '/app/student' :
+                '/login';
+              
+              console.log(`ROOT REDIRECT: User role ${user.role} redirecting to ${redirectPath}`);
+              return <Navigate to={redirectPath} replace />;
+            })()
           } />
 
           {/* Legacy dashboard redirects */}
           <Route path="/app/dashboard" element={
-            user?.role === 'admin' ? <Navigate to="/app/admin" replace /> :
-            user?.role === 'teacher' ? <Navigate to="/app/teacher" replace /> :
-            user?.role === 'student' ? <Navigate to="/app/student" replace /> :
-            <Navigate to="/login" replace />
+            (() => {
+              console.log('=== LEGACY DASHBOARD REDIRECT ===');
+              console.log('Current URL:', window.location.href);
+              console.log('User:', user);
+              console.log('User role:', user?.role);
+              
+              if (!user?.role) {
+                console.log('LEGACY REDIRECT: No user role, redirecting to /login');
+                return <Navigate to="/login" replace />;
+              }
+              
+              const redirectPath = 
+                user.role === 'admin' ? '/app/admin' :
+                user.role === 'teacher' ? '/app/teacher' :
+                user.role === 'student' ? '/app/student' :
+                '/login';
+              
+              console.log(`LEGACY REDIRECT: ${user.role} redirecting to ${redirectPath}`);
+              return <Navigate to={redirectPath} replace />;
+            })()
           } />
-          <Route path="/app/student/dashboard" element={<Navigate to="/app/student" replace />} />
-          <Route path="/app/admin/dashboard" element={<Navigate to="/app/admin" replace />} />
-          <Route path="/app/teacher/dashboard" element={<Navigate to="/app/teacher" replace />} />
             
           {/* Simple direct Dashboard route - using standalone component designed to work without Layout */}
           <Route path="/dashboard" element={
