@@ -170,54 +170,22 @@ const Schedule = () => {
   };
   
   useEffect(() => {
+    // Only load filter options for admin and teacher roles
     if (user?.role === 'admin' || user?.role === 'teacher') {
       loadFilterOptions();
     }
+    // Always fetch schedule data for all roles
     fetchScheduleData();
   }, []);
 
-  // Fetch branch names for display from their IDs
-  const fetchBranchNames = async (branchIds) => {
-    if (!branchIds || branchIds.length === 0) return;
-    
-    try {
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
-      
-      console.log('Fetching branch names for IDs:', branchIds);
-      const response = await axios.post('/api/branches/batch', { branchIds }, config);
-      
-      if (response.data && Array.isArray(response.data)) {
-        const branchNameMap = {};
-        response.data.forEach(branch => {
-          if (branch && branch._id && branch.name) {
-            branchNameMap[branch._id] = branch.name;
-          }
-        });
-        
-        setBranchNames(prev => ({ ...prev, ...branchNameMap }));
-        console.log('Branch names loaded:', branchNameMap);
-      } else {
-        console.warn('Invalid branch data format received:', response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching branch names:', error);
-      // Set fallback branch names to avoid showing IDs
-      const fallbackNames = {};
-      branchIds.forEach(id => {
-        if (id && !branchNames[id]) {
-          fallbackNames[id] = `Branch ${id.slice(-4)}`;
-        }
-      });
-      if (Object.keys(fallbackNames).length > 0) {
-        setBranchNames(prev => ({ ...prev, ...fallbackNames }));
-      }
-    }
-  };
-  
-  // Load filter options for admins and teachers
+  // Load filter options for admins and teachers only
   const loadFilterOptions = async () => {
+    // Skip filter loading for students
+    if (user?.role === 'student') {
+      console.log('Skipping filter options for student role');
+      return;
+    }
+    
     setLoadingFilters(true);
     try {
       const config = {
@@ -280,7 +248,47 @@ const Schedule = () => {
       setLoadingFilters(false);
     }
   };
-  
+
+  // Fetch branch names for display from their IDs
+  const fetchBranchNames = async (branchIds) => {
+    if (!branchIds || branchIds.length === 0) return;
+    
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+      
+      console.log('Fetching branch names for IDs:', branchIds);
+      const response = await axios.post('/api/branches/batch', { branchIds }, config);
+      
+      if (response.data && Array.isArray(response.data)) {
+        const branchNameMap = {};
+        response.data.forEach(branch => {
+          if (branch && branch._id && branch.name) {
+            branchNameMap[branch._id] = branch.name;
+          }
+        });
+        
+        setBranchNames(prev => ({ ...prev, ...branchNameMap }));
+        console.log('Branch names loaded:', branchNameMap);
+      } else {
+        console.warn('Invalid branch data format received:', response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching branch names:', error);
+      // Set fallback branch names to avoid showing IDs
+      const fallbackNames = {};
+      branchIds.forEach(id => {
+        if (id && !branchNames[id]) {
+          fallbackNames[id] = `Branch ${id.slice(-4)}`;
+        }
+      });
+      if (Object.keys(fallbackNames).length > 0) {
+        setBranchNames(prev => ({ ...prev, ...fallbackNames }));
+      }
+    }
+  };
+
   const fetchScheduleData = async () => {
     try {
       setLoading(true);
@@ -587,8 +595,7 @@ const Schedule = () => {
               sx={{ 
                 color: textColor,
                 opacity: 0.9,
-                textShadow: isLightColor ? 'none' : '0 1px 2px rgba(0,0,0,0.3)',
-                fontWeight: 'bold'
+                textShadow: isLightColor ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
               }}
             >
               {event.startTime} - {event.endTime}
@@ -688,7 +695,7 @@ const Schedule = () => {
       const b = parseInt(hexColor.slice(5, 7), 16);
       
       // Calculate luminance - lighter colors need dark text
-      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      const luminance = (r * 299 + g * 587 + b * 114) / 255;
       return luminance > 0.5 ? '#000000' : '#ffffff';
     };
     

@@ -337,6 +337,7 @@ function App() {
           <Route path="/" element={
             !user ? <Navigate to="/login" replace /> :
             user.role === 'superadmin' ? <Navigate to="/superadmin/dashboard" replace /> :
+            user.role === 'student' ? <Navigate to="/app/student/dashboard" replace /> :
             <Navigate to="/app/dashboard" replace />
           } />
           
@@ -361,6 +362,8 @@ function App() {
             <Route path="/app/notifications/:id" element={<NotificationDetail />} />
             {/* User contact messages, bug reports and patch notes */}
             <Route path="/app/contact-messages" element={<ContactMessages />} />
+            {/* Contact support route for students (renamed from bug reports) */}
+            <Route path="/app/contact-support" element={<ContactMessages />} />
             {/* Calendar for all users */}
             <Route path="/app/calendar" element={<Calendar />} />
             {/* Schedule for all users */}
