@@ -29,6 +29,7 @@ import NotFound from './pages/NotFound';
 
 // Common Pages
 import Dashboard from './pages/Dashboard';
+import UnifiedDashboard from './pages/UnifiedDashboard';
 import StandaloneDashboard from './pages/StandaloneDashboard';
 import DiagnosticPage from './pages/DiagnosticPage';
 import Profile from './pages/Profile';
@@ -333,14 +334,32 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/diagnostics" element={<DiagnosticPage />} />
           
-          {/* Default root route - redirects based on user role */}
+          {/* Root redirect based on role */}
           <Route path="/" element={
             !user ? <Navigate to="/login" replace /> :
             user.role === 'superadmin' ? <Navigate to="/superadmin/dashboard" replace /> :
-            user.role === 'student' ? <Navigate to="/app/student/dashboard" replace /> :
-            <Navigate to="/app/dashboard" replace />
+            user.role === 'admin' ? <Navigate to="/app/admin" replace /> :
+            user.role === 'teacher' ? <Navigate to="/app/teacher" replace /> :
+            user.role === 'student' ? <Navigate to="/app/student" replace /> :
+            <Navigate to="/login" replace />
           } />
-          
+
+          {/* Unified Dashboard Routes */}
+          <Route path="/app/admin" element={<UnifiedDashboard />} />
+          <Route path="/app/teacher" element={<UnifiedDashboard />} />
+          <Route path="/app/student" element={<UnifiedDashboard />} />
+            
+          {/* Legacy dashboard redirects */}
+          <Route path="/app/dashboard" element={
+            user?.role === 'admin' ? <Navigate to="/app/admin" replace /> :
+            user?.role === 'teacher' ? <Navigate to="/app/teacher" replace /> :
+            user?.role === 'student' ? <Navigate to="/app/student" replace /> :
+            <Navigate to="/login" replace />
+          } />
+          <Route path="/app/student/dashboard" element={<Navigate to="/app/student" replace />} />
+          <Route path="/app/admin/dashboard" element={<Navigate to="/app/admin" replace />} />
+          <Route path="/app/teacher/dashboard" element={<Navigate to="/app/teacher" replace />} />
+            
           {/* Simple direct Dashboard route - using standalone component designed to work without Layout */}
           <Route path="/dashboard" element={
             <PrivateRoute>
@@ -354,7 +373,6 @@ function App() {
               <Layout />
             </PrivateRoute>
           }>
-            <Route path="/app/dashboard" element={<Dashboard />} />
             <Route path="/app/profile" element={<Profile />} />
             {/* General notifications route */}
             <Route path="/app/notifications" element={<Notifications />} />
@@ -370,7 +388,6 @@ function App() {
             <Route path="/app/schedule" element={<Schedule />} />
             
             {/* Student Routes */}
-            <Route path="/app/student/dashboard" element={<StudentDashboard />} />
             <Route path="/app/grades" element={<StudentGrades />} />
             <Route path="/app/grades/:id" element={<GradeDetail />} />
             <Route path="/app/ratings" element={<RatingSubmission />} />
@@ -412,16 +429,6 @@ function App() {
             
             {/* Admin Routes */}
             {/* Admin Dashboard - add both /app/admin and /app/admin/dashboard routes */}
-            <Route path="/app/admin" element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            } />
-            <Route path="/app/admin/dashboard" element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            } />
             <Route path="/app/admin/users" element={
               <AdminRoute>
                 <ManageUsers />

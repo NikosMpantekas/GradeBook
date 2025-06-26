@@ -42,6 +42,7 @@ import {
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
 const Schedule = () => {
   const [scheduleData, setScheduleData] = useState(null);
@@ -194,7 +195,7 @@ const Schedule = () => {
       
       console.log('Loading filter options for role:', user?.role);
       
-      const response = await axios.get('/api/students/teacher/filters', config);
+      const response = await axios.get(`${API_URL}/api/students/teacher/filters`, config);
       console.log('Filter API response:', response.data);
       
       const { schoolBranches = [] } = response.data;
@@ -206,7 +207,7 @@ const Schedule = () => {
           console.log('Loading teacher options for admin');
           
           // Use regular users endpoint and filter for teachers
-          const teachersResponse = await axios.get('/api/users', config);
+          const teachersResponse = await axios.get(`${API_URL}/api/users`, config);
           console.log('Users API response found:', teachersResponse.data?.length || 0, 'users');
           
           // Extract only teachers from the response
@@ -259,7 +260,7 @@ const Schedule = () => {
       };
       
       console.log('Fetching branch names for IDs:', branchIds);
-      const response = await axios.post('/api/branches/batch', { branchIds }, config);
+      const response = await axios.post(`${API_URL}/api/branches/batch`, { branchIds }, config);
       
       if (response.data && Array.isArray(response.data)) {
         const branchNameMap = {};
@@ -302,7 +303,7 @@ const Schedule = () => {
       if (filters.teacher) queryParams.append('teacherId', filters.teacher);
       
       const queryString = queryParams.toString();
-      const url = `/api/schedule${queryString ? `?${queryString}` : ''}`;
+      const url = `${API_URL}/api/schedule${queryString ? `?${queryString}` : ''}`;
       
       console.log('Schedule - Fetching data for role:', user?.role);
       console.log('Schedule - Request URL:', url);
