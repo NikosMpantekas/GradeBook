@@ -73,20 +73,41 @@ const UnifiedDashboard = () => {
   const { user, token } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
+  // Debug logging
+  console.log('UNIFIED DASHBOARD - Component mounted');
+  console.log('UNIFIED DASHBOARD - User:', user);
+  console.log('UNIFIED DASHBOARD - Token:', token ? 'Present' : 'Missing');
+  console.log('UNIFIED DASHBOARD - User role:', user?.role);
+
   useEffect(() => {
+    console.log('UNIFIED DASHBOARD - useEffect triggered');
+    console.log('UNIFIED DASHBOARD - User in useEffect:', user);
+    console.log('UNIFIED DASHBOARD - Token in useEffect:', token ? 'Present' : 'Missing');
+    
+    if (!user || !token) {
+      console.log('UNIFIED DASHBOARD - No user or token, redirecting to login');
+      navigate('/login');
+      return;
+    }
+    
     fetchDashboardData();
-  }, []);
+  }, [user, token, navigate]);
 
   const fetchDashboardData = async () => {
     try {
+      console.log('UNIFIED DASHBOARD - Starting fetchDashboardData');
+      console.log('UNIFIED DASHBOARD - API_URL:', API_URL);
+      
       setLoading(true);
       const config = {
         headers: { Authorization: `Bearer ${token}` }
       };
 
+      console.log('UNIFIED DASHBOARD - Request config:', config);
       console.log('Fetching dashboard data for role:', user?.role);
 
       // Common data for all roles
+      console.log('UNIFIED DASHBOARD - Making common API calls...');
       const commonPromises = [
         axios.get(`${API_URL}/api/users/profile`, config),
         axios.get(`${API_URL}/api/notifications?limit=5`, config),
@@ -96,31 +117,38 @@ const UnifiedDashboard = () => {
       // Role-specific data
       let roleSpecificPromises = [];
       
+      console.log('UNIFIED DASHBOARD - Setting up role-specific calls for:', user?.role);
       if (user?.role === 'student') {
+        console.log('UNIFIED DASHBOARD - Adding student-specific API calls');
         roleSpecificPromises = [
           axios.get(`${API_URL}/api/grades/student`, config),
           axios.get(`${API_URL}/api/classes/my-classes`, config)
         ];
       } else if (user?.role === 'teacher') {
+        console.log('UNIFIED DASHBOARD - Adding teacher-specific API calls');
         roleSpecificPromises = [
           axios.get(`${API_URL}/api/grades/teacher`, config),
           axios.get(`${API_URL}/api/classes/my-teaching-classes`, config)
         ];
       } else if (user?.role === 'admin') {
+        console.log('UNIFIED DASHBOARD - Adding admin-specific API calls');
         roleSpecificPromises = [
           axios.get(`${API_URL}/api/users`, config),
           axios.get(`${API_URL}/api/stats/overview`, config).catch(() => ({ data: {} }))
         ];
       }
 
+      console.log('UNIFIED DASHBOARD - Making all API calls...');
       const [profileResponse, notificationsResponse, scheduleResponse, ...roleData] = await Promise.all([
         ...commonPromises,
         ...roleSpecificPromises
       ]);
 
+      console.log('UNIFIED DASHBOARD - API responses received');
       console.log('Profile data:', profileResponse.data);
       console.log('Notifications data:', notificationsResponse.data);
       console.log('Schedule data:', scheduleResponse.data);
+      console.log('Role-specific data count:', roleData.length);
 
       // Process schedule data
       const upcomingClasses = scheduleResponse.data ? 

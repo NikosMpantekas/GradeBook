@@ -344,11 +344,6 @@ function App() {
             <Navigate to="/login" replace />
           } />
 
-          {/* Unified Dashboard Routes */}
-          <Route path="/app/admin" element={<UnifiedDashboard />} />
-          <Route path="/app/teacher" element={<UnifiedDashboard />} />
-          <Route path="/app/student" element={<UnifiedDashboard />} />
-            
           {/* Legacy dashboard redirects */}
           <Route path="/app/dashboard" element={
             user?.role === 'admin' ? <Navigate to="/app/admin" replace /> :
@@ -373,6 +368,11 @@ function App() {
               <Layout />
             </PrivateRoute>
           }>
+            {/* Unified Dashboard Routes */}
+            <Route path="/app/admin" element={<UnifiedDashboard />} />
+            <Route path="/app/teacher" element={<UnifiedDashboard />} />
+            <Route path="/app/student" element={<UnifiedDashboard />} />
+            
             <Route path="/app/profile" element={<Profile />} />
             {/* General notifications route */}
             <Route path="/app/notifications" element={<Notifications />} />
