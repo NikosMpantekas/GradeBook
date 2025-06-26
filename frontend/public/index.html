@@ -22,5 +22,38 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <script>
+      // EMERGENCY DEBUGGING - Disable service worker temporarily
+      console.log('EMERGENCY DEBUG: Service worker registration disabled');
+      
+      // Original service worker registration code (DISABLED)
+      /*
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      */
+      
+      // Emergency debugging for storage issues
+      console.log('EMERGENCY DEBUG: localStorage available:', typeof Storage !== "undefined");
+      console.log('EMERGENCY DEBUG: sessionStorage available:', typeof sessionStorage !== "undefined");
+      
+      // Check for existing authentication data
+      try {
+        const localUser = localStorage.getItem('user');
+        const sessionUser = sessionStorage.getItem('user');
+        console.log('EMERGENCY DEBUG: localStorage user:', !!localUser);
+        console.log('EMERGENCY DEBUG: sessionStorage user:', !!sessionUser);
+      } catch (error) {
+        console.error('EMERGENCY DEBUG: Storage access error:', error);
+      }
+    </script>
   </body>
 </html>
