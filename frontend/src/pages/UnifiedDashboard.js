@@ -91,7 +91,7 @@ const UnifiedDashboard = () => {
     }
     
     fetchDashboardData();
-  }, [user, token, navigate]);
+  }, [user, token]);
 
   const fetchDashboardData = async () => {
     try {
