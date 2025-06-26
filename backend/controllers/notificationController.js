@@ -240,9 +240,9 @@ const getAllNotifications = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .populate('sender', 'name')
       .populate('recipients', 'name')
-      .populate('schools', 'name')
-      .populate('directions', 'name')
-      .populate('subjects', 'name');
+      .populate('schoolId', 'name')
+      .populate('schoolBranches', 'name')
+      .populate('classes', 'name');
     
     console.log(`Found ${notifications.length} notifications`);
     res.status(200).json(notifications);
@@ -301,9 +301,9 @@ const getMyNotifications = asyncHandler(async (req, res) => {
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .populate('sender', 'name')
-      .populate('schools', 'name')
-      .populate('directions', 'name')
-      .populate('subjects', 'name');
+      .populate('schoolId', 'name')
+      .populate('schoolBranches', 'name')
+      .populate('classes', 'name');
     
     console.log(`Found ${notifications.length} notifications for user`);
     
@@ -315,9 +315,9 @@ const getMyNotifications = asyncHandler(async (req, res) => {
       const allNotifications = await Notification.find({})
         .sort({ createdAt: -1 })
         .populate('sender', 'name')
-        .populate('schools', 'name')
-        .populate('directions', 'name')
-        .populate('subjects', 'name');
+        .populate('schoolId', 'name')
+        .populate('schoolBranches', 'name')
+        .populate('classes', 'name');
       
       console.log(`Found ${allNotifications.length} total notifications for superadmin`);
       return res.status(200).json(allNotifications);
@@ -499,9 +499,9 @@ const getNotificationById = asyncHandler(async (req, res) => {
     })
     .populate('sender', 'name')
     .populate('recipients', 'name')
-    .populate('schools', 'name')
-    .populate('directions', 'name')
-    .populate('subjects', 'name');
+    .populate('schoolId', 'name')
+    .populate('schoolBranches', 'name')
+    .populate('classes', 'name');
     
     if (!notification) {
       // Special case for superadmin - can see any notification
@@ -509,9 +509,9 @@ const getNotificationById = asyncHandler(async (req, res) => {
         const adminNotification = await Notification.findById(notificationId)
           .populate('sender', 'name')
           .populate('recipients', 'name')
-          .populate('schools', 'name')
-          .populate('directions', 'name')
-          .populate('subjects', 'name');
+          .populate('schoolId', 'name')
+          .populate('schoolBranches', 'name')
+          .populate('classes', 'name');
         
         if (adminNotification) {
           return res.status(200).json(adminNotification);
