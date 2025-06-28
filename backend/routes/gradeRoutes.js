@@ -15,6 +15,11 @@ const { protect, admin, teacher, canManageGrades } = require('../middleware/auth
 // Protected routes
 router.get('/student/:id', protect, getStudentGrades);
 router.get('/subject/:id', protect, getGradesBySubject);
+router.get('/teacher', protect, teacher, (req, res) => {
+  // Get grades for authenticated teacher - add their ID to params
+  req.params.id = req.user._id.toString();
+  return getGradesByTeacher(req, res);
+});
 router.get('/teacher/:id', protect, getGradesByTeacher);
 router.get('/:id', protect, getGradeById);
 
