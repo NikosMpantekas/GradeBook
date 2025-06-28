@@ -22,6 +22,7 @@ router.post('/refresh-token', refreshToken);
 
 // Protected routes
 router.get('/me', protect, getMe);
+router.get('/profile', protect, getMe); // GET profile uses same logic as /me
 router.put('/profile', protect, updateProfile);
 
 // Admin routes - simplified for single-database architecture

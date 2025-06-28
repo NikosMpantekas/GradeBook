@@ -241,7 +241,6 @@ const getAllNotifications = asyncHandler(async (req, res) => {
       .populate('sender', 'name')
       .populate('recipients', 'name')
       .populate('schoolId', 'name')
-      .populate('schoolBranches', 'name')
       .populate('classes', 'name');
     
     console.log(`Found ${notifications.length} notifications`);
@@ -302,7 +301,6 @@ const getMyNotifications = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .populate('sender', 'name')
       .populate('schoolId', 'name')
-      .populate('schoolBranches', 'name')
       .populate('classes', 'name');
     
     console.log(`Found ${notifications.length} notifications for user`);
@@ -316,7 +314,6 @@ const getMyNotifications = asyncHandler(async (req, res) => {
         .sort({ createdAt: -1 })
         .populate('sender', 'name')
         .populate('schoolId', 'name')
-        .populate('schoolBranches', 'name')
         .populate('classes', 'name');
       
       console.log(`Found ${allNotifications.length} total notifications for superadmin`);
@@ -500,7 +497,6 @@ const getNotificationById = asyncHandler(async (req, res) => {
     .populate('sender', 'name')
     .populate('recipients', 'name')
     .populate('schoolId', 'name')
-    .populate('schoolBranches', 'name')
     .populate('classes', 'name');
     
     if (!notification) {
@@ -510,7 +506,6 @@ const getNotificationById = asyncHandler(async (req, res) => {
           .populate('sender', 'name')
           .populate('recipients', 'name')
           .populate('schoolId', 'name')
-          .populate('schoolBranches', 'name')
           .populate('classes', 'name');
         
         if (adminNotification) {
