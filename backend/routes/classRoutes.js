@@ -10,9 +10,10 @@ const {
   addStudentsToClass,
   removeStudentsFromClass,
   addTeachersToClass,
-  removeTeachersFromClass
+  removeTeachersFromClass,
+  getMyTeachingClasses
 } = require('../controllers/classController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, admin, teacher } = require('../middleware/authMiddleware');
 
 // Routes for classes
 router.route('/')
@@ -21,6 +22,10 @@ router.route('/')
 
 router.route('/categories')
   .get(protect, getClassCategories);
+
+// Route for getting classes taught by authenticated teacher
+router.route('/my-teaching-classes')
+  .get(protect, teacher, getMyTeachingClasses);
 
 router.route('/:id')
   .get(protect, getClassById)

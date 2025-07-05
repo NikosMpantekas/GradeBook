@@ -454,6 +454,38 @@ const removeTeachersFromClass = asyncHandler(async (req, res) => {
   res.status(200).json(updatedClass);
 });
 
+// @desc    Get classes taught by the authenticated teacher
+// @route   GET /api/classes/my-teaching-classes
+// @access  Private (Teacher)
+const getMyTeachingClasses = asyncHandler(async (req, res) => {
+  try {
+    console.log('[MY-TEACHING-CLASSES] Getting classes for teacher ID:', req.user._id);
+    console.log('[MY-TEACHING-CLASSES] Teacher school ID:', req.user.schoolId);
+    
+    // Find all classes where the authenticated teacher is assigned
+    const teachingClasses = await Class.find({
+      schoolId: req.user.schoolId,
+      teachers: { $in: [req.user._id] }
+    })
+    .populate('students', 'name email')
+    .populate('teachers', 'name email')
+    .populate('subject', 'name')
+    .populate('direction', 'name')
+    .populate('schoolBranch', 'name')
+    .sort({ name: 1 });
+    
+    console.log('[MY-TEACHING-CLASSES] Found', teachingClasses.length, 'classes for teacher');
+    console.log('[MY-TEACHING-CLASSES] Classes:', teachingClasses.map(c => ({ id: c._id, name: c.name, subject: c.subject?.name })));
+    
+    res.status(200).json(teachingClasses);
+  } catch (error) {
+    console.error('[MY-TEACHING-CLASSES] Error:', error.message);
+    console.error('[MY-TEACHING-CLASSES] Stack:', error.stack);
+    res.status(500);
+    throw new Error('Error retrieving teaching classes');
+  }
+});
+
 module.exports = {
   createClass,
   getClasses,
@@ -464,5 +496,6 @@ module.exports = {
   addStudentsToClass,
   removeStudentsFromClass,
   addTeachersToClass,
-  removeTeachersFromClass
+  removeTeachersFromClass,
+  getMyTeachingClasses
 };

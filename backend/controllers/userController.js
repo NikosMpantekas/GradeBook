@@ -417,14 +417,16 @@ const refreshToken = asyncHandler(async (req, res) => {
 // @route   GET /api/users/me
 // @access  Private
 const getMe = asyncHandler(async (req, res) => {
+  console.log(`[USER PROFILE] Loading profile for user ID: ${req.user.id}`);
+  
   // Find user and populate all reference fields
   const user = await User.findById(req.user.id)
     .select('-password')
     // Populate both old and new field names for maximum compatibility
     .populate('school', 'name')     // Old: Single school field (students)
-    .populate('direction', 'name')  // Old: Single direction field (students)
+    .populate('direction', 'name direction subject schoolBranch')  // Legacy field now references Class model
     .populate('schools', 'name')    // New: Multiple schools array (teachers)
-    .populate('directions', 'name') // New: Multiple directions array (teachers)
+    .populate('directions', 'name direction subject schoolBranch') // Legacy field now references Class model
     .populate('subjects', 'name');  // Multiple subjects array (both roles)
 
   if (user) {
@@ -492,10 +494,10 @@ const getUsers = asyncHandler(async (req, res) => {
       const rawUsers = await User.find({ schoolId: req.school._id })
         .select('-password')
         .populate('school', 'name')
-        .populate('direction', 'name')
+        .populate('direction', 'name direction subject schoolBranch')
         .populate('subjects', 'name')
         .populate('schools', 'name')
-        .populate('directions', 'name')
+        .populate('directions', 'name direction subject schoolBranch')
         .lean();
       
       console.log(`Found ${rawUsers.length} raw users in school database`);
@@ -508,10 +510,10 @@ const getUsers = asyncHandler(async (req, res) => {
       // Get users with common fields populated
       users = await User.find({}).select('-password')
         .populate('school', 'name')
-        .populate('direction', 'name')
+        .populate('direction', 'name direction subject schoolBranch')
         .populate('subjects', 'name')
         .populate('schools', 'name')
-        .populate('directions', 'name')
+        .populate('directions', 'name direction subject schoolBranch')
         .lean();
     }
     
@@ -896,10 +898,10 @@ const getUsersByRole = asyncHandler(async (req, res) => {
     users = await User.find(filter)
       .select('-password')
       .populate('school', 'name')
-      .populate('direction', 'name')
+      .populate('direction', 'name direction subject schoolBranch')
       .populate('subjects', 'name')
       .populate('schools', 'name')
-      .populate('directions', 'name')
+      .populate('directions', 'name direction subject schoolBranch')
       .lean();
     
     console.log(`Found ${users.length} ${role}s`);
@@ -942,9 +944,9 @@ const getUserById = asyncHandler(async (req, res) => {
     const user = await User.findOne(query)
       .select('-password')
       .populate('school', 'name domain')
-      .populate('direction', 'name')
+      .populate('direction', 'name direction subject schoolBranch')
       .populate('schools', 'name domain')
-      .populate('directions', 'name')
+      .populate('directions', 'name direction subject schoolBranch')
       .populate('subjects', 'name');
     
     if (!user) {

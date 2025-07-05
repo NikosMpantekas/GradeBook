@@ -180,7 +180,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         text: 'Teacher Dashboard',
         icon: <SchoolIcon />,
         path: '/app/teacher',
-        roles: ['teacher', 'admin'],
+        roles: ['teacher'],
         section: 'teacher',
       },
       
