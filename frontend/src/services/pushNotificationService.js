@@ -1,5 +1,6 @@
 import axiosInstance from '../app/axios';
 import { store } from '../app/store';
+import { API_URL } from '../config/appConfig';
 import { subscribeToPushNotifications, getVapidPublicKey } from '../features/notifications/notificationSlice';
 
 /**
@@ -247,7 +248,8 @@ export const unsubscribeFromPushNotifications = async () => {
         const endpoint = subscription.endpoint;
         // Use axiosInstance which automatically handles token inclusion
         console.log('Unsubscribing from push notifications');
-        await axiosInstance.post('/api/subscriptions/delete', { endpoint });
+        console.log('Using API_URL for secure push notification unsubscribe:', API_URL);
+        await axiosInstance.post(`${API_URL}/api/subscriptions/delete`, { endpoint });
         
         console.log('Successfully unsubscribed from push notifications');
         return true;

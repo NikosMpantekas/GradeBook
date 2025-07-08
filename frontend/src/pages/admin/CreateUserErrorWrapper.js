@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 import CreateUser from './CreateUser';
 import { trackError } from '../../utils/errorHandler';
+import { API_URL } from '../../config/appConfig';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 
@@ -30,7 +31,8 @@ const CreateUserErrorWrapper = (props) => {
           },
         };
         
-        const { data } = await axios.get('/api/directions', config);
+        console.log('[CreateUserErrorWrapper] Using API_URL for secure directions API call:', API_URL);
+        const { data } = await axios.get(`${API_URL}/api/directions`, config);
         
         // Ensure data is valid before setting it
         if (Array.isArray(data)) {

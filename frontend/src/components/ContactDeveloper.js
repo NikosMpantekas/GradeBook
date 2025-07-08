@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon, Send as SendIcon, BugReport as BugReportIcon } from '@mui/icons-material';
 import axios from 'axios';
+import { API_URL } from '../config/appConfig';
 
 const ContactDeveloper = ({ open, onClose }) => {
   const [formData, setFormData] = useState({
@@ -55,8 +56,9 @@ const ContactDeveloper = ({ open, onClose }) => {
         }
       };
       
-      // Send the message to the backend API
-      const response = await axios.post('/api/contact', formData, config);
+      // Send the message to the backend API with secure HTTPS in production
+      console.log('[ContactDeveloper] Using API_URL for secure contact API call:', API_URL);
+      const response = await axios.post(`${API_URL}/api/contact`, formData, config);
       
       console.log('Contact form submission response:', response.data);
 

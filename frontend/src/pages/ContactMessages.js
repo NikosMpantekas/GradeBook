@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../config/appConfig';
 import { 
   Container, 
   Box, 
@@ -109,7 +110,7 @@ const ContactMessages = () => {
         }
       };
       
-      const response = await axios.get('/api/contact/user', config);
+      const response = await axios.get(`${API_URL}/api/contact/user`, config);
       setUserMessages(response.data);
     } catch (error) {
       console.error('Error fetching user messages:', error);
@@ -131,7 +132,7 @@ const ContactMessages = () => {
         }
       };
       
-      const response = await axios.get('/api/contact', config);
+      const response = await axios.get(`${API_URL}/api/contact`, config);
       setAllMessages(response.data);
     } catch (error) {
       console.error('Error fetching all messages:', error);
@@ -153,7 +154,7 @@ const ContactMessages = () => {
         }
       };
       
-      const response = await axios.get('/api/patch-notes', config);
+      const response = await axios.get(`${API_URL}/api/patch-notes`, config);
       setPatchNotes(response.data);
     } catch (error) {
       console.error('Error fetching patch notes:', error);

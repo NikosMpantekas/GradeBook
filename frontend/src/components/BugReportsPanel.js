@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
+import { API_URL } from '../config/appConfig';
 import { 
   Box,
   Typography,
@@ -47,7 +48,8 @@ const BugReportsPanel = ({ openContactForm }) => {
           }
         };
         
-        const response = await axios.get('/api/contact/user', config);
+        console.log('[BugReportsPanel] Using API_URL for secure contact API call:', API_URL);
+        const response = await axios.get(`${API_URL}/api/contact/user`, config);
         console.log('User messages retrieved:', response.data.length);
         
         // Sort by creation date, newest first

@@ -174,9 +174,20 @@ registerRoute(
   })
 );
 
-// Cache API responses
+// Get API_URL from environment
+const API_URL = self.__WB_MANIFEST.API_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// Cache API responses - handle both relative and absolute API URLs
 registerRoute(
-  ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/api/'),
+  ({ url }) => {
+    // Match local API paths starting with /api/
+    const isLocalApiCall = url.origin === self.location.origin && url.pathname.startsWith('/api/');
+    
+    // Match absolute API URLs from our API_URL config (for HTTPS in production)
+    const isAbsoluteApiCall = url.href.startsWith(API_URL) && url.pathname.startsWith('/api/');
+    
+    return isLocalApiCall || isAbsoluteApiCall;
+  },
   new StaleWhileRevalidate({
     cacheName: 'api-responses',
     plugins: [

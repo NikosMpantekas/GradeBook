@@ -5,22 +5,37 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.179',
+  version: '1.6.0.180',
   author: 'GradeBook Team'
 };
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-// Production deployment on render.com - auto-detect and handle the correct API URL
+// Production deployment handling - auto-detect and enforce HTTPS for security
 if (process.env.NODE_ENV === 'production') {
-  // Check if we're on render.com by looking at the hostname
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
   
-  // If we're on the render.com domain, use the same origin for API
+  // Case 1: If we're on render.com, use the same origin for API
   if (currentHostname.includes('render.com')) {
     API_URL = window.location.origin;
     console.log('[appConfig] Production environment detected on render.com, setting API_URL to:', API_URL);
+  }
+  // Case 2: If we're on Netlify, ensure we use HTTPS for backend connections
+  else if (currentHostname.includes('netlify.app') || currentHostname.endsWith('.netlify.com')) {
+    // If REACT_APP_API_URL is set and doesn't start with https, force https
+    if (process.env.REACT_APP_API_URL) {
+      const apiUrl = process.env.REACT_APP_API_URL;
+      if (apiUrl.startsWith('http://')) {
+        API_URL = apiUrl.replace('http://', 'https://');
+        console.log('[appConfig] Forcing HTTPS for API URL in production on Netlify:', API_URL);
+      }
+    }
+  } 
+  // Case 3: Force HTTPS for any IP or domain in production for security
+  else if (API_URL.startsWith('http://')) {
+    API_URL = API_URL.replace('http://', 'https://');
+    console.log('[appConfig] Forcing HTTPS for API in production:', API_URL);
   }
 }
 
@@ -28,10 +43,19 @@ if (process.env.NODE_ENV === 'production') {
 console.log('[appConfig] Environment:', process.env.NODE_ENV);
 console.log('[appConfig] Using API_URL:', API_URL);
 
-// Add warning if API_URL is localhost in production
-if (process.env.NODE_ENV === 'production' && API_URL.includes('localhost')) {
-  console.warn('[appConfig] WARNING: Using localhost in production environment!');
-  console.warn('[appConfig] Set REACT_APP_API_URL in your production environment');
+// Add warnings for insecure or problematic configurations
+if (process.env.NODE_ENV === 'production') {
+  // Warning for localhost in production
+  if (API_URL.includes('localhost')) {
+    console.warn('[appConfig] WARNING: Using localhost in production environment!');
+    console.warn('[appConfig] Set REACT_APP_API_URL in your production environment');
+  }
+  
+  // Warning for HTTP in production (security risk)
+  if (API_URL.startsWith('http://') && !API_URL.includes('localhost')) {
+    console.warn('[appConfig] SECURITY WARNING: Using insecure HTTP in production!');
+    console.warn('[appConfig] Consider using HTTPS for your API endpoint');
+  }
 }
 
 // Helper function to construct API endpoint URLs properly, avoiding double slashes

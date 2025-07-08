@@ -218,8 +218,9 @@ const ManageGrades = () => {
       };
       
       console.log('[ManageGrades] Fetching branch names for IDs:', validBranchIds);
+      console.log('[ManageGrades] Using API_URL for secure API call:', API_URL);
       
-      const response = await axios.post('/api/branches/batch', {
+      const response = await axios.post(`${API_URL}/api/branches/batch`, {
         branchIds: validBranchIds
       }, config);
       

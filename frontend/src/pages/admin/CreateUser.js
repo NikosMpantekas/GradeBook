@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import { API_URL } from '../../config/appConfig';
 import {
   Typography,
   Paper,
@@ -327,7 +328,8 @@ const CreateUser = (props) => {
       setLoadingOptions(prev => ({ ...prev, schools: true }));
       setOptionsError(prev => ({ ...prev, schools: null }));
       
-      const response = await axios.get('/api/schools');
+      console.log('[CreateUser] Using API_URL for secure schools API call:', API_URL);
+      const response = await axios.get(`${API_URL}/api/schools`);
       setOptionsData(prev => ({ ...prev, schools: response.data }));
     } catch (error) {
       console.error('Error fetching schools:', error);
@@ -496,7 +498,8 @@ const CreateUser = (props) => {
             Authorization: `Bearer ${user.token}`,
           },
         };
-        const { data } = await axios.get('/api/schools', config);
+        console.log('[CreateUser] Using API_URL for secure schools API call:', API_URL);
+        const { data } = await axios.get(`${API_URL}/api/schools`, config);
         setOptionsData(prev => ({ ...prev, schools: data }));
         console.log('Schools loaded:', data);
       } catch (error) {

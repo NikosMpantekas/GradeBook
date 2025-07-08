@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import { API_URL } from '../../config/appConfig';
 import { 
   Box, 
   Card, 
@@ -63,7 +64,7 @@ function SchoolOwnerDetails() {
           }
         };
         
-        const response = await axios.get(`/api/superadmin/school-owners/${id}`, config);
+        const response = await axios.get(`${API_URL}/api/superadmin/school-owners/${id}`, config);
         setSchoolOwner(response.data);
         
         // Initialize only the two permissions we want to display/manage
@@ -94,7 +95,7 @@ function SchoolOwnerDetails() {
       };
       
       const response = await axios.put(
-        `/api/superadmin/school-owners/${id}/status`,
+        `${API_URL}/api/superadmin/school-owners/${id}/status`,
         { active: !schoolOwner.active },
         config
       );
@@ -119,7 +120,7 @@ function SchoolOwnerDetails() {
         }
       };
       
-      await axios.delete(`/api/superadmin/school-owners/${id}`, config);
+      await axios.delete(`${API_URL}/api/superadmin/school-owners/${id}`, config);
       toast.success('School owner deleted successfully');
       navigate('/superadmin/dashboard');
     } catch (error) {
@@ -151,7 +152,7 @@ function SchoolOwnerDetails() {
       
       // Only send the changed permission to the API
       await axios.put(
-        `/api/superadmin/school-owners/${id}/permissions`,
+        `${API_URL}/api/superadmin/school-owners/${id}/permissions`,
         { 
           permissions: { [permission]: updatedPermissions[permission] } 
         },

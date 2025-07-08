@@ -4,6 +4,7 @@ import { Button, Snackbar, Alert, Box, Typography, CircularProgress, Tooltip } f
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import axios from 'axios';
+import { API_URL } from '../config/appConfig';
 
 /**
  * PushNotificationManager component
@@ -94,9 +95,9 @@ const PushNotificationManager = () => {
         }
       }
       
-      // Get VAPID public key from backend - FIXED ENDPOINT URL
-      console.log('Fetching VAPID public key from fixed endpoint');
-      const vapidResponse = await axios.get('/api/notifications/vapid', {
+      // Get VAPID public key from backend - use API_URL for secure HTTPS in production
+      console.log('Fetching VAPID public key using API_URL:', API_URL);
+      const vapidResponse = await axios.get(`${API_URL}/api/notifications/vapid`, {
         headers: { 
           'Authorization': `Bearer ${user.token}`,
           'Cache-Control': 'no-cache'
@@ -192,7 +193,7 @@ const PushNotificationManager = () => {
         console.log('[Push] Sending properly formatted subscription data to server');
         
         // Send subscription to server
-        await axios.post('/api/notifications/subscription', 
+        await axios.post(`${API_URL}/api/notifications/subscription`, 
           subscriptionData,
           { 
             headers: { 
@@ -239,7 +240,7 @@ const PushNotificationManager = () => {
       setPushSubscription(null);
       
       // Notify server about unsubscription
-      await axios.delete('/api/notifications/push-subscription', {
+      await axios.delete(`${API_URL}/api/notifications/push-subscription`, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
       

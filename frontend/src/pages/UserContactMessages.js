@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { API_URL } from '../config/appConfig';
 import {
   Typography,
   Paper,
@@ -104,9 +105,10 @@ const UserContactMessages = () => {
         // CRITICAL FIX: Force direct API call with timestamp to bypass cache
         const timestamp = Date.now(); 
         console.log(`EMERGENCY FIX: Fetching contact messages with timestamp ${timestamp}`);
+        console.log('Using API_URL for secure contact messages:', API_URL);
         
-        // Make API call
-        const { data } = await axios.get(`/api/contact/user?_t=${timestamp}`, config);
+        // Make API call with absolute URL to ensure HTTPS in production
+        const { data } = await axios.get(`${API_URL}/api/contact/user?_t=${timestamp}`, config);
         
         // FIX ANY MISSING REPLIES CLIENT-SIDE
         const fixedMessages = fixMessages(data);
@@ -171,7 +173,7 @@ const UserContactMessages = () => {
           };
           
           await axios.put(
-            `/api/contact/${msg._id}`,
+            `${API_URL}/api/contact/${msg._id}`,
             { replyRead: true },
             config
           );

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { API_URL } from '../config/appConfig';
 import { 
   Box, 
   Typography, 
@@ -73,8 +74,9 @@ const DiagnosticPage = () => {
         return;
       }
       
-      // Test call to a protected endpoint
-      const response = await fetch('/api/users/me', {
+      // Test call to a protected endpoint (using API_URL to ensure HTTPS in production)
+      console.log('Using API_URL for diagnostic check:', API_URL);
+      const response = await fetch(`${API_URL}/api/users/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

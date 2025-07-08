@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 import { format } from 'date-fns';
 import {
   Container,
@@ -64,7 +65,8 @@ const ContactMessages = () => {
         },
       };
 
-      const response = await axios.get('/api/contact', config);
+      console.log('[AdminContactMessages] Using API_URL for secure contact API call:', API_URL);
+      const response = await axios.get(`${API_URL}/api/contact`, config);
       setMessages(response.data);
       setError(null);
     } catch (err) {

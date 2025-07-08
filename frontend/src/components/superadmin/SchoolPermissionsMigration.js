@@ -15,6 +15,7 @@ import { Settings, CheckCircle, Error } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
+import { API_URL } from '../../config/appConfig';
 
 /**
  * Component to handle the migration of school feature permissions
@@ -38,8 +39,9 @@ const SchoolPermissionsMigration = () => {
       };
 
       // Call our migration endpoint
+      console.log('[SchoolPermissionsMigration] Using API_URL for secure API call:', API_URL);
       const response = await axios.post(
-        '/api/schools/permissions/migrate', 
+        `${API_URL}/api/schools/permissions/migrate`, 
         {}, 
         config
       );
