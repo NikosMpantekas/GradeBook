@@ -43,9 +43,10 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "npm install react-markdown && CI=false react-scripts build && npm run build:sw",
-    "build:sw": "workbox injectManifest --config workbox-config.js",
-    "build:win": "set CI=false && react-scripts build && npm run build:sw",
+    "build": "npm install react-markdown && CI=false react-scripts build && npm run copy:sw",
+    "copy:sw": "cp -f public/service-worker.js build/",
+    "build:win": "set CI=false && react-scripts build && npm run copy:sw:win",
+    "copy:sw:win": "copy /Y public\\service-worker.js build\\",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

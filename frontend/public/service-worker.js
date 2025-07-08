@@ -7,6 +7,7 @@
 
 // Workbox manifest injection point - DO NOT REMOVE
 // This array will be populated by workbox-cli during build
+/* global self */
 const precacheManifest = self.__WB_MANIFEST || [];
 
 // App version is updated from the main app
