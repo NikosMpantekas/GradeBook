@@ -5,7 +5,7 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.192',
+  version: '1.6.0.194',
   author: 'GradeBook Team'
 };
 
@@ -32,10 +32,12 @@ if (process.env.NODE_ENV === 'production') {
       }
     }
   } 
-  // Case 3: Force HTTPS for any IP or domain in production for security
+  // Case 3: Force HTTPS for ALL backend connections in production (including external servers)
   else if (API_URL.startsWith('http://')) {
+    // SECURITY: Always enforce HTTPS for all backend connections
     API_URL = API_URL.replace('http://', 'https://');
-    console.log('[appConfig] Forcing HTTPS for API in production:', API_URL);
+    console.log('[appConfig] SECURITY: Enforcing HTTPS for all API connections in production:', API_URL);
+    console.log('[appConfig] IMPORTANT: Backend server MUST have HTTPS/SSL properly configured!');
   }
 }
 

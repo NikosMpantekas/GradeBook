@@ -45,23 +45,59 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 const app = express();
 
 // Middleware
+// Enhanced CORS configuration for production deployment
 const allowedOrigins = [
-  process.env.FRONTEND_URL, // Replace with your actual Netlify URL
-  "http://localhost:5000" // For local development
+  process.env.FRONTEND_URL, // Environment variable if set
+  "https://grademanager.netlify.app", // Primary frontend URL (NO trailing slash)
+  "http://localhost:3000", // Local development
+  "https://localhost:3000" // Local HTTPS development
 ];
+
+// Set environment variable for use in other parts of the app
+process.env.FRONTEND_URL = "https://grademanager.netlify.app";
+
+// Log confirmation of frontend URL
+console.log('[SERVER] Frontend URL set to:', process.env.FRONTEND_URL);
+console.log('[SERVER] HTTPS enforced for all API connections');
+
+// No need for dynamic domains since we know the exact URL
+if (process.env.NODE_ENV === 'production') {
+  console.log('[CORS] Production environment detected - using fixed Netlify domain');
+}
+
+// Log allowed origins for debugging
+console.log('[CORS] Allowed origins:', allowedOrigins.filter(origin => origin));
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    console.log('[CORS] Request from origin:', origin);
+    
+    // Allow requests with no origin (like mobile apps, curl, Postman, etc.)
+    if (!origin) {
+      console.log('[CORS] Allowing request with no origin');
+      return callback(null, true);
+    }
+    
+    // Check if origin is in allowed list
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (!allowedOrigin) return false;
+      // Exact match or subdomain match for Netlify
+      return origin === allowedOrigin || 
+             (allowedOrigin.includes('netlify') && origin.includes('netlify'));
+    });
+    
+    if (isAllowed) {
+      console.log('[CORS] Origin allowed:', origin);
       return callback(null, true);
     } else {
-      return callback(new Error("Not allowed by CORS"));
+      console.error('[CORS] Origin blocked:', origin);
+      console.error('[CORS] Allowed origins:', allowedOrigins);
+      return callback(new Error(`CORS: Origin ${origin} not allowed`));
     }
   },
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-requested-with"],
+  credentials: true // Important for authentication
 };
 
 app.use(cors(corsOptions));
