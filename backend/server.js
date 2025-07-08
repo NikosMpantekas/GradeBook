@@ -1,4 +1,6 @@
 const path = require("path");
+const https = require('https');
+const fs = require('fs');
 const express = require("express");
 const dotenv = require("dotenv");
 const colors = require("colors");
@@ -594,8 +596,98 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(
-    `Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.yellow.bold
-  );
-});
+// Create SSL folder if it doesn't exist
+const sslDir = path.join(__dirname, 'ssl');
+if (!fs.existsSync(sslDir)) {
+  fs.mkdirSync(sslDir, { recursive: true });
+  console.log(`Created SSL directory at ${sslDir}`.cyan);
+}
+
+// Implement HTTPS server
+try {
+  // Check for existing SSL certificates
+  const keyPath = path.join(__dirname, 'ssl', 'private.key');
+  const certPath = path.join(__dirname, 'ssl', 'certificate.crt');
+  
+  // If certificates don't exist, provide instructions
+  if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+    console.log('\n======================================================'.yellow);
+    console.log('HTTPS certificates not found!'.red.bold);
+    console.log('======================================================'.yellow);
+    console.log('\nOn your Ubuntu server, run these commands:'.cyan);
+    console.log('\n1. SSH into your server:'.cyan);
+    console.log('   ssh username@130.61.188.153'.green);
+    console.log('\n2. Navigate to your backend directory'.cyan);
+    console.log('\n3. Create SSL directory:'.cyan);
+    console.log('   mkdir -p ssl'.green);
+    console.log('\n4. Generate self-signed certificates:'.cyan);
+    console.log('   cd ssl'.green);
+    console.log('   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout private.key -out certificate.crt'.green);
+    console.log('\n5. Set proper permissions:'.cyan);
+    console.log('   chmod 600 private.key certificate.crt'.green);
+    console.log('\n6. Restart your server with PM2:'.cyan);
+    console.log('   pm2 restart all'.green);
+    console.log('\nVerify HTTPS is working:'.cyan);
+    console.log('   curl -k https://130.61.188.153:5000\n'.green);
+    
+    // Fallback to HTTP for development
+    app.listen(PORT, () => {
+      console.log(`Server running in ${process.env.NODE_ENV} mode on HTTP port ${PORT}`.yellow.bold);
+      console.log('WARNING: Running in HTTP mode (not secure)!'.red.bold);
+    });
+  } else {
+    // Load SSL certificates and create HTTPS server with enhanced compatibility
+    const sslOptions = {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+      // Force more compatible TLS options for Windows clients
+      minVersion: 'TLSv1.2',
+      ciphers: 'HIGH:!aNULL:!MD5:!RC4',
+      honorCipherOrder: true,
+      // Add these options for better client compatibility
+      secureOptions: require('constants').SSL_OP_NO_SSLv3 | require('constants').SSL_OP_NO_SSLv2
+    };
+    
+    // Log SSL configuration details
+    console.log('[HTTPS] SSL configuration loaded successfully'.green);
+    console.log('[HTTPS] Using TLS min version: TLSv1.2'.cyan);
+    
+    // Create and start HTTPS server with enhanced error handling
+    const httpsServer = https.createServer(sslOptions, app);
+    
+    // Add specific event handlers for better diagnostics
+    httpsServer.on('tlsClientError', (err, tlsSocket) => {
+      console.error('[HTTPS] TLS Client Error:'.red, err.message);
+      console.error('[HTTPS] TLS Client IP:'.yellow, tlsSocket.remoteAddress);
+    });
+    
+    httpsServer.on('error', (err) => {
+      console.error('[HTTPS] Server Error:'.red, err.message);
+    });
+    
+    httpsServer.listen(PORT, () => {
+      console.log(`HTTPS Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.green.bold);
+      console.log(`Frontend URL: ${process.env.FRONTEND_URL}`.cyan);
+      console.log('SSL/HTTPS enabled successfully!'.green);
+      console.log('[HTTPS] Test from Windows with:'.cyan);
+      console.log(`   curl --tlsv1.2 -v https://130.61.188.153:${PORT}`.green);
+    });
+    
+    // Add secureConnection event listener to verify TLS versions
+    httpsServer.on('secureConnection', (tlsSocket) => {
+      console.log('[HTTPS] New secure connection:'.cyan);
+      console.log(`   Protocol: ${tlsSocket.getProtocol()}`.green);
+      console.log(`   Cipher: ${tlsSocket.getCipher().name}`.green);
+      console.log(`   Client: ${tlsSocket.remoteAddress}`.green);
+    });
+  }
+} catch (error) {
+  console.error('HTTPS server failed to start:'.red, error.message);
+  console.log('Falling back to HTTP server (NOT SECURE)'.yellow);
+  
+  // Fallback to HTTP if SSL fails
+  app.listen(PORT, () => {
+    console.log(`Server running in ${process.env.NODE_ENV} mode on HTTP port ${PORT}`.yellow.bold);
+    console.log('WARNING: Running in HTTP mode (not secure)!'.red.bold);
+  });
+}
