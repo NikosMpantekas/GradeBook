@@ -1,11 +1,24 @@
-// This file is intentionally empty to prevent Create React App from injecting the Workbox manifest
-// The real service worker is in the public folder and will be processed by workbox-cli
+/* eslint-disable no-unused-vars */
+// This is a placeholder file to satisfy CRA's service worker requirements
+// The real service worker is in public/service-worker.js
+// This file is intentionally empty to prevent Create React App from injecting manifest
 
-// Track app version for update detection
-let currentVersion = '0.0.0';
-let previousVersion = null;
+// Mock imports to satisfy ESLint
+import { clientsClaim } from 'workbox-core';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 
-/* eslint-disable no-restricted-globals */
+// Export dummy functions to satisfy ESLint
+export const dummyFunction = () => {
+  console.log('This service worker is disabled');
+};
+
+// Required CRA variables - but we won't use them
+self.__WB_MANIFEST = [];
+
+// Empty event listeners
 // The app version is injected during service worker registration
 // This ensures we only need to update the version in one place: src/config/appConfig.js
 self.addEventListener('message', (event) => {
