@@ -42,8 +42,9 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "npm install react-markdown && CI=false react-scripts build",
-    "build:win": "set CI=false && react-scripts build",
+    "build": "npm install react-markdown && CI=false react-scripts build && npm run build:sw",
+    "build:sw": "workbox injectManifest --config workbox-config.js",
+    "build:win": "set CI=false && react-scripts build && npm run build:sw",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -67,6 +68,7 @@
   },
   "proxy": "http://localhost:5000",
   "devDependencies": {
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "workbox-cli": "^7.3.0"
   }
 }
