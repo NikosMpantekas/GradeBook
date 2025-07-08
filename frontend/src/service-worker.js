@@ -1,9 +1,5 @@
-/* eslint-disable no-restricted-globals */
-import { clientsClaim } from 'workbox-core';
-import { ExpirationPlugin } from 'workbox-expiration';
-import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
-import { registerRoute } from 'workbox-routing';
-import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
+// This file is intentionally empty to prevent Create React App from injecting the Workbox manifest
+// The real service worker is in the public folder and will be processed by workbox-cli
 
 // Track app version for update detection
 let currentVersion = '0.0.0';
