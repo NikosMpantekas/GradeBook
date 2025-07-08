@@ -29,6 +29,7 @@
     "workbox-background-sync": "^6.5.4",
     "workbox-broadcast-update": "^6.5.4",
     "workbox-cacheable-response": "^6.5.4",
+    "workbox-cli": "^7.3.0",
     "workbox-core": "^6.5.4",
     "workbox-expiration": "^6.5.4",
     "workbox-google-analytics": "^6.5.4",
@@ -68,7 +69,6 @@
   },
   "proxy": "http://localhost:5000",
   "devDependencies": {
-    "cross-env": "^7.0.3",
-    "workbox-cli": "^7.3.0"
+    "cross-env": "^7.0.3"
   }
 }
