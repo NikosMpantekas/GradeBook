@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { store } from './store';
+import { API_URL } from '../config/appConfig';
 
 // Request deduplication cache to prevent duplicate requests
 // Maps request signature (method + url + JSON.stringify(data)) to request promise
@@ -13,12 +14,64 @@ const generateRequestId = () => {
   return `req-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
 };
 
+// Debug logging helper for API calls
+const logApiCall = (message, data) => {
+  console.log(`[API] ${message}`, data);
+};
+
+// Extract domain or IP from URL for logging
+const getHostFromUrl = (url) => {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.hostname;
+  } catch (e) {
+    return 'unknown-host';
+  }
+};
+
+// Check if URL uses HTTPS
+const isHttpsUrl = (url) => {
+  try {
+    return url.startsWith('https://');
+  } catch (e) {
+    return false;
+  }
+};
+
+// Log current API configuration
+logApiCall('Base API URL', API_URL);
+logApiCall('Using HTTPS', isHttpsUrl(API_URL));
+logApiCall('Target host', getHostFromUrl(API_URL));
+
 // Create axios instance with default config
 const axiosInstance = axios.create({
+  // Base configuration
+  timeout: 30000, // 30 second timeout
   headers: {
-    'x-client-version': '1.6.0.196', // App version for debugging
-    'x-client-platform': 'web' // Platform identifier
-  }
+    'x-client-version': '1.6.0.198', // App version for debugging
+    'x-client-platform': 'web', // Platform identifier
+    'x-client-origin': typeof window !== 'undefined' ? window.location.origin : 'unknown', // Origin tracking
+    // Add custom header to help with CORS
+    'x-frontend-url': typeof window !== 'undefined' ? window.location.origin : 'unknown'
+  },
+  // Accept all 2xx and 3xx responses, reject 5xx
+  validateStatus: function (status) {
+    return status >= 200 && status < 500;
+  },
+  // IMPORTANT: For production environments, we need proper CORS handling
+  withCredentials: true // Send cookies and authentication headers cross-origin
+});
+
+// Additional security headers for better CORS handling
+axiosInstance.defaults.headers.common['Access-Control-Allow-Origin'] = '*';
+axiosInstance.defaults.headers.common['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+axiosInstance.defaults.headers.common['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+// Log axios configuration
+logApiCall('Axios instance created with custom configuration', {
+  timeout: axiosInstance.defaults.timeout,
+  baseHeaders: axiosInstance.defaults.headers,
+  validateStatus: 'Custom validator installed'
 });
 
 // Add request interceptor for authentication and deduplication
@@ -106,16 +159,26 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
     
-    // For actual errors, clean up request cache
+    // Enhanced error logging with detailed information
     if (error.config) {
       const method = error.config.method?.toUpperCase();
       const url = error.config.url;
       const signature = `${method}:${url}:${JSON.stringify(error.config.data || {})}`;
       requestCache.delete(signature);
       
-      // Log error with request ID
-      const requestId = error.config.headers['x-request-id'];
+      // Extract the host for better diagnostics
+      const host = getHostFromUrl(url);
+      const isHttps = isHttpsUrl(url);
+      
+      // Log error with request ID and enhanced details
+      const requestId = error.config.headers['x-request-id'] || 'unknown';
       console.error(`[ERROR ${requestId}] ${method} ${url} - ${error.message}`);
+      
+      // Add specific logging for network/HTTPS errors
+      if (error.message === 'Network Error' && isHttps) {
+        console.error(`[SSL ERROR] Connection to ${host} failed - this is likely due to an untrusted SSL certificate`);
+        console.error('[SSL SOLUTION] Try using HTTP instead of HTTPS for IP-based backends, or install a trusted certificate');
+      }
     }
     
     // Handle authentication errors

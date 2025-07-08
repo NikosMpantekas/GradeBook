@@ -5,12 +5,18 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.197',
+  version: '1.6.0.198',
   author: 'GradeBook Team'
 };
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// CRITICAL: Ensure HTTPS for production backend
+if (API_URL === 'http://130.61.188.153:5000' && process.env.NODE_ENV === 'production') {
+  API_URL = 'https://130.61.188.153:5000';
+  console.log('[appConfig] SECURITY: Enforcing HTTPS for backend in production');
+}
 
 // Production deployment handling - auto-detect and enforce HTTPS for security
 if (process.env.NODE_ENV === 'production') {
@@ -24,20 +30,36 @@ if (process.env.NODE_ENV === 'production') {
   // Case 2: If we're on Netlify, ensure we use HTTPS for backend connections
   else if (currentHostname.includes('netlify.app') || currentHostname.endsWith('.netlify.com')) {
     // If REACT_APP_API_URL is set and doesn't start with https, force https
+    // BUT ONLY for domain names, not IP addresses (which may use self-signed certs)
     if (process.env.REACT_APP_API_URL) {
       const apiUrl = process.env.REACT_APP_API_URL;
-      if (apiUrl.startsWith('http://')) {
+      
+      // Check if the API URL contains an IP address pattern
+      const isIpAddress = /\d+\.\d+\.\d+\.\d+/.test(apiUrl);
+      
+      // Don't force HTTPS for IP addresses - they likely use self-signed certs
+      if (apiUrl.startsWith('http://') && !isIpAddress) {
         API_URL = apiUrl.replace('http://', 'https://');
-        console.log('[appConfig] Forcing HTTPS for API URL in production on Netlify:', API_URL);
+        console.log('[appConfig] Forcing HTTPS for domain API URL in production on Netlify:', API_URL);
+      } else if (isIpAddress) {
+        console.log('[appConfig] Detected IP address in API URL, not forcing HTTPS:', API_URL);
+        console.log('[appConfig] Using HTTP for IP-based backend to avoid self-signed certificate issues');
       }
     }
-  } 
-  // Case 3: Force HTTPS for ALL backend connections in production (including external servers)
+  }
+  // Case 3: Force HTTPS only for domain name backends, not IP addresses
   else if (API_URL.startsWith('http://')) {
-    // SECURITY: Always enforce HTTPS for all backend connections
-    API_URL = API_URL.replace('http://', 'https://');
-    console.log('[appConfig] SECURITY: Enforcing HTTPS for all API connections in production:', API_URL);
-    console.log('[appConfig] IMPORTANT: Backend server MUST have HTTPS/SSL properly configured!');
+    // Check if the API URL contains an IP address pattern
+    const isIpAddress = /\d+\.\d+\.\d+\.\d+/.test(API_URL);
+    
+    // Only enforce HTTPS for domain names, not IP addresses
+    if (!isIpAddress) {
+      API_URL = API_URL.replace('http://', 'https://');
+      console.log('[appConfig] SECURITY: Enforcing HTTPS for domain API connections in production:', API_URL);
+    } else {
+      console.log('[appConfig] Using HTTP for IP-based backend:', API_URL);
+      console.log('[appConfig] IP-based backends often use self-signed certificates which cause browser issues');
+    }
   }
 }
 

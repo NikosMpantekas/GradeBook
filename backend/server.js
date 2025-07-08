@@ -70,36 +70,77 @@ if (process.env.NODE_ENV === 'production') {
 // Log allowed origins for debugging
 console.log('[CORS] Allowed origins:', allowedOrigins.filter(origin => origin));
 
-// Configure CORS - FIXED IMPLEMENTATION
+// Configure enhanced CORS with better security & compatibility
 const corsOptions = {
   origin: function (origin, callback) {
     console.log('[CORS] Request from origin:', origin);
     
+    // FOR TESTING ONLY: Allow all origins temporarily to diagnose issues
+    // This should be removed after testing
+    if (process.env.NODE_ENV === 'production' && process.env.CORS_BYPASS === 'true') {
+      console.warn('[CORS] WARNING: CORS bypass enabled in production - SECURITY RISK');
+      return callback(null, true);
+    }
+
     // In development, allow requests with no origin (like curl, Postman)
     if (!origin) {
       if (process.env.NODE_ENV === 'production') {
-        console.error('[CORS] Direct API access blocked in production');
-        return callback(new Error('Direct API access not allowed in production'), false);
+        // For now, allow no-origin requests in production for troubleshoot
+        console.warn('[CORS] Allowing no-origin request in production for troubleshooting');
+        return callback(null, true);
       } else {
         console.log('[CORS] Request with no origin allowed in development');
         return callback(null, true);
       }
     }
     
-    // Check if origin is allowed
-    if (allowedOrigins.includes(origin)) {
+    // More flexible origin checking - exact match or pattern matching
+    const originMatches = allowedOrigins.some(allowedOrigin => {
+      // Exact match
+      if (allowedOrigin === origin) return true;
+      
+      // Netlify subdomain pattern match
+      if (allowedOrigin === 'https://grademanager.netlify.app' && 
+          (origin.includes('netlify.app') || origin.endsWith('.netlify.com'))) {
+        return true;
+      }
+      
+      return false;
+    });
+    
+    if (originMatches) {
       console.log('[CORS] Origin allowed:', origin);
       return callback(null, true);
-    } 
+    }
     
-    // Block disallowed origins
+    // Block disallowed origins but log them thoroughly
     console.error('[CORS] Origin blocked:', origin);
     console.error('[CORS] Allowed origins:', allowedOrigins);
     return callback(new Error(`CORS: Origin ${origin} not allowed`), false);
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-requested-with", "x-client-version"],
-  credentials: true // Important for authentication
+  // Extended methods and headers for better compatibility
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Content-Type", 
+    "Authorization", 
+    "x-requested-with", 
+    "x-client-version",
+    "x-client-platform",
+    "x-client-origin",
+    "x-frontend-url",
+    "x-request-id",
+    "Access-Control-Allow-Origin",
+    "Access-Control-Allow-Methods",
+    "Access-Control-Allow-Headers"
+  ],
+  exposedHeaders: [
+    "X-Request-ID", 
+    "X-Server-ID"
+  ],
+  credentials: true, // Important for authentication
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  maxAge: 86400 // 24 hours
 };
 
 app.use(cors(corsOptions));
