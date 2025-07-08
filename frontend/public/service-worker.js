@@ -1,14 +1,10 @@
 /* eslint-disable no-restricted-globals */
 
-// This service worker can be customized!
-// See https://developers.google.com/web/tools/workbox/modules
-// for the list of available Workbox modules, or add any other
-// code you'd like.
+// This is the GradeBook service worker
+// It handles caching and offline functionality
 
-// Workbox manifest injection point - DO NOT REMOVE
-// This array will be populated by workbox-cli during build
-/* global self */
-const precacheManifest = self.__WB_MANIFEST || [];
+// Simple service worker without Workbox manifest dependencies
+// Using only native Cache API
 
 // App version is updated from the main app
 let APP_VERSION = '1.0.0';
@@ -226,40 +222,20 @@ function networkFirstStrategy(request) {
     });
 }
 
-// Network First with Cache Update strategy for icons/manifest
-// This ensures icons are ALWAYS updated without requiring app reinstallation
+// Network First with Cache Update strategy for icons and manifest
 function networkFirstWithCacheUpdateStrategy(request) {
-  // Add a cache-busting parameter for icons to avoid browser caching
-  const bustCache = request.url.includes('?') ? 
-    request.url : `${request.url}?cache=${APP_VERSION}`;
-  const fetchRequest = new Request(bustCache);
-  
-  return fetch(fetchRequest)
-    .then(response => {
-      if (!response || response.status !== 200) {
-        return response;
-      }
-      
-      // Clone the response so we can return one and cache one
-      const responseToCache = response.clone();
-      
-      // Determine which cache to use
-      const cacheName = request.url.includes('manifest.json') ? 
-        STATIC_CACHE_NAME : ICON_CACHE_NAME;
-      
-      // Cache the fresh version
-      caches.open(cacheName).then(cache => {
-        // Store original URL (without cache busting) in the cache
-        cache.put(request, responseToCache).then(() => {
-          console.log(`[Service Worker] Updated cache for: ${request.url}`);
+  return fetch(request)
+    .then((response) => {
+      // Cache a fresh copy for next time
+      const clonedResponse = response.clone();
+      caches.open(ICON_CACHE_NAME)
+        .then((cache) => {
+          cache.put(request, clonedResponse);
         });
-      });
-      
       return response;
     })
     .catch(() => {
-      // If network request fails, try to get from cache
-      console.log(`[Service Worker] Network request failed for ${request.url}, trying cache`);
+      // If network fails, try to get from cache
       return caches.match(request);
     });
 }
@@ -267,31 +243,20 @@ function networkFirstWithCacheUpdateStrategy(request) {
 // Cache First strategy for static assets
 function cacheFirstStrategy(request) {
   return caches.match(request)
-    .then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return from cache if found
-        return cachedResponse;
+    .then((response) => {
+      // Return from cache if found
+      if (response) {
+        return response;
       }
-      
-      // Otherwise fetch from network
-      return fetch(request)
-        .then((response) => {
-          // Cache the new resource for next time
-          const clonedResponse = response.clone();
-          caches.open(DYNAMIC_CACHE_NAME)
-            .then((cache) => {
-              cache.put(request, clonedResponse);
-            });
-          return response;
-        })
-        .catch((error) => {
-          console.error('[Service Worker] Fetch failed:', error);
-          // For image requests, return a fallback image
-          if (request.url.match(/\.(jpg|jpeg|png|gif|svg)$/)) {
-            return caches.match('/images/fallback.png');
-          }
-          // For other resources, just propagate the error
-          throw error;
-        });
+      // Otherwise fetch from network and cache
+      return fetch(request).then((networkResponse) => {
+        // Cache a copy of the response
+        const clonedResponse = networkResponse.clone();
+        caches.open(DYNAMIC_CACHE_NAME)
+          .then((cache) => {
+            cache.put(request, clonedResponse);
+          });
+        return networkResponse;
+      });
     });
 }
