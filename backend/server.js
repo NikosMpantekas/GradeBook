@@ -70,41 +70,64 @@ if (process.env.NODE_ENV === 'production') {
 // Log allowed origins for debugging
 console.log('[CORS] Allowed origins:', allowedOrigins.filter(origin => origin));
 
+// Configure CORS - FIXED IMPLEMENTATION
 const corsOptions = {
   origin: function (origin, callback) {
     console.log('[CORS] Request from origin:', origin);
     
-    // Allow requests with no origin (like mobile apps, curl, Postman, etc.)
+    // In development, allow requests with no origin (like curl, Postman)
     if (!origin) {
-      console.log('[CORS] Allowing request with no origin');
-      return callback(null, true);
+      if (process.env.NODE_ENV === 'production') {
+        console.error('[CORS] Direct API access blocked in production');
+        return callback(new Error('Direct API access not allowed in production'), false);
+      } else {
+        console.log('[CORS] Request with no origin allowed in development');
+        return callback(null, true);
+      }
     }
     
-    // Check if origin is in allowed list
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (!allowedOrigin) return false;
-      // Exact match or subdomain match for Netlify
-      return origin === allowedOrigin || 
-             (allowedOrigin.includes('netlify') && origin.includes('netlify'));
-    });
-    
-    if (isAllowed) {
+    // Check if origin is allowed
+    if (allowedOrigins.includes(origin)) {
       console.log('[CORS] Origin allowed:', origin);
       return callback(null, true);
-    } else {
-      console.error('[CORS] Origin blocked:', origin);
-      console.error('[CORS] Allowed origins:', allowedOrigins);
-      return callback(new Error(`CORS: Origin ${origin} not allowed`));
-    }
+    } 
+    
+    // Block disallowed origins
+    console.error('[CORS] Origin blocked:', origin);
+    console.error('[CORS] Allowed origins:', allowedOrigins);
+    return callback(new Error(`CORS: Origin ${origin} not allowed`), false);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-requested-with"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-requested-with", "x-client-version"],
   credentials: true // Important for authentication
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Add request tracking to help debug duplicate requests
+app.use((req, res, next) => {
+  // Generate unique ID for this request
+  const requestId = Math.random().toString(36).substring(2, 15);
+  const startTime = Date.now();
+  
+  // Add custom header to response to identify source server and prevent duplicates
+  res.setHeader('X-Request-ID', requestId);
+  res.setHeader('X-Server-ID', 'backend-server-v1');
+  
+  // Debug log for request start
+  console.log(`[REQUEST ${requestId}] ${req.method} ${req.path} started at ${new Date().toISOString()}`);
+  console.log(`[REQUEST ${requestId}] Headers: ${JSON.stringify(req.headers['user-agent'])}`);
+  
+  // Add response finished event logging
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    console.log(`[REQUEST ${requestId}] ${req.method} ${req.path} completed with ${res.statusCode} in ${duration}ms`);
+  });
+  
+  next();
+});
 
 // Add middleware to handle API URLs with trailing slashes
 // This must be added BEFORE the API routes
@@ -423,6 +446,36 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add rate limiting middleware for security
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 500, // Limit each IP to 500 requests per windowMs
+    message: "Too many requests from this IP, please try again later"
+  })
+);
+
+// Add API request validation middleware
+app.use('/api', (req, res, next) => {
+  // Only allow requests with proper headers in production
+  if (process.env.NODE_ENV === 'production') {
+    // Check for required custom header or referer from our frontend
+    const referer = req.headers.referer || '';
+    const isValidReferer = referer.includes('grademanager.netlify.app');
+    
+    // Block requests without proper origin/referer in production
+    if (!isValidReferer && !req.headers.origin) {
+      console.error('[API Security] Blocked direct API access without proper headers');
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Direct API access not permitted'
+      });
+    }
+  }
+  
+  next();
+});
+
 // Serve frontend in production
 if (process.env.NODE_ENV === "production") {
   // List all files in the directory to debug
@@ -642,29 +695,19 @@ try {
       cert: fs.readFileSync(certPath),
       // Force more compatible TLS options for Windows clients
       minVersion: 'TLSv1.2',
-      ciphers: 'HIGH:!aNULL:!MD5:!RC4',
-      honorCipherOrder: true,
-      // Add these options for better client compatibility
-      secureOptions: require('constants').SSL_OP_NO_SSLv3 | require('constants').SSL_OP_NO_SSLv2
+      ciphers: 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA',
+      // TLSv1.3 is more secure, but causes issues with older clients
+      // maxVersion: 'TLSv1.3',
+      // Disable insecure SSLv2 and SSLv3 
+      secureOptions: require('constants').SSL_OP_NO_SSLv2 | require('constants').SSL_OP_NO_SSLv3,
+      // Honor cipher order to ensure server's preferred (more secure) ciphers are used
+      honorCipherOrder: true
     };
     
-    // Log SSL configuration details
-    console.log('[HTTPS] SSL configuration loaded successfully'.green);
-    console.log('[HTTPS] Using TLS min version: TLSv1.2'.cyan);
-    
-    // Create and start HTTPS server with enhanced error handling
+    // Create HTTPS server
     const httpsServer = https.createServer(sslOptions, app);
     
-    // Add specific event handlers for better diagnostics
-    httpsServer.on('tlsClientError', (err, tlsSocket) => {
-      console.error('[HTTPS] TLS Client Error:'.red, err.message);
-      console.error('[HTTPS] TLS Client IP:'.yellow, tlsSocket.remoteAddress);
-    });
-    
-    httpsServer.on('error', (err) => {
-      console.error('[HTTPS] Server Error:'.red, err.message);
-    });
-    
+    // Start HTTPS server on the specified port
     httpsServer.listen(PORT, () => {
       console.log(`HTTPS Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.green.bold);
       console.log(`Frontend URL: ${process.env.FRONTEND_URL}`.cyan);
@@ -673,7 +716,35 @@ try {
       console.log(`   curl --tlsv1.2 -v https://130.61.188.153:${PORT}`.green);
     });
     
-    // Add secureConnection event listener to verify TLS versions
+    // Add connection error handler
+    httpsServer.on('error', (error) => {
+      console.error('[HTTPS] Server Error:', error);
+    });
+    
+    // Add detailed TLS error handling for troubleshooting
+    httpsServer.on('tlsClientError', (err, tlsSocket) => {
+      console.error(`[TLS ERROR] Client IP: ${tlsSocket.remoteAddress}, Error: ${err.message}`);
+      console.error(`[TLS ERROR] Error code: ${err.code}, library: ${err.library}, function: ${err.function}, reason: ${err.reason}`);
+      
+      // Provide specific guidance for common Windows errors
+      if (err.code === 'ECONNRESET') {
+        console.error('[TLS ERROR] Client connection reset - possible Windows TLS version mismatch');
+        console.error('[TLS ERROR] Try using curl -k --tlsv1.2 https://server:5000/ from client to test');
+      } else if (err.message && err.message.includes('no shared cipher')) {
+        console.error('[TLS ERROR] No shared cipher - client and server cannot agree on cipher suite');
+        console.error('[TLS ERROR] Windows clients may need compatible cipher suites added');
+      } else if (err.message && err.message.includes('invalid token')) {
+        console.error('[TLS ERROR] Invalid token error - often seen with SEC_E_INVALID_TOKEN on Windows');
+        console.error('[TLS ERROR] This typically indicates TLS protocol or cipher incompatibility');
+      }
+    });
+    
+    // Capture certificate errors for Windows clients that often have cert validation issues
+    httpsServer.on('clientError', (err, socket) => {
+      console.error(`[CLIENT ERROR] ${err.message} from ${socket.remoteAddress}`);
+    });
+    
+    // Log successful SSL connections with enhanced details for debugging
     httpsServer.on('secureConnection', (tlsSocket) => {
       console.log('[HTTPS] New secure connection:'.cyan);
       console.log(`   Protocol: ${tlsSocket.getProtocol()}`.green);

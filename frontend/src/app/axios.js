@@ -1,10 +1,27 @@
 import axios from 'axios';
 import { store } from './store';
 
-// Create axios instance with default config
-const axiosInstance = axios.create();
+// Request deduplication cache to prevent duplicate requests
+// Maps request signature (method + url + JSON.stringify(data)) to request promise
+const requestCache = new Map();
 
-// Add request interceptor to inject authentication token
+// Set timeout for cache entries (300ms)
+const DEDUPE_TIMEOUT = 300;
+
+// Generate a unique client request ID
+const generateRequestId = () => {
+  return `req-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+};
+
+// Create axios instance with default config
+const axiosInstance = axios.create({
+  headers: {
+    'x-client-version': '1.6.0.196', // App version for debugging
+    'x-client-platform': 'web' // Platform identifier
+  }
+});
+
+// Add request interceptor for authentication and deduplication
 axiosInstance.interceptors.request.use(
   (config) => {
     // Get the current state from Redux store
@@ -23,6 +40,38 @@ axiosInstance.interceptors.request.use(
       console.log('No authentication token available for request:', config.url);
     }
     
+    // Generate a unique request ID for tracing
+    const requestId = generateRequestId();
+    config.headers['x-request-id'] = requestId;
+    
+    // Only deduplicate GET, POST, PUT, DELETE requests
+    // Skip OPTIONS and other special requests
+    const method = config.method?.toUpperCase();
+    if (['GET', 'POST', 'PUT', 'DELETE'].includes(method)) {
+      // Create a request signature based on method, URL and data
+      const signature = `${method}:${config.url}:${JSON.stringify(config.data || {})}`;
+      
+      // Check if an identical request is already in flight
+      if (requestCache.has(signature)) {
+        console.log(`[DUPLICATE REQUEST PREVENTED] ${method} ${config.url}`);
+        
+        // Return the existing request promise to prevent duplicate
+        const source = axios.CancelToken.source();
+        config.cancelToken = source.token;
+        source.cancel(`Duplicate request prevented: ${signature}`);
+      } else {
+        // Add this request to the cache
+        requestCache.set(signature, true);
+        
+        // Remove from cache after timeout
+        setTimeout(() => {
+          requestCache.delete(signature);
+        }, DEDUPE_TIMEOUT);
+        
+        console.log(`[REQUEST ${requestId}] ${method} ${config.url} (unique)`);
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -32,13 +81,43 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle authentication errors
+// Add response interceptor to handle authentication errors and cleanup request cache
 axiosInstance.interceptors.response.use(
   (response) => {
+    // Get request signature for cache cleanup
+    const method = response.config.method?.toUpperCase();
+    const url = response.config.url;
+    const signature = `${method}:${url}:${JSON.stringify(response.config.data || {})}`;
+    
+    // Clean up the request cache
+    requestCache.delete(signature);
+    
+    // Log successful response with request ID for tracing
+    const requestId = response.config.headers['x-request-id'];
+    console.log(`[RESPONSE ${requestId}] ${method} ${url} - Status: ${response.status}`);
+    
     // Return successful responses
     return response;
   },
   (error) => {
+    // Don't handle axios cancellation errors (from our deduplication)
+    if (axios.isCancel(error)) {
+      console.log('Request cancelled:', error.message);
+      return Promise.reject(error);
+    }
+    
+    // For actual errors, clean up request cache
+    if (error.config) {
+      const method = error.config.method?.toUpperCase();
+      const url = error.config.url;
+      const signature = `${method}:${url}:${JSON.stringify(error.config.data || {})}`;
+      requestCache.delete(signature);
+      
+      // Log error with request ID
+      const requestId = error.config.headers['x-request-id'];
+      console.error(`[ERROR ${requestId}] ${method} ${url} - ${error.message}`);
+    }
+    
     // Handle authentication errors
     if (error.response && error.response.status === 401) {
       console.error('Authentication error:', error.response.data);
