@@ -1,15 +1,14 @@
-/**
- * This is an intentionally empty service worker file.
- * 
- * The real service worker is in public/service-worker.js
- * and will be processed by workbox-cli during build.
- * 
- * This file exists only to satisfy Create React App's requirements
- * but we don't want it to actually do anything.
- */
+// This service worker file is completely empty to disable CRA's service worker generation
+// Skip workbox precaching
+self.__WB_DISABLE_DEV_LOGS = true;
+self.__WB_MANIFEST = [];
 
-// No-op function that satisfies ESLint and module requirements
+// Export default function for module requirements
 export default function noop() {
-  // This function intentionally does nothing
   return null;
+}
+
+// Prevent any service worker registration
+if (typeof self !== 'undefined') {
+  self.addEventListener = function() {};
 }

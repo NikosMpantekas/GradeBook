@@ -4,9 +4,9 @@ import { Provider } from 'react-redux';
 import { store } from './app/store';
 import App from './App';
 import './index.css';
-// Main service worker has been completely disabled to prevent update notifications
-// But we still need the push service worker for notifications
-import { registerPushServiceWorker } from './pushServiceWorkerRegistration';
+
+// DISABLE ALL SERVICE WORKERS
+// This will prevent CRA from generating service workers during build
 
 const container = document.getElementById('root');
 const root = createRoot(container);
@@ -19,21 +19,22 @@ root.render(
   </React.StrictMode>
 );
 
-// Main SERVICE WORKER DISABLED but push service worker is enabled
-console.log('⚠️ Main service worker disabled, but push notifications service worker is enabled');
+// COMPLETELY DISABLE ALL SERVICE WORKERS
+console.log('⚠️ All service workers disabled to prevent Netlify build issues');
 
-// Register only the push service worker
-registerPushServiceWorker()
-  .then(registration => {
-    if (registration) {
-      console.log('Push service worker registered for notifications');
-    } else {
-      console.log('Push service worker registration failed or not supported');
-    }
-  })
-  .catch(error => {
-    console.error('Error during push service worker registration:', error);
-  });
+// Unregister any existing service workers
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations()
+    .then(registrations => {
+      for (const registration of registrations) {
+        registration.unregister();
+        console.log('Service worker unregistered:', registration);
+      }
+    })
+    .catch(error => {
+      console.error('Error unregistering service workers:', error);
+    });
+}
 
 // EMERGENCY FIX: Remove any existing update notifications
 setTimeout(() => {
