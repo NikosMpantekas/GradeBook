@@ -4,7 +4,8 @@
 
 // Required placeholder for Workbox - this allows the build to succeed
 // DO NOT REMOVE THIS LINE - it's required for the build process
-self.__WB_MANIFEST;
+// ESLint requires this to be an assignment, not just an expression
+const workboxManifest = self.__WB_MANIFEST || [];
 
 // Export default function for module requirements
 export default function noop() {
