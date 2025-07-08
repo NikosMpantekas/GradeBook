@@ -1,10 +1,14 @@
-// This service worker file is completely empty to disable CRA's service worker generation
-
 /* eslint-disable no-restricted-globals */
-// The above comment disables ESLint warnings for this file only
+// This is a temporary service worker file to satisfy CRA build requirements
+// The actual service worker will be copied from public/service-worker.js after build
+
+// Required placeholder for Workbox - this allows the build to succeed
+// DO NOT REMOVE THIS LINE - it's required for the build process
+self.__WB_MANIFEST;
 
 // Export default function for module requirements
 export default function noop() {
+  console.log('[Temporary Service Worker] This is a placeholder service worker');
   return null;
 }
 
@@ -13,7 +17,8 @@ export function registerRoute() {
   return null;
 }
 
-export function precacheAndRoute() {
+export function precacheAndRoute(manifest) {
+  console.log('[Temporary Service Worker] Pretending to precache:', manifest);
   return null;
 }
 
