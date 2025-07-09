@@ -592,6 +592,24 @@ if (process.env.NODE_ENV === "production") {
     // CRITICAL: Make sure API routes are defined BEFORE the catch-all route
     // This is already done above with app.use('/api/...')
 
+    // Enhanced proxy trust for Nginx reverse proxy setup
+    app.set('trust proxy', true);
+    app.use((req, res, next) => {
+      // Log X-Forwarded headers from Nginx for debugging
+      if (process.env.NODE_ENV === 'production') {
+        console.log('[PROXY] X-Forwarded-For:', req.headers['x-forwarded-for']);
+        console.log('[PROXY] X-Forwarded-Proto:', req.headers['x-forwarded-proto']);
+        console.log('[PROXY] X-Real-IP:', req.headers['x-real-ip']);
+        
+        // Force HTTPS if behind proxy and not already HTTPS
+        if (req.headers['x-forwarded-proto'] === 'http') {
+          console.log('[PROXY] Redirecting to HTTPS');
+          return res.redirect(`https://${req.headers.host}${req.url}`);
+        }
+      }
+      next();
+    });
+
     // Define known protected route patterns that need special handling
     const protectedRoutePatterns = [
       "/app/*",

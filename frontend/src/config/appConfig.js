@@ -5,17 +5,25 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.199',
+  version: '1.6.0.200',
   author: 'GradeBook Team'
 };
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-// CRITICAL: Ensure HTTPS for production backend
-if (API_URL === 'http://130.61.188.153:5000' && process.env.NODE_ENV === 'production') {
-  API_URL = 'https://130.61.188.153:5000';
-  console.log('[appConfig] SECURITY: Enforcing HTTPS for backend in production');
+// CRITICAL: Ensure HTTPS for production backend behind Nginx proxy
+if (process.env.NODE_ENV === 'production') {
+  // If we're using the IP address directly, make sure HTTPS is enforced
+  if (API_URL && API_URL.includes('130.61.188.153')) {
+    // Extract any port from the URL if it exists
+    const urlParts = API_URL.split(':');
+    const port = urlParts.length > 2 ? `:${urlParts[urlParts.length - 1]}` : '';
+    
+    // Replace http with https, maintaining any port
+    API_URL = `https://130.61.188.153${port}`;
+    console.log('[appConfig] SECURITY: Enforcing HTTPS for backend in production:', API_URL);
+  }
 }
 
 // Production deployment handling - auto-detect and enforce HTTPS for security
