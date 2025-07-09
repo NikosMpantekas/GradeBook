@@ -5,14 +5,14 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.201',
+  version: '1.6.0.202',
   author: 'GradeBook Team'
 };
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-// Simple production configuration - proxy handles HTTPS/SSL
+// Production configuration - enforce HTTPS to prevent mixed content errors
 if (process.env.NODE_ENV === 'production') {
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
   
@@ -21,13 +21,25 @@ if (process.env.NODE_ENV === 'production') {
     API_URL = window.location.origin;
     console.log('[appConfig] Render.com detected, using same origin:', API_URL);
   }
-  // Case 2: Netlify deployment - use environment variable or default
+  // Case 2: Netlify deployment - enforce HTTPS for backend
   else if (currentHostname.includes('netlify.app') || currentHostname.includes('netlify.com')) {
-    // Use the environment variable as-is (proxy handles HTTPS)
     if (process.env.REACT_APP_API_URL) {
       API_URL = process.env.REACT_APP_API_URL;
+      
+      // CRITICAL: Force HTTPS to prevent mixed content errors
+      if (API_URL.startsWith('http://')) {
+        API_URL = API_URL.replace('http://', 'https://');
+        console.log('[appConfig] SECURITY: Converted HTTP to HTTPS for mixed content prevention:', API_URL);
+      }
+      
       console.log('[appConfig] Netlify detected, using API_URL:', API_URL);
     }
+  }
+  
+  // Fallback: Ensure any HTTP URLs are converted to HTTPS in production
+  if (API_URL.startsWith('http://')) {
+    API_URL = API_URL.replace('http://', 'https://');
+    console.log('[appConfig] FALLBACK: Converted HTTP to HTTPS in production:', API_URL);
   }
 }
 
