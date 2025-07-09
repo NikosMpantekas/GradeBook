@@ -5,68 +5,28 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.200',
+  version: '1.6.0.201',
   author: 'GradeBook Team'
 };
 
 // API URL from environment variables - proper way without hardcoding
 let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-// CRITICAL: Ensure HTTPS for production backend behind Nginx proxy
-if (process.env.NODE_ENV === 'production') {
-  // If we're using the IP address directly, make sure HTTPS is enforced
-  if (API_URL && API_URL.includes('130.61.188.153')) {
-    // Extract any port from the URL if it exists
-    const urlParts = API_URL.split(':');
-    const port = urlParts.length > 2 ? `:${urlParts[urlParts.length - 1]}` : '';
-    
-    // Replace http with https, maintaining any port
-    API_URL = `https://130.61.188.153${port}`;
-    console.log('[appConfig] SECURITY: Enforcing HTTPS for backend in production:', API_URL);
-  }
-}
-
-// Production deployment handling - auto-detect and enforce HTTPS for security
+// Simple production configuration - proxy handles HTTPS/SSL
 if (process.env.NODE_ENV === 'production') {
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
   
-  // Case 1: If we're on render.com, use the same origin for API
+  // Case 1: Render.com deployment - use same origin
   if (currentHostname.includes('render.com')) {
     API_URL = window.location.origin;
-    console.log('[appConfig] Production environment detected on render.com, setting API_URL to:', API_URL);
+    console.log('[appConfig] Render.com detected, using same origin:', API_URL);
   }
-  // Case 2: If we're on Netlify, ensure we use HTTPS for backend connections
-  else if (currentHostname.includes('netlify.app') || currentHostname.endsWith('.netlify.com')) {
-    // If REACT_APP_API_URL is set and doesn't start with https, force https
-    // BUT ONLY for domain names, not IP addresses (which may use self-signed certs)
+  // Case 2: Netlify deployment - use environment variable or default
+  else if (currentHostname.includes('netlify.app') || currentHostname.includes('netlify.com')) {
+    // Use the environment variable as-is (proxy handles HTTPS)
     if (process.env.REACT_APP_API_URL) {
-      const apiUrl = process.env.REACT_APP_API_URL;
-      
-      // Check if the API URL contains an IP address pattern
-      const isIpAddress = /\d+\.\d+\.\d+\.\d+/.test(apiUrl);
-      
-      // Don't force HTTPS for IP addresses - they likely use self-signed certs
-      if (apiUrl.startsWith('http://') && !isIpAddress) {
-        API_URL = apiUrl.replace('http://', 'https://');
-        console.log('[appConfig] Forcing HTTPS for domain API URL in production on Netlify:', API_URL);
-      } else if (isIpAddress) {
-        console.log('[appConfig] Detected IP address in API URL, not forcing HTTPS:', API_URL);
-        console.log('[appConfig] Using HTTP for IP-based backend to avoid self-signed certificate issues');
-      }
-    }
-  }
-  // Case 3: Force HTTPS only for domain name backends, not IP addresses
-  else if (API_URL.startsWith('http://')) {
-    // Check if the API URL contains an IP address pattern
-    const isIpAddress = /\d+\.\d+\.\d+\.\d+/.test(API_URL);
-    
-    // Only enforce HTTPS for domain names, not IP addresses
-    if (!isIpAddress) {
-      API_URL = API_URL.replace('http://', 'https://');
-      console.log('[appConfig] SECURITY: Enforcing HTTPS for domain API connections in production:', API_URL);
-    } else {
-      console.log('[appConfig] Using HTTP for IP-based backend:', API_URL);
-      console.log('[appConfig] IP-based backends often use self-signed certificates which cause browser issues');
+      API_URL = process.env.REACT_APP_API_URL;
+      console.log('[appConfig] Netlify detected, using API_URL:', API_URL);
     }
   }
 }
