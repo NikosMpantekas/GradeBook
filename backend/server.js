@@ -5,6 +5,9 @@ const express = require("express");
 const dotenv = require("dotenv");
 const colors = require("colors");
 const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
 const { errorHandler } = require("./middleware/errorMiddleware");
 const { setSchoolContext } = require("./middleware/schoolIdMiddleware");
 const { connectDB } = require("./config/db");
@@ -502,7 +505,11 @@ app.use('/api', (req, res, next) => {
   if (process.env.NODE_ENV === 'production') {
     // Check for required custom header or referer from our frontend
     const referer = req.headers.referer || '';
-    const isValidReferer = referer.includes('grademanager.netlify.app');
+    const isValidReferer = referer.includes('grademanager.netlify.app') || 
+                          referer.includes('gradebook.pro');
+    
+    // Log referer info for debugging
+    console.log(`[API Security] Request referer: ${referer}`);
     
     // Block requests without proper origin/referer in production
     if (!isValidReferer && !req.headers.origin) {
@@ -724,29 +731,21 @@ try {
   // If certificates don't exist, provide instructions
   if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
     console.log('\n======================================================'.yellow);
-    console.log('HTTPS certificates not found!'.red.bold);
-    console.log('======================================================'.yellow);
-    console.log('\nOn your Ubuntu server, run these commands:'.cyan);
-    console.log('\n1. SSH into your server:'.cyan);
-    console.log('   ssh username@130.61.188.153'.green);
-    console.log('\n2. Navigate to your backend directory'.cyan);
-    console.log('\n3. Create SSL directory:'.cyan);
-    console.log('   mkdir -p ssl'.green);
-    console.log('\n4. Generate self-signed certificates:'.cyan);
-    console.log('   cd ssl'.green);
-    console.log('   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout private.key -out certificate.crt'.green);
-    console.log('\n5. Set proper permissions:'.cyan);
-    console.log('   chmod 600 private.key certificate.crt'.green);
-    console.log('\n6. Restart your server with PM2:'.cyan);
-    console.log('   pm2 restart all'.green);
-    console.log('\nVerify HTTPS is working:'.cyan);
-    console.log('   curl -k https://130.61.188.153:5000\n'.green);
+  
     
-    // Fallback to HTTP for development
-    app.listen(PORT, () => {
-      console.log(`Server running in ${process.env.NODE_ENV} mode on HTTP port ${PORT}`.yellow.bold);
-      console.log('WARNING: Running in HTTP mode (not secure)!'.red.bold);
-    });
+    // Listen on localhost only when running in production with Cloudflare Tunnel
+    if (process.env.NODE_ENV === 'production' && process.env.USE_CLOUDFLARE_TUNNEL === 'true') {
+      app.listen(PORT, '127.0.0.1', () => {
+        console.log(`Server running in ${process.env.NODE_ENV} mode on localhost:${PORT} (Cloudflare Tunnel)`.green.bold);
+        console.log('🔒 Using Cloudflare Tunnel for HTTPS termination at backend.gradebook.pro'.cyan);
+      });
+    } else {
+      // Fallback to HTTP for development
+      app.listen(PORT, () => {
+        console.log(`Server running in ${process.env.NODE_ENV} mode on HTTP port ${PORT}`.yellow.bold);
+        console.log('WARNING: Running in HTTP mode (not secure)!'.red.bold);
+      });
+    }
   } else {
     // Load SSL certificates and create HTTPS server with enhanced compatibility
     const sslOptions = {
@@ -772,7 +771,6 @@ try {
       console.log(`Frontend URL: ${process.env.FRONTEND_URL}`.cyan);
       console.log('SSL/HTTPS enabled successfully!'.green);
       console.log('[HTTPS] Test from Windows with:'.cyan);
-      console.log(`   curl --tlsv1.2 -v https://130.61.188.153:${PORT}`.green);
     });
     
     // Add connection error handler

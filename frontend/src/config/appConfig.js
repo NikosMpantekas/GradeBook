@@ -5,7 +5,7 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.202',
+  version: '1.6.0.203',
   author: 'GradeBook Team'
 };
 
@@ -26,10 +26,20 @@ if (process.env.NODE_ENV === 'production') {
     if (process.env.REACT_APP_API_URL) {
       API_URL = process.env.REACT_APP_API_URL;
       
-      // CRITICAL: Force HTTPS to prevent mixed content errors
-      if (API_URL.startsWith('http://')) {
+      // Check if this is an IP-based backend with potential SSL issues
+      const isIPAddress = /^https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.test(API_URL);
+      
+      if (isIPAddress && API_URL.startsWith('https://')) {
+        console.log('[appConfig] WARNING: IP-based HTTPS backend detected - browser may show "not secure"');
+        console.log('[appConfig] This is normal for self-signed certificates. App will work after accepting risk.');
+        
+        // Option: Uncomment next 3 lines to force HTTP for IP backends (less secure but no warnings)
+        // API_URL = API_URL.replace('https://', 'http://');
+        // console.log('[appConfig] FALLBACK: Converted HTTPS to HTTP for IP backend:', API_URL);
+      } else if (API_URL.startsWith('http://') && !isIPAddress) {
+        // Force HTTPS for domain names only
         API_URL = API_URL.replace('http://', 'https://');
-        console.log('[appConfig] SECURITY: Converted HTTP to HTTPS for mixed content prevention:', API_URL);
+        console.log('[appConfig] SECURITY: Converted HTTP to HTTPS for domain backend:', API_URL);
       }
       
       console.log('[appConfig] Netlify detected, using API_URL:', API_URL);
@@ -46,6 +56,11 @@ if (process.env.NODE_ENV === 'production') {
 // Debug logging
 console.log('[appConfig] Environment:', process.env.NODE_ENV);
 console.log('[appConfig] Using API_URL:', API_URL);
+
+// Special handling for Cloudflare Tunnels
+if (API_URL.includes('.trycloudflare.com') || API_URL.includes('tunnel.')) {
+  console.log('[appConfig] 🔥 Cloudflare Tunnel detected - using trusted SSL:', API_URL);
+}
 
 // Add warnings for insecure or problematic configurations
 if (process.env.NODE_ENV === 'production') {
