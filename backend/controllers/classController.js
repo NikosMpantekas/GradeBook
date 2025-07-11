@@ -486,6 +486,31 @@ const getMyTeachingClasses = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get classes for current student
+// @route   GET /api/classes/my-classes
+// @access  Private (Student)
+const getMyClasses = asyncHandler(async (req, res) => {
+  console.log('[CLASS CONTROLLER] Getting classes for student:', req.user._id);
+  
+  try {
+    // Find all classes where the current user is a student
+    const classes = await Class.find({
+      students: req.user._id,
+      schoolId: req.user.schoolId
+    })
+    .populate('teachers', 'name email')
+    .lean();
+    
+    console.log(`[CLASS CONTROLLER] Found ${classes.length} classes for student ${req.user.name}`);
+    
+    res.json(classes);
+  } catch (error) {
+    console.error('[CLASS CONTROLLER] Error getting student classes:', error);
+    res.status(500);
+    throw new Error(`Failed to retrieve classes: ${error.message}`);
+  }
+});
+
 module.exports = {
   createClass,
   getClasses,
@@ -497,5 +522,6 @@ module.exports = {
   removeStudentsFromClass,
   addTeachersToClass,
   removeTeachersFromClass,
-  getMyTeachingClasses
+  getMyTeachingClasses,
+  getMyClasses
 };

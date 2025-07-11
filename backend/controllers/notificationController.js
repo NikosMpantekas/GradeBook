@@ -204,13 +204,34 @@ const createNotification = asyncHandler(async (req, res) => {
 // @access  Private/Admin Teacher
 const getAllNotifications = asyncHandler(async (req, res) => {
   try {
-    console.log('getAllNotifications endpoint called');
+    console.log('[NOTIFICATION] getAllNotifications endpoint called for user', req.user._id, `(${req.user.role})`);
+    
+    // Get limit from query params, default to 10
+    const limit = req.query.limit ? parseInt(req.query.limit) : 10;
     
     // In single database architecture, filter by schoolId
     const query = { schoolId: req.user.schoolId };
     
-    // Apply role-based restrictions
-    if (req.user.role === 'teacher') {
+    // Apply role-based restrictions - allow students to see relevant notifications
+    if (req.user.role === 'student') {
+      // Students can only see notifications targeted to them
+      query.$or = [
+        { recipients: req.user._id }, // Directly to them
+        { targetRole: 'student' }, // To all students
+        { targetRole: 'all' } // To everyone
+      ];
+      
+      // If student has classes, add those
+      if (req.user.classes && req.user.classes.length > 0) {
+        query.$or.push({ classes: { $in: req.user.classes } });
+      }
+      
+      // If student has a school branch, add that
+      if (req.user.schoolBranch) {
+        query.$or.push({ schoolBranches: req.user.schoolBranch });
+      }
+    }
+    else if (req.user.role === 'teacher') {
       // Teachers can only see notifications they sent or that are targeted to them
       query.$or = [
         { sender: req.user._id }, // Notifications they sent
@@ -238,6 +259,7 @@ const getAllNotifications = asyncHandler(async (req, res) => {
     console.log('Notification query:', JSON.stringify(query));
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
+      .limit(limit)
       .populate('sender', 'name')
       .populate('recipients', 'name')
       .populate('schoolId', 'name')
