@@ -5,7 +5,7 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.203',
+  version: '1.6.0.204',
   author: 'GradeBook Team'
 };
 
@@ -75,6 +75,23 @@ if (process.env.NODE_ENV === 'production') {
     console.warn('[appConfig] SECURITY WARNING: Using insecure HTTP in production!');
     console.warn('[appConfig] Consider using HTTPS for your API endpoint');
   }
+}
+
+// Utility function to safely concatenate API URL with path
+// Prevents double slash issue (//api) by normalizing both base URL and path
+// @param {string} path - API endpoint path (with or without leading slash)
+// @returns {string} - Properly concatenated URL
+export function getApiUrl(path) {
+  if (!path) return API_URL;
+  
+  // Remove trailing slash from API_URL if it exists
+  const baseUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+  
+  // Ensure path starts with a slash
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  
+  // Return properly concatenated URL
+  return `${baseUrl}${normalizedPath}`;
 }
 
 // Helper function to construct API endpoint URLs properly, avoiding double slashes
@@ -161,6 +178,7 @@ const shouldShowUpdateNotification = () => false;
 export {
   API_URL,
   buildApiUrl,
+  getApiUrl,
   initAppConfig,
   checkAppVersion,
   shouldShowUpdateNotification

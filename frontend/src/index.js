@@ -5,6 +5,9 @@ import { store } from './app/store';
 import App from './App';
 import './index.css';
 
+// Import axios configuration to fix double slash API URLs globally
+import './config/axiosConfig';
+
 // DISABLE ALL SERVICE WORKERS
 // This will prevent CRA from generating service workers during build
 
