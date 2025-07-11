@@ -13,28 +13,28 @@ const {
   updateUser,
   getTeachers
 } = require('../controllers/userController');
-const { protect, admin, adminCanManageUsers } = require('../middleware/authMiddleware');
+const { protect, admin, canManageUsers } = require('../middleware/authMiddleware');
 
 // Public routes
 router.post('/', registerUser);
 router.post('/login', loginUser);
 router.post('/refresh-token', refreshToken); 
 
-// Protected routes
+// Protected routes - accessible to authenticated users
 router.get('/me', protect, getMe);
 router.get('/profile', protect, getMe); // GET profile uses same logic as /me
 router.put('/profile', protect, updateProfile);
 
-// Admin routes - simplified for single-database architecture
-router.get('/', protect, adminCanManageUsers, getUsers); // Only admins with user management permission can see all users
-router.post('/admin/create', protect, adminCanManageUsers, createUserByAdmin); // Admin route to create users
-router.get('/:id', protect, adminCanManageUsers, getUserById); // Get specific user by ID
-router.put('/:id', protect, adminCanManageUsers, updateUser); // Update user by ID
+// Admin routes for user management
+router.get('/', protect, admin, getUsers);
+router.post('/admin/create', protect, admin, createUserByAdmin);
+router.get('/:id', protect, getUserById);
+router.put('/:id', protect, canManageUsers, updateUser);
 
-// Routes to get users filtered by role - accessible by admin, teachers and secretaries
-router.get('/role/:role', protect, getUsersByRole); // Get users by role (student, teacher, etc.)
+// Routes to get users filtered by role - accessible to authenticated users
+router.get('/role/:role', protect, getUsersByRole);
 
-// Admin-only route to get teachers for filters
-router.get('/teachers', protect, admin, getTeachers); // Get all teachers for admin filters
+// Route to get all teachers - accessible to authenticated users  
+router.get('/teachers', protect, getTeachers);
 
 module.exports = router;

@@ -19,39 +19,19 @@ const {
 } = require('../controllers/vapidController');
 const { protect, admin, teacher, canSendNotifications } = require('../middleware/authMiddleware');
 
-// REMOVED: Feature permission middleware - no longer restricting notification access based on school features
-// const { requireFeature } = require('../middleware/featurePermissionMiddleware');
-
-// Protected routes - removed all requireFeature middleware to eliminate school permission restrictions
-// CRITICAL FIX: Add /vapid endpoint BEFORE the /:id route to prevent conflicts
+// Protected routes - all authenticated users can access their own notifications
+// VAPID endpoint before /:id route to prevent conflicts
 router.get('/vapid', protect, getVapidPublicKey);
 router.get('/me', protect, getMyNotifications);
-router.get('/sent', protect, getSentNotifications);
+router.get('/sent', protect, canSendNotifications, getSentNotifications);
 router.get('/:id', protect, getNotificationById);
 router.put('/:id/read', protect, markNotificationRead);
 
-// Teacher & Admin routes (with secretary support where appropriate)
-// REMOVED: requireFeature('enableNotifications') - notifications now always available
-router.post('/', protect, (req, res, next) => {
-  // Allow teachers, admins, and secretaries with notification permission
-  if (req.user.role === 'teacher' || req.user.role === 'admin' || 
-      (req.user.role === 'secretary' && req.user.secretaryPermissions?.canSendNotifications === true)) {
-    return next();
-  }
-  res.status(403);
-  throw new Error('Not authorized for this action');
-}, createNotification);
+// Create notification - teachers and admins only
+router.post('/', protect, canSendNotifications, createNotification);
 
-// Update notification route
-router.put('/:id', protect, (req, res, next) => {
-  // Only the sender can update their own notification
-  if (req.user.role === 'teacher' || req.user.role === 'admin' || 
-      (req.user.role === 'secretary' && req.user.secretaryPermissions?.canSendNotifications === true)) {
-    return next();
-  }
-  res.status(403);
-  throw new Error('Not authorized to update notifications');
-}, async (req, res) => {
+// Update notification route - teachers and admins only
+router.put('/:id', protect, canSendNotifications, async (req, res) => {
   try {
     const notificationId = req.params.id;
     const { title, message, isImportant } = req.body;
@@ -62,13 +42,6 @@ router.put('/:id', protect, (req, res, next) => {
     if (!notification) {
       res.status(404);
       throw new Error('Notification not found');
-    }
-    
-    // Check ownership - only sender or admin can update
-    if (notification.sender.toString() !== req.user._id.toString() && 
-        req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-      res.status(403);
-      throw new Error('Not authorized to update this notification');
     }
     
     // Update the notification
@@ -86,13 +59,13 @@ router.put('/:id', protect, (req, res, next) => {
   }
 });
 
-// Delete notification route
-router.delete('/:id', protect, deleteNotification);
+// Delete notification route - teachers and admins only
+router.delete('/:id', protect, canSendNotifications, deleteNotification);
 
-// Push notification subscription endpoints
+// Push notification subscription endpoints - all authenticated users
 router.post('/subscription', protect, createPushSubscription);
 
-// Add proper DELETE route for unsubscribing
+// Add proper DELETE route for unsubscribing - all authenticated users
 router.delete('/subscription', protect, async (req, res) => {
   try {
     console.log(`Deleting push subscription for user ${req.user._id}`);
@@ -114,7 +87,7 @@ router.delete('/subscription', protect, async (req, res) => {
   }
 });
 
-// Admin routes (with secretary support where appropriate)
+// Get all notifications - teachers and admins only
 router.get('/', protect, canSendNotifications, getAllNotifications);
 
 module.exports = router;

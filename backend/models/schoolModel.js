@@ -78,29 +78,8 @@ const schoolSchema = mongoose.Schema(
       default: false,
     },
     
-    // School-wide feature permissions (controlled by school owner/super admin)
-    featurePermissions: {
-      enableNotifications: {
-        type: Boolean,
-        default: true,
-      },
-      enableGrades: {
-        type: Boolean,
-        default: true,
-      },
-      enableRatingSystem: {
-        type: Boolean,
-        default: true,
-      },
-      enableCalendar: {
-        type: Boolean,
-        default: true,
-      },
-      enableStudentProgress: {
-        type: Boolean,
-        default: true,
-      },
-    },
+    // REMOVED: featurePermissions field (legacy school function permission toggle system)
+    // Features are now controlled by a new superadmin-only toggle system that will be implemented separately.
     
     // Description of this branch's role in the cluster
     branchDescription: {

@@ -53,13 +53,13 @@ const app = express();
 // Enhanced CORS configuration for production deployment
 const allowedOrigins = [
   process.env.FRONTEND_URL, // Environment variable if set
-  "https://grademanager.netlify.app", // Primary frontend URL (NO trailing slash)
-  "http://localhost:3000", // Local development
-  "https://localhost:3000" // Local HTTPS development
+  "https://gradebook.pro", // Primary frontend URL (NO trailing slash)
+  "http://localhost:5000", // Local development
+  "https://localhost:5000" // Local HTTPS development
 ];
 
 // Set environment variable for use in other parts of the app
-process.env.FRONTEND_URL = "https://grademanager.netlify.app";
+process.env.FRONTEND_URL = "https://gradebook.pro";
 
 // Log confirmation of frontend URL
 console.log('[SERVER] Frontend URL set to:', process.env.FRONTEND_URL);
@@ -103,10 +103,7 @@ const corsOptions = {
       if (allowedOrigin === origin) return true;
       
       // Netlify subdomain pattern match
-      if (allowedOrigin === 'https://grademanager.netlify.app' && 
-          (origin.includes('netlify.app') || origin.endsWith('.netlify.com'))) {
-        return true;
-      }
+
       
       return false;
     });
@@ -723,97 +720,70 @@ if (!fs.existsSync(sslDir)) {
 }
 
 // Implement HTTPS server
+// Implement server startup with Cloudflare Tunnel priority
 try {
-  // Check for existing SSL certificates
-  const keyPath = path.join(__dirname, 'ssl', 'private.key');
-  const certPath = path.join(__dirname, 'ssl', 'certificate.crt');
-  
-  // If certificates don't exist, provide instructions
-  if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-    console.log('\n======================================================'.yellow);
-  
+  // Check for Cloudflare Tunnel mode FIRST (highest priority)
+  if (process.env.NODE_ENV === 'production' && process.env.USE_CLOUDFLARE_TUNNEL === 'true') {
+    app.listen(PORT, '127.0.0.1', () => {
+      console.log(`Server running in ${process.env.NODE_ENV} mode on localhost:${PORT} (Cloudflare Tunnel)`.green.bold);
+      console.log('🔒 Using Cloudflare Tunnel for HTTPS termination at backend.gradebook.pro'.cyan);
+      console.log(`Frontend URL: ${process.env.FRONTEND_URL}`.cyan);
+    });
+  } else {
+    // Check for existing SSL certificates for HTTPS mode
+    const keyPath = path.join(__dirname, 'ssl', 'private.key');
+    const certPath = path.join(__dirname, 'ssl', 'certificate.crt');
     
-    // Listen on localhost only when running in production with Cloudflare Tunnel
-    if (process.env.NODE_ENV === 'production' && process.env.USE_CLOUDFLARE_TUNNEL === 'true') {
-      app.listen(PORT, '127.0.0.1', () => {
-        console.log(`Server running in ${process.env.NODE_ENV} mode on localhost:${PORT} (Cloudflare Tunnel)`.green.bold);
-        console.log('🔒 Using Cloudflare Tunnel for HTTPS termination at backend.gradebook.pro'.cyan);
+    if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+      // Load SSL certificates and create HTTPS server
+      const sslOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+        minVersion: 'TLSv1.2',
+        ciphers: 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA',
+        secureOptions: require('constants').SSL_OP_NO_SSLv2 | require('constants').SSL_OP_NO_SSLv3,
+        honorCipherOrder: true
+      };
+      
+      const httpsServer = https.createServer(sslOptions, app);
+      
+      httpsServer.listen(PORT, () => {
+        console.log(`HTTPS Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.green.bold);
+        console.log(`Frontend URL: ${process.env.FRONTEND_URL}`.cyan);
+        console.log('SSL/HTTPS enabled successfully!'.green);
+      });
+      
+      // Add error handlers
+      httpsServer.on('error', (error) => {
+        console.error('[HTTPS] Server Error:', error);
+      });
+      
+      httpsServer.on('tlsClientError', (err, tlsSocket) => {
+        console.error(`[TLS ERROR] Client IP: ${tlsSocket.remoteAddress}, Error: ${err.message}`);
+      });
+      
+      httpsServer.on('clientError', (err, socket) => {
+        console.error(`[CLIENT ERROR] ${err.message} from ${socket.remoteAddress}`);
+      });
+      
+      httpsServer.on('secureConnection', (tlsSocket) => {
+        console.log('[HTTPS] New secure connection:'.cyan);
+        console.log(`   Protocol: ${tlsSocket.getProtocol()}`.green);
+        console.log(`   Cipher: ${tlsSocket.getCipher().name}`.green);
+        console.log(`   Client: ${tlsSocket.remoteAddress}`.green);
       });
     } else {
-      // Fallback to HTTP for development
+      // Fallback to HTTP if no SSL certificates
       app.listen(PORT, () => {
         console.log(`Server running in ${process.env.NODE_ENV} mode on HTTP port ${PORT}`.yellow.bold);
         console.log('WARNING: Running in HTTP mode (not secure)!'.red.bold);
       });
     }
-  } else {
-    // Load SSL certificates and create HTTPS server with enhanced compatibility
-    const sslOptions = {
-      key: fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath),
-      // Force more compatible TLS options for Windows clients
-      minVersion: 'TLSv1.2',
-      ciphers: 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA',
-      // TLSv1.3 is more secure, but causes issues with older clients
-      // maxVersion: 'TLSv1.3',
-      // Disable insecure SSLv2 and SSLv3 
-      secureOptions: require('constants').SSL_OP_NO_SSLv2 | require('constants').SSL_OP_NO_SSLv3,
-      // Honor cipher order to ensure server's preferred (more secure) ciphers are used
-      honorCipherOrder: true
-    };
-    
-    // Create HTTPS server
-    const httpsServer = https.createServer(sslOptions, app);
-    
-    // Start HTTPS server on the specified port
-    httpsServer.listen(PORT, () => {
-      console.log(`HTTPS Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.green.bold);
-      console.log(`Frontend URL: ${process.env.FRONTEND_URL}`.cyan);
-      console.log('SSL/HTTPS enabled successfully!'.green);
-      console.log('[HTTPS] Test from Windows with:'.cyan);
-    });
-    
-    // Add connection error handler
-    httpsServer.on('error', (error) => {
-      console.error('[HTTPS] Server Error:', error);
-    });
-    
-    // Add detailed TLS error handling for troubleshooting
-    httpsServer.on('tlsClientError', (err, tlsSocket) => {
-      console.error(`[TLS ERROR] Client IP: ${tlsSocket.remoteAddress}, Error: ${err.message}`);
-      console.error(`[TLS ERROR] Error code: ${err.code}, library: ${err.library}, function: ${err.function}, reason: ${err.reason}`);
-      
-      // Provide specific guidance for common Windows errors
-      if (err.code === 'ECONNRESET') {
-        console.error('[TLS ERROR] Client connection reset - possible Windows TLS version mismatch');
-        console.error('[TLS ERROR] Try using curl -k --tlsv1.2 https://server:5000/ from client to test');
-      } else if (err.message && err.message.includes('no shared cipher')) {
-        console.error('[TLS ERROR] No shared cipher - client and server cannot agree on cipher suite');
-        console.error('[TLS ERROR] Windows clients may need compatible cipher suites added');
-      } else if (err.message && err.message.includes('invalid token')) {
-        console.error('[TLS ERROR] Invalid token error - often seen with SEC_E_INVALID_TOKEN on Windows');
-        console.error('[TLS ERROR] This typically indicates TLS protocol or cipher incompatibility');
-      }
-    });
-    
-    // Capture certificate errors for Windows clients that often have cert validation issues
-    httpsServer.on('clientError', (err, socket) => {
-      console.error(`[CLIENT ERROR] ${err.message} from ${socket.remoteAddress}`);
-    });
-    
-    // Log successful SSL connections with enhanced details for debugging
-    httpsServer.on('secureConnection', (tlsSocket) => {
-      console.log('[HTTPS] New secure connection:'.cyan);
-      console.log(`   Protocol: ${tlsSocket.getProtocol()}`.green);
-      console.log(`   Cipher: ${tlsSocket.getCipher().name}`.green);
-      console.log(`   Client: ${tlsSocket.remoteAddress}`.green);
-    });
   }
 } catch (error) {
-  console.error('HTTPS server failed to start:'.red, error.message);
-  console.log('Falling back to HTTP server (NOT SECURE)'.yellow);
+  console.error('Server failed to start:'.red, error.message);
+  console.log('Falling back to HTTP server'.yellow);
   
-  // Fallback to HTTP if SSL fails
   app.listen(PORT, () => {
     console.log(`Server running in ${process.env.NODE_ENV} mode on HTTP port ${PORT}`.yellow.bold);
     console.log('WARNING: Running in HTTP mode (not secure)!'.red.bold);

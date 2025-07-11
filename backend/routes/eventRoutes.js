@@ -7,31 +7,21 @@ const {
   updateEvent,
   deleteEvent
 } = require('../controllers/eventController');
-const { protect, admin, teacher, canSendNotifications } = require('../middleware/authMiddleware');
+const { protect, admin } = require('../middleware/authMiddleware');
 
-// Get all events (filtered by user role/permissions)
+// Get all events (available to all authenticated users)
 router.get('/', protect, getEvents);
 
-// Get a specific event by ID
+// Get a specific event by ID (available to all authenticated users)
 router.get('/:id', protect, getEventById);
 
-// Create a new event (only superadmin, admin, secretary, or teacher)
-router.post('/', protect, (req, res, next) => {
-  // Allow superadmins, admins, secretaries, and teachers to create events
-  if (req.user.role === 'superadmin' || 
-      req.user.role === 'admin' || 
-      req.user.role === 'teacher' || 
-      (req.user.role === 'secretary' && req.user.secretaryPermissions?.canSendNotifications === true)) {
-    return next();
-  }
-  res.status(403);
-  throw new Error('Not authorized to create events');
-}, createEvent);
+// Create a new event (admin only)
+router.post('/', protect, admin, createEvent);
 
-// Update an existing event (creator, admin, or superadmin)
-router.put('/:id', protect, updateEvent);
+// Update an existing event (admin only)
+router.put('/:id', protect, admin, updateEvent);
 
-// Delete an event (creator, admin, or superadmin)
-router.delete('/:id', protect, deleteEvent);
+// Delete an event (admin only)
+router.delete('/:id', protect, admin, deleteEvent);
 
 module.exports = router;

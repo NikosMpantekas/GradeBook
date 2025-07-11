@@ -13,9 +13,9 @@ const {
   removeTeachersFromClass,
   getMyTeachingClasses
 } = require('../controllers/classController');
-const { protect, admin, teacher } = require('../middleware/authMiddleware');
+const { protect, admin } = require('../middleware/authMiddleware');
 
-// Routes for classes
+// Routes for classes - viewing is accessible to all, management restricted to admin
 router.route('/')
   .post(protect, admin, createClass)
   .get(protect, getClasses);
@@ -25,19 +25,19 @@ router.route('/categories')
 
 // Route for getting classes taught by authenticated teacher
 router.route('/my-teaching-classes')
-  .get(protect, teacher, getMyTeachingClasses);
+  .get(protect, getMyTeachingClasses);
 
 router.route('/:id')
   .get(protect, getClassById)
   .put(protect, admin, updateClass)
   .delete(protect, admin, deleteClass);
 
-// Routes for managing students in classes
+// Routes for managing students in classes - admin only
 router.route('/:id/students')
   .put(protect, admin, addStudentsToClass)
   .delete(protect, admin, removeStudentsFromClass);
 
-// Routes for managing teachers in classes
+// Routes for managing teachers in classes - admin only
 router.route('/:id/teachers')
   .put(protect, admin, addTeachersToClass)
   .delete(protect, admin, removeTeachersFromClass);

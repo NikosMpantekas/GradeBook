@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const asyncHandler = require('express-async-handler');
-const { protect, admin, student } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 
 // Import models directly for database operations
 // Note: RatingQuestion is now embedded within RatingPeriod
@@ -11,7 +11,7 @@ const Subject = require('../models/subjectModel');
 
 // RATING PERIOD ROUTES WITH EMBEDDED QUESTIONS
 // Create a rating period with embedded questions
-router.post('/periods', protect, admin, asyncHandler(async (req, res) => {
+router.post('/periods', protect, asyncHandler(async (req, res) => {
   try {
     const { title, description, startDate, endDate, targetType, directions, questions } = req.body;
 
@@ -83,7 +83,7 @@ router.post('/periods', protect, admin, asyncHandler(async (req, res) => {
 }));
 
 // Get all rating periods
-router.get('/periods', protect, admin, asyncHandler(async (req, res) => {
+router.get('/periods', protect, asyncHandler(async (req, res) => {
   try {
     // CRITICAL SECURITY FIX: Enforce school domain isolation
     // Always require school context for non-superadmin users
@@ -173,7 +173,7 @@ router.get('/periods/:id', protect, asyncHandler(async (req, res) => {
 }));
 
 // Update a rating period including its questions
-router.put('/periods/:id', protect, admin, asyncHandler(async (req, res) => {
+router.put('/periods/:id', protect, asyncHandler(async (req, res) => {
   try {
     // Destructure but don't use schools directly - we'll handle that specially for security
     const { title, description, startDate, endDate, isActive, targetType, directions, questions } = req.body;
@@ -264,7 +264,7 @@ router.put('/periods/:id', protect, admin, asyncHandler(async (req, res) => {
 }));
 
 // Add a question to an existing rating period
-router.post('/periods/:id/questions', protect, admin, asyncHandler(async (req, res) => {
+router.post('/periods/:id/questions', protect, asyncHandler(async (req, res) => {
   try {
     const { text, questionType, targetType, order } = req.body;
     
@@ -303,7 +303,7 @@ router.post('/periods/:id/questions', protect, admin, asyncHandler(async (req, r
 }));
 
 // Update a specific question within a rating period
-router.put('/periods/:periodId/questions/:questionId', protect, admin, asyncHandler(async (req, res) => {
+router.put('/periods/:periodId/questions/:questionId', protect, asyncHandler(async (req, res) => {
   try {
     const { text, questionType, targetType, order } = req.body;
     
@@ -341,7 +341,7 @@ router.put('/periods/:periodId/questions/:questionId', protect, admin, asyncHand
 }));
 
 // Remove a question from a rating period
-router.delete('/periods/:periodId/questions/:questionId', protect, admin, asyncHandler(async (req, res) => {
+router.delete('/periods/:periodId/questions/:questionId', protect, asyncHandler(async (req, res) => {
   try {
     const ratingPeriod = await RatingPeriod.findById(req.params.periodId);
     
@@ -366,7 +366,7 @@ router.delete('/periods/:periodId/questions/:questionId', protect, admin, asyncH
 }));
 
 // Delete a rating period and all its embedded questions
-router.delete('/periods/:id', protect, admin, asyncHandler(async (req, res) => {
+router.delete('/periods/:id', protect, asyncHandler(async (req, res) => {
   try {
     // CRITICAL SECURITY FIX: Enforce school domain isolation
     // Always require school context for non-superadmin users
@@ -413,7 +413,7 @@ router.delete('/periods/:id', protect, admin, asyncHandler(async (req, res) => {
 }));
 
 // Get active rating periods for students
-router.get('/active', protect, student, asyncHandler(async (req, res) => {
+router.get('/active', protect, asyncHandler(async (req, res) => {
   try {
     // CRITICAL SECURITY FIX: Enforce school domain isolation
     // Always require school context for all users
@@ -461,7 +461,7 @@ router.get('/active', protect, student, asyncHandler(async (req, res) => {
 }));
 
 // Get rating targets (teachers/subjects) for a student
-router.get('/targets', protect, student, asyncHandler(async (req, res) => {
+router.get('/targets', protect, asyncHandler(async (req, res) => {
   try {
     const { periodId } = req.query;
     
@@ -696,7 +696,7 @@ router.get('/targets', protect, student, asyncHandler(async (req, res) => {
 }));
 
 // Check if student has already rated a target
-router.get('/check/:periodId/:targetType/:targetId', protect, student, asyncHandler(async (req, res) => {
+router.get('/check/:periodId/:targetType/:targetId', protect, asyncHandler(async (req, res) => {
   try {
     const { periodId, targetType, targetId } = req.params;
     
@@ -718,7 +718,7 @@ router.get('/check/:periodId/:targetType/:targetId', protect, student, asyncHand
 }));
 
 // Submit a rating
-router.post('/submit', protect, student, asyncHandler(async (req, res) => {
+router.post('/submit', protect, asyncHandler(async (req, res) => {
   try {
     // Handle both field naming conventions (frontend sends ratingPeriod, but our validation expected ratingPeriodId)
     const { ratingPeriod, ratingPeriodId, targetType, targetId, answers } = req.body;
@@ -940,7 +940,7 @@ router.post('/submit', protect, student, asyncHandler(async (req, res) => {
 }));
 
 // Get rating statistics for a target
-router.get('/stats/:targetType/:targetId', protect, admin, asyncHandler(async (req, res) => {
+router.get('/stats/:targetType/:targetId', protect, asyncHandler(async (req, res) => {
   try {
     const { targetType, targetId } = req.params;
     const { periodId } = req.query;
@@ -1075,7 +1075,7 @@ router.get('/stats/:targetType/:targetId', protect, admin, asyncHandler(async (r
 }));
 
 // Get rating statistics summary for all targets
-router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
+router.get('/stats', protect, asyncHandler(async (req, res) => {
   try {
     const { periodId, targetType } = req.query;
     
@@ -1380,7 +1380,7 @@ router.get('/stats', protect, admin, asyncHandler(async (req, res) => {
 }));
 
 // Get questions for a rating period (admin access - for management)
-router.get('/questions/:periodId', protect, admin, asyncHandler(async (req, res) => {
+router.get('/questions/:periodId', protect, asyncHandler(async (req, res) => {
   try {
     console.log(`Admin getting questions for period ID: ${req.params.periodId}`);
     const ratingPeriod = await RatingPeriod.findById(req.params.periodId);
@@ -1408,7 +1408,7 @@ router.get('/questions/:periodId', protect, admin, asyncHandler(async (req, res)
 }));
 
 // Get questions for a rating period (student access - for submitting ratings)
-router.get('/period/:periodId/questions', protect, student, asyncHandler(async (req, res) => {
+router.get('/period/:periodId/questions', protect, asyncHandler(async (req, res) => {
   try {
     console.log(`Student getting questions for period ID: ${req.params.periodId}`);
     const ratingPeriod = await RatingPeriod.findById(req.params.periodId);
@@ -1443,7 +1443,7 @@ router.get('/period/:periodId/questions', protect, student, asyncHandler(async (
 }));
 
 // Update a question (endpoint matching frontend API call pattern)
-router.put('/questions/:questionId', protect, admin, asyncHandler(async (req, res) => {
+router.put('/questions/:questionId', protect, asyncHandler(async (req, res) => {
   try {
     const { text, questionType, targetType, order, ratingPeriod: periodId } = req.body;
     
@@ -1487,7 +1487,7 @@ router.put('/questions/:questionId', protect, admin, asyncHandler(async (req, re
 }));
 
 // Delete a question (endpoint matching frontend API call pattern)
-router.delete('/questions/:questionId', protect, admin, asyncHandler(async (req, res) => {
+router.delete('/questions/:questionId', protect, asyncHandler(async (req, res) => {
   try {
     // We need to find which rating period contains this question
     const ratingPeriods = await RatingPeriod.find({
@@ -1517,7 +1517,7 @@ router.delete('/questions/:questionId', protect, admin, asyncHandler(async (req,
 }));
 
 // Create a new rating question (endpoint matching frontend API call pattern)
-router.post('/questions', protect, admin, asyncHandler(async (req, res) => {
+router.post('/questions', protect, asyncHandler(async (req, res) => {
   try {
     console.log('POST /questions request received with body:', req.body);
     const { text, questionType, targetType, order, ratingPeriod: periodId } = req.body;

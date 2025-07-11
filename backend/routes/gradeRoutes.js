@@ -10,10 +10,9 @@ const {
   updateGrade,
   deleteGrade,
 } = require('../controllers/gradeController');
-const { protect, admin, teacher, canManageGrades } = require('../middleware/authMiddleware');
+const { protect, teacher, admin, canManageGrades } = require('../middleware/authMiddleware');
 
-// Protected routes
-// Add route for current student to get their own grades
+// Public routes for viewing grades (students can view their own)
 router.get('/student', protect, (req, res) => {
   // Use the authenticated student's ID
   req.params.id = req.user._id.toString();
@@ -21,22 +20,20 @@ router.get('/student', protect, (req, res) => {
 });
 router.get('/student/:id', protect, getStudentGrades);
 router.get('/subject/:id', protect, getGradesBySubject);
-router.get('/teacher', protect, teacher, (req, res) => {
-  // Get grades for authenticated teacher - add their ID to params
+router.get('/teacher', protect, (req, res) => {
+  // Get grades for authenticated user - add their ID to params
   req.params.id = req.user._id.toString();
   return getGradesByTeacher(req, res);
 });
 router.get('/teacher/:id', protect, getGradesByTeacher);
 router.get('/:id', protect, getGradeById);
 
-// Grade creation route
-router.post('/', protect, teacher, createGrade);
+// Admin/Teacher routes for grade management
+router.post('/', protect, canManageGrades, createGrade);
+router.put('/:id', protect, canManageGrades, updateGrade);
+router.delete('/:id', protect, canManageGrades, deleteGrade);
 
-router.put('/:id', protect, teacher, updateGrade);
-
-router.delete('/:id', protect, teacher, deleteGrade);
-
-// Admin routes (with secretary support where appropriate)
-router.get('/', protect, canManageGrades, getAllGrades);
+// Get all grades - restricted to teachers and admins
+router.get('/', protect, teacher, getAllGrades);
 
 module.exports = router;
