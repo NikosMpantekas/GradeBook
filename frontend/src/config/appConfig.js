@@ -5,7 +5,7 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.204',
+  version: '1.6.0.205',
   author: 'GradeBook Team'
 };
 
@@ -178,7 +178,6 @@ const shouldShowUpdateNotification = () => false;
 export {
   API_URL,
   buildApiUrl,
-  getApiUrl,
   initAppConfig,
   checkAppVersion,
   shouldShowUpdateNotification
