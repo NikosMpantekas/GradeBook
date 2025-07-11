@@ -77,7 +77,7 @@ console.log('[CORS] Allowed origins:', allowedOrigins.filter(origin => origin));
 const corsOptions = {
   origin: function (origin, callback) {
     console.log('[CORS] Request from origin:', origin);
-    
+
     // FOR TESTING ONLY: Allow all origins temporarily to diagnose issues
     // This should be removed after testing
     if (process.env.NODE_ENV === 'production' && process.env.CORS_BYPASS === 'true') {
@@ -96,23 +96,23 @@ const corsOptions = {
         return callback(null, true);
       }
     }
-    
+
     // More flexible origin checking - exact match or pattern matching
     const originMatches = allowedOrigins.some(allowedOrigin => {
       // Exact match
       if (allowedOrigin === origin) return true;
-      
+
       // Netlify subdomain pattern match
 
-      
+
       return false;
     });
-    
+
     if (originMatches) {
       console.log('[CORS] Origin allowed:', origin);
       return callback(null, true);
     }
-    
+
     // Block disallowed origins but log them thoroughly
     console.error('[CORS] Origin blocked:', origin);
     console.error('[CORS] Allowed origins:', allowedOrigins);
@@ -121,9 +121,9 @@ const corsOptions = {
   // Extended methods and headers for better compatibility
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
-    "Content-Type", 
-    "Authorization", 
-    "x-requested-with", 
+    "Content-Type",
+    "Authorization",
+    "x-requested-with",
     "x-client-version",
     "x-client-platform",
     "x-client-origin",
@@ -134,7 +134,7 @@ const corsOptions = {
     "Access-Control-Allow-Headers"
   ],
   exposedHeaders: [
-    "X-Request-ID", 
+    "X-Request-ID",
     "X-Server-ID"
   ],
   credentials: true, // Important for authentication
@@ -152,21 +152,21 @@ app.use((req, res, next) => {
   // Generate unique ID for this request
   const requestId = Math.random().toString(36).substring(2, 15);
   const startTime = Date.now();
-  
+
   // Add custom header to response to identify source server and prevent duplicates
   res.setHeader('X-Request-ID', requestId);
   res.setHeader('X-Server-ID', 'backend-server-v1');
-  
+
   // Debug log for request start
   console.log(`[REQUEST ${requestId}] ${req.method} ${req.path} started at ${new Date().toISOString()}`);
   console.log(`[REQUEST ${requestId}] Headers: ${JSON.stringify(req.headers['user-agent'])}`);
-  
+
   // Add response finished event logging
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     console.log(`[REQUEST ${requestId}] ${req.method} ${req.path} completed with ${res.statusCode} in ${duration}ms`);
   });
-  
+
   next();
 });
 
@@ -276,7 +276,7 @@ app.get("/emergency-diagnostics", (req, res) => {
       <h1>GradeBook Emergency Diagnostics</h1>
       <h2>Server Environment</h2>
       <pre>${JSON.stringify(diagnosticInfo, null, 2)}</pre>
-      
+
       <h2>Manual Authentication Test</h2>
       <form id="authForm" action="/api/users/login" method="post">
         <div>
@@ -291,15 +291,15 @@ app.get("/emergency-diagnostics", (req, res) => {
           <button type="submit">Test Login</button>
         </div>
       </form>
-      
+
       <div id="result" style="margin-top: 20px;"></div>
-      
+
       <script>
         document.getElementById('authForm').addEventListener('submit', async (e) => {
           e.preventDefault();
           const email = document.getElementById('email').value;
           const password = document.getElementById('password').value;
-          
+
           try {
             const response = await fetch('/api/users/login', {
               method: 'POST',
@@ -308,19 +308,19 @@ app.get("/emergency-diagnostics", (req, res) => {
               },
               body: JSON.stringify({ email, password })
             });
-            
+
             const data = await response.json();
-            
+
             const resultDiv = document.getElementById('result');
             if (response.ok) {
-              resultDiv.innerHTML = 
+              resultDiv.innerHTML =
                 '<div class="success">Login Successful!</div>' +
                 '<h3>Auth Data:</h3>' +
                 '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-              
+
               // Store token for testing
               localStorage.setItem('testToken', data.token);
-              
+
               // Test a protected endpoint
               if (data.token) {
                 const meResponse = await fetch('/api/users/me', {
@@ -328,19 +328,19 @@ app.get("/emergency-diagnostics", (req, res) => {
                     'Authorization': 'Bearer ' + data.token
                   }
                 });
-                
+
                 const meData = await meResponse.json();
-                resultDiv.innerHTML += 
+                resultDiv.innerHTML +=
                   '<h3>Protected Endpoint Test:</h3>' +
                   '<pre>' + JSON.stringify(meData, null, 2) + '</pre>';
               }
             } else {
-              resultDiv.innerHTML = 
+              resultDiv.innerHTML =
                 '<div class="error">Login Failed</div>' +
                 '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
             }
           } catch (error) {
-            document.getElementById('result').innerHTML = 
+            document.getElementById('result').innerHTML =
               '<div class="error">Error: ' + error.message + '</div>';
           }
         });
@@ -502,12 +502,12 @@ app.use('/api', (req, res, next) => {
   if (process.env.NODE_ENV === 'production') {
     // Check for required custom header or referer from our frontend
     const referer = req.headers.referer || '';
-    const isValidReferer = referer.includes('grademanager.netlify.app') || 
+    const isValidReferer = referer.includes('grademanager.netlify.app') ||
                           referer.includes('gradebook.pro');
-    
+
     // Log referer info for debugging
     console.log(`[API Security] Request referer: ${referer}`);
-    
+
     // Block requests without proper origin/referer in production
     if (!isValidReferer && !req.headers.origin) {
       console.error('[API Security] Blocked direct API access without proper headers');
@@ -517,7 +517,7 @@ app.use('/api', (req, res, next) => {
       });
     }
   }
-  
+
   next();
 });
 
@@ -604,7 +604,7 @@ if (process.env.NODE_ENV === "production") {
         console.log('[PROXY] X-Forwarded-For:', req.headers['x-forwarded-for']);
         console.log('[PROXY] X-Forwarded-Proto:', req.headers['x-forwarded-proto']);
         console.log('[PROXY] X-Real-IP:', req.headers['x-real-ip']);
-        
+
         // Force HTTPS if behind proxy and not already HTTPS
         if (req.headers['x-forwarded-proto'] === 'http') {
           console.log('[PROXY] Redirecting to HTTPS');
@@ -733,7 +733,7 @@ try {
     // Check for existing SSL certificates for HTTPS mode
     const keyPath = path.join(__dirname, 'ssl', 'private.key');
     const certPath = path.join(__dirname, 'ssl', 'certificate.crt');
-    
+
     if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
       // Load SSL certificates and create HTTPS server
       const sslOptions = {
@@ -744,28 +744,28 @@ try {
         secureOptions: require('constants').SSL_OP_NO_SSLv2 | require('constants').SSL_OP_NO_SSLv3,
         honorCipherOrder: true
       };
-      
+
       const httpsServer = https.createServer(sslOptions, app);
-      
+
       httpsServer.listen(PORT, () => {
         console.log(`HTTPS Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.green.bold);
         console.log(`Frontend URL: ${process.env.FRONTEND_URL}`.cyan);
         console.log('SSL/HTTPS enabled successfully!'.green);
       });
-      
+
       // Add error handlers
       httpsServer.on('error', (error) => {
         console.error('[HTTPS] Server Error:', error);
       });
-      
+
       httpsServer.on('tlsClientError', (err, tlsSocket) => {
         console.error(`[TLS ERROR] Client IP: ${tlsSocket.remoteAddress}, Error: ${err.message}`);
       });
-      
+
       httpsServer.on('clientError', (err, socket) => {
         console.error(`[CLIENT ERROR] ${err.message} from ${socket.remoteAddress}`);
       });
-      
+
       httpsServer.on('secureConnection', (tlsSocket) => {
         console.log('[HTTPS] New secure connection:'.cyan);
         console.log(`   Protocol: ${tlsSocket.getProtocol()}`.green);
@@ -783,7 +783,7 @@ try {
 } catch (error) {
   console.error('Server failed to start:'.red, error.message);
   console.log('Falling back to HTTP server'.yellow);
-  
+
   app.listen(PORT, () => {
     console.log(`Server running in ${process.env.NODE_ENV} mode on HTTP port ${PORT}`.yellow.bold);
     console.log('WARNING: Running in HTTP mode (not secure)!'.red.bold);

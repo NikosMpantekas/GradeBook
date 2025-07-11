@@ -5,7 +5,7 @@
 // App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.0.209',
+  version: '1.6.1.1',
   author: 'GradeBook Team'
 };
 
