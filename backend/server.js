@@ -49,6 +49,8 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 
 const app = express();
 
+// Set environment variable for use in other parts of the app
+process.env.FRONTEND_URL = "https://gradebook.pro";
 // Middleware
 // Enhanced CORS configuration for production deployment
 const allowedOrigins = [
@@ -57,8 +59,6 @@ const allowedOrigins = [
   "https://localhost:5000" // Local HTTPS development
 ];
 
-// Set environment variable for use in other parts of the app
-process.env.FRONTEND_URL = "https://gradebook.pro";
 
 // Log confirmation of frontend URL
 console.log('[SERVER] Frontend URL set to:', process.env.FRONTEND_URL);
