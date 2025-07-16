@@ -453,6 +453,8 @@ const canManageStudents = asyncHandler(async (req, res, next) => {
   }
 });
 
+const adminCanManageSubjects = canManageSubjects;
+
 module.exports = { 
   protect, 
   admin, 
@@ -466,6 +468,7 @@ module.exports = {
   canManageSchools,
   canManageDirections,
   canManageSubjects,
+  adminCanManageSubjects,
   canAccessStudentProgress,
   canManageStudents
 };

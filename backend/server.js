@@ -53,7 +53,6 @@ const app = express();
 // Enhanced CORS configuration for production deployment
 const allowedOrigins = [
   process.env.FRONTEND_URL, // Environment variable if set
-  "https://gradebook.pro", // Primary frontend URL (NO trailing slash)
   "http://localhost:5000", // Local development
   "https://localhost:5000" // Local HTTPS development
 ];
