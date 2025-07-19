@@ -15,7 +15,7 @@ const getMigrations = async () => {
 // Run a specific migration
 const runMigration = async (migrationType) => {
   const config = getAuthConfig();
-  const response = await axios.post(`${API_URL}/run`, { migrationType }, config);
+  const response = await axios.post(API_MIGRATIONS, { migrationType }, config);
   return response.data;
 };
 
