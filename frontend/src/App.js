@@ -540,7 +540,7 @@ function App() {
                 <SuperAdminDashboard />
               </SuperAdminRoute>
             } />
-            <Route path="/superadmin/new-school-owner" element={
+            <Route path="/superadmin/create-school-owner" element={
               <SuperAdminRoute>
                 <CreateSchoolOwner />
               </SuperAdminRoute>
