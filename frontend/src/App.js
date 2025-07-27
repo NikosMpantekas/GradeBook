@@ -69,6 +69,7 @@ import ManageSubjects from './pages/admin/ManageSubjects';
 import SchoolBranchManager from './pages/admin/SchoolBranchManager';
 import RatingManager from './pages/admin/RatingManager';
 import RatingStatistics from './pages/admin/RatingStatistics';
+import SystemMaintenance from './pages/admin/SystemMaintenance';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
 // SuperAdmin Pages
@@ -76,6 +77,7 @@ import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import CreateSchoolOwner from './pages/superadmin/CreateSchoolOwner';
 import SchoolOwnerDetails from './pages/superadmin/SchoolOwnerDetails';
 import ManageSchoolFeatures from './pages/superadmin/ManageSchoolFeatures';
+import SchoolPermissionsManager from './components/superadmin/SchoolPermissionsManager';
 
 // Push notification service
 import { setupPushNotifications } from './services/pushNotificationService';
@@ -527,6 +529,11 @@ function App() {
                 </ErrorBoundary>
               </AdminRoute>
             } />
+            <Route path="/app/admin/system-maintenance" element={
+              <AdminRoute>
+                <SystemMaintenance />
+              </AdminRoute>
+            } />
           </Route>
 
           {/* SuperAdmin Routes - Using PrivateRoute + Layout + SuperAdminRoute pattern */}
@@ -558,6 +565,11 @@ function App() {
             <Route path="/superadmin/school-features" element={
               <SuperAdminRoute>
                 <ManageSchoolFeatures />
+              </SuperAdminRoute>
+            } />
+            <Route path="/superadmin/school-permissions" element={
+              <SuperAdminRoute>
+                <SchoolPermissionsManager />
               </SuperAdminRoute>
             } />
           </Route>

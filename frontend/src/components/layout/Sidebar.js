@@ -34,6 +34,8 @@ import {
   Class as ClassIcon,
   Analytics as AnalyticsIcon,
   Support as SupportIcon,
+  Info as InfoIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { useFeatureToggles } from '../../context/FeatureToggleContext';
@@ -68,28 +70,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   }, [location.pathname, isActuallyPermanent, mobileOpen]);
 
   // Get feature toggles from context
-  const { features } = useFeatureToggles();
-
-  // Helper function to check if a school feature is enabled
-  const isFeatureEnabled = (featureName) => {
-    // For superadmin, all features are enabled
-    if (user?.role === 'superadmin') {
-      return true;
-    }
-    
-    // Always enable grades and notifications regardless of context
-    if (featureName === 'enableGrades' || featureName === 'enableNotifications') {
-      return true;
-    }
-    
-    // Check if the feature exists in the context
-    if (features && featureName in features) {
-      return features[featureName] === true;
-    }
-    
-    // Default to false for safety
-    return false;
-  };
+  const { features, isFeatureEnabled } = useFeatureToggles();
 
   // Generate menu items based on user role and school permissions
   const getMenuItems = () => {
@@ -111,7 +92,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <GradesIcon />,
         path: '/app/grades',
         roles: ['student'],
-        checkPermission: (user) => isFeatureEnabled('enableGrades'),
+        checkPermission: () => isFeatureEnabled('enableGrades'),
         section: 'student',
       },
       
@@ -121,7 +102,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <NotificationsIcon />,
         path: '/app/notifications',
         roles: ['student'],
-        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
+        checkPermission: () => isFeatureEnabled('enableNotifications'),
         section: 'student',
       },
       
@@ -131,6 +112,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <ScheduleIcon />,
         path: '/app/schedule',
         roles: ['student'],
+        checkPermission: () => isFeatureEnabled('enableSchedule'),
         section: 'student',
       },
       
@@ -149,183 +131,440 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         icon: <EmailIcon />,
         path: '/app/contact-messages',
         roles: ['student'],
+        checkPermission: () => isFeatureEnabled('enableContactDeveloper'),
         section: 'student',
       },
       
-      // 7. Contact Support (Student) - renamed from Bug Reports
+      // 7. Calendar (Student)
       {
-        text: 'Contact Support',
-        icon: <EmailIcon />,
-        path: '/app/contact-support',
+        text: 'Calendar',
+        icon: <CalendarIcon />,
+        path: '/app/calendar',
         roles: ['student'],
+        checkPermission: () => isFeatureEnabled('enableCalendar'),
         section: 'student',
       },
       
-      // ADMIN MENU ITEMS
-      
-      // Admin Dashboard
+      // 8. Rating System (Student)
       {
-        text: 'Admin Dashboard',
-        icon: <AdminIcon />,
-        path: '/app/admin',
-        roles: ['admin', 'secretary'],
-        section: 'admin',
+        text: 'Rating System',
+        icon: <RatingIcon />,
+        path: '/app/ratings',
+        roles: ['student'],
+        checkPermission: () => isFeatureEnabled('enableRatingSystem'),
+        section: 'student',
+      },
+      
+      // 9. Student Progress (Student)
+      {
+        text: 'Student Progress',
+        icon: <AnalyticsIcon />,
+        path: '/app/student-progress',
+        roles: ['student'],
+        checkPermission: () => isFeatureEnabled('enableStudentProgress'),
+        section: 'student',
       },
       
       // TEACHER MENU ITEMS
       
-      // Teacher Dashboard
+      // 1. Teacher Dashboard
       {
-        text: 'Teacher Dashboard',
-        icon: <SchoolIcon />,
+        text: 'Dashboard',
+        icon: <DashboardIcon />,
         path: '/app/teacher',
         roles: ['teacher'],
         section: 'teacher',
       },
       
-      // Add Grade
+      // 2. My Classes (Teacher)
       {
-        text: 'Add Grade',
-        icon: <AddIcon />,
-        path: '/app/teacher/grades/create',
-        roles: ['teacher', 'admin', 'secretary'],
-        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
-                            (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
-                            isFeatureEnabled('enableGrades'),
+        text: 'My Classes',
+        icon: <ClassIcon />,
+        path: '/app/classes',
+        roles: ['teacher'],
+        checkPermission: () => isFeatureEnabled('enableClasses'),
         section: 'teacher',
       },
       
-      // Manage Grades
+      // 3. Manage Grades (Teacher)
       {
         text: 'Manage Grades',
         icon: <GradesIcon />,
-        path: '/app/teacher/grades/manage',
-        roles: ['teacher', 'admin', 'secretary'],
-        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
-                            (user.role === 'secretary' && user.secretaryPermissions?.canManageGrades)) && 
-                            isFeatureEnabled('enableGrades'),
+        path: '/app/grades',
+        roles: ['teacher'],
+        checkPermission: () => isFeatureEnabled('enableGrades'),
         section: 'teacher',
       },
       
-      // Send Notifications (Teacher/Admin)
+      // 4. My Students (Teacher)
       {
-        text: 'Send Notifications',
-        icon: <NotificationsIcon />,
-        // Dynamic path based on user role
-        path: (user) => user.role === 'admin' ? '/app/admin/notifications/create' : '/app/teacher/notifications/create',
-        roles: ['teacher', 'admin', 'secretary'],
-        checkPermission: (user) => (user.role === 'admin' || user.role === 'teacher' || 
-                            (user.role === 'secretary' && user.secretaryPermissions?.canSendNotifications)) && 
-                            isFeatureEnabled('enableNotifications'),
+        text: 'My Students',
+        icon: <PersonIcon />,
+        path: '/app/students',
+        roles: ['teacher'],
+        checkPermission: () => isFeatureEnabled('enableStudents'),
         section: 'teacher',
       },
       
-      // COMMON MENU ITEMS (for teacher/admin)
-      
-      // My Notifications (Teacher/Admin)
+      // 5. Notifications (Teacher)
       {
-        text: 'My Notifications',
+        text: 'Notifications',
         icon: <NotificationsIcon />,
         path: '/app/notifications',
-        roles: ['teacher', 'admin'],
-        checkPermission: (user) => isFeatureEnabled('enableNotifications'),
-        section: 'common',
+        roles: ['teacher'],
+        checkPermission: () => isFeatureEnabled('enableNotifications'),
+        section: 'teacher',
       },
       
-      // Schedule (Teacher/Admin)
+      // 6. Schedule (Teacher)
       {
         text: 'Schedule',
         icon: <ScheduleIcon />,
         path: '/app/schedule',
-        roles: ['teacher', 'admin'],
-        section: 'common',
+        roles: ['teacher'],
+        checkPermission: () => isFeatureEnabled('enableSchedule'),
+        section: 'teacher',
       },
       
-      // Contact Support (Teacher/Admin) - renamed from Bug Reports
+      // 7. Calendar (Teacher)
       {
-        text: 'Contact Support',
+        text: 'Calendar',
+        icon: <CalendarIcon />,
+        path: '/app/calendar',
+        roles: ['teacher'],
+        checkPermission: () => isFeatureEnabled('enableCalendar'),
+        section: 'teacher',
+      },
+      
+      // 8. Rating System (Teacher)
+      {
+        text: 'Rating System',
+        icon: <RateReviewIcon />,
+        path: '/app/ratings',
+        roles: ['teacher'],
+        checkPermission: () => isFeatureEnabled('enableRatingSystem'),
+        section: 'teacher',
+      },
+      
+      // 9. Messages (Teacher)
+      {
+        text: 'Messages',
         icon: <EmailIcon />,
-        path: '/app/contact-support',
-        roles: ['teacher', 'admin', 'superadmin'],
-        section: 'common',
+        path: '/app/contact-messages',
+        roles: ['teacher'],
+        checkPermission: () => isFeatureEnabled('enableContactDeveloper'),
+        section: 'teacher',
       },
       
-      // ADMIN-SPECIFIC MENU ITEMS
-      
-      // Manage Users
+      // 10. Analytics (Teacher)
       {
-        text: 'Manage Users',
-        icon: <UsersIcon />,
-        path: '/app/admin/users',
-        roles: ['admin', 'secretary'],
-        checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageUsers),
-        section: 'admin',
-      },
-      
-      // Manage Schools
-      {
-        text: 'Manage Schools',
-        icon: <SchoolsIcon />,
-        path: '/app/admin/schools',
-        roles: ['admin', 'secretary'],
-        checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSchools),
-        section: 'admin',
-      },
-      
-      // Manage Classes
-      {
-        text: 'Manage Classes',
-        icon: <ClassIcon />,
-        path: '/app/admin/classes',
-        roles: ['admin', 'secretary'],
-        // Always allow admins to access, for secretary require school management permission
-        checkPermission: (user) => user.role === 'admin' || (user.role === 'secretary' && user.secretaryPermissions?.canManageSchools === true),
-        section: 'admin',
-      },
-      
-      // Student Statistics (Admin View)
-      {
-        text: 'Student Statistics',
+        text: 'Analytics',
         icon: <AnalyticsIcon />,
-        path: '/app/admin/student-stats',
+        path: '/app/analytics',
+        roles: ['teacher'],
+        checkPermission: () => isFeatureEnabled('enableAnalytics'),
+        section: 'teacher',
+      },
+      
+      // ADMIN MENU ITEMS
+      
+      // 1. Admin Dashboard
+      {
+        text: 'Dashboard',
+        icon: <DashboardIcon />,
+        path: '/app/admin',
         roles: ['admin'],
         section: 'admin',
       },
       
-      // Student Statistics (Teacher View)
+      // 2. Manage Users (Admin)
       {
-        text: 'Student Statistics',
-        icon: <AnalyticsIcon />,
-        path: '/app/teacher/student-stats',
-        roles: ['teacher'],
-        section: 'teacher',
+        text: 'Manage Users',
+        icon: <UsersIcon />,
+        path: '/app/admin/users',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableUserManagement'),
+        section: 'admin',
       },
       
-      // Profile (Teacher/Admin)
+      // 3. Manage Classes (Admin)
       {
-        text: 'Profile',
+        text: 'Manage Classes',
+        icon: <ClassIcon />,
+        path: '/app/admin/classes',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableClasses'),
+        section: 'admin',
+      },
+      
+      // 4. Manage Subjects (Admin)
+      {
+        text: 'Manage Subjects',
+        icon: <SubjectsIcon />,
+        path: '/app/admin/subjects',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableSubjects'),
+        section: 'admin',
+      },
+      
+      // 5. Manage Directions (Admin)
+      {
+        text: 'Manage Directions',
+        icon: <DirectionsIcon />,
+        path: '/app/admin/directions',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableDirections'),
+        section: 'admin',
+      },
+      
+      // 6. Manage Students (Admin)
+      {
+        text: 'Manage Students',
         icon: <PersonIcon />,
-        path: '/app/profile',
-        roles: ['teacher', 'admin', 'superadmin'],
-        section: 'common',
+        path: '/app/admin/students',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableStudents'),
+        section: 'admin',
+      },
+      
+      // 7. Manage Teachers (Admin)
+      {
+        text: 'Manage Teachers',
+        icon: <PersonIcon />,
+        path: '/app/admin/teachers',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableTeachers'),
+        section: 'admin',
+      },
+      
+      // 8. Grades Overview (Admin)
+      {
+        text: 'Grades Overview',
+        icon: <GradesIcon />,
+        path: '/app/admin/grades',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableGrades'),
+        section: 'admin',
+      },
+      
+      // 9. Notifications (Admin)
+      {
+        text: 'Notifications',
+        icon: <NotificationsIcon />,
+        path: '/app/admin/notifications',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableNotifications'),
+        section: 'admin',
+      },
+      
+      // 10. School Settings (Admin)
+      {
+        text: 'School Settings',
+        icon: <SchoolIcon />,
+        path: '/app/admin/school-settings',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableSchoolSettings'),
+        section: 'admin',
+      },
+      
+      // 11. Calendar (Admin)
+      {
+        text: 'Calendar',
+        icon: <CalendarIcon />,
+        path: '/app/admin/calendar',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableCalendar'),
+        section: 'admin',
+      },
+      
+      // 12. Schedule (Admin)
+      {
+        text: 'Schedule',
+        icon: <ScheduleIcon />,
+        path: '/app/admin/schedule',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableSchedule'),
+        section: 'admin',
+      },
+      
+      // 13. Rating System (Admin)
+      {
+        text: 'Rating System',
+        icon: <RatingIcon />,
+        path: '/app/admin/ratings',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableRatingSystem'),
+        section: 'admin',
+      },
+      
+      // 14. Analytics (Admin)
+      {
+        text: 'Analytics',
+        icon: <AnalyticsIcon />,
+        path: '/app/admin/analytics',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableAnalytics'),
+        section: 'admin',
+      },
+      
+      // 15. System Maintenance (Admin)
+      {
+        text: 'System Maintenance',
+        icon: <SettingsIcon />,
+        path: '/app/admin/system-maintenance',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableSystemMaintenance'),
+        section: 'admin',
+      },
+      
+      // 16. Bug Reports (Admin)
+      {
+        text: 'Bug Reports',
+        icon: <SupportIcon />,
+        path: '/app/admin/bug-reports',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableBugReports'),
+        section: 'admin',
+      },
+      
+      // 17. Messages (Admin)
+      {
+        text: 'Messages',
+        icon: <EmailIcon />,
+        path: '/app/admin/contact-messages',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableContactDeveloper'),
+        section: 'admin',
+      },
+      
+      // 18. Student Progress (Admin)
+      {
+        text: 'Student Progress',
+        icon: <AnalyticsIcon />,
+        path: '/app/admin/student-progress',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enableStudentProgress'),
+        section: 'admin',
+      },
+      
+      // 19. Patch Notes (Admin)
+      {
+        text: 'Patch Notes',
+        icon: <InfoIcon />,
+        path: '/app/admin/patch-notes',
+        roles: ['admin'],
+        checkPermission: () => isFeatureEnabled('enablePatchNotes'),
+        section: 'admin',
+      },
+      
+      // SUPERADMIN MENU ITEMS
+      
+      // 1. SuperAdmin Dashboard
+      {
+        text: 'SuperAdmin Dashboard',
+        icon: <SuperAdminIcon />,
+        path: '/app/superadmin',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      
+      // 2. Manage Schools (SuperAdmin)
+      {
+        text: 'Manage Schools',
+        icon: <SchoolsIcon />,
+        path: '/app/superadmin/schools',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      
+      // 3. School Permissions (SuperAdmin)
+      {
+        text: 'School Permissions',
+        icon: <SettingsIcon />,
+        path: '/app/superadmin/school-permissions',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      
+      // 4. Create School Owner (SuperAdmin)
+      {
+        text: 'Create School Owner',
+        icon: <AddUserIcon />,
+        path: '/app/superadmin/create-school-owner',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      
+      // 5. System Migration (SuperAdmin)
+      {
+        text: 'System Migration',
+        icon: <SettingsIcon />,
+        path: '/app/superadmin/migration',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      
+      // 6. Global Analytics (SuperAdmin)
+      {
+        text: 'Global Analytics',
+        icon: <AnalyticsIcon />,
+        path: '/app/superadmin/analytics',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      
+      // 7. System Logs (SuperAdmin)
+      {
+        text: 'System Logs',
+        icon: <SupportIcon />,
+        path: '/app/superadmin/logs',
+        roles: ['superadmin'],
+        section: 'superadmin',
       },
     ];
 
     // Filter menu items based on user role and permissions
-    return menuItems.filter((item) => {
-      // First check if user has the required role
-      const hasRole = user && item.roles.includes(user.role);
-      
-      // If there's a permission check function, apply it
-      if (hasRole && item.checkPermission) {
-        return item.checkPermission(user);
+    return menuItems.filter(item => {
+      // Check if user has required role
+      if (!item.roles.includes(user?.role)) {
+        return false;
       }
-      
-      // Otherwise just return based on role
-      return hasRole;
+
+      // Check if section matches current context
+      if (item.section && item.section !== getCurrentSection()) {
+        return false;
+      }
+
+      // Check permission if specified
+      if (item.checkPermission) {
+        return item.checkPermission();
+      }
+
+      return true;
     });
-  };  
-      
+  };
+
+  // Get current section based on route
+  const getCurrentSection = () => {
+    if (location.pathname.includes('/superadmin/')) {
+      return 'superadmin';
+    } else if (location.pathname.includes('/admin/')) {
+      return 'admin';
+    } else if (location.pathname.includes('/teacher/')) {
+      return 'teacher';
+    } else if (location.pathname.includes('/student/')) {
+      return 'student';
+    } else if (user?.role === 'superadmin') {
+      return 'superadmin';
+    } else if (user?.role === 'admin') {
+      return 'admin';
+    } else if (user?.role === 'teacher') {
+      return 'teacher';
+    } else {
+      return 'student';
+    }
+  };
+
   const handleNavigate = (path) => {
     // Handle function paths that depend on user role
     const actualPath = typeof path === 'function' ? path(user) : path;

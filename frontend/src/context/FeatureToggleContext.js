@@ -6,17 +6,31 @@ import { API_URL } from '../config/appConfig';
 // Create the context
 const FeatureToggleContext = createContext();
 
-// Default state for features - everything disabled by default
+// Default state for features - everything disabled by default for safety
 const defaultFeatures = {
-  enableCalendar: false,
-  enableRatingSystem: false,
   enableGrades: false,
-  enableNotifications: false
+  enableClasses: false,
+  enableSubjects: false,
+  enableStudents: false,
+  enableTeachers: false,
+  enableNotifications: false,
+  enableContactDeveloper: false,
+  enableCalendar: false,
+  enableSchedule: false,
+  enableRatingSystem: false,
+  enableAnalytics: false,
+  enableUserManagement: false,
+  enableSchoolSettings: false,
+  enableSystemMaintenance: false,
+  enableBugReports: false,
+  enableDirections: false,
+  enablePatchNotes: false,
+  enableStudentProgress: false
 };
 
 /**
  * Provider component for feature toggle functionality
- * This will fetch feature toggles from the backend based on the user's school
+ * This will fetch feature toggles from the new comprehensive permission system
  */
 export const FeatureToggleProvider = ({ children }) => {
   // Get auth state from Redux store
@@ -25,65 +39,77 @@ export const FeatureToggleProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // For super admin, enable all features by default
+  // Fetch feature toggles from the new permission system
   useEffect(() => {
-    if (user?.role === 'superadmin') {
-      setFeatures({
-        enableCalendar: true,
-        enableRatingSystem: true,
-        enableGrades: true,
-        enableNotifications: true
-      });
-      setLoading(false);
-      return;
-    }
-
+    console.log('FeatureToggleProvider: Auth state changed', { user: user?.email, hasToken: !!token });
+    
     // If no user or no token, reset features to default (disabled)
     if (!user || !token) {
+      console.log('FeatureToggleProvider: No user or token, resetting to default features');
       setFeatures(defaultFeatures);
       setLoading(false);
+      setError(null);
       return;
     }
 
-    // Fetch feature toggles from the backend
+    // Fetch feature toggles from the new permission system
     const fetchFeatureToggles = async () => {
       try {
         setLoading(true);
         setError(null);
+        
+        console.log('FeatureToggleProvider: Fetching permissions from new system');
 
         const config = {
           headers: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         };
 
-        // Use a dedicated API endpoint to get feature toggles
-        const response = await axios.get(`${API_URL}/api/schools/features`, config);
+        // Use the new API endpoint for current user's school permissions
+        const response = await axios.get(`${API_URL}/api/school-permissions/current`, config);
         
-        if (response.data && response.data.features) {
-          // Always force enable grades and notifications regardless of API response
-          setFeatures({
-            ...response.data.features,
-            enableGrades: true,
-            enableNotifications: true
+        console.log('FeatureToggleProvider: Permission response:', response.data);
+        
+        if (response.data && response.data.success && response.data.data) {
+          const { features: fetchedFeatures, isSuperAdmin } = response.data.data;
+          
+          // Set features from the permission system
+          setFeatures(fetchedFeatures || defaultFeatures);
+          
+          console.log('FeatureToggleProvider: Features loaded successfully', {
+            isSuperAdmin,
+            featuresCount: Object.keys(fetchedFeatures || {}).length
           });
+          
         } else {
-          // Force enable features even in fallback case
-          setFeatures({
-            ...defaultFeatures,
-            enableGrades: true,
-            enableNotifications: true
-          });
+          console.error('FeatureToggleProvider: Invalid response structure');
+          setError('Invalid response from permission system');
+          setFeatures(defaultFeatures);
         }
+        
       } catch (error) {
-        console.error('Error fetching feature toggles:', error);
-        setError(error.message || 'Failed to load feature toggles');
-        // Fallback to default features on error but force enable grades and notifications
-        setFeatures({
-          ...defaultFeatures,
-          enableGrades: true,
-          enableNotifications: true
-        });
+        console.error('FeatureToggleProvider: Error fetching feature toggles:', error);
+        
+        // More detailed error logging
+        if (error.response) {
+          console.error('FeatureToggleProvider: Error response:', {
+            status: error.response.status,
+            data: error.response.data,
+            headers: error.response.headers
+          });
+          setError(`Server error: ${error.response.status} - ${error.response.data?.message || error.message}`);
+        } else if (error.request) {
+          console.error('FeatureToggleProvider: No response received:', error.request);
+          setError('No response from server');
+        } else {
+          console.error('FeatureToggleProvider: Request setup error:', error.message);
+          setError(`Request error: ${error.message}`);
+        }
+        
+        // Fallback to default features on error
+        setFeatures(defaultFeatures);
       } finally {
         setLoading(false);
       }
@@ -92,16 +118,85 @@ export const FeatureToggleProvider = ({ children }) => {
     fetchFeatureToggles();
   }, [user, token]);
 
+  // Helper function to check if a specific feature is enabled
+  const isFeatureEnabled = (featureName) => {
+    // For superadmin, all features are enabled by default
+    if (user?.role === 'superadmin') {
+      return true;
+    }
+    
+    // Check if the feature exists in the loaded features
+    if (features && featureName in features) {
+      return features[featureName] === true;
+    }
+    
+    // Default to false for safety
+    console.warn(`FeatureToggleProvider: Feature '${featureName}' not found in features object`);
+    return false;
+  };
+
+  // Helper function to get all enabled features
+  const getEnabledFeatures = () => {
+    if (user?.role === 'superadmin') {
+      // Return all features as enabled for superadmin
+      const allFeatures = {};
+      Object.keys(defaultFeatures).forEach(key => {
+        allFeatures[key] = true;
+      });
+      return allFeatures;
+    }
+    
+    // Filter only enabled features
+    const enabledFeatures = {};
+    Object.keys(features).forEach(key => {
+      if (features[key] === true) {
+        enabledFeatures[key] = true;
+      }
+    });
+    
+    return enabledFeatures;
+  };
+
+  // Helper function to refresh permissions (useful after updates)
+  const refreshPermissions = async () => {
+    if (!user || !token) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      };
+
+      const response = await axios.get(`${API_URL}/api/school-permissions/current`, config);
+      
+      if (response.data && response.data.success && response.data.data) {
+        const { features: fetchedFeatures } = response.data.data;
+        setFeatures(fetchedFeatures || defaultFeatures);
+        console.log('FeatureToggleProvider: Permissions refreshed successfully');
+      }
+      
+    } catch (error) {
+      console.error('FeatureToggleProvider: Error refreshing permissions:', error);
+      setError('Failed to refresh permissions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Expose the context value
   const contextValue = {
     features,
     loading,
     error,
-    // Helper functions to check if specific features are enabled
-    isCalendarEnabled: features.enableCalendar === true,
-    isRatingSystemEnabled: features.enableRatingSystem === true,
-    isGradesEnabled: features.enableGrades === true,
-    isNotificationsEnabled: features.enableNotifications === true
+    isFeatureEnabled,
+    getEnabledFeatures,
+    refreshPermissions,
+    isSuperAdmin: user?.role === 'superadmin'
   };
 
   return (
@@ -111,7 +206,9 @@ export const FeatureToggleProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use the feature toggle context
+/**
+ * Custom hook to use the feature toggle context
+ */
 export const useFeatureToggles = () => {
   const context = useContext(FeatureToggleContext);
   if (!context) {
