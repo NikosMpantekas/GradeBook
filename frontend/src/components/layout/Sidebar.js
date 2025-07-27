@@ -561,11 +561,11 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     let routeBasedSection = null;
     if (location.pathname.includes('/superadmin/')) {
       routeBasedSection = 'superadmin';
-    } else if (location.pathname.includes('/admin/')) {
+    } else if (location.pathname.includes('/admin/') || location.pathname === '/app/admin') {
       routeBasedSection = 'admin';
-    } else if (location.pathname.includes('/teacher/')) {
+    } else if (location.pathname.includes('/teacher/') || location.pathname === '/app/teacher') {
       routeBasedSection = 'teacher';
-    } else if (location.pathname.includes('/student/')) {
+    } else if (location.pathname.includes('/student/') || location.pathname === '/app/student') {
       routeBasedSection = 'student';
     }
     
