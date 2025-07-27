@@ -327,7 +327,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'Add Grades',
         icon: <AddIcon />,
-        path: '/app/admin/add-grades',
+        path: '/app/teacher/grades/create',
         roles: ['admin'],
         section: 'admin',
       },
@@ -335,8 +335,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       // 7. Manage Grades (Admin) - RESTORED
       {
         text: 'Manage Grades',
-        icon: <GradesIcon />,
-        path: '/app/admin/manage-grades',
+        icon: <GradeIcon />,
+        path: '/app/teacher/grades/manage',
         roles: ['admin'],
         section: 'admin',
       },
@@ -344,8 +344,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       // 8. Grades Overview (Admin) - RESTORED
       {
         text: 'Grades Overview',
-        icon: <AssessmentIcon />,
-        path: '/app/admin/grades-overview',
+        icon: <AnalyticsIcon />,
+        path: '/app/admin/student-stats',
         roles: ['admin'],
         section: 'admin',
       },
@@ -354,7 +354,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'Add Notifications',
         icon: <AddIcon />,
-        path: '/app/admin/add-notifications',
+        path: '/app/admin/notifications/create',
         roles: ['admin'],
         section: 'admin',
       },
@@ -362,8 +362,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       // 10. Manage Notifications (Admin) - RESTORED
       {
         text: 'Manage Notifications',
-        icon: <NotificationsIcon />,
-        path: '/app/admin/manage-notifications',
+        icon: <NotificationIcon />,
+        path: '/app/teacher/notifications',
         roles: ['admin'],
         section: 'admin',
       },
@@ -371,8 +371,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       // 11. Manage School Branches (Admin) - RESTORED
       {
         text: 'Manage School Branches',
-        icon: <SchoolsIcon />,
-        path: '/app/admin/school-branches',
+        icon: <SchoolIcon />,
+        path: '/app/admin/schools',
         roles: ['admin'],
         section: 'admin',
       },
