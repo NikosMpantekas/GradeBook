@@ -47,7 +47,11 @@ import { useSelector } from 'react-redux';
  * Comprehensive interface for superadmins to manage school feature permissions
  */
 const SchoolPermissionsManager = () => {
-  const { user, token } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
+  const token = user?.token; // Token is INSIDE the user object
+  
+  // DEBUG: Log auth state to troubleshoot
+  console.log('🔍 [SchoolPermissionsManager] Auth state:', { user, token: token ? 'Present' : 'Missing', userRole: user?.role });
   
   // State management
   const [schools, setSchools] = useState([]);
@@ -129,9 +133,23 @@ const SchoolPermissionsManager = () => {
 
   // Initial data load
   useEffect(() => {
+    console.log('🔄 [SchoolPermissionsManager] useEffect triggered with:', {
+      userRole: user?.role,
+      hasToken: !!token,
+      tokenLength: token?.length,
+      userId: user?._id || user?.id
+    });
+    
     if (user?.role === 'superadmin' && token) {
+      console.log('✅ [SchoolPermissionsManager] Conditions met, calling fetchSchoolsWithPermissions');
       fetchSchoolsWithPermissions();
       fetchAvailableFeatures();
+    } else {
+      console.log('❌ [SchoolPermissionsManager] Conditions not met:', {
+        isSuperadmin: user?.role === 'superadmin',
+        hasToken: !!token,
+        actualRole: user?.role
+      });
     }
   }, [user, token]);
 
