@@ -1,155 +1,272 @@
+
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
   Typography,
   Button,
-  Paper,
   Grid,
   Card,
   CardContent,
-  Chip
+  Chip,
+  AppBar,
+  Toolbar,
+  IconButton,
+  Stack,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
-import {
-  Login as LoginIcon,
-  School as SchoolIcon,
-  Dashboard as DashboardIcon,
-  Group as GroupIcon,
-  Assessment as AssessmentIcon
-} from '@mui/icons-material';
-import { appConfig } from '../config/appConfig';
+import MenuIcon from '@mui/icons-material/Menu';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import GradeIcon from '@mui/icons-material/Grade';
+import ForumIcon from '@mui/icons-material/Forum';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 
-/**
- * Home Page Component
- * Landing page for gradebook.pro with welcome message and login button
- */
+// Minimal logo component (G in a circle)
+const Logo = () => (
+  <Box
+    sx={{
+      width: 44,
+      height: 44,
+      bgcolor: '#337ab7',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontWeight: 'bold',
+      fontSize: 28,
+      color: 'white',
+      letterSpacing: 1,
+      mr: 2,
+      boxShadow: '0 2px 8px 0 rgba(51,122,183,0.08)'
+    }}
+  >
+    G
+  </Box>
+);
+
+const features = [
+  {
+    icon: <CheckCircleIcon color="primary" sx={{ fontSize: 32 }} />, title: 'Παρουσίες', desc: 'Εύκολη καταγραφή παρουσιών μαθητών.'
+  },
+  {
+    icon: <GradeIcon color="primary" sx={{ fontSize: 32 }} />, title: 'Βαθμολογίες', desc: 'Άμεση διαχείριση και ανάλυση βαθμών.'
+  },
+  {
+    icon: <ForumIcon color="primary" sx={{ fontSize: 32 }} />, title: 'Επικοινωνία', desc: 'Γρήγορη ενημέρωση γονέων & μαθητών.'
+  },
+  {
+    icon: <AssessmentIcon color="primary" sx={{ fontSize: 32 }} />, title: 'Αναφορές', desc: 'Αναλυτικές αναφορές προόδου.'
+  }
+];
+
+const navLinks = [
+  { label: 'Αρχική', href: '#' },
+  { label: 'Λειτουργίες', href: '#features' },
+  { label: 'Τιμές', href: '#pricing' },
+  { label: 'Επικοινωνία', href: '#contact' }
+];
+
 const Home = () => {
-  const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const handleLoginClick = () => {
-    navigate('/login');
-  };
-
-  return (
+  // Placeholder for dashboard mockup
+  const DashboardMockup = () => (
     <Box
       sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        width: '100%',
+        maxWidth: 380,
+        height: 220,
+        mx: 'auto',
+        mt: { xs: 4, md: 0 },
+        borderRadius: 4,
+        bgcolor: 'grey.100',
+        boxShadow: '0 4px 24px 0 rgba(51,122,183,0.10)',
         display: 'flex',
         alignItems: 'center',
-        py: 4
+        justifyContent: 'center',
+        filter: 'blur(0.5px)',
+        overflow: 'hidden',
+        position: 'relative'
       }}
     >
-      <Container maxWidth="lg">
-        <Grid container spacing={4} alignItems="center">
-          {/* Main Content */}
-          <Grid item xs={12} md={8}>
-            <Box sx={{ color: 'white', mb: 4 }}>
-              <Typography variant="h2" fontWeight="bold" gutterBottom>
-                This is the GradeBook App
+      {/* Minimal blurred dashboard preview */}
+      <Box
+        sx={{
+          width: '90%',
+          height: '80%',
+          bgcolor: 'grey.200',
+          borderRadius: 3,
+          boxShadow: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          opacity: 0.7
+        }}
+      >
+        <Box sx={{ width: '70%', height: 18, bgcolor: '#337ab7', borderRadius: 2, mb: 2 }} />
+        <Box sx={{ width: '50%', height: 12, bgcolor: 'grey.300', borderRadius: 2, mb: 1 }} />
+        <Box sx={{ width: '60%', height: 12, bgcolor: 'grey.300', borderRadius: 2, mb: 1 }} />
+        <Box sx={{ width: '80%', height: 12, bgcolor: 'grey.300', borderRadius: 2 }} />
+      </Box>
+      <Chip
+        label="Demo"
+        size="small"
+        sx={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          bgcolor: '#337ab7',
+          color: 'white',
+          fontWeight: 'bold'
+        }}
+      />
+    </Box>
+  );
+
+  return (
+    <Box sx={{ bgcolor: 'white', minHeight: '100vh', fontFamily: 'Roboto, Arial, sans-serif' }}>
+      {/* Top Navigation */}
+      <AppBar position="static" elevation={0} sx={{ bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
+        <Toolbar sx={{ minHeight: 64, px: { xs: 1, sm: 3 } }}>
+          <Logo />
+          <Box sx={{ flexGrow: 1 }} />
+          <Stack direction="row" spacing={2} sx={{ display: { xs: 'none', md: 'flex' } }}>
+            {navLinks.map((link) => (
+              <Button
+                key={link.label}
+                href={link.href}
+                sx={{
+                  color: '#337ab7',
+                  fontWeight: 500,
+                  fontSize: 16,
+                  borderRadius: 2,
+                  px: 2,
+                  textTransform: 'none',
+                  '&:hover': { bgcolor: 'grey.100' }
+                }}
+              >
+                {link.label}
+              </Button>
+            ))}
+          </Stack>
+          {/* Mobile menu icon */}
+          <IconButton sx={{ display: { xs: 'flex', md: 'none' }, color: '#337ab7' }}>
+            <MenuIcon />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+
+      {/* Main Content */}
+      <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
+        <Grid container spacing={6} alignItems="center" justifyContent="center">
+          {/* Left: Slogan, Description, CTA, Features */}
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 4 }}>
+              <Typography
+                variant="h3"
+                fontWeight="bold"
+                sx={{
+                  color: '#222',
+                  mb: 2,
+                  fontSize: { xs: 28, md: 36 },
+                  lineHeight: 1.2
+                }}
+              >
+                Διαχειρίσου το φροντιστήριό σου εύκολα & έξυπνα.
               </Typography>
-              <Typography variant="h5" sx={{ opacity: 0.9, mb: 4 }}>
-                Modern school management system for students, teachers, and administrators
+              <Typography
+                variant="h6"
+                sx={{
+                  color: 'grey.700',
+                  mb: 4,
+                  fontWeight: 400,
+                  fontSize: { xs: 16, md: 18 }
+                }}
+              >
+                Η πλατφόρμα GradeBook απλοποιεί τη διαχείριση φροντιστηρίων, προσφέροντας αυτοματισμούς, άμεση ενημέρωση και πλήρη έλεγχο για κάθε ιδιοκτήτη.
               </Typography>
-              
-              {/* Login Button */}
               <Button
                 variant="contained"
                 size="large"
-                startIcon={<LoginIcon />}
-                onClick={handleLoginClick}
                 sx={{
-                  bgcolor: 'white',
-                  color: 'primary.main',
-                  px: 4,
-                  py: 1.5,
-                  fontSize: '1.1rem',
+                  bgcolor: '#337ab7',
+                  color: 'white',
+                  borderRadius: 8,
+                  px: 5,
+                  py: 1.7,
                   fontWeight: 'bold',
+                  fontSize: 18,
+                  boxShadow: '0 2px 8px 0 rgba(51,122,183,0.10)',
+                  textTransform: 'none',
+                  transition: 'all 0.2s',
                   '&:hover': {
-                    bgcolor: 'grey.100',
-                    transform: 'translateY(-2px)',
-                  },
-                  transition: 'all 0.3s ease'
+                    bgcolor: '#245a8d',
+                    transform: 'translateY(-2px) scale(1.03)'
+                  }
                 }}
               >
-                Login to Continue
+                Ξεκινήστε Δωρεάν
               </Button>
             </Box>
 
-            {/* App Version Info */}
-            <Box sx={{ mt: 4 }}>
-              <Chip
-                label={`Version ${appConfig.version}`}
-                sx={{
-                  bgcolor: 'rgba(255, 255, 255, 0.2)',
-                  color: 'white',
-                  fontWeight: 'bold'
-                }}
-              />
-            </Box>
+            {/* Features */}
+            <Grid container spacing={2} id="features">
+              {features.map((feature, idx) => (
+                <Grid item xs={12} sm={6} key={idx}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      p: 2,
+                      borderRadius: 4,
+                      bgcolor: 'grey.50',
+                      boxShadow: '0 1px 6px 0 rgba(51,122,183,0.04)',
+                      mb: 1,
+                      transition: 'box-shadow 0.2s',
+                      '&:hover': { boxShadow: '0 4px 16px 0 rgba(51,122,183,0.10)' }
+                    }}
+                  >
+                    {feature.icon}
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight="bold" color="#222">
+                        {feature.title}
+                      </Typography>
+                      <Typography variant="body2" color="grey.700">
+                        {feature.desc}
+                      </Typography>
+                    </Box>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
           </Grid>
 
-          {/* Features Card */}
-          <Grid item xs={12} md={4}>
-            <Paper
-              elevation={8}
-              sx={{
-                p: 3,
-                borderRadius: 2,
-                background: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(10px)'
-              }}
-            >
-              <Typography variant="h6" fontWeight="bold" gutterBottom color="primary">
-                Features
-              </Typography>
-              
-              <Box sx={{ mt: 2 }}>
-                {[
-                  { icon: <DashboardIcon />, title: 'Dashboard Analytics', desc: 'Real-time insights' },
-                  { icon: <GroupIcon />, title: 'User Management', desc: 'Students & Teachers' },
-                  { icon: <AssessmentIcon />, title: 'Grade Tracking', desc: 'Comprehensive reports' },
-                  { icon: <SchoolIcon />, title: 'Multi-School Support', desc: 'Enterprise ready' }
-                ].map((feature, index) => (
-                  <Card key={index} variant="outlined" sx={{ mb: 2, p: 1 }}>
-                    <CardContent sx={{ p: '8px !important' }}>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Box sx={{ color: 'primary.main' }}>
-                          {feature.icon}
-                        </Box>
-                        <Box>
-                          <Typography variant="body2" fontWeight="bold">
-                            {feature.title}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {feature.desc}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Box>
-            </Paper>
+          {/* Right: Dashboard Mockup */}
+          <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'center' }}>
+            <DashboardMockup />
           </Grid>
         </Grid>
-
-        {/* Footer */}
-        <Box
-          sx={{
-            mt: 6,
-            pt: 3,
-            borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            textAlign: 'center'
-          }}
-        >
-          <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            © 2025 {appConfig.author}. Modern school management made simple.
-          </Typography>
-        </Box>
       </Container>
+
+      {/* Footer */}
+      <Box
+        sx={{
+          mt: 8,
+          py: 3,
+          bgcolor: 'grey.50',
+          borderTop: '1px solid #f0f0f0',
+          textAlign: 'center'
+        }}
+      >
+        <Typography variant="body2" color="grey.600">
+          © 2025 GradeBook. Όλα τα δικαιώματα διατηρούνται.
+        </Typography>
+      </Box>
     </Box>
   );
 };
