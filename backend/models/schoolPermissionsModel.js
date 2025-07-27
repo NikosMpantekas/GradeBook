@@ -13,7 +13,7 @@ const mongoose = require('mongoose');
  */
 const schoolPermissionsSchema = mongoose.Schema(
   {
-    school_id: {
+    schoolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'School',
       required: true,
@@ -150,7 +150,7 @@ const schoolPermissionsSchema = mongoose.Schema(
 );
 
 // Index for efficient querying
-schoolPermissionsSchema.index({ school_id: 1 });
+schoolPermissionsSchema.index({ schoolId: 1 });
 
 // Pre-save middleware to update lastUpdated
 schoolPermissionsSchema.pre('save', function(next) {
@@ -197,7 +197,7 @@ schoolPermissionsSchema.statics.createDefaultPermissions = async function(school
     
     console.log(`🔍 Creating permissions for schoolId: ${schoolId}`);
     
-    const existingPermissions = await this.findOne({ school_id: schoolId });
+    const existingPermissions = await this.findOne({ schoolId: schoolId });
     
     if (existingPermissions) {
       console.log(`✅ School permissions already exist for school ${schoolId}`);
@@ -205,7 +205,7 @@ schoolPermissionsSchema.statics.createDefaultPermissions = async function(school
     }
     
     const defaultPermissions = new this({
-      school_id: schoolId,
+      schoolId: schoolId,
       updatedBy: updatedBy,
       features: {
         enableGrades: true,
@@ -242,7 +242,7 @@ schoolPermissionsSchema.statics.createDefaultPermissions = async function(school
 // Static method to get permissions for a school
 schoolPermissionsSchema.statics.getSchoolPermissions = async function(schoolId) {
   try {
-    let permissions = await this.findOne({ school_id: schoolId });
+    let permissions = await this.findOne({ schoolId: schoolId });
     
     if (!permissions) {
       console.log(`No permissions found for school ${schoolId}, creating default permissions`);

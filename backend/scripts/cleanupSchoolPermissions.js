@@ -21,8 +21,9 @@ const cleanupSchoolPermissions = async () => {
     // Connect to database
     await connectDB();
     
-    // Find all records with null or invalid schoolId
-    const invalidRecords = await mongoose.connection.db.collection('schoolpermissions').find({
+    // CRITICAL: Check both possible field names (school_id and schoolId)
+    console.log('🔍 Checking for records with null/invalid school_id...');
+    const invalidRecords1 = await mongoose.connection.db.collection('schoolpermissions').find({
       $or: [
         { school_id: null },
         { school_id: undefined },
@@ -30,23 +31,45 @@ const cleanupSchoolPermissions = async () => {
       ]
     }).toArray();
     
-    console.log(`Found ${invalidRecords.length} invalid records with null/undefined school_id`);
+    console.log('🔍 Checking for records with null/invalid schoolId...');
+    const invalidRecords2 = await mongoose.connection.db.collection('schoolpermissions').find({
+      $or: [
+        { schoolId: null },
+        { schoolId: undefined },
+        { schoolId: { $exists: false } }
+      ]
+    }).toArray();
     
-    if (invalidRecords.length > 0) {
-      // Delete invalid records
-      const deleteResult = await mongoose.connection.db.collection('schoolpermissions').deleteMany({
+    console.log(`Found ${invalidRecords1.length} invalid records with null/undefined school_id`);
+    console.log(`Found ${invalidRecords2.length} invalid records with null/undefined schoolId`);
+    
+    // Delete records with null school_id
+    if (invalidRecords1.length > 0) {
+      const deleteResult1 = await mongoose.connection.db.collection('schoolpermissions').deleteMany({
         $or: [
           { school_id: null },
           { school_id: undefined },
           { school_id: { $exists: false } }
         ]
       });
-      
-      console.log(`✅ Deleted ${deleteResult.deletedCount} invalid records`);
+      console.log(`✅ Deleted ${deleteResult1.deletedCount} invalid records with school_id`);
     }
     
-    // Check for duplicates by schoolId
-    const duplicates = await mongoose.connection.db.collection('schoolpermissions').aggregate([
+    // Delete records with null schoolId
+    if (invalidRecords2.length > 0) {
+      const deleteResult2 = await mongoose.connection.db.collection('schoolpermissions').deleteMany({
+        $or: [
+          { schoolId: null },
+          { schoolId: undefined },
+          { schoolId: { $exists: false } }
+        ]
+      });
+      console.log(`✅ Deleted ${deleteResult2.deletedCount} invalid records with schoolId`);
+    }
+    
+    // Check for duplicates by school_id
+    console.log('🔍 Checking for duplicates by school_id...');
+    const duplicates1 = await mongoose.connection.db.collection('schoolpermissions').aggregate([
       {
         $group: {
           _id: "$school_id",
@@ -61,34 +84,69 @@ const cleanupSchoolPermissions = async () => {
       }
     ]).toArray();
     
-    console.log(`Found ${duplicates.length} groups of duplicate records`);
+    // Check for duplicates by schoolId
+    console.log('🔍 Checking for duplicates by schoolId...');
+    const duplicates2 = await mongoose.connection.db.collection('schoolpermissions').aggregate([
+      {
+        $group: {
+          _id: "$schoolId",
+          count: { $sum: 1 },
+          docs: { $push: "$_id" }
+        }
+      },
+      {
+        $match: {
+          count: { $gt: 1 }
+        }
+      }
+    ]).toArray();
     
-    // Clean up duplicates - keep the first one, delete the rest
-    for (const duplicate of duplicates) {
+    console.log(`Found ${duplicates1.length} groups of duplicate records by school_id`);
+    console.log(`Found ${duplicates2.length} groups of duplicate records by schoolId`);
+    
+    // Clean up duplicates by school_id
+    for (const duplicate of duplicates1) {
       const [keepId, ...deleteIds] = duplicate.docs;
-      
       if (deleteIds.length > 0) {
         const deleteResult = await mongoose.connection.db.collection('schoolpermissions').deleteMany({
           _id: { $in: deleteIds }
         });
-        
         console.log(`Deleted ${deleteResult.deletedCount} duplicate records for school_id: ${duplicate._id}`);
       }
     }
     
-    // Verify cleanup
+    // Clean up duplicates by schoolId
+    for (const duplicate of duplicates2) {
+      const [keepId, ...deleteIds] = duplicate.docs;
+      if (deleteIds.length > 0) {
+        const deleteResult = await mongoose.connection.db.collection('schoolpermissions').deleteMany({
+          _id: { $in: deleteIds }
+        });
+        console.log(`Deleted ${deleteResult.deletedCount} duplicate records for schoolId: ${duplicate._id}`);
+      }
+    }
+    
+    // Final verification
     const remainingRecords = await mongoose.connection.db.collection('schoolpermissions').countDocuments();
-    const nullRecords = await mongoose.connection.db.collection('schoolpermissions').countDocuments({
+    const nullRecords1 = await mongoose.connection.db.collection('schoolpermissions').countDocuments({
       $or: [
         { school_id: null },
         { school_id: undefined },
         { school_id: { $exists: false } }
       ]
     });
+    const nullRecords2 = await mongoose.connection.db.collection('schoolpermissions').countDocuments({
+      $or: [
+        { schoolId: null },
+        { schoolId: undefined },
+        { schoolId: { $exists: false } }
+      ]
+    });
     
     console.log(`🎉 Cleanup completed!`);
     console.log(`Total remaining records: ${remainingRecords}`);
-    console.log(`Records with null school_id: ${nullRecords}`);
+    console.log(`Records with null school_id: ${nullRecords1}`);
+    console.log(`Records with null schoolId: ${nullRecords2}`);
     
     process.exit(0);
     
