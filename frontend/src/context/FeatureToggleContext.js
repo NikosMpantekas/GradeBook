@@ -67,6 +67,18 @@ export const FeatureToggleProvider = ({ children }) => {
           }
         };
 
+        // TEMP FIX: Skip the broken legacy school permissions system for admin users
+        if (user?.role === 'admin') {
+          console.log('[FEATURE TOGGLE FIX] Bypassing broken school permissions API for admin user');
+          const allFeatures = {};
+          Object.keys(defaultFeatures).forEach(key => {
+            allFeatures[key] = true;
+          });
+          setFeatures(allFeatures);
+          setLoading(false);
+          return;
+        }
+        
         // Use the new API endpoint for current user's school permissions
         const response = await axios.get(`${API_URL}/api/school-permissions/current`, config);
         
@@ -125,6 +137,13 @@ export const FeatureToggleProvider = ({ children }) => {
       return true;
     }
     
+    // ADMIN FIX: Enable all features for admin users by default
+    // This bypasses the broken legacy school permissions system
+    if (user?.role === 'admin') {
+      console.log(`[FEATURE TOGGLE FIX] Enabling '${featureName}' for admin user`);
+      return true;
+    }
+    
     // Check if the feature exists in the loaded features
     if (features && featureName in features) {
       return features[featureName] === true;
@@ -139,6 +158,16 @@ export const FeatureToggleProvider = ({ children }) => {
   const getEnabledFeatures = () => {
     if (user?.role === 'superadmin') {
       // Return all features as enabled for superadmin
+      const allFeatures = {};
+      Object.keys(defaultFeatures).forEach(key => {
+        allFeatures[key] = true;
+      });
+      return allFeatures;
+    }
+    
+    // ADMIN FIX: Return all features as enabled for admin users
+    if (user?.role === 'admin') {
+      console.log('[FEATURE TOGGLE FIX] Returning all features enabled for admin user');
       const allFeatures = {};
       Object.keys(defaultFeatures).forEach(key => {
         allFeatures[key] = true;
