@@ -381,7 +381,7 @@ const Home = () => {
         </Box>
       </Drawer>
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 }, height: "100%" }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
           <Grid
             container
             spacing={6}
