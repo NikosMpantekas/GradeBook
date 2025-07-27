@@ -47,20 +47,29 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   
-  // Enhanced sidebar state management
+  // Enhanced sidebar state management with corrected route detection
   const isSuperAdmin = user && user.role === 'superadmin';
   const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
   const isSuperAdminRoute = location.pathname.includes('/superadmin/');
-  const isAdminRoute = location.pathname.includes('/admin/') || isSuperAdminRoute;
+  const isAdminRoute = location.pathname.includes('/admin/') || location.pathname === '/app/admin' || isSuperAdminRoute;
   
-  // Track if current section is superadmin or admin
+  // Track if current section is superadmin or admin with enhanced debugging
   useEffect(() => {
+    console.log(`[SIDEBAR ROUTE DEBUG] Path: ${location.pathname}`);
+    console.log(`[SIDEBAR ROUTE DEBUG] isSuperAdminRoute: ${isSuperAdminRoute}`);
+    console.log(`[SIDEBAR ROUTE DEBUG] isAdminRoute: ${isAdminRoute}`);
+    console.log(`[SIDEBAR ROUTE DEBUG] User role: ${user?.role}`);
+    
     if (isSuperAdminRoute) {
       localStorage.setItem('currentSection', 'superadmin');
+      console.log(`[SIDEBAR ROUTE DEBUG] Set section to: superadmin`);
     } else if (isAdminRoute) {
       localStorage.setItem('currentSection', 'admin');
+      console.log(`[SIDEBAR ROUTE DEBUG] Set section to: admin`);
+    } else {
+      console.log(`[SIDEBAR ROUTE DEBUG] No section set, relying on user role`);
     }
-  }, [isSuperAdminRoute, isAdminRoute]);
+  }, [isSuperAdminRoute, isAdminRoute, location.pathname, user?.role]);
   
   // Make sidebar permanent for admin users or if specified in props
   const isActuallyPermanent = permanent || isAdmin;
@@ -538,15 +547,32 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       return true;
     });
     
-    // Debug logging for admin menu filtering
+    // Enhanced debug logging for admin menu filtering
     if (user?.role === 'admin' || user?.role === 'superadmin') {
+      console.log(`[SIDEBAR MENU DEBUG] ==========================================`);
       console.log(`[SIDEBAR MENU DEBUG] Menu filtering analysis:`);
       console.log(`  - User role: ${user?.role}`);
       console.log(`  - Current section: ${currentSection}`);
+      console.log(`  - Current path: ${location.pathname}`);
       console.log(`  - Total menu items: ${menuItems.length}`);
       console.log(`  - Filtered items: ${filteredItems.length}`);
-      console.log(`  - Admin items available:`, menuItems.filter(item => item.roles.includes('admin')).map(item => ({ text: item.text, section: item.section })));
+      console.log(`  - Admin items available:`, menuItems.filter(item => item.roles.includes('admin')).map(item => ({ text: item.text, section: item.section, hasPermissionCheck: !!item.checkPermission })));
       console.log(`  - Filtered admin items:`, filteredItems.filter(item => item.roles.includes('admin')).map(item => ({ text: item.text, section: item.section })));
+      
+      // Check each admin item individually
+      const adminItems = menuItems.filter(item => item.roles.includes('admin'));
+      adminItems.forEach(item => {
+        const hasRole = item.roles.includes(user?.role);
+        const sectionMatches = !item.section || item.section === currentSection;
+        const permissionPassed = !item.checkPermission || item.checkPermission();
+        
+        console.log(`[SIDEBAR MENU DEBUG] Item "${item.text}":`);
+        console.log(`  - Has role: ${hasRole}`);
+        console.log(`  - Section matches (${item.section} === ${currentSection}): ${sectionMatches}`);
+        console.log(`  - Permission passed: ${permissionPassed}`);
+        console.log(`  - Will show: ${hasRole && sectionMatches && permissionPassed}`);
+      });
+      console.log(`[SIDEBAR MENU DEBUG] ==========================================`);
     }
     
     return filteredItems;
