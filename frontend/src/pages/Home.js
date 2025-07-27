@@ -164,9 +164,22 @@ const Home = () => {
   const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
 
   return (
-    <Box sx={{ bgcolor: 'white', minHeight: '100vh', fontFamily: 'Roboto, Arial, sans-serif' }}>
+    <Box sx={{
+      bgcolor: 'white',
+      minHeight: '100vh',
+      fontFamily: 'Roboto, Arial, sans-serif',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
       <AppBar position="static" elevation={0} sx={{ bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
         <Toolbar sx={{ minHeight: 64, px: { xs: 1, sm: 3 } }}>
+          <IconButton
+            sx={{ display: { xs: 'flex', md: 'none' }, color: '#337ab7', mr: 1 }}
+            onClick={handleDrawerToggle}
+            aria-label="menu"
+          >
+            <MenuIcon />
+          </IconButton>
           <Logo />
           <Box sx={{ flexGrow: 1 }} />
           <Stack direction="row" spacing={2} sx={{ display: { xs: 'none', md: 'flex' } }}>
@@ -188,17 +201,10 @@ const Home = () => {
               </Button>
             ))}
           </Stack>
-          <IconButton
-            sx={{ display: { xs: 'flex', md: 'none' }, color: '#337ab7' }}
-            onClick={handleDrawerToggle}
-            aria-label="menu"
-          >
-            <MenuIcon />
-          </IconButton>
         </Toolbar>
       </AppBar>
       <Drawer
-        anchor="right"
+        anchor="left" // Sidebar comes from the left
         open={drawerOpen}
         onClose={handleDrawerToggle}
         PaperProps={{
@@ -237,103 +243,105 @@ const Home = () => {
           </List>
         </Box>
       </Drawer>
-      <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
-        <Grid container spacing={6} alignItems="center" justifyContent="center">
-          <Grid item xs={12} md={6}>
-            <Box sx={{ mb: 4 }}>
-              <Typography
-                variant="h3"
-                fontWeight="bold"
-                sx={{
-                  color: '#222',
-                  mb: 2,
-                  fontSize: { xs: 28, md: 36 },
-                  lineHeight: 1.2
-                }}
-              >
-                Αναβαθμίστε την διαχείριση του φροντιστηρίου σας.
-              </Typography>
-              <Typography
-                variant="h6"
-                sx={{
-                  color: 'grey.700',
-                  mb: 4,
-                  fontWeight: 400,
-                  fontSize: { xs: 16, md: 18 }
-                }}
-              >
-                Το GradeBook παρέχει τα εφόδια για την σύγχρονη και εύκολη διαχείριση φροντιστηρίων, προσφέροντας πλήρη έλεγχο των τάξεων και των μαθητών σας.
-              </Typography>
-              <Button
-                variant="contained"
-                size="large"
-                href="/login"
-                sx={{
-                  bgcolor: '#337ab7',
-                  color: 'white',
-                  borderRadius: 8,
-                  px: 5,
-                  py: 1.7,
-                  fontWeight: 'bold',
-                  fontSize: 18,
-                  boxShadow: '0 2px 8px 0 rgba(51,122,183,0.10)',
-                  textTransform: 'none',
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    bgcolor: '#245a8d',
-                    transform: 'translateY(-2px) scale(1.03)'
-                  }
-                }}
-                rel="noopener noreferrer"
-              >
-                Συνδεθείτε στον Πίνακα Ελέγχου
-              </Button>
-            </Box>
-            <Grid container spacing={2} id="features">
-              {features.map((feature, idx) => (
-                <Grid item xs={12} sm={6} key={idx}>
-                  <Card
-                    elevation={0}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      p: 2,
-                      borderRadius: 4,
-                      bgcolor: 'grey.50',
-                      boxShadow: '0 1px 6px 0 rgba(51,122,183,0.04)',
-                      mb: 1,
-                      transition: 'box-shadow 0.2s',
-                      '&:hover': { boxShadow: '0 4px 16px 0 rgba(51,122,183,0.10)' }
-                    }}
-                  >
-                    {feature.icon}
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight="bold" color="#222">
-                        {feature.title}
-                      </Typography>
-                      <Typography variant="body2" color="grey.700">
-                        {feature.desc}
-                      </Typography>
-                    </Box>
-                  </Card>
-                </Grid>
-              ))}
+      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
+          <Grid container spacing={6} alignItems="center" justifyContent="center">
+            <Grid item xs={12} md={6}>
+              <Box sx={{ mb: 4 }}>
+                <Typography
+                  variant="h3"
+                  fontWeight="bold"
+                  sx={{
+                    color: '#222',
+                    mb: 2,
+                    fontSize: { xs: 28, md: 36 },
+                    lineHeight: 1.2
+                  }}
+                >
+                  Αναβαθμίστε την διαχείριση του φροντιστηρίου σας.
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: 'grey.700',
+                    mb: 4,
+                    fontWeight: 400,
+                    fontSize: { xs: 16, md: 18 }
+                  }}
+                >
+                  Το GradeBook παρέχει τα εφόδια για την σύγχρονη και εύκολη διαχείριση φροντιστηρίων, προσφέροντας πλήρη έλεγχο των τάξεων και των μαθητών σας.
+                </Typography>
+                <Button
+                  variant="contained"
+                  size="large"
+                  href="/login"
+                  sx={{
+                    bgcolor: '#337ab7',
+                    color: 'white',
+                    borderRadius: 8,
+                    px: 5,
+                    py: 1.7,
+                    fontWeight: 'bold',
+                    fontSize: 18,
+                    boxShadow: '0 2px 8px 0 rgba(51,122,183,0.10)',
+                    textTransform: 'none',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      bgcolor: '#245a8d',
+                      transform: 'translateY(-2px) scale(1.03)'
+                    }
+                  }}
+                  rel="noopener noreferrer"
+                >
+                  Συνδεθείτε στον Πίνακα Ελέγχου
+                </Button>
+              </Box>
+              <Grid container spacing={2} id="features">
+                {features.map((feature, idx) => (
+                  <Grid item xs={12} sm={6} key={idx}>
+                    <Card
+                      elevation={0}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        p: 2,
+                        borderRadius: 4,
+                        bgcolor: 'grey.50',
+                        boxShadow: '0 1px 6px 0 rgba(51,122,183,0.04)',
+                        mb: 1,
+                        transition: 'box-shadow 0.2s',
+                        '&:hover': { boxShadow: '0 4px 16px 0 rgba(51,122,183,0.10)' }
+                      }}
+                    >
+                      {feature.icon}
+                      <Box>
+                        <Typography variant="subtitle1" fontWeight="bold" color="#222">
+                          {feature.title}
+                        </Typography>
+                        <Typography variant="body2" color="grey.700">
+                          {feature.desc}
+                        </Typography>
+                      </Box>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              sx={{
+                display: { xs: 'none', md: 'flex' }, // Hide mockup on mobile/tablet
+                justifyContent: 'center'
+              }}
+            >
+              <DashboardMockup />
             </Grid>
           </Grid>
-          <Grid
-            item
-            xs={12}
-            md={6}
-            sx={{
-              display: { xs: 'none', md: 'flex' }, // Hide mockup on mobile/tablet
-              justifyContent: 'center'
-            }}
-          >
-            <DashboardMockup />
-          </Grid>
-        </Grid>
-      </Container>
+        </Container>
+      </Box>
       <Box
         sx={{
           mt: 8,
