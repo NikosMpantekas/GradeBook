@@ -1,3 +1,5 @@
+import Brightness4Icon from "@mui/icons-material/Brightness4";
+import Brightness7Icon from "@mui/icons-material/Brightness7";
 import React, { useState } from "react";
 import {
   Box,
@@ -278,13 +280,42 @@ const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(true); // dark mode default
 
   const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
+  const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
+
+  // Color palette for dark and light mode
+  const colors = darkMode
+    ? {
+        background: "#181b20",
+        appBar: "#23262b",
+        card: "#23262b",
+        text: "#fff",
+        subText: "grey.300",
+        footer: "#23262b",
+        border: "1px solid #23262b",
+        button: "#337ab7",
+        buttonHover: "#245a8d",
+        icon: "#337ab7",
+      }
+    : {
+        background: "#f5f6fa",
+        appBar: "#fff",
+        card: "#fff",
+        text: "#23262b",
+        subText: "grey.800",
+        footer: "#f5f6fa",
+        border: "1px solid #e0e0e0",
+        button: "#337ab7",
+        buttonHover: "#245a8d",
+        icon: "#337ab7",
+      };
 
   return (
     <Box
       sx={{
-        bgcolor: "#181b20",
+        bgcolor: colors.background,
         minHeight: "100vh",
         fontFamily: "Roboto, Arial, sans-serif",
         display: "flex",
@@ -295,13 +326,13 @@ const Home = () => {
       <AppBar
         position="static"
         elevation={0}
-        sx={{ bgcolor: "#23262b", borderBottom: "1px solid #23262b" }}
+        sx={{ bgcolor: colors.appBar, borderBottom: colors.border }}
       >
         <Toolbar sx={{ minHeight: 64, px: { xs: 1, sm: 3 } }}>
           <IconButton
             sx={{
               display: { xs: "flex", md: "none" },
-              color: "#337ab7",
+              color: colors.icon,
               mr: 1,
             }}
             onClick={handleDrawerToggle}
@@ -311,6 +342,14 @@ const Home = () => {
           </IconButton>
           <Logo />
           <Box sx={{ flexGrow: 1 }} />
+          <IconButton
+            onClick={handleToggleDarkMode}
+            sx={{ color: colors.icon, mr: 1 }}
+            aria-label="Toggle dark mode"
+            title="Toggle dark mode"
+          >
+            {darkMode ? <Brightness7Icon /> : <Brightness4Icon />}
+          </IconButton>
           <Stack
             direction="row"
             spacing={2}
@@ -321,13 +360,13 @@ const Home = () => {
                 key={link.label}
                 href={link.href}
                 sx={{
-                  color: "#337ab7",
+                  color: colors.icon,
                   fontWeight: 500,
                   fontSize: 16,
                   borderRadius: 2,
                   px: 2,
                   textTransform: "none",
-                  "&:hover": { bgcolor: "#23262b" },
+                  "&:hover": { bgcolor: colors.appBar },
                 }}
               >
                 {link.label}
@@ -343,8 +382,8 @@ const Home = () => {
         PaperProps={{
           sx: {
             width: 220,
-            bgcolor: "#23262b",
-            color: "#fff",
+            bgcolor: colors.appBar,
+            color: colors.text,
             boxShadow: 3,
           },
         }}
@@ -357,8 +396,8 @@ const Home = () => {
             display: "flex",
             flexDirection: "column",
             height: "100%",
-            bgcolor: "#23262b",
-            color: "#fff",
+            bgcolor: colors.appBar,
+            color: colors.text,
           }}
           role="presentation"
           onClick={handleDrawerToggle}
@@ -393,7 +432,7 @@ const Home = () => {
                   variant="h3"
                   fontWeight="bold"
                   sx={{
-                    color: "#fff",
+                    color: colors.text,
                     mb: 2,
                     fontSize: { xs: 28, md: 36 },
                     lineHeight: 1.2,
@@ -404,7 +443,7 @@ const Home = () => {
                 <Typography
                   variant="h6"
                   sx={{
-                    color: "grey.300",
+                    color: colors.subText,
                     mb: 4,
                     fontWeight: 400,
                     fontSize: { xs: 16, md: 18 },
@@ -419,7 +458,7 @@ const Home = () => {
                   size="large"
                   href="/login"
                   sx={{
-                    bgcolor: "#337ab7",
+                    bgcolor: colors.button,
                     color: "white",
                     borderRadius: 8,
                     px: 5,
@@ -430,7 +469,7 @@ const Home = () => {
                     textTransform: "none",
                     transition: "all 0.2s",
                     "&:hover": {
-                      bgcolor: "#245a8d",
+                      bgcolor: colors.buttonHover,
                       transform: "translateY(-2px) scale(1.03)",
                     },
                   }}
@@ -450,7 +489,7 @@ const Home = () => {
                         gap: 2,
                         p: 2,
                         borderRadius: 4,
-                        bgcolor: "#23262b",
+                    bgcolor: colors.card,
                         boxShadow: "0 1px 6px 0 rgba(51,122,183,0.04)",
                         mb: 1,
                         transition: "box-shadow 0.2s",
@@ -464,11 +503,11 @@ const Home = () => {
                         <Typography
                           variant="subtitle1"
                           fontWeight="bold"
-                          sx={{ color: "#fff" }}
+                        sx={{ color: colors.text }}
                         >
                           {feature.title}
                         </Typography>
-                        <Typography variant="body2" sx={{ color: "grey.300" }}>
+                        <Typography variant="body2" sx={{ color: colors.subText }}>
                           {feature.desc}
                         </Typography>
                       </Box>
@@ -495,12 +534,12 @@ const Home = () => {
         sx={{
           mt: "auto",
           py: 3,
-          bgcolor: "#23262b",
-          borderTop: "1px solid #23262b",
+          bgcolor: colors.footer,
+          borderTop: colors.border,
           textAlign: "center",
         }}
       >
-        <Typography variant="body2" sx={{ color: "grey.400" }}>
+        <Typography variant="body2" sx={{ color: darkMode ? "grey.400" : "grey.700" }}>
           © {new Date().getFullYear()} GradeBook Team. All Rights Reserved.
         </Typography>
       </Box>
