@@ -22,8 +22,8 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 const Logo = () => (
   <Box
     sx={{
-      fontWeight: 400,
-      fontSize: 22,
+      fontWeight: 100,
+      fontSize: 38,
       color: '#337ab7',
       letterSpacing: 1,
       mr: 2,
@@ -88,32 +88,32 @@ const DashboardMockup = () => (
       borderRight: '1px solid #23262b'
     }}>
       <Box sx={{
-        fontWeight: 400,
-        fontSize: 18,
-        color: '#fff',
-        fontFamily: 'Roboto, Arial, sans-serif',
-        mb: 3,
-        letterSpacing: 1,
-        opacity: 0.85
-      }}>
-        GradeBook
-      </Box>
-      <Box sx={{
         width: '100%',
+        height: 36,
         bgcolor: '#353942',
         borderRadius: 2,
-        px: 1.5,
-        py: 1,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
+        mb: 2
+      }} />
+      <Box sx={{
+        width: '100%',
+        height: 36,
+        bgcolor: '#353942',
+        borderRadius: 2,
         mb: 1.5
-      }}>
-        <Box sx={{ width: 22, height: 22, bgcolor: '#fff', borderRadius: 2, mr: 1, opacity: 0.7 }} />
-        <Typography sx={{ color: '#bfc6d1', fontSize: 15, fontWeight: 500 }}>Dashboard</Typography>
-      </Box>
-      <Box sx={{ color: '#bfc6d1', fontSize: 13, opacity: 0.7, ml: 0.5 }}>Muchacho del diablo</Box>
-      <Box sx={{ color: '#bfc6d1', fontSize: 12, opacity: 0.5, ml: 0.5 }}>Admin</Box>
+      }} />
+      <Box sx={{
+        width: '70%',
+        height: 18,
+        bgcolor: '#23262b',
+        borderRadius: 2,
+        mb: 1
+      }} />
+      <Box sx={{
+        width: '60%',
+        height: 14,
+        bgcolor: '#23262b',
+        borderRadius: 2
+      }} />
     </Box>
     <Box sx={{
       flex: 1,
@@ -127,7 +127,12 @@ const DashboardMockup = () => (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
         <Box sx={{ width: 28, height: 28, bgcolor: '#337ab7', borderRadius: '50%' }} />
         <Box sx={{ width: 120, height: 16, bgcolor: 'grey.800', borderRadius: 2 }} />
+        <Box sx={{ flex: 1 }} />
+        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
+        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
+        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
       </Box>
+      <Box sx={{ width: 120, height: 18, bgcolor: 'grey.700', borderRadius: 2, mb: 1 }} />
       <Box sx={{ width: 180, height: 14, bgcolor: 'grey.800', borderRadius: 2, mb: 2 }} />
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <Box sx={{ flex: 1, height: 60, bgcolor: '#181b20', borderRadius: 3 }} />
