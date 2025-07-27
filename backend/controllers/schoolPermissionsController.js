@@ -177,49 +177,98 @@ const getCurrentSchoolPermissions = asyncHandler(async (req, res) => {
 // @access  Private/SuperAdmin
 const getAllSchoolPermissions = asyncHandler(async (req, res) => {
   try {
+    console.log('🔍 [SchoolPermissions] Getting all schools with permissions for superadmin...');
+    
     // Get all schools
-    const schools = await School.find({ active: true }).select('name emailDomain address active');
+    const schools = await School.find({}).lean();
+    console.log(`📊 [SchoolPermissions] Found ${schools.length} schools in database`);
+    
+    if (schools.length === 0) {
+      console.log('⚠️ [SchoolPermissions] No schools found in database');
+      res.json({
+        success: true,
+        message: 'No schools found',
+        data: { schools: [] }
+      });
+      return;
+    }
     
     // Get permissions for each school
-    const schoolsWithPermissions = await Promise.all(
-      schools.map(async (school) => {
-        try {
-          const permissions = await SchoolPermissions.getSchoolPermissions(school._id);
-          return {
-            _id: school._id,
-            name: school.name,
-            emailDomain: school.emailDomain,
-            address: school.address,
-            active: school.active,
-            permissions: permissions
-          };
-        } catch (error) {
-          console.error(`Error getting permissions for school ${school._id}:`, error);
-          return {
-            _id: school._id,
-            name: school.name,
-            emailDomain: school.emailDomain,
-            address: school.address,
-            active: school.active,
-            permissions: null,
-            error: error.message
-          };
+    const schoolsWithPermissions = [];
+    const errors = [];
+    
+    for (const school of schools) {
+      try {
+        console.log(`🏫 [SchoolPermissions] Processing school: ${school.name} (${school._id})`);
+        
+        // CRITICAL FIX: Validate school._id before using it
+        if (!school._id) {
+          console.error(`❌ [SchoolPermissions] School has invalid ID: ${school.name}`);
+          errors.push({ schoolName: school.name, error: 'Invalid school ID' });
+          continue;
         }
-      })
-    );
+        
+        // Get or create permissions for this school
+        const permissions = await SchoolPermissions.getSchoolPermissions(school._id);
+        
+        if (!permissions) {
+          console.log(`🆕 [SchoolPermissions] Creating default permissions for ${school.name}`);
+          await SchoolPermissions.createDefaultPermissions(school._id);
+          const newPermissions = await SchoolPermissions.getSchoolPermissions(school._id);
+          
+          schoolsWithPermissions.push({
+            school: {
+              _id: school._id,
+              name: school.name,
+              emailDomain: school.emailDomain,
+              active: school.active
+            },
+            permissions: newPermissions
+          });
+        } else {
+          schoolsWithPermissions.push({
+            school: {
+              _id: school._id,
+              name: school.name,
+              emailDomain: school.emailDomain,
+              active: school.active
+            },
+            permissions: permissions
+          });
+        }
+        
+        console.log(`✅ [SchoolPermissions] Successfully processed ${school.name}`);
+        
+      } catch (error) {
+        console.error(`💥 [SchoolPermissions] Error processing school ${school.name}:`, error.message);
+        errors.push({ 
+          schoolName: school.name, 
+          schoolId: school._id,
+          error: error.message 
+        });
+        // Continue with other schools even if one fails
+      }
+    }
+    
+    console.log(`🎉 [SchoolPermissions] Completed processing. Success: ${schoolsWithPermissions.length}, Errors: ${errors.length}`);
     
     res.json({
       success: true,
       data: {
         schools: schoolsWithPermissions,
-        totalSchools: schools.length
+        totalSchools: schools.length,
+        processedSchools: schoolsWithPermissions.length,
+        errors: errors.length > 0 ? errors : undefined
       }
     });
     
   } catch (error) {
-    console.error('Error getting all school permissions:', error);
-    res.status(500);
-    throw new Error('Failed to get all school permissions: ' + error.message);
+    console.error('💥 [SchoolPermissions] Critical error getting all school permissions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get school permissions',
+      error: error.message
+    });
   }
 });
 

@@ -185,10 +185,22 @@ schoolPermissionsSchema.statics.getAvailableFeatures = function() {
 // Static method to create default permissions for a school
 schoolPermissionsSchema.statics.createDefaultPermissions = async function(schoolId, updatedBy = null) {
   try {
+    // CRITICAL VALIDATION: Prevent null/undefined schoolId
+    if (!schoolId) {
+      throw new Error('School ID is required and cannot be null/undefined');
+    }
+    
+    // Validate schoolId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+      throw new Error(`Invalid school ID format: ${schoolId}`);
+    }
+    
+    console.log(`🔍 Creating permissions for schoolId: ${schoolId}`);
+    
     const existingPermissions = await this.findOne({ school_id: schoolId });
     
     if (existingPermissions) {
-      console.log(`School permissions already exist for school ${schoolId}`);
+      console.log(`✅ School permissions already exist for school ${schoolId}`);
       return existingPermissions;
     }
     
