@@ -202,7 +202,12 @@ const Home = () => {
         open={drawerOpen}
         onClose={handleDrawerToggle}
         PaperProps={{
-          sx: { width: 220 }
+          sx: {
+            width: 220,
+            bgcolor: 'white',
+            color: '#222',
+            boxShadow: 3
+          }
         }}
       >
         <Box
@@ -212,17 +217,19 @@ const Home = () => {
             px: 2,
             display: 'flex',
             flexDirection: 'column',
-            height: '100%'
+            height: '100%',
+            bgcolor: 'white',
+            color: '#222'
           }}
           role="presentation"
           onClick={handleDrawerToggle}
           onKeyDown={handleDrawerToggle}
         >
-          <Logo />
+          {/* Removed Logo from Drawer */}
           <List sx={{ mt: 2 }}>
             {navLinks.map((link) => (
               <ListItem key={link.label} disablePadding>
-                <ListItemButton component="a" href={link.href}>
+                <ListItemButton component="a" href={link.href} sx={{ color: '#222' }}>
                   <ListItemText primary={link.label} />
                 </ListItemButton>
               </ListItem>
@@ -314,7 +321,15 @@ const Home = () => {
               ))}
             </Grid>
           </Grid>
-          <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Grid
+            item
+            xs={12}
+            md={6}
+            sx={{
+              display: { xs: 'none', md: 'flex' }, // Hide mockup on mobile/tablet
+              justifyContent: 'center'
+            }}
+          >
             <DashboardMockup />
           </Grid>
         </Grid>
@@ -329,7 +344,7 @@ const Home = () => {
         }}
       >
         <Typography variant="body2" color="grey.600">
-          © 2025 GradeBook Team. Όλα τα δικαιώματα διατηρούνται.
+          © {new Date().getFullYear()} GradeBook Team. All Rights Reserved.
         </Typography>
       </Box>
     </Box>
