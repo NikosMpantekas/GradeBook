@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Box,
@@ -7,7 +6,6 @@ import {
   Button,
   Grid,
   Card,
-  CardContent,
   Chip,
   AppBar,
   Toolbar,
@@ -47,84 +45,121 @@ const Logo = () => (
 
 const features = [
   {
-    icon: <CheckCircleIcon color="primary" sx={{ fontSize: 32 }} />, title: 'Παρουσίες', desc: 'Εύκολη καταγραφή παρουσιών μαθητών.'
+    icon: <CheckCircleIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />, title: 'Παρουσίες', desc: 'Εύκολη καταγραφή παρουσιών μαθητών.'
   },
   {
-    icon: <GradeIcon color="primary" sx={{ fontSize: 32 }} />, title: 'Βαθμολογίες', desc: 'Άμεση διαχείριση και ανάλυση βαθμών.'
+    icon: <GradeIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />, title: 'Βαθμολογίες', desc: 'Άμεση διαχείριση και ανάλυση βαθμών.'
   },
   {
-    icon: <ForumIcon color="primary" sx={{ fontSize: 32 }} />, title: 'Επικοινωνία', desc: 'Γρήγορη ενημέρωση γονέων & μαθητών.'
+    icon: <ForumIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />, title: 'Επικοινωνία', desc: 'Γρήγορη ενημέρωση γονέων & μαθητών.'
   },
   {
-    icon: <AssessmentIcon color="primary" sx={{ fontSize: 32 }} />, title: 'Αναφορές', desc: 'Αναλυτικές αναφορές προόδου.'
+    icon: <AssessmentIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />, title: 'Αναφορές', desc: 'Αναλυτικές αναφορές προόδου.'
   }
 ];
 
+// Updated navLinks: removed "Τιμές", added "Σχετικά με εμάς"
 const navLinks = [
   { label: 'Πίνακας Ελέγχου', href: '/login' },
   { label: 'Λειτουργίες', href: '#features' },
-  { label: 'Τιμές', href: '#pricing' },
+  { label: 'Σχετικά με εμάς', href: '#about' },
   { label: 'Επικοινωνία', href: '#contact' }
 ];
+
+// Dashboard-inspired blurred mockup
+const DashboardMockup = () => (
+  <Box
+    sx={{
+      width: '100%',
+      maxWidth: 420,
+      height: 260,
+      mx: 'auto',
+      mt: { xs: 4, md: 0 },
+      borderRadius: 4,
+      bgcolor: 'grey.100',
+      boxShadow: '0 4px 24px 0 rgba(51,122,183,0.10)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      position: 'relative',
+      p: 0,
+      filter: 'blur(0.5px)'
+    }}
+  >
+    {/* Sidebar */}
+    <Box sx={{
+      width: 70,
+      height: '100%',
+      bgcolor: '#181b20',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      pt: 2,
+      gap: 2
+    }}>
+      <Box sx={{ bgcolor: '#337ab7', width: 36, height: 36, borderRadius: 2, mb: 2 }} />
+      <Box sx={{ bgcolor: '#353942', width: 36, height: 36, borderRadius: 2, mb: 1 }} />
+    </Box>
+    {/* Main area */}
+    <Box sx={{
+      flex: 1,
+      height: '100%',
+      bgcolor: '#23262b',
+      p: 2,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 2
+    }}>
+      {/* Topbar */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <Box sx={{ width: 28, height: 28, bgcolor: '#337ab7', borderRadius: '50%' }} />
+        <Box sx={{ width: 90, height: 14, bgcolor: 'grey.800', borderRadius: 2 }} />
+        <Box sx={{ flexGrow: 1 }} />
+        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
+        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
+        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
+      </Box>
+      {/* Dashboard title */}
+      <Box sx={{ width: 120, height: 18, bgcolor: 'grey.700', borderRadius: 2, mb: 1 }} />
+      {/* Welcome text */}
+      <Box sx={{ width: 180, height: 12, bgcolor: 'grey.800', borderRadius: 2, mb: 2 }} />
+      {/* Cards row */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <Box sx={{ flex: 1, height: 60, bgcolor: '#181b20', borderRadius: 3 }} />
+        <Box sx={{ flex: 1, height: 60, bgcolor: '#181b20', borderRadius: 3 }} />
+      </Box>
+      {/* Quick actions row */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
+        <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
+        <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
+        <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
+      </Box>
+      {/* Recent notifications & user overview */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ flex: 1, height: 38, bgcolor: '#181b20', borderRadius: 2 }} />
+        <Box sx={{ flex: 1, height: 38, bgcolor: '#181b20', borderRadius: 2 }} />
+      </Box>
+    </Box>
+    <Chip
+      label="Demo"
+      size="small"
+      sx={{
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        bgcolor: '#337ab7',
+        color: 'white',
+        fontWeight: 'bold'
+      }}
+    />
+  </Box>
+);
 
 const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
-  // Placeholder for dashboard mockup
-  const DashboardMockup = () => (
-    <Box
-      sx={{
-        width: '100%',
-        maxWidth: 380,
-        height: 220,
-        mx: 'auto',
-        mt: { xs: 4, md: 0 },
-        borderRadius: 4,
-        bgcolor: 'grey.100',
-        boxShadow: '0 4px 24px 0 rgba(51,122,183,0.10)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        filter: 'blur(0.5px)',
-        overflow: 'hidden',
-        position: 'relative'
-      }}
-    >
-      {/* Minimal blurred dashboard preview */}
-      <Box
-        sx={{
-          width: '90%',
-          height: '80%',
-          bgcolor: 'grey.200',
-          borderRadius: 3,
-          boxShadow: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          opacity: 0.7
-        }}
-      >
-        <Box sx={{ width: '70%', height: 18, bgcolor: '#337ab7', borderRadius: 2, mb: 2 }} />
-        <Box sx={{ width: '50%', height: 12, bgcolor: 'grey.300', borderRadius: 2, mb: 1 }} />
-        <Box sx={{ width: '60%', height: 12, bgcolor: 'grey.300', borderRadius: 2, mb: 1 }} />
-        <Box sx={{ width: '80%', height: 12, bgcolor: 'grey.300', borderRadius: 2 }} />
-      </Box>
-      <Chip
-        label="Demo"
-        size="small"
-        sx={{
-          position: 'absolute',
-          top: 12,
-          right: 12,
-          bgcolor: '#337ab7',
-          color: 'white',
-          fontWeight: 'bold'
-        }}
-      />
-    </Box>
-  );
 
   return (
     <Box sx={{ bgcolor: 'white', minHeight: '100vh', fontFamily: 'Roboto, Arial, sans-serif' }}>
@@ -208,6 +243,7 @@ const Home = () => {
                     transform: 'translateY(-2px) scale(1.03)'
                   }
                 }}
+                rel="noopener noreferrer"
               >
                 Συνδεθείτε στον Πίνακα Ελέγχου
               </Button>
