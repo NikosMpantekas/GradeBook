@@ -61,7 +61,7 @@ const features = [
 ];
 
 const navLinks = [
-  { label: 'Αρχική', href: '#' },
+  { label: 'Πίνακας Ελέγχου', href: '/login' },
   { label: 'Λειτουργίες', href: '#features' },
   { label: 'Τιμές', href: '#pricing' },
   { label: 'Επικοινωνία', href: '#contact' }
@@ -175,7 +175,7 @@ const Home = () => {
                   lineHeight: 1.2
                 }}
               >
-                Διαχειρίσου το φροντιστήριό σου εύκολα & έξυπνα.
+                Αναβαθμίστε την διαχείριση του φροντιστηρίου σας.
               </Typography>
               <Typography
                 variant="h6"
@@ -186,11 +186,12 @@ const Home = () => {
                   fontSize: { xs: 16, md: 18 }
                 }}
               >
-                Η πλατφόρμα GradeBook απλοποιεί τη διαχείριση φροντιστηρίων, προσφέροντας αυτοματισμούς, άμεση ενημέρωση και πλήρη έλεγχο για κάθε ιδιοκτήτη.
+                Το GradeBook παρέχει τα εφόδια για την σύγχρονη και εύκολη διαχείριση φροντιστηρίων, προσφέροντας πλήρη έλεγχο των τάξεων και των μαθητών σας.
               </Typography>
               <Button
                 variant="contained"
                 size="large"
+                href="/login"
                 sx={{
                   bgcolor: '#337ab7',
                   color: 'white',
@@ -208,7 +209,7 @@ const Home = () => {
                   }
                 }}
               >
-                Ξεκινήστε Δωρεάν
+                Συνδεθείτε στον Πίνακα Ελέγχου
               </Button>
             </Box>
 
@@ -264,7 +265,7 @@ const Home = () => {
         }}
       >
         <Typography variant="body2" color="grey.600">
-          © 2025 GradeBook. Όλα τα δικαιώματα διατηρούνται.
+          © 2025 GradeBook Team. Όλα τα δικαιώματα διατηρούνται.
         </Typography>
       </Box>
     </Box>
