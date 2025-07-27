@@ -289,7 +289,6 @@ const Home = () => {
         fontFamily: "Roboto, Arial, sans-serif",
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
         overflow: "auto",
       }}
     >
@@ -387,7 +386,6 @@ const Home = () => {
             spacing={6}
             alignItems="center"
             justifyContent="center"
-            sx={{ height: "100%" }}
           >
             <Grid item xs={12} md={6}>
               <Box sx={{ mb: 4 }}>
