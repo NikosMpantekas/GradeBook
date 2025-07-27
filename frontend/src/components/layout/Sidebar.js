@@ -27,6 +27,7 @@ import {
   Email as EmailIcon,
   AdminPanelSettings as SuperAdminIcon,
   PersonAdd as AddUserIcon,
+  PersonAdd as PersonAddIcon,
   Event as CalendarIcon,
   Schedule as ScheduleIcon,
   Star as RatingIcon,
@@ -461,18 +462,18 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       
       // 1. SuperAdmin Dashboard
       {
-        text: 'SuperAdmin Dashboard',
-        icon: <SuperAdminIcon />,
-        path: '/app/superadmin',
+        text: 'Dashboard',
+        icon: <DashboardIcon />,
+        path: '/superadmin/dashboard',
         roles: ['superadmin'],
         section: 'superadmin',
       },
       
-      // 2. Manage Schools (SuperAdmin)
+      // 2. School Owners (SuperAdmin)
       {
-        text: 'Manage Schools',
-        icon: <SchoolsIcon />,
-        path: '/app/superadmin/schools',
+        text: 'School Owners',
+        icon: <SchoolIcon />,
+        path: '/superadmin/dashboard',
         roles: ['superadmin'],
         section: 'superadmin',
       },
@@ -481,7 +482,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'School Permissions',
         icon: <SettingsIcon />,
-        path: '/app/superadmin/school-permissions',
+        path: '/superadmin/school-permissions',
         roles: ['superadmin'],
         section: 'superadmin',
       },
@@ -489,8 +490,17 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       // 4. Create School Owner (SuperAdmin)
       {
         text: 'Create School Owner',
-        icon: <AddUserIcon />,
-        path: '/app/superadmin/create-school-owner',
+        icon: <PersonAddIcon />,
+        path: '/superadmin/create-school-owner',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      
+      // 5. Contact Messages (SuperAdmin)
+      {
+        text: 'Contact Messages',
+        icon: <EmailIcon />,
+        path: '/superadmin/contact',
         roles: ['superadmin'],
         section: 'superadmin',
       },
