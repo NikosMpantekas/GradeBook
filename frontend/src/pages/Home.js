@@ -6,7 +6,6 @@ import {
   Button,
   Grid,
   Card,
-  Chip,
   AppBar,
   Toolbar,
   IconButton,
@@ -23,8 +22,8 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 const Logo = () => (
   <Box
     sx={{
-      fontWeight: 'bold',
-      fontSize: 26,
+      fontWeight: 400,
+      fontSize: 22,
       color: '#337ab7',
       letterSpacing: 1,
       mr: 2,
@@ -50,14 +49,12 @@ const features = [
   }
 ];
 
-// Updated navLinks: removed "Τιμές", added "Σχετικά με εμάς"
 const navLinks = [
   { label: 'Πίνακας Ελέγχου', href: '/login' },
   { label: 'Σχετικά με εμάς', href: '#about' },
   { label: 'Επικοινωνία', href: '#contact' }
 ];
 
-// Dashboard-inspired blurred mockup
 const DashboardMockup = () => (
   <Box
     sx={{
@@ -67,10 +64,10 @@ const DashboardMockup = () => (
       mx: 'auto',
       mt: { xs: 4, md: 0 },
       borderRadius: 4,
-      bgcolor: 'grey.100',
+      bgcolor: '#181b20',
       boxShadow: '0 4px 24px 0 rgba(51,122,183,0.10)',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'stretch',
       justifyContent: 'center',
       overflow: 'hidden',
       position: 'relative',
@@ -78,73 +75,75 @@ const DashboardMockup = () => (
       filter: 'blur(0.5px)'
     }}
   >
-    {/* Sidebar */}
     <Box sx={{
-      width: 70,
+      width: 110,
       height: '100%',
       bgcolor: '#181b20',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      pt: 2,
-      gap: 2
+      alignItems: 'flex-start',
+      pt: 3,
+      px: 2,
+      gap: 2,
+      borderRight: '1px solid #23262b'
     }}>
-      <Box sx={{ bgcolor: '#337ab7', width: 36, height: 36, borderRadius: 2, mb: 2 }} />
-      <Box sx={{ bgcolor: '#353942', width: 36, height: 36, borderRadius: 2, mb: 1 }} />
+      <Box sx={{
+        fontWeight: 400,
+        fontSize: 18,
+        color: '#fff',
+        fontFamily: 'Roboto, Arial, sans-serif',
+        mb: 3,
+        letterSpacing: 1,
+        opacity: 0.85
+      }}>
+        GradeBook
+      </Box>
+      <Box sx={{
+        width: '100%',
+        bgcolor: '#353942',
+        borderRadius: 2,
+        px: 1.5,
+        py: 1,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        mb: 1.5
+      }}>
+        <Box sx={{ width: 22, height: 22, bgcolor: '#fff', borderRadius: 2, mr: 1, opacity: 0.7 }} />
+        <Typography sx={{ color: '#bfc6d1', fontSize: 15, fontWeight: 500 }}>Dashboard</Typography>
+      </Box>
+      <Box sx={{ color: '#bfc6d1', fontSize: 13, opacity: 0.7, ml: 0.5 }}>Muchacho del diablo</Box>
+      <Box sx={{ color: '#bfc6d1', fontSize: 12, opacity: 0.5, ml: 0.5 }}>Admin</Box>
     </Box>
-    {/* Main area */}
     <Box sx={{
       flex: 1,
       height: '100%',
       bgcolor: '#23262b',
-      p: 2,
+      p: 2.5,
       display: 'flex',
       flexDirection: 'column',
       gap: 2
     }}>
-      {/* Topbar */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
         <Box sx={{ width: 28, height: 28, bgcolor: '#337ab7', borderRadius: '50%' }} />
-        <Box sx={{ width: 90, height: 14, bgcolor: 'grey.800', borderRadius: 2 }} />
-        <Box sx={{ flexGrow: 1 }} />
-        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
-        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
-        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
+        <Box sx={{ width: 120, height: 16, bgcolor: 'grey.800', borderRadius: 2 }} />
       </Box>
-      {/* Dashboard title */}
-      <Box sx={{ width: 120, height: 18, bgcolor: 'grey.700', borderRadius: 2, mb: 1 }} />
-      {/* Welcome text */}
-      <Box sx={{ width: 180, height: 12, bgcolor: 'grey.800', borderRadius: 2, mb: 2 }} />
-      {/* Cards row */}
+      <Box sx={{ width: 180, height: 14, bgcolor: 'grey.800', borderRadius: 2, mb: 2 }} />
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <Box sx={{ flex: 1, height: 60, bgcolor: '#181b20', borderRadius: 3 }} />
         <Box sx={{ flex: 1, height: 60, bgcolor: '#181b20', borderRadius: 3 }} />
       </Box>
-      {/* Quick actions row */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
         <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
         <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
         <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
       </Box>
-      {/* Recent notifications & user overview */}
       <Box sx={{ display: 'flex', gap: 2 }}>
         <Box sx={{ flex: 1, height: 38, bgcolor: '#181b20', borderRadius: 2 }} />
         <Box sx={{ flex: 1, height: 38, bgcolor: '#181b20', borderRadius: 2 }} />
       </Box>
     </Box>
-    <Chip
-      label="Demo"
-      size="small"
-      sx={{
-        position: 'absolute',
-        top: 12,
-        right: 12,
-        bgcolor: '#337ab7',
-        color: 'white',
-        fontWeight: 'bold'
-      }}
-    />
   </Box>
 );
 
@@ -154,7 +153,6 @@ const Home = () => {
 
   return (
     <Box sx={{ bgcolor: 'white', minHeight: '100vh', fontFamily: 'Roboto, Arial, sans-serif' }}>
-      {/* Top Navigation */}
       <AppBar position="static" elevation={0} sx={{ bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
         <Toolbar sx={{ minHeight: 64, px: { xs: 1, sm: 3 } }}>
           <Logo />
@@ -178,17 +176,13 @@ const Home = () => {
               </Button>
             ))}
           </Stack>
-          {/* Mobile menu icon */}
           <IconButton sx={{ display: { xs: 'flex', md: 'none' }, color: '#337ab7' }}>
             <MenuIcon />
           </IconButton>
         </Toolbar>
       </AppBar>
-
-      {/* Main Content */}
       <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
         <Grid container spacing={6} alignItems="center" justifyContent="center">
-          {/* Left: Slogan, Description, CTA, Features */}
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 4 }}>
               <Typography
@@ -239,8 +233,6 @@ const Home = () => {
                 Συνδεθείτε στον Πίνακα Ελέγχου
               </Button>
             </Box>
-
-            {/* Features */}
             <Grid container spacing={2} id="features">
               {features.map((feature, idx) => (
                 <Grid item xs={12} sm={6} key={idx}>
@@ -273,15 +265,11 @@ const Home = () => {
               ))}
             </Grid>
           </Grid>
-
-          {/* Right: Dashboard Mockup */}
           <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'center' }}>
             <DashboardMockup />
           </Grid>
         </Grid>
       </Container>
-
-      {/* Footer */}
       <Box
         sx={{
           mt: 8,
