@@ -469,16 +469,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'superadmin',
       },
       
-      // 2. School Owners (SuperAdmin)
-      {
-        text: 'School Owners',
-        icon: <SchoolIcon />,
-        path: '/superadmin/dashboard',
-        roles: ['superadmin'],
-        section: 'superadmin',
-      },
-      
-      // 3. School Permissions (SuperAdmin)
+      // 2. School Permissions (SuperAdmin)
       {
         text: 'School Permissions',
         icon: <SettingsIcon />,
@@ -487,16 +478,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'superadmin',
       },
       
-      // 4. Create School Owner (SuperAdmin)
-      {
-        text: 'Create School Owner',
-        icon: <PersonAddIcon />,
-        path: '/superadmin/create-school-owner',
-        roles: ['superadmin'],
-        section: 'superadmin',
-      },
-      
-      // 5. Contact Messages (SuperAdmin)
+      // 3. Contact Messages (SuperAdmin)
       {
         text: 'Contact Messages',
         icon: <EmailIcon />,

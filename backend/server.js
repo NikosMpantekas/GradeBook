@@ -469,6 +469,7 @@ app.use(
   require("./routes/schoolPermissionsRoutes")
 ); // School permissions management
 app.use("/api/branches", protect, require("./routes/branchRoutes")); // School branch name lookups
+app.use("/api/contact", protect, require("./routes/contactRoutes")); // Contact messages for admin/superadmin
 
 // Migration routes for superadmins
 app.use("/api/admin/migrations", require("./routes/migrationRoutes")); // Migration system for DB updates
