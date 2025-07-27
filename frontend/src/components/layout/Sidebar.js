@@ -335,7 +335,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       // 7. Manage Grades (Admin) - RESTORED
       {
         text: 'Manage Grades',
-        icon: <GradeIcon />,
+        icon: <GradesIcon />,
         path: '/app/teacher/grades/manage',
         roles: ['admin'],
         section: 'admin',
@@ -362,7 +362,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       // 10. Manage Notifications (Admin) - RESTORED
       {
         text: 'Manage Notifications',
-        icon: <NotificationIcon />,
+        icon: <NotificationsIcon />,
         path: '/app/teacher/notifications',
         roles: ['admin'],
         section: 'admin',
