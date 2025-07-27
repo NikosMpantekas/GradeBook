@@ -106,8 +106,26 @@ const SchoolPermissionsManager = () => {
           return true;
         });
         
-        console.log(`✅ [SchoolPermissions] Loaded ${validSchools.length} valid schools (filtered from ${response.data.data.schools?.length || 0} total)`);
-        setSchools(validSchools);
+        // CRITICAL FIX: Map the nested school data structure to flat structure expected by UI
+        const mappedSchools = validSchools.map(schoolData => ({
+          // School basic info (flattened from nested structure)
+          _id: schoolData.school._id,
+          name: schoolData.school.name,
+          emailDomain: schoolData.school.emailDomain,
+          address: schoolData.school.address,
+          active: schoolData.school.active,
+          
+          // Permissions data
+          permissions: schoolData.permissions,
+          
+          // Original nested data for reference
+          originalData: schoolData
+        }));
+        
+        console.log(`✅ [SchoolPermissions] Loaded ${mappedSchools.length} valid schools (filtered from ${response.data.data.schools?.length || 0} total)`);
+        console.log('🔍 [SchoolPermissions] Sample mapped school:', mappedSchools[0]);
+        
+        setSchools(mappedSchools);
       } else {
         console.error('❌ [SchoolPermissions] API returned unsuccessful response:', response.data);
         setError('Failed to load schools - API returned unsuccessful response');
@@ -139,16 +157,49 @@ const SchoolPermissionsManager = () => {
         }
       };
 
+      console.log('🔍 [SchoolPermissions] Fetching available features...');
       const response = await axios.get(`${API_URL}/api/school-permissions/features`, config);
       
+      console.log('📋 [SchoolPermissions] Features API response:', response.data);
+      
       if (response.data && response.data.success) {
-        setAvailableFeatures(response.data.data.features || {});
+        const features = response.data.data.features || {};
+        console.log('✅ [SchoolPermissions] Available features loaded:', features);
+        setAvailableFeatures(features);
+      } else {
+        console.warn('⚠️ [SchoolPermissions] Features API unsuccessful, using fallback');
+        // Fallback feature names if API fails
+        setAvailableFeatures(getDefaultFeatureNames());
       }
       
     } catch (error) {
-      console.error('Error fetching available features:', error);
+      console.error('💥 [SchoolPermissions] Error fetching features:', error);
+      // Use fallback on error
+      setAvailableFeatures(getDefaultFeatureNames());
     }
   };
+  
+  // Fallback feature names in case API fails
+  const getDefaultFeatureNames = () => ({
+    enableGrades: 'Grade Management',
+    enableClasses: 'Class Management', 
+    enableSubjects: 'Subject Management',
+    enableStudents: 'Student Management',
+    enableTeachers: 'Teacher Management',
+    enableNotifications: 'Notifications',
+    enableContactDeveloper: 'Contact Developer',
+    enableCalendar: 'Calendar',
+    enableSchedule: 'Schedule',
+    enableRatingSystem: 'Rating System',
+    enableAnalytics: 'Analytics',
+    enableUserManagement: 'User Management',
+    enableSchoolSettings: 'School Settings',
+    enableSystemMaintenance: 'System Maintenance',
+    enableBugReports: 'Bug Reports',
+    enableDirections: 'Directions',
+    enablePatchNotes: 'Patch Notes',
+    enableStudentProgress: 'Student Progress'
+  });
 
   // Initial data load
   useEffect(() => {
@@ -174,13 +225,39 @@ const SchoolPermissionsManager = () => {
 
   // Handle feature toggle
   const handleFeatureToggle = (schoolId, featureKey, newValue) => {
-    setPendingChanges(prev => ({
-      ...prev,
-      [schoolId]: {
-        ...prev[schoolId],
-        [featureKey]: newValue
-      }
-    }));
+    console.log(`🔄 [SchoolPermissions] Toggle triggered:`, {
+      schoolId,
+      featureKey,
+      newValue,
+      schoolIdType: typeof schoolId,
+      currentPendingChanges: pendingChanges
+    });
+    
+    // DEFENSIVE: Ensure schoolId is valid
+    if (!schoolId || schoolId === 'undefined') {
+      console.error('🚨 [SchoolPermissions] Invalid school ID in toggle:', schoolId);
+      setError('Invalid school ID - cannot update permissions');
+      return;
+    }
+    
+    setPendingChanges(prev => {
+      const updated = {
+        ...prev,
+        [schoolId]: {
+          ...prev[schoolId],
+          [featureKey]: newValue
+        }
+      };
+      
+      console.log(`✅ [SchoolPermissions] Updated pending changes:`, {
+        schoolId,
+        featureKey,
+        newValue,
+        updatedState: updated
+      });
+      
+      return updated;
+    });
   };
 
   // Save changes for a school
