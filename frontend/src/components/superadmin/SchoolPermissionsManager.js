@@ -272,10 +272,16 @@ const SchoolPermissionsManager = () => {
   };
 
   // Filter schools based on search term
-  const filteredSchools = schools.filter(school =>
-    school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    school.emailDomain?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSchools = schools.filter(school => {
+    // DEFENSIVE: Ensure school.name exists before calling toLowerCase
+    const schoolName = school.name || school.school?.name || '';
+    const searchLower = searchTerm.toLowerCase();
+    
+    return (
+      schoolName.toLowerCase().includes(searchLower) ||
+      school.emailDomain?.toLowerCase().includes(searchLower)
+    );
+  });
 
   // Feature categories for better organization
   const featureCategories = {
