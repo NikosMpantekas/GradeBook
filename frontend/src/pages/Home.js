@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Container,
@@ -11,18 +11,18 @@ import {
   IconButton,
   Stack,
   useTheme,
-  useMediaQuery
-} from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import GradeIcon from '@mui/icons-material/Grade';
-import ForumIcon from '@mui/icons-material/Forum';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import Drawer from '@mui/material/Drawer';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemText from '@mui/material/ListItemText';
+  useMediaQuery,
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import GradeIcon from "@mui/icons-material/Grade";
+import ForumIcon from "@mui/icons-material/Forum";
+import AssessmentIcon from "@mui/icons-material/Assessment";
+import Drawer from "@mui/material/Drawer";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
 
 const Logo = () => {
   const theme = useTheme();
@@ -31,10 +31,10 @@ const Logo = () => {
       sx={{
         fontWeight: 100,
         fontSize: { xs: 28, sm: 32, md: 34, lg: 36 },
-        color: '#337ab7',
+        color: "#337ab7",
         letterSpacing: 1,
         mr: 2,
-        fontFamily: 'Roboto, Arial, sans-serif'
+        fontFamily: "Roboto, Arial, sans-serif",
       }}
     >
       GradeBook
@@ -44,113 +44,231 @@ const Logo = () => {
 
 const features = [
   {
-    icon: <CheckCircleIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />, title: 'Παρουσίες', desc: 'Εύκολη καταγραφή παρουσιών μαθητών.'
+    icon: (
+      <CheckCircleIcon
+        color="primary"
+        sx={{ fontSize: 32 }}
+        aria-hidden="true"
+      />
+    ),
+    title: "Παρουσίες",
+    desc: "Εύκολη καταγραφή παρουσιών μαθητών.",
   },
   {
-    icon: <GradeIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />, title: 'Βαθμολογίες', desc: 'Άμεση διαχείριση και ανάλυση βαθμών.'
+    icon: (
+      <GradeIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />
+    ),
+    title: "Βαθμολογίες",
+    desc: "Άμεση διαχείριση και ανάλυση βαθμών.",
   },
   {
-    icon: <ForumIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />, title: 'Επικοινωνία', desc: 'Γρήγορη ενημέρωση γονέων & μαθητών.'
+    icon: (
+      <ForumIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />
+    ),
+    title: "Επικοινωνία",
+    desc: "Γρήγορη ενημέρωση γονέων & μαθητών.",
   },
   {
-    icon: <AssessmentIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />, title: 'Αναφορές', desc: 'Αναλυτικές αναφορές προόδου.'
-  }
+    icon: (
+      <AssessmentIcon
+        color="primary"
+        sx={{ fontSize: 32 }}
+        aria-hidden="true"
+      />
+    ),
+    title: "Αναφορές",
+    desc: "Αναλυτικές αναφορές προόδου.",
+  },
 ];
 
 const navLinks = [
-  { label: 'Πίνακας Ελέγχου', href: '/login' },
-  { label: 'Σχετικά με εμάς', href: '#about' },
-  { label: 'Επικοινωνία', href: '#contact' }
+  { label: "Πίνακας Ελέγχου", href: "/login" },
+  { label: "Σχετικά με εμάς", href: "#about" },
+  { label: "Επικοινωνία", href: "#contact" },
 ];
 
 const DashboardMockup = () => (
   <Box
     sx={{
-      width: '100%',
+      width: "100%",
       maxWidth: 420,
       height: 260,
-      mx: 'auto',
+      mx: "auto",
       mt: { xs: 4, md: 0 },
       borderRadius: 4,
-      bgcolor: '#181b20',
-      boxShadow: '0 4px 24px 0 rgba(51,122,183,0.10)',
-      display: 'flex',
-      alignItems: 'stretch',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      position: 'relative',
+      bgcolor: "#181b20",
+      boxShadow: "0 4px 24px 0 rgba(51,122,183,0.10)",
+      display: "flex",
+      alignItems: "stretch",
+      justifyContent: "center",
+      overflow: "hidden",
+      position: "relative",
       p: 0,
-      filter: 'blur(0.5px)'
+      filter: "blur(0.5px)",
     }}
   >
-    <Box sx={{
-      width: 110,
-      height: '100%',
-      bgcolor: '#181b20',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'flex-start',
-      pt: 3,
-      px: 2,
-      gap: 2,
-      borderRight: '1px solid #23262b'
-    }}>
-      <Box sx={{
-        width: '100%',
-        height: 36,
-        bgcolor: '#353942',
-        borderRadius: 2,
-        mb: 2
-      }} />
-      <Box sx={{
-        width: '100%',
-        height: 36,
-        bgcolor: '#353942',
-        borderRadius: 2,
-        mb: 1.5
-      }} />
-      <Box sx={{
-        width: '70%',
-        height: 18,
-        bgcolor: '#23262b',
-        borderRadius: 2,
-        mb: 1
-      }} />
-      <Box sx={{
-        width: '60%',
-        height: 14,
-        bgcolor: '#23262b',
-        borderRadius: 2
-      }} />
+    <Box
+      sx={{
+        width: 110,
+        height: "100%",
+        bgcolor: "#181b20",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        pt: 3,
+        px: 2,
+        gap: 2,
+        borderRight: "1px solid #23262b",
+      }}
+    >
+      <Box
+        sx={{
+          width: "100%",
+          height: 36,
+          bgcolor: "#353942",
+          borderRadius: 2,
+          mb: 2,
+        }}
+      />
+      <Box
+        sx={{
+          width: "100%",
+          height: 36,
+          bgcolor: "#353942",
+          borderRadius: 2,
+          mb: 1.5,
+        }}
+      />
+      <Box
+        sx={{
+          width: "70%",
+          height: 18,
+          bgcolor: "#23262b",
+          borderRadius: 2,
+          mb: 1,
+        }}
+      />
+      <Box
+        sx={{
+          width: "60%",
+          height: 14,
+          bgcolor: "#23262b",
+          borderRadius: 2,
+        }}
+      />
     </Box>
-    <Box sx={{
-      flex: 1,
-      height: '100%',
-      bgcolor: '#23262b',
-      p: 2.5,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 2
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Box sx={{ width: 28, height: 28, bgcolor: '#337ab7', borderRadius: '50%' }} />
-        <Box sx={{ width: 120, height: 16, bgcolor: 'grey.800', borderRadius: 2 }} />
+    <Box
+      sx={{
+        flex: 1,
+        height: "100%",
+        bgcolor: "#23262b",
+        p: 2.5,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+        <Box
+          sx={{
+            width: 28,
+            height: 28,
+            bgcolor: "#337ab7",
+            borderRadius: "50%",
+          }}
+        />
+        <Box
+          sx={{ width: 120, height: 16, bgcolor: "grey.800", borderRadius: 2 }}
+        />
         <Box sx={{ flex: 1 }} />
-        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
-        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
-        <Box sx={{ width: 22, height: 22, bgcolor: 'grey.800', borderRadius: '50%' }} />
+        <Box
+          sx={{
+            width: 22,
+            height: 22,
+            bgcolor: "grey.800",
+            borderRadius: "50%",
+          }}
+        />
+        <Box
+          sx={{
+            width: 22,
+            height: 22,
+            bgcolor: "grey.800",
+            borderRadius: "50%",
+          }}
+        />
+        <Box
+          sx={{
+            width: 22,
+            height: 22,
+            bgcolor: "grey.800",
+            borderRadius: "50%",
+          }}
+        />
       </Box>
-      <Box sx={{ width: 120, height: 18, bgcolor: 'grey.700', borderRadius: 2, mb: 1 }} />
-      <Box sx={{ width: 180, height: 14, bgcolor: 'grey.800', borderRadius: 2, mb: 2 }} />
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <Box sx={{ flex: 1, height: 60, bgcolor: '#181b20', borderRadius: 3 }} />
-        <Box sx={{ flex: 1, height: 60, bgcolor: '#181b20', borderRadius: 3 }} />
+      <Box
+        sx={{
+          width: 120,
+          height: 18,
+          bgcolor: "grey.700",
+          borderRadius: 2,
+          mb: 1,
+        }}
+      />
+      <Box
+        sx={{
+          width: 180,
+          height: 14,
+          bgcolor: "grey.800",
+          borderRadius: 2,
+          mb: 2,
+        }}
+      />
+      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+        <Box
+          sx={{ flex: 1, height: 60, bgcolor: "#181b20", borderRadius: 3 }}
+        />
+        <Box
+          sx={{ flex: 1, height: 60, bgcolor: "#181b20", borderRadius: 3 }}
+        />
       </Box>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
-        <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
-        <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
-        <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
+      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+        <Box
+          sx={{
+            flex: 1,
+            height: 36,
+            bgcolor: "#23262b",
+            borderRadius: 2,
+            border: "1px solid #337ab7",
+          }}
+        />
+        <Box
+          sx={{
+            flex: 1,
+            height: 36,
+            bgcolor: "#23262b",
+            borderRadius: 2,
+            border: "1px solid #337ab7",
+          }}
+        />
+        <Box
+          sx={{
+            flex: 1,
+            height: 36,
+            bgcolor: "#23262b",
+            borderRadius: 2,
+            border: "1px solid #337ab7",
+          }}
+        />
+        <Box
+          sx={{
+            flex: 1,
+            height: 36,
+            bgcolor: "#23262b",
+            borderRadius: 2,
+            border: "1px solid #337ab7",
+          }}
+        />
       </Box>
     </Box>
   </Box>
@@ -158,7 +276,7 @@ const DashboardMockup = () => (
 
 const Home = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
@@ -166,19 +284,27 @@ const Home = () => {
   return (
     <Box
       sx={{
-        bgcolor: '#181b20',
-        minHeight: '100vh',
-        fontFamily: 'Roboto, Arial, sans-serif',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        overflow: 'auto'
+        bgcolor: "#181b20",
+        minHeight: "100vh",
+        fontFamily: "Roboto, Arial, sans-serif",
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        overflow: "auto",
       }}
     >
-      <AppBar position="static" elevation={0} sx={{ bgcolor: '#23262b', borderBottom: '1px solid #23262b' }}>
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{ bgcolor: "#23262b", borderBottom: "1px solid #23262b" }}
+      >
         <Toolbar sx={{ minHeight: 64, px: { xs: 1, sm: 3 } }}>
           <IconButton
-            sx={{ display: { xs: 'flex', md: 'none' }, color: '#337ab7', mr: 1 }}
+            sx={{
+              display: { xs: "flex", md: "none" },
+              color: "#337ab7",
+              mr: 1,
+            }}
             onClick={handleDrawerToggle}
             aria-label="menu"
           >
@@ -186,19 +312,23 @@ const Home = () => {
           </IconButton>
           <Logo />
           <Box sx={{ flexGrow: 1 }} />
-          <Stack direction="row" spacing={2} sx={{ display: { xs: 'none', md: 'flex' } }}>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{ display: { xs: "none", md: "flex" } }}
+          >
             {navLinks.map((link) => (
               <Button
                 key={link.label}
                 href={link.href}
                 sx={{
-                  color: '#337ab7',
+                  color: "#337ab7",
                   fontWeight: 500,
                   fontSize: 16,
                   borderRadius: 2,
                   px: 2,
-                  textTransform: 'none',
-                  '&:hover': { bgcolor: '#23262b' }
+                  textTransform: "none",
+                  "&:hover": { bgcolor: "#23262b" },
                 }}
               >
                 {link.label}
@@ -214,10 +344,10 @@ const Home = () => {
         PaperProps={{
           sx: {
             width: 220,
-            bgcolor: '#23262b',
-            color: '#fff',
-            boxShadow: 3
-          }
+            bgcolor: "#23262b",
+            color: "#fff",
+            boxShadow: 3,
+          },
         }}
       >
         <Box
@@ -225,11 +355,11 @@ const Home = () => {
             width: 220,
             pt: 2,
             px: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            height: '100%',
-            bgcolor: '#23262b',
-            color: '#fff'
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            bgcolor: "#23262b",
+            color: "#fff",
           }}
           role="presentation"
           onClick={handleDrawerToggle}
@@ -238,7 +368,11 @@ const Home = () => {
           <List sx={{ mt: 2 }}>
             {navLinks.map((link) => (
               <ListItem key={link.label} disablePadding>
-                <ListItemButton component="a" href={link.href} sx={{ color: '#fff' }}>
+                <ListItemButton
+                  component="a"
+                  href={link.href}
+                  sx={{ color: "#fff" }}
+                >
                   <ListItemText primary={link.label} />
                 </ListItemButton>
               </ListItem>
@@ -246,19 +380,25 @@ const Home = () => {
           </List>
         </Box>
       </Drawer>
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 }, height: '100%' }}>
-          <Grid container spacing={6} alignItems="center" justifyContent="center" sx={{ height: '100%' }}>
+      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 }, height: "100%" }}>
+          <Grid
+            container
+            spacing={6}
+            alignItems="center"
+            justifyContent="center"
+            sx={{ height: "100%" }}
+          >
             <Grid item xs={12} md={6}>
               <Box sx={{ mb: 4 }}>
                 <Typography
                   variant="h3"
                   fontWeight="bold"
                   sx={{
-                    color: '#fff',
+                    color: "#fff",
                     mb: 2,
                     fontSize: { xs: 28, md: 36 },
-                    lineHeight: 1.2
+                    lineHeight: 1.2,
                   }}
                 >
                   Αναβαθμίστε την διαχείριση του φροντιστηρίου σας.
@@ -266,33 +406,35 @@ const Home = () => {
                 <Typography
                   variant="h6"
                   sx={{
-                    color: 'grey.300',
+                    color: "grey.300",
                     mb: 4,
                     fontWeight: 400,
-                    fontSize: { xs: 16, md: 18 }
+                    fontSize: { xs: 16, md: 18 },
                   }}
                 >
-                  Το GradeBook παρέχει τα εφόδια για την σύγχρονη και εύκολη διαχείριση φροντιστηρίων, προσφέροντας πλήρη έλεγχο των τάξεων και των μαθητών σας.
+                  Το GradeBook παρέχει τα εφόδια για την σύγχρονη και εύκολη
+                  διαχείριση φροντιστηρίων, προσφέροντας πλήρη έλεγχο των τάξεων
+                  και των μαθητών σας.
                 </Typography>
                 <Button
                   variant="contained"
                   size="large"
                   href="/login"
                   sx={{
-                    bgcolor: '#337ab7',
-                    color: 'white',
+                    bgcolor: "#337ab7",
+                    color: "white",
                     borderRadius: 8,
                     px: 5,
                     py: 1.7,
-                    fontWeight: 'bold',
+                    fontWeight: "bold",
                     fontSize: 18,
-                    boxShadow: '0 2px 8px 0 rgba(51,122,183,0.10)',
-                    textTransform: 'none',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      bgcolor: '#245a8d',
-                      transform: 'translateY(-2px) scale(1.03)'
-                    }
+                    boxShadow: "0 2px 8px 0 rgba(51,122,183,0.10)",
+                    textTransform: "none",
+                    transition: "all 0.2s",
+                    "&:hover": {
+                      bgcolor: "#245a8d",
+                      transform: "translateY(-2px) scale(1.03)",
+                    },
                   }}
                   rel="noopener noreferrer"
                 >
@@ -305,24 +447,30 @@ const Home = () => {
                     <Card
                       elevation={0}
                       sx={{
-                        display: 'flex',
-                        alignItems: 'center',
+                        display: "flex",
+                        alignItems: "center",
                         gap: 2,
                         p: 2,
                         borderRadius: 4,
-                        bgcolor: '#23262b',
-                        boxShadow: '0 1px 6px 0 rgba(51,122,183,0.04)',
+                        bgcolor: "#23262b",
+                        boxShadow: "0 1px 6px 0 rgba(51,122,183,0.04)",
                         mb: 1,
-                        transition: 'box-shadow 0.2s',
-                        '&:hover': { boxShadow: '0 4px 16px 0 rgba(51,122,183,0.10)' }
+                        transition: "box-shadow 0.2s",
+                        "&:hover": {
+                          boxShadow: "0 4px 16px 0 rgba(51,122,183,0.10)",
+                        },
                       }}
                     >
                       {React.cloneElement(feature.icon, { color: "primary" })}
                       <Box>
-                        <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#fff' }}>
+                        <Typography
+                          variant="subtitle1"
+                          fontWeight="bold"
+                          sx={{ color: "#fff" }}
+                        >
                           {feature.title}
                         </Typography>
-                        <Typography variant="body2" sx={{ color: 'grey.300' }}>
+                        <Typography variant="body2" sx={{ color: "grey.300" }}>
                           {feature.desc}
                         </Typography>
                       </Box>
@@ -336,8 +484,8 @@ const Home = () => {
               xs={12}
               md={6}
               sx={{
-                display: { xs: 'none', md: 'flex' },
-                justifyContent: 'center'
+                display: { xs: "none", md: "flex" },
+                justifyContent: "center",
               }}
             >
               <DashboardMockup />
@@ -345,8 +493,16 @@ const Home = () => {
           </Grid>
         </Container>
       </Box>
-      <Box>
-        <Typography variant="body2" sx={{ color: 'grey.400' }}>
+      <Box
+        sx={{
+          mt: "auto",
+          py: 3,
+          bgcolor: "#23262b",
+          borderTop: "1px solid #23262b",
+          textAlign: "center",
+        }}
+      >
+        <Typography variant="body2" sx={{ color: "grey.400" }}>
           © {new Date().getFullYear()} GradeBook Team. All Rights Reserved.
         </Typography>
       </Box>
