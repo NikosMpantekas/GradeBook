@@ -538,23 +538,51 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
 
   // Get current section based on route
   const getCurrentSection = () => {
+    // Get stored section from localStorage first (for persistence)
+    const storedSection = localStorage.getItem('currentSection');
+    
+    // Check route-based section detection
+    let routeBasedSection = null;
     if (location.pathname.includes('/superadmin/')) {
-      return 'superadmin';
+      routeBasedSection = 'superadmin';
     } else if (location.pathname.includes('/admin/')) {
-      return 'admin';
+      routeBasedSection = 'admin';
     } else if (location.pathname.includes('/teacher/')) {
-      return 'teacher';
+      routeBasedSection = 'teacher';
     } else if (location.pathname.includes('/student/')) {
-      return 'student';
-    } else if (user?.role === 'superadmin') {
-      return 'superadmin';
-    } else if (user?.role === 'admin') {
-      return 'admin';
-    } else if (user?.role === 'teacher') {
-      return 'teacher';
-    } else {
-      return 'student';
+      routeBasedSection = 'student';
     }
+    
+    // Determine final section with improved logic
+    let finalSection;
+    if (routeBasedSection) {
+      // Route explicitly indicates section
+      finalSection = routeBasedSection;
+    } else if (storedSection && (user?.role === 'admin' || user?.role === 'superadmin')) {
+      // For admin/superadmin users, prefer stored section when route is ambiguous
+      // This fixes the menu visibility issue after login
+      finalSection = storedSection;
+    } else if (user?.role === 'superadmin') {
+      finalSection = 'superadmin';
+    } else if (user?.role === 'admin') {
+      finalSection = 'admin';
+    } else if (user?.role === 'teacher') {
+      finalSection = 'teacher';
+    } else {
+      finalSection = 'student';
+    }
+    
+    // Debug logging for admin menu visibility issues
+    if (user?.role === 'admin' || user?.role === 'superadmin') {
+      console.log(`[SIDEBAR DEBUG] getCurrentSection analysis:`);
+      console.log(`  - Current path: ${location.pathname}`);
+      console.log(`  - User role: ${user?.role}`);
+      console.log(`  - Route-based section: ${routeBasedSection}`);
+      console.log(`  - Stored section: ${storedSection}`);
+      console.log(`  - Final section: ${finalSection}`);
+    }
+    
+    return finalSection;
   };
 
   const handleNavigate = (path) => {

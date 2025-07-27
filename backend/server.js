@@ -49,6 +49,18 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 
 const app = express();
 
+// Configure Express to trust proxy headers to fix rate-limit warnings
+// This is required when running behind reverse proxies (Cloudflare, Netlify, etc.)
+if (process.env.NODE_ENV === 'production') {
+  // Trust first proxy in production (Cloudflare, load balancers, etc.)
+  app.set('trust proxy', 1);
+  console.log('[PROXY] Trust proxy enabled for production environment'.cyan);
+} else {
+  // Trust all proxies in development for testing
+  app.set('trust proxy', true);
+  console.log('[PROXY] Trust proxy enabled for development environment'.cyan);
+}
+
 // Set environment variable for use in other parts of the app
 process.env.FRONTEND_URL = "https://gradebook.pro";
 // Middleware
