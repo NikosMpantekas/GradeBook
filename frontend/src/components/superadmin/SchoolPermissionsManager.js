@@ -360,22 +360,19 @@ const SchoolPermissionsManager = () => {
     );
   });
 
-  // Feature categories for better organization
+  // Feature categories - UPDATED to match refactored admin menu
   const featureCategories = {
-    'Academic Features': [
-      'enableGrades', 'enableClasses', 'enableSubjects', 'enableStudents', 'enableTeachers'
+    'Core Management': [
+      'enableUserManagement', 'enableClasses', 'enableStudents', 'enableTeachers'
     ],
-    'Communication Features': [
-      'enableNotifications', 'enableContactDeveloper'
+    'Grade Management': [
+      'enableAddGrades', 'enableManageGrades', 'enableGradesOverview'
     ],
-    'Advanced Features': [
-      'enableCalendar', 'enableSchedule', 'enableRatingSystem', 'enableAnalytics'
+    'Notification Management': [
+      'enableAddNotifications', 'enableManageNotifications'
     ],
-    'Administrative Features': [
-      'enableUserManagement', 'enableSchoolSettings', 'enableSystemMaintenance', 'enableBugReports'
-    ],
-    'Additional Features': [
-      'enableDirections', 'enablePatchNotes', 'enableStudentProgress'
+    'School Administration': [
+      'enableSchoolBranches', 'enableSchedule'
     ]
   };
 
