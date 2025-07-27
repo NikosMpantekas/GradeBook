@@ -298,19 +298,26 @@ const fixSchoolPermissions = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get available features list
+// @desc    Get all available features list
 // @route   GET /api/school-permissions/features
 // @access  Private/SuperAdmin
 const getAvailableFeatures = asyncHandler(async (req, res) => {
   try {
-    const features = SchoolPermissions.getAvailableFeatures();
+    console.log('Getting available features list...');
+    
+    // Get features from the model (returns an object)
+    const featuresObj = SchoolPermissions.getAvailableFeatures();
+    
+    // Convert to array format for frontend
+    const features = Object.keys(featuresObj).map(key => ({
+      key: key,
+      name: featuresObj[key]
+    }));
     
     res.json({
       success: true,
-      data: {
-        features,
-        totalFeatures: Object.keys(features).length
-      }
+      data: features,
+      count: features.length
     });
     
   } catch (error) {
