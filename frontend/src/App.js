@@ -23,6 +23,7 @@ import TeacherRoute from './components/TeacherRoute';
 import StudentProgressRoute from './components/StudentProgressRoute';
 
 // Public Pages
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
@@ -332,6 +333,7 @@ function App() {
         <Router>
           <Routes>
             {/* Public Routes */}
+            <Route path="/home" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/diagnostics" element={<DiagnosticPage />} />
@@ -346,8 +348,8 @@ function App() {
               console.log('Auth state:', { isAuthenticated: !!user, hasToken: !!user?.token });
               
               if (!user) {
-                console.log('ROOT REDIRECT: No user found, redirecting to /login');
-                return <Navigate to="/login" replace />;
+                console.log('ROOT REDIRECT: No user found, redirecting to /home');
+                return <Navigate to="/home" replace />;
               }
               
               const redirectPath = 
