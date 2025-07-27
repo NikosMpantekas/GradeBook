@@ -63,6 +63,7 @@ const SchoolPermissionsManager = () => {
   // Fetch schools and their permissions
   const fetchSchoolsWithPermissions = async () => {
     try {
+      console.log('🔄 [SchoolPermissions] Starting to fetch schools with permissions...');
       setLoading(true);
       setError(null);
       
@@ -73,21 +74,35 @@ const SchoolPermissionsManager = () => {
         }
       };
 
+      console.log('📡 [SchoolPermissions] Making API request to:', `${API_URL}/api/school-permissions/all`);
+      console.log('🔑 [SchoolPermissions] Using token:', token ? 'Present' : 'Missing');
+      
       // Fetch all schools with permissions
       const response = await axios.get(`${API_URL}/api/school-permissions/all`, config);
       
+      console.log('📋 [SchoolPermissions] API Response:', response.data);
+      
       if (response.data && response.data.success) {
         setSchools(response.data.data.schools || []);
-        console.log('Loaded schools with permissions:', response.data.data.schools?.length || 0);
+        console.log('✅ [SchoolPermissions] Loaded schools with permissions:', response.data.data.schools?.length || 0);
       } else {
-        setError('Failed to load schools');
+        console.error('❌ [SchoolPermissions] API returned unsuccessful response:', response.data);
+        setError('Failed to load schools - API returned unsuccessful response');
       }
       
     } catch (error) {
-      console.error('Error fetching schools:', error);
-      setError(error.response?.data?.message || 'Failed to load schools');
+      console.error('💥 [SchoolPermissions] Error fetching schools:', error);
+      console.error('💥 [SchoolPermissions] Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url
+      });
+      setError(error.response?.data?.message || `Failed to load schools: ${error.message}`);
     } finally {
       setLoading(false);
+      console.log('🏁 [SchoolPermissions] Finished loading schools');
     }
   };
 

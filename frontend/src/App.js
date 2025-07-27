@@ -572,6 +572,11 @@ function App() {
                 <SchoolPermissionsManager />
               </SuperAdminRoute>
             } />
+            <Route path="/superadmin/migration" element={
+              <SuperAdminRoute>
+                <SystemMaintenance />
+              </SuperAdminRoute>
+            } />
           </Route>
           
           {/* Print Grade Page - Standalone route without layout */}

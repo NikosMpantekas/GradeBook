@@ -505,11 +505,11 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'superadmin',
       },
       
-      // 5. System Migration (SuperAdmin)
+      // 6. System Migration (SuperAdmin)
       {
-        text: 'System Migration',
+        text: 'Database Migration',
         icon: <SettingsIcon />,
-        path: '/app/superadmin/migration',
+        path: '/superadmin/migration',
         roles: ['superadmin'],
         section: 'superadmin',
       },
@@ -609,44 +609,37 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     }
   };
 
-  // Enhanced item selection logic to handle nested routes
+  // Clear and simple item selection logic - only one item selected at a time
   const isPathSelected = (itemPath) => {
     // Handle function paths
     const actualPath = typeof itemPath === 'function' ? itemPath(user) : itemPath;
     
-    // Exact match
-    if (location.pathname === actualPath) return true;
-    
-    // Special case for superadmin dashboard
-    if (itemPath === '/superadmin/dashboard' && location.pathname.startsWith('/superadmin') && 
-        !location.pathname.includes('/new-school-owner') && 
-        !location.pathname.includes('/contact')) {
+    // EXACT MATCH ONLY for most cases
+    if (location.pathname === actualPath) {
       return true;
     }
     
-    // Special case for admin dashboard
-    if (itemPath === '/app/admin' && location.pathname === '/app/admin') {
-      return true;
+    // Special cases for dashboard routes
+    if (actualPath === '/superadmin/dashboard') {
+      return location.pathname === '/superadmin/dashboard' || 
+             (location.pathname.startsWith('/superadmin/school-owner/') && location.pathname !== '/superadmin/school-permissions');
     }
     
-    // For nested paths, only highlight the most specific matching path
-    if (itemPath !== '/' && 
-        itemPath !== '/app/dashboard' && 
-        itemPath !== '/superadmin/dashboard' && 
-        itemPath !== '/app/admin' && 
-        location.pathname.startsWith(itemPath)) {
-      
-      // Get all menu items
-      const allMenuItems = getMenuItems();
-      // Find if there's a more specific path that matches
-      const moreSpecificPathExists = allMenuItems.some(item => 
-        item.path !== itemPath && 
-        item.path.startsWith(itemPath) && 
-        location.pathname.startsWith(item.path)
-      );
-      
-      // Only return true if this is the most specific path
-      return !moreSpecificPathExists;
+    if (actualPath === '/app/admin') {
+      return location.pathname === '/app/admin';
+    }
+    
+    if (actualPath === '/app/teacher') {
+      return location.pathname === '/app/teacher';
+    }
+    
+    if (actualPath === '/app/student') {
+      return location.pathname === '/app/student';
+    }
+    
+    // For School Owners item, only highlight when on dashboard
+    if (actualPath === '/superadmin/dashboard' && location.pathname === '/superadmin/dashboard') {
+      return true;
     }
     
     return false;
@@ -698,13 +691,27 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
                   minHeight: 48, // Ensure consistent height for zoom responsiveness
                   px: 2,
                   py: 1,
+                  borderRadius: 1,
+                  mx: 1,
                   '&.Mui-selected': {
-                    backgroundColor: 'primary.light',
-                    borderRight: '4px solid',
-                    borderColor: 'primary.main',
+                    backgroundColor: '#1976d2', // Strong blue background
+                    color: 'white',
+                    borderLeft: '4px solid #fff',
+                    fontWeight: 'bold',
+                    '& .MuiListItemIcon-root': {
+                      color: 'white'
+                    },
+                    '& .MuiListItemText-primary': {
+                      fontWeight: 'bold'
+                    }
                   },
                   '&.Mui-selected:hover': {
-                    backgroundColor: 'primary.light', 
+                    backgroundColor: '#1565c0', // Darker blue on hover
+                    color: 'white'
+                  },
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.1)', // Light blue hover for non-selected
+                    borderRadius: 1
                   }
                 }}
               >
