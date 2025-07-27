@@ -30,7 +30,7 @@ const Logo = () => {
     <Box
       sx={{
         fontWeight: 100,
-        fontSize: { xs: 28, sm: 32, md: 34, lg: 36 }, // smaller overall, even smaller on mobile
+        fontSize: { xs: 28, sm: 32, md: 34, lg: 36 },
         color: '#337ab7',
         letterSpacing: 1,
         mr: 2,
@@ -164,13 +164,25 @@ const Home = () => {
   const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
 
   return (
-    <Box sx={{
-      bgcolor: 'white',
-      minHeight: '100vh',
-      fontFamily: 'Roboto, Arial, sans-serif',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
+    <Box
+      sx={{
+        bgcolor: 'white',
+        minHeight: '100vh',
+        fontFamily: 'Roboto, Arial, sans-serif',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        overflow: 'auto',
+        scrollbarColor: '#f9f9f9 #f9f9f9',
+        '&::-webkit-scrollbar': {
+          width: '8px',
+          background: '#f9f9f9'
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: '#f9f9f9'
+        }
+      }}
+    >
       <AppBar position="static" elevation={0} sx={{ bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
         <Toolbar sx={{ minHeight: 64, px: { xs: 1, sm: 3 } }}>
           <IconButton
@@ -204,7 +216,7 @@ const Home = () => {
         </Toolbar>
       </AppBar>
       <Drawer
-        anchor="left" // Sidebar comes from the left
+        anchor="left"
         open={drawerOpen}
         onClose={handleDrawerToggle}
         PaperProps={{
@@ -231,7 +243,6 @@ const Home = () => {
           onClick={handleDrawerToggle}
           onKeyDown={handleDrawerToggle}
         >
-          {/* Removed Logo from Drawer */}
           <List sx={{ mt: 2 }}>
             {navLinks.map((link) => (
               <ListItem key={link.label} disablePadding>
@@ -333,7 +344,7 @@ const Home = () => {
               xs={12}
               md={6}
               sx={{
-                display: { xs: 'none', md: 'flex' }, // Hide mockup on mobile/tablet
+                display: { xs: 'none', md: 'flex' },
                 justifyContent: 'center'
               }}
             >
@@ -344,7 +355,7 @@ const Home = () => {
       </Box>
       <Box
         sx={{
-          mt: 8,
+          mt: 'auto',
           py: 3,
           bgcolor: 'grey.50',
           borderTop: '1px solid #f0f0f0',
