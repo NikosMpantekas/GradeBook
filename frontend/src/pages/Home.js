@@ -20,26 +20,18 @@ import GradeIcon from '@mui/icons-material/Grade';
 import ForumIcon from '@mui/icons-material/Forum';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 
-// Minimal logo component (G in a circle)
 const Logo = () => (
   <Box
     sx={{
-      width: 44,
-      height: 44,
-      bgcolor: '#337ab7',
-      borderRadius: '50%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
       fontWeight: 'bold',
-      fontSize: 28,
-      color: 'white',
+      fontSize: 26,
+      color: '#337ab7',
       letterSpacing: 1,
       mr: 2,
-      boxShadow: '0 2px 8px 0 rgba(51,122,183,0.08)'
+      fontFamily: 'Roboto, Arial, sans-serif'
     }}
   >
-    G
+    GradeBook
   </Box>
 );
 
@@ -61,7 +53,6 @@ const features = [
 // Updated navLinks: removed "Τιμές", added "Σχετικά με εμάς"
 const navLinks = [
   { label: 'Πίνακας Ελέγχου', href: '/login' },
-  { label: 'Λειτουργίες', href: '#features' },
   { label: 'Σχετικά με εμάς', href: '#about' },
   { label: 'Επικοινωνία', href: '#contact' }
 ];
