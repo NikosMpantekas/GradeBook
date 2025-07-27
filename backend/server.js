@@ -465,6 +465,7 @@ logger.info("SERVER", "Routes configured with proper middleware ordering");
 app.use("/api/schools", require("./routes/schoolRoutes")); // School routes have special handling
 app.use(
   "/api/school-permissions",
+  protect,
   require("./routes/schoolPermissionsRoutes")
 ); // School permissions management
 app.use("/api/branches", protect, require("./routes/branchRoutes")); // School branch name lookups
