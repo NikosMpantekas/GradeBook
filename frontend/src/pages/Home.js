@@ -166,24 +166,16 @@ const Home = () => {
   return (
     <Box
       sx={{
-        bgcolor: 'white',
+        bgcolor: '#181b20',
         minHeight: '100vh',
         fontFamily: 'Roboto, Arial, sans-serif',
         display: 'flex',
         flexDirection: 'column',
         height: '100vh',
-        overflow: 'auto',
-        scrollbarColor: '#f9f9f9 #f9f9f9',
-        '&::-webkit-scrollbar': {
-          width: '8px',
-          background: '#f9f9f9'
-        },
-        '&::-webkit-scrollbar-thumb': {
-          background: '#f9f9f9'
-        }
+        overflow: 'auto'
       }}
     >
-      <AppBar position="static" elevation={0} sx={{ bgcolor: 'white', borderBottom: '1px solid #f0f0f0' }}>
+      <AppBar position="static" elevation={0} sx={{ bgcolor: '#23262b', borderBottom: '1px solid #23262b' }}>
         <Toolbar sx={{ minHeight: 64, px: { xs: 1, sm: 3 } }}>
           <IconButton
             sx={{ display: { xs: 'flex', md: 'none' }, color: '#337ab7', mr: 1 }}
@@ -206,7 +198,7 @@ const Home = () => {
                   borderRadius: 2,
                   px: 2,
                   textTransform: 'none',
-                  '&:hover': { bgcolor: 'grey.100' }
+                  '&:hover': { bgcolor: '#23262b' }
                 }}
               >
                 {link.label}
@@ -222,8 +214,8 @@ const Home = () => {
         PaperProps={{
           sx: {
             width: 220,
-            bgcolor: 'white',
-            color: '#222',
+            bgcolor: '#23262b',
+            color: '#fff',
             boxShadow: 3
           }
         }}
@@ -236,8 +228,8 @@ const Home = () => {
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
-            bgcolor: 'white',
-            color: '#222'
+            bgcolor: '#23262b',
+            color: '#fff'
           }}
           role="presentation"
           onClick={handleDrawerToggle}
@@ -246,7 +238,7 @@ const Home = () => {
           <List sx={{ mt: 2 }}>
             {navLinks.map((link) => (
               <ListItem key={link.label} disablePadding>
-                <ListItemButton component="a" href={link.href} sx={{ color: '#222' }}>
+                <ListItemButton component="a" href={link.href} sx={{ color: '#fff' }}>
                   <ListItemText primary={link.label} />
                 </ListItemButton>
               </ListItem>
@@ -263,7 +255,7 @@ const Home = () => {
                   variant="h3"
                   fontWeight="bold"
                   sx={{
-                    color: '#222',
+                    color: '#fff',
                     mb: 2,
                     fontSize: { xs: 28, md: 36 },
                     lineHeight: 1.2
@@ -274,7 +266,7 @@ const Home = () => {
                 <Typography
                   variant="h6"
                   sx={{
-                    color: 'grey.700',
+                    color: 'grey.300',
                     mb: 4,
                     fontWeight: 400,
                     fontSize: { xs: 16, md: 18 }
@@ -318,19 +310,19 @@ const Home = () => {
                         gap: 2,
                         p: 2,
                         borderRadius: 4,
-                        bgcolor: 'grey.50',
+                        bgcolor: '#23262b',
                         boxShadow: '0 1px 6px 0 rgba(51,122,183,0.04)',
                         mb: 1,
                         transition: 'box-shadow 0.2s',
                         '&:hover': { boxShadow: '0 4px 16px 0 rgba(51,122,183,0.10)' }
                       }}
                     >
-                      {feature.icon}
+                      {React.cloneElement(feature.icon, { color: "primary" })}
                       <Box>
-                        <Typography variant="subtitle1" fontWeight="bold" color="#222">
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#fff' }}>
                           {feature.title}
                         </Typography>
-                        <Typography variant="body2" color="grey.700">
+                        <Typography variant="body2" sx={{ color: 'grey.300' }}>
                           {feature.desc}
                         </Typography>
                       </Box>
@@ -357,12 +349,12 @@ const Home = () => {
         sx={{
           mt: 'auto',
           py: 3,
-          bgcolor: 'grey.50',
-          borderTop: '1px solid #f0f0f0',
+          bgcolor: '#23262b',
+          borderTop: '1px solid #23262b',
           textAlign: 'center'
         }}
       >
-        <Typography variant="body2" color="grey.600">
+        <Typography variant="body2" sx={{ color: 'grey.400' }}>
           © {new Date().getFullYear()} GradeBook Team. All Rights Reserved.
         </Typography>
       </Box>
