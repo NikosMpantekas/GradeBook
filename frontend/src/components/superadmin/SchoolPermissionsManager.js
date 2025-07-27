@@ -43,7 +43,7 @@ import { API_URL } from '../../config/appConfig';
 import { useSelector } from 'react-redux';
 
 /**
- * School Permissions Management Component
+ * School Permissions Management Components
  * Comprehensive interface for superadmins to manage school feature permissions
  */
 const SchoolPermissionsManager = () => {
@@ -87,8 +87,27 @@ const SchoolPermissionsManager = () => {
       console.log('📋 [SchoolPermissions] API Response:', response.data);
       
       if (response.data && response.data.success) {
-        setSchools(response.data.data.schools || []);
-        console.log('✅ [SchoolPermissions] Loaded schools with permissions:', response.data.data.schools?.length || 0);
+        // DEFENSIVE: Filter out schools with invalid data to prevent crashes
+        const validSchools = (response.data.data.schools || []).filter(schoolData => {
+          if (!schoolData?.school) {
+            console.warn('⚠️ [SchoolPermissions] Skipping school data without school object:', schoolData);
+            return false;
+          }
+          
+          if (!schoolData.school.name || typeof schoolData.school.name !== 'string') {
+            console.warn('⚠️ [SchoolPermissions] Skipping school with invalid name:', {
+              schoolId: schoolData.school._id,
+              name: schoolData.school.name,
+              nameType: typeof schoolData.school.name
+            });
+            return false;
+          }
+          
+          return true;
+        });
+        
+        console.log(`✅ [SchoolPermissions] Loaded ${validSchools.length} valid schools (filtered from ${response.data.data.schools?.length || 0} total)`);
+        setSchools(validSchools);
       } else {
         console.error('❌ [SchoolPermissions] API returned unsuccessful response:', response.data);
         setError('Failed to load schools - API returned unsuccessful response');
