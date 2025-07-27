@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Container,
@@ -18,21 +18,29 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import GradeIcon from '@mui/icons-material/Grade';
 import ForumIcon from '@mui/icons-material/Forum';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemText from '@mui/material/ListItemText';
 
-const Logo = () => (
-  <Box
-    sx={{
-      fontWeight: 100,
-      fontSize: 38,
-      color: '#337ab7',
-      letterSpacing: 1,
-      mr: 2,
-      fontFamily: 'Roboto, Arial, sans-serif'
-    }}
-  >
-    GradeBook
-  </Box>
-);
+const Logo = () => {
+  const theme = useTheme();
+  return (
+    <Box
+      sx={{
+        fontWeight: 100,
+        fontSize: { xs: 28, sm: 32, md: 34, lg: 36 }, // smaller overall, even smaller on mobile
+        color: '#337ab7',
+        letterSpacing: 1,
+        mr: 2,
+        fontFamily: 'Roboto, Arial, sans-serif'
+      }}
+    >
+      GradeBook
+    </Box>
+  );
+};
 
 const features = [
   {
@@ -144,10 +152,6 @@ const DashboardMockup = () => (
         <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
         <Box sx={{ flex: 1, height: 36, bgcolor: '#23262b', borderRadius: 2, border: '1px solid #337ab7' }} />
       </Box>
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        <Box sx={{ flex: 1, height: 38, bgcolor: '#181b20', borderRadius: 2 }} />
-        <Box sx={{ flex: 1, height: 38, bgcolor: '#181b20', borderRadius: 2 }} />
-      </Box>
     </Box>
   </Box>
 );
@@ -155,6 +159,9 @@ const DashboardMockup = () => (
 const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
 
   return (
     <Box sx={{ bgcolor: 'white', minHeight: '100vh', fontFamily: 'Roboto, Arial, sans-serif' }}>
@@ -181,11 +188,48 @@ const Home = () => {
               </Button>
             ))}
           </Stack>
-          <IconButton sx={{ display: { xs: 'flex', md: 'none' }, color: '#337ab7' }}>
+          <IconButton
+            sx={{ display: { xs: 'flex', md: 'none' }, color: '#337ab7' }}
+            onClick={handleDrawerToggle}
+            aria-label="menu"
+          >
             <MenuIcon />
           </IconButton>
         </Toolbar>
       </AppBar>
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={handleDrawerToggle}
+        PaperProps={{
+          sx: { width: 220 }
+        }}
+      >
+        <Box
+          sx={{
+            width: 220,
+            pt: 2,
+            px: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%'
+          }}
+          role="presentation"
+          onClick={handleDrawerToggle}
+          onKeyDown={handleDrawerToggle}
+        >
+          <Logo />
+          <List sx={{ mt: 2 }}>
+            {navLinks.map((link) => (
+              <ListItem key={link.label} disablePadding>
+                <ListItemButton component="a" href={link.href}>
+                  <ListItemText primary={link.label} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </Drawer>
       <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
         <Grid container spacing={6} alignItems="center" justifyContent="center">
           <Grid item xs={12} md={6}>
