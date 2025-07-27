@@ -247,8 +247,8 @@ const Home = () => {
         </Box>
       </Drawer>
       <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
-          <Grid container spacing={6} alignItems="center" justifyContent="center">
+        <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 }, height: '100%' }}>
+          <Grid container spacing={6} alignItems="center" justifyContent="center" sx={{ height: '100%' }}>
             <Grid item xs={12} md={6}>
               <Box sx={{ mb: 4 }}>
                 <Typography
@@ -345,15 +345,7 @@ const Home = () => {
           </Grid>
         </Container>
       </Box>
-      <Box
-        sx={{
-          mt: 'auto',
-          py: 3,
-          bgcolor: '#23262b',
-          borderTop: '1px solid #23262b',
-          textAlign: 'center'
-        }}
-      >
+      <Box>
         <Typography variant="body2" sx={{ color: 'grey.400' }}>
           © {new Date().getFullYear()} GradeBook Team. All Rights Reserved.
         </Typography>
