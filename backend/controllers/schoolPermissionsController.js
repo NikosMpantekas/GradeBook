@@ -179,15 +179,27 @@ const getAllSchoolPermissions = asyncHandler(async (req, res) => {
   try {
     console.log('🔍 [SchoolPermissions] Getting all schools with permissions for superadmin...');
     
-    // Get all schools
-    const schools = await School.find({}).lean();
-    console.log(`📊 [SchoolPermissions] Found ${schools.length} schools in database`);
+    // CRITICAL: Get ONLY main schools, NOT branches 
+    // Main schools have their own dbConfig.dbName, branches inherit from main schools
+    const schools = await School.find({
+      $and: [
+        { dbConfig: { $exists: true } },
+        { 'dbConfig.dbName': { $exists: true, $ne: '', $ne: null } }
+      ]
+    }).lean();
+    
+    console.log(`📊 [SchoolPermissions] Found ${schools.length} MAIN schools (filtered out branches)`);
+    
+    // Log details about what we found
+    schools.forEach(school => {
+      console.log(`🏫 [SchoolPermissions] Main school: ${school.name} (dbName: ${school.dbConfig?.dbName})`);
+    });
     
     if (schools.length === 0) {
-      console.log('⚠️ [SchoolPermissions] No schools found in database');
+      console.log('⚠️ [SchoolPermissions] No MAIN schools found in database');
       res.json({
         success: true,
-        message: 'No schools found',
+        message: 'No main schools found',
         data: { schools: [] }
       });
       return;
@@ -279,13 +291,27 @@ const fixSchoolPermissions = asyncHandler(async (req, res) => {
   try {
     console.log('Starting school permissions fix process...');
     
-    // Get all schools
-    const schools = await School.find({});
+    // CRITICAL: Get ONLY main schools, NOT branches!
+    // Main schools have their own dbConfig.dbName, branches inherit from main schools
+    const schools = await School.find({
+      $and: [
+        { dbConfig: { $exists: true } },
+        { 'dbConfig.dbName': { $exists: true, $ne: '', $ne: null } }
+      ]
+    });
+    
+    console.log(`📊 [SchoolPermissions] Found ${schools.length} MAIN schools for permissions fix (filtered out branches)`);
+    
+    // Log which schools we're processing
+    schools.forEach(school => {
+      console.log(`🏫 [SchoolPermissions] Will fix: ${school.name} (dbName: ${school.dbConfig?.dbName})`);
+    });
     
     if (schools.length === 0) {
+      console.log('⚠️ [SchoolPermissions] No MAIN schools found to fix permissions for');
       res.json({
         success: true,
-        message: 'No schools found to fix permissions for',
+        message: 'No main schools found to fix permissions for',
         data: {
           processed: 0,
           created: 0,

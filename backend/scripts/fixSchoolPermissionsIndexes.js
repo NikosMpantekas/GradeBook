@@ -43,10 +43,14 @@ const fixSchoolPermissionsIndexes = async () => {
       }
     }
     
-    // STEP 3: Remove all records with null schoolId values
-    console.log('🧹 Cleaning up records with null schoolId values...');
+    // STEP 3: Remove ALL existing records (clean slate approach)
+    console.log('🧹 Cleaning up ALL existing school permissions records...');
     
-    // Remove records with null school_id
+    // Remove ALL records to start fresh (safer approach given the data corruption)
+    const deleteAllResult = await collection.deleteMany({});
+    console.log(`✅ Deleted ${deleteAllResult.deletedCount} existing school permissions records for clean start`);
+    
+    // Also clean up any records with null values specifically
     const deleteResult1 = await collection.deleteMany({
       $or: [
         { school_id: null },
@@ -54,7 +58,7 @@ const fixSchoolPermissionsIndexes = async () => {
         { school_id: { $exists: false } }
       ]
     });
-    console.log(`✅ Deleted ${deleteResult1.deletedCount} records with null school_id`);
+    console.log(`✅ Deleted ${deleteResult1.deletedCount} additional records with null school_id`);
     
     // Remove records with null schoolId
     const deleteResult2 = await collection.deleteMany({
@@ -64,7 +68,7 @@ const fixSchoolPermissionsIndexes = async () => {
         { schoolId: { $exists: false } }
       ]
     });
-    console.log(`✅ Deleted ${deleteResult2.deletedCount} records with null schoolId`);
+    console.log(`✅ Deleted ${deleteResult2.deletedCount} additional records with null schoolId`);
     
     // STEP 4: Ensure the correct schoolId index exists
     try {
