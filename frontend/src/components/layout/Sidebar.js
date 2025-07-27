@@ -515,15 +515,18 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       },
     ];
 
+    // Get current section for filtering
+    const currentSection = getCurrentSection();
+    
     // Filter menu items based on user role and permissions
-    return menuItems.filter(item => {
+    const filteredItems = menuItems.filter(item => {
       // Check if user has required role
       if (!item.roles.includes(user?.role)) {
         return false;
       }
 
       // Check if section matches current context
-      if (item.section && item.section !== getCurrentSection()) {
+      if (item.section && item.section !== currentSection) {
         return false;
       }
 
@@ -534,6 +537,19 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
 
       return true;
     });
+    
+    // Debug logging for admin menu filtering
+    if (user?.role === 'admin' || user?.role === 'superadmin') {
+      console.log(`[SIDEBAR MENU DEBUG] Menu filtering analysis:`);
+      console.log(`  - User role: ${user?.role}`);
+      console.log(`  - Current section: ${currentSection}`);
+      console.log(`  - Total menu items: ${menuItems.length}`);
+      console.log(`  - Filtered items: ${filteredItems.length}`);
+      console.log(`  - Admin items available:`, menuItems.filter(item => item.roles.includes('admin')).map(item => ({ text: item.text, section: item.section })));
+      console.log(`  - Filtered admin items:`, filteredItems.filter(item => item.roles.includes('admin')).map(item => ({ text: item.text, section: item.section })));
+    }
+    
+    return filteredItems;
   };
 
   // Get current section based on route

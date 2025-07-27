@@ -482,6 +482,33 @@ app.use(
 ); // School permissions management
 app.use("/api/branches", protect, require("./routes/branchRoutes")); // School branch name lookups
 app.use("/api/contact", protect, require("./routes/contactRoutes")); // Contact messages for admin/superadmin
+app.use("/api/subscriptions", require("./routes/subscriptionRoutes")); // Push notification subscriptions (includes VAPID public key)
+
+// Add stats overview endpoint for admin dashboard
+app.get("/api/stats/overview", protect, async (req, res) => {
+  try {
+    // Basic stats endpoint for admin dashboard
+    const stats = {
+      totalUsers: 0,
+      totalStudents: 0,
+      totalTeachers: 0,
+      totalClasses: 0,
+      totalNotifications: 0,
+      message: 'Stats endpoint is working but requires implementation',
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('[STATS] Overview requested by user:', req.user?.role, req.user?._id);
+    res.json(stats);
+  } catch (error) {
+    console.error('[STATS] Error fetching overview:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching stats overview',
+      error: error.message 
+    });
+  }
+});
 
 // Migration routes for superadmins
 app.use("/api/admin/migrations", require("./routes/migrationRoutes")); // Migration system for DB updates
