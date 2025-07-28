@@ -336,6 +336,7 @@ const TeacherNotifications = () => {
   };
 
   const handleMarkAsRead = (id) => {
+    // Optimistically update UI immediately
     setFilteredNotifications(prevNotifications => 
       prevNotifications.map(notification => {
         if (notification._id === id) {
@@ -345,24 +346,28 @@ const TeacherNotifications = () => {
       })
     );
     
+    // Send request to backend
     dispatch(markNotificationAsRead(id))
       .unwrap()
       .then(() => {
         console.log(`Notification ${id} marked as read successfully`);
+        toast.success('Notification marked as read');
         
-        if (notifications) {
-          const updatedNotifications = notifications.map(notification => {
-            if (notification._id === id) {
-              return { ...notification, isRead: true };
-            }
-            return notification;
-          });
+        // Refresh notifications to ensure consistency
+        if (user?.role === 'teacher') {
+          // Re-fetch both received and sent notifications for teachers
+          fetchTeacherNotifications();
+        } else if (user?.role === 'admin') {
+          dispatch(getAllNotifications());
+        } else {
+          dispatch(getMyNotifications());
         }
       })
       .catch(error => {
         console.error('Failed to mark notification as read:', error);
         toast.error('Failed to mark notification as read');
         
+        // Revert optimistic update on error
         setFilteredNotifications(prevNotifications => 
           prevNotifications.map(notification => {
             if (notification._id === id) {
@@ -488,16 +493,32 @@ const TeacherNotifications = () => {
                             </IconButton>
                           )
                         ) : (
-                          /* For SENT notifications: show all actions */
+                          /* For SENT notifications: check if created by current teacher */
                           <>
-                            <IconButton
-                              color="primary"
-                              onClick={() => handleEditClick(notification)}
-                              size="small"
-                              title="Edit notification"
-                            >
-                              <EditIcon />
-                            </IconButton>
+                            {/* Only show edit/delete if notification was created by current teacher */}
+                            {(user?.role === 'admin' || 
+                              (notification.sender && notification.sender._id === user?._id) ||
+                              (notification.createdBy && notification.createdBy._id === user?._id)) && (
+                              <>
+                                <IconButton
+                                  color="primary"
+                                  onClick={() => handleEditClick(notification)}
+                                  size="small"
+                                  title="Edit notification"
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                                <IconButton
+                                  color="error"
+                                  onClick={() => handleDeleteClick(notification)}
+                                  size="small"
+                                  title="Delete notification"
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </>
+                            )}
+                            {/* Mark as read is available for all sent notifications if unread */}
                             {!notification.isRead && (
                               <IconButton
                                 color="success"
@@ -508,14 +529,6 @@ const TeacherNotifications = () => {
                                 <MarkReadIcon />
                               </IconButton>
                             )}
-                            <IconButton
-                              color="error"
-                              onClick={() => handleDeleteClick(notification)}
-                              size="small"
-                              title="Delete notification"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
                           </>
                         )}
                       </TableCell>

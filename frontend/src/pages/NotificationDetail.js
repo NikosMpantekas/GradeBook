@@ -49,7 +49,16 @@ const NotificationDetail = () => {
   useEffect(() => {
     if (isError) {
       toast.error(message);
-      navigate('/app/notifications');
+      // Navigate to role-specific notifications page on error
+      if (user?.role === 'admin') {
+        navigate('/app/admin/notifications');
+      } else if (user?.role === 'teacher') {
+        navigate('/app/teacher/notifications');
+      } else if (user?.role === 'student') {
+        navigate('/app/student/notifications');
+      } else {
+        navigate('/app/notifications');
+      }
     }
     
     // If notification is not read, mark it as read
@@ -60,7 +69,16 @@ const NotificationDetail = () => {
 
   const handleDelete = () => {
     dispatch(deleteNotification(id)).then(() => {
-      navigate('/app/notifications');
+      // Navigate to role-specific notifications page after delete
+      if (user?.role === 'admin') {
+        navigate('/app/admin/notifications');
+      } else if (user?.role === 'teacher') {
+        navigate('/app/teacher/notifications');
+      } else if (user?.role === 'student') {
+        navigate('/app/student/notifications');
+      } else {
+        navigate('/app/notifications');
+      }
       toast.success('Notification deleted');
     });
   };
@@ -72,7 +90,17 @@ const NotificationDetail = () => {
   };
 
   const goBack = () => {
-    navigate('/app/notifications');
+    // Navigate to role-specific notifications page
+    if (user?.role === 'admin') {
+      navigate('/app/admin/notifications');
+    } else if (user?.role === 'teacher') {
+      navigate('/app/teacher/notifications');
+    } else if (user?.role === 'student') {
+      navigate('/app/student/notifications');
+    } else {
+      // Fallback for other roles
+      navigate('/app/notifications');
+    }
   };
 
   // Check if user can delete this notification
