@@ -385,7 +385,24 @@ const teacher = asyncHandler(async (req, res, next) => {
 
 // Secretary-specific permission middlewares
 const canManageGrades = adminOrSecretary('canManageGrades');
-const canSendNotifications = adminOrSecretary('canSendNotifications');
+// FIXED: Allow teachers to send notifications
+const canSendNotifications = asyncHandler(async (req, res, next) => {
+  if (
+    req.user && (
+      req.user.role === 'superadmin' ||
+      req.user.role === 'admin' || 
+      req.user.role === 'teacher' ||
+      (req.user.role === 'secretary' && 
+       req.user.secretaryPermissions && 
+       req.user.secretaryPermissions.canSendNotifications === true)
+    )
+  ) {
+    next();
+  } else {
+    res.status(403);
+    throw new Error('Not authorized for this action');
+  }
+});
 const canManageUsers = adminOrSecretary('canManageUsers');
 const canManageSchools = adminOrSecretary('canManageSchools');
 const canManageDirections = adminOrSecretary('canManageDirections');
