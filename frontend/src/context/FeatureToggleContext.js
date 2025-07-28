@@ -67,18 +67,6 @@ export const FeatureToggleProvider = ({ children }) => {
           }
         };
 
-        // TEMP FIX: Skip the broken legacy school permissions system for admin users
-        if (user?.role === 'admin') {
-          console.log('[FEATURE TOGGLE FIX] Bypassing broken school permissions API for admin user');
-          const allFeatures = {};
-          Object.keys(defaultFeatures).forEach(key => {
-            allFeatures[key] = true;
-          });
-          setFeatures(allFeatures);
-          setLoading(false);
-          return;
-        }
-        
         // Use the new API endpoint for current user's school permissions
         const response = await axios.get(`${API_URL}/api/school-permissions/current`, config);
         
