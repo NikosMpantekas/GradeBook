@@ -48,7 +48,7 @@ const notificationSchema = mongoose.Schema(
     // School branches for filtering
     schoolBranches: [{
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'SchoolBranch',
+      ref: 'School',
     }],
     // For targeting specific roles
     targetRole: {

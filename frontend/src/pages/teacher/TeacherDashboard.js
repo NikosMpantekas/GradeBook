@@ -42,11 +42,6 @@ const TeacherDashboard = () => {
   const [error, setError] = useState(null);
   const [todaySchedule, setTodaySchedule] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState([]);
-  const [teacherStats, setTeacherStats] = useState({
-    totalClasses: 0,
-    totalStudents: 0,
-    pendingGrades: 0
-  });
   
   const { user } = useSelector((state) => state.auth);
   const token = user?.token;
@@ -94,13 +89,18 @@ const TeacherDashboard = () => {
 
       // Fetch today's schedule and notifications in parallel
       const promises = [
-        // Get today's schedule
+        // Get today's schedule - match the format expected by Schedule component
         axios.get(`${API_URL}/api/schedule`, config)
           .then(response => {
             console.log('TEACHER DASHBOARD - Schedule response:', response.data);
             // Extract today's classes from the schedule
-            const scheduleData = response.data || {};
+            // The API returns either { schedule: { monday: [...], tuesday: [...] } } or direct { monday: [...] }
+            let scheduleData = response.data;
+            if (scheduleData && scheduleData.schedule) {
+              scheduleData = scheduleData.schedule;
+            }
             const todayClasses = scheduleData[dayOfWeek] || [];
+            console.log('TEACHER DASHBOARD - Today classes for', dayOfWeek, ':', todayClasses);
             return todayClasses;
           })
           .catch(error => {
@@ -108,43 +108,36 @@ const TeacherDashboard = () => {
             return [];
           }),
         
-        // Get unread notifications
-        axios.get(`${API_URL}/api/notifications?unread=true&limit=5`, config)
+        // Get received notifications (not sent ones) - fix the endpoint
+        axios.get(`${API_URL}/api/notifications?limit=5`, config)
           .then(response => {
             console.log('TEACHER DASHBOARD - Notifications response:', response.data);
-            return response.data?.notifications || response.data || [];
+            // Handle different response formats
+            const notifications = response.data?.notifications || response.data || [];
+            return Array.isArray(notifications) ? notifications : [];
           })
           .catch(error => {
             console.error('TEACHER DASHBOARD - Notifications fetch error:', error);
-            return [];
-          }),
-          
-        // Get basic teacher stats (optional - won't fail if endpoints don't exist)
-        axios.get(`${API_URL}/api/classes/teacher/count`, config)
-          .then(response => response.data?.count || 0)
-          .catch(() => 0),
-          
-        axios.get(`${API_URL}/api/students/teacher/count`, config)
-          .then(response => response.data?.count || 0)
-          .catch(() => 0)
+            // Try alternative endpoint for received notifications
+            return axios.get(`${API_URL}/api/notifications/received?limit=5`, config)
+              .then(response => {
+                console.log('TEACHER DASHBOARD - Alternative notifications response:', response.data);
+                const notifications = response.data?.notifications || response.data || [];
+                return Array.isArray(notifications) ? notifications : [];
+              })
+              .catch(() => []);
+          })
       ];
 
-      const [schedule, notifications, classCount, studentCount] = await Promise.all(promises);
+      const [schedule, notifications] = await Promise.all(promises);
       
       console.log('TEACHER DASHBOARD - Processed data:', {
         schedule,
-        notifications,
-        classCount,
-        studentCount
+        notifications
       });
 
       setTodaySchedule(schedule);
       setUnreadNotifications(notifications);
-      setTeacherStats({
-        totalClasses: classCount,
-        totalStudents: studentCount,
-        pendingGrades: 0 // Can be enhanced later
-      });
 
     } catch (error) {
       console.error('TEACHER DASHBOARD - Error fetching data:', error);
@@ -223,60 +216,7 @@ const TeacherDashboard = () => {
         </Alert>
       )}
 
-      {/* Quick Stats */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={4}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <ClassIcon color="primary" fontSize="large" />
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">
-                    {teacherStats.totalClasses}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Classes
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <PersonIcon color="success" fontSize="large" />
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">
-                    {teacherStats.totalStudents}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Total Students
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <NotificationsIcon color="warning" fontSize="large" />
-                <Box>
-                  <Typography variant="h4" fontWeight="bold">
-                    {unreadNotifications.length}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Unread Notifications
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {/* Stats section removed per user request */}
 
       <Grid container spacing={3}>
         {/* Today's Schedule */}
