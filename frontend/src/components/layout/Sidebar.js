@@ -264,9 +264,9 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: () => isFeatureEnabled('enableNotifications'),
       },
       
-      // 10. Manage Notifications (Teacher)
+      // 10. Received Notifications (Teacher)
       {
-        text: 'Manage Notifications',
+        text: 'Received Notifications',
         icon: <NotificationsIcon />,
         path: '/app/teacher/notifications',
         roles: ['teacher'],

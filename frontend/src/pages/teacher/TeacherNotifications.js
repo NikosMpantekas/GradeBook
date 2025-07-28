@@ -39,6 +39,7 @@ import { toast } from 'react-toastify';
 import {
   getSentNotifications,
   getAllNotifications,
+  getMyNotifications,
   deleteNotification,
   markNotificationAsRead,
   updateNotification,
@@ -92,8 +93,20 @@ const TeacherNotifications = () => {
           toast.error('Failed to load notifications');
         });
     } else {
-      // For teachers, just fetch their sent notifications
-      dispatch(getSentNotifications());
+      // For teachers, fetch their RECEIVED notifications (not sent ones)
+      console.log('Teacher user detected - loading RECEIVED notifications');
+      dispatch(getMyNotifications())
+        .unwrap()
+        .then(data => {
+          console.log(`Teacher: Successfully fetched ${data?.length || 0} received notifications`);
+          if (Array.isArray(data)) {
+            setFilteredNotifications(data);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching teacher received notifications:', error);
+          toast.error('Failed to load received notifications');
+        });
     }
     
     // Don't reset on unmount to avoid data flashing
@@ -513,13 +526,13 @@ const TeacherNotifications = () => {
         />
       </Paper>
     );
-  }
+  };
 
   return (
     <Box sx={{ flexGrow: 1 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-          Teacher Notifications
+        <Typography variant="h4" component="h1" gutterBottom>
+          {user?.role === 'admin' ? 'Manage Notifications' : 'Received Notifications'}
         </Typography>
         {(user?.role === 'admin' || user?.canSendNotifications !== false) && (
           <Button 
