@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { useFeatureToggle } from '../context/FeatureToggleContext';
 import LoadingState from './common/LoadingState';
 
 // AdminRoute component that checks if user is an admin or a secretary with appropriate permissions
@@ -7,22 +8,7 @@ import LoadingState from './common/LoadingState';
 const AdminRoute = ({ children }) => {
   const { user, isLoading } = useSelector((state) => state.auth);
   const location = useLocation();
-  
-  // Helper function to check if a school feature is enabled
-  const isFeatureEnabled = (featureName) => {
-    // Try both possible locations for the feature flag
-    if (user?.schoolFeatures && featureName in user.schoolFeatures) {
-      return user.schoolFeatures[featureName] === true;
-    }
-    
-    // Try alternative location
-    if (user?.features && featureName in user.features) {
-      return user.features[featureName] === true;
-    }
-    
-    // Default to true if feature toggle not found
-    return true;
-  };
+  const { isFeatureEnabled } = useFeatureToggle(); // Use database-driven feature checks
 
   // Minimal logging for debugging
   if (!user) {
@@ -62,19 +48,126 @@ const AdminRoute = ({ children }) => {
   if (user.role === 'admin') {
     console.log('AdminRoute - Admin role verified, checking feature permissions');
     
-    // Check feature permissions based on route
+    // COMPREHENSIVE FEATURE FLAG ENFORCEMENT FOR ALL ADMIN ROUTES
+    
+    // Classes Management
+    if (location.pathname.includes('/app/admin/classes')) {
+      if (!isFeatureEnabled('enableClasses')) {
+        console.log('❌ AdminRoute - Classes feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Grades Management
     if (location.pathname.includes('/app/admin/grades')) {
-      const gradeFeatureEnabled = isFeatureEnabled('enableGrades');
-      console.log(`Grades feature check result: ${gradeFeatureEnabled}`);
-      if (!gradeFeatureEnabled) {
+      if (!isFeatureEnabled('enableGrades')) {
         console.log('❌ AdminRoute - Grades feature disabled for this school');
         return <Navigate to="/app/dashboard" />;
       }
     }
     
-    if (location.pathname.includes('/app/admin/notifications') && !isFeatureEnabled('enableNotifications')) {
-      console.log('❌ AdminRoute - Notifications feature disabled for this school');
-      return <Navigate to="/app/dashboard" />;
+    // Notifications Management
+    if (location.pathname.includes('/app/admin/notifications')) {
+      if (!isFeatureEnabled('enableNotifications')) {
+        console.log('❌ AdminRoute - Notifications feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // User Management
+    if (location.pathname.includes('/app/admin/users')) {
+      if (!isFeatureEnabled('enableUserManagement')) {
+        console.log('❌ AdminRoute - User Management feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // School Settings
+    if (location.pathname.includes('/app/admin/school-settings')) {
+      if (!isFeatureEnabled('enableSchoolSettings')) {
+        console.log('❌ AdminRoute - School Settings feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // School Branches Management
+    if (location.pathname.includes('/app/admin/school-branches')) {
+      if (!isFeatureEnabled('enableSchoolSettings')) {
+        console.log('❌ AdminRoute - School Branches feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Schedule Management
+    if (location.pathname.includes('/app/admin/schedule')) {
+      if (!isFeatureEnabled('enableSchedule')) {
+        console.log('❌ AdminRoute - Schedule feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Students Management
+    if (location.pathname.includes('/app/admin/students')) {
+      if (!isFeatureEnabled('enableStudents')) {
+        console.log('❌ AdminRoute - Students feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Teachers Management
+    if (location.pathname.includes('/app/admin/teachers')) {
+      if (!isFeatureEnabled('enableTeachers')) {
+        console.log('❌ AdminRoute - Teachers feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Subjects Management
+    if (location.pathname.includes('/app/admin/subjects')) {
+      if (!isFeatureEnabled('enableSubjects')) {
+        console.log('❌ AdminRoute - Subjects feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Analytics/Statistics
+    if (location.pathname.includes('/app/admin/analytics') || location.pathname.includes('/app/admin/statistics')) {
+      if (!isFeatureEnabled('enableAnalytics')) {
+        console.log('❌ AdminRoute - Analytics feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // System Maintenance
+    if (location.pathname.includes('/app/admin/maintenance')) {
+      if (!isFeatureEnabled('enableSystemMaintenance')) {
+        console.log('❌ AdminRoute - System Maintenance feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Bug Reports
+    if (location.pathname.includes('/app/admin/bug-reports')) {
+      if (!isFeatureEnabled('enableBugReports')) {
+        console.log('❌ AdminRoute - Bug Reports feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Patch Notes
+    if (location.pathname.includes('/app/admin/patch-notes')) {
+      if (!isFeatureEnabled('enablePatchNotes')) {
+        console.log('❌ AdminRoute - Patch Notes feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Student Progress
+    if (location.pathname.includes('/app/admin/progress')) {
+      if (!isFeatureEnabled('enableStudentProgress')) {
+        console.log('❌ AdminRoute - Student Progress feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
     }
     
     // Rating routes check already handled for superadmin
