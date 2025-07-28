@@ -37,11 +37,17 @@ const checkRatingEnabled = checkFeatureEnabled('enableRatingSystem');
  * for use in subsequent middleware or controllers
  */
 const addFeatureFlags = asyncHandler(async (req, res, next) => {
-  // Always set features as enabled
-  res.locals.features = {
-    enableCalendar: true,
-    enableRatingSystem: true
-  };
+  // Get all available features and enable them by default
+  const availableFeatures = SchoolPermissions.getAvailableFeatures();
+  const allFeaturesEnabled = {};
+  
+  Object.keys(availableFeatures).forEach(feature => {
+    allFeaturesEnabled[feature] = true;
+  });
+  
+  // Set all features as enabled for now (since permission system is disabled)
+  res.locals.features = allFeaturesEnabled;
+  
   logger.debug('FEATURE', `Feature flags set for school ${req.user?.schoolId}`, res.locals.features);
   next();
 });
