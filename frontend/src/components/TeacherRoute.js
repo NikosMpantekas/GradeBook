@@ -25,16 +25,15 @@ const TeacherRoute = ({ children }) => {
     return children;
   }
 
-  // COMPREHENSIVE FEATURE FLAG ENFORCEMENT FOR ALL TEACHER ROUTES
+  // COMPREHENSIVE FEATURE FLAG ENFORCEMENT FOR TEACHER ROUTES (REFINED)
   if (user.role === 'teacher') {
     
-    // Classes Management
-    if (location.pathname.includes('/app/teacher/classes')) {
-      if (!isFeatureEnabled('enableClasses')) {
-        console.log('❌ TeacherRoute - Classes feature disabled for this school');
-        return <Navigate to="/app/dashboard" />;
-      }
-    }
+    // NOTE: Removed checks for management functions per user request:
+    // - User Management (/app/teacher/users)
+    // - Classes Management (/app/teacher/classes) 
+    // - Students Management (/app/teacher/students)
+    // - Teachers Management (/app/teacher/teachers)
+    // - School Branches Management (/app/teacher/schools)
     
     // Grades Management
     if (location.pathname.includes('/app/teacher/grades')) {
@@ -48,38 +47,6 @@ const TeacherRoute = ({ children }) => {
     if (location.pathname.includes('/app/teacher/notifications')) {
       if (!isFeatureEnabled('enableNotifications')) {
         console.log('❌ TeacherRoute - Notifications feature disabled for this school');
-        return <Navigate to="/app/dashboard" />;
-      }
-    }
-    
-    // User Management
-    if (location.pathname.includes('/app/teacher/users')) {
-      if (!isFeatureEnabled('enableUserManagement')) {
-        console.log('❌ TeacherRoute - User Management feature disabled for this school');
-        return <Navigate to="/app/dashboard" />;
-      }
-    }
-    
-    // Students Management
-    if (location.pathname.includes('/app/teacher/students')) {
-      if (!isFeatureEnabled('enableStudents')) {
-        console.log('❌ TeacherRoute - Students feature disabled for this school');
-        return <Navigate to="/app/dashboard" />;
-      }
-    }
-    
-    // Teachers Management
-    if (location.pathname.includes('/app/teacher/teachers')) {
-      if (!isFeatureEnabled('enableTeachers')) {
-        console.log('❌ TeacherRoute - Teachers feature disabled for this school');
-        return <Navigate to="/app/dashboard" />;
-      }
-    }
-    
-    // School Branches Management
-    if (location.pathname.includes('/app/teacher/schools')) {
-      if (!isFeatureEnabled('enableSchoolSettings')) {
-        console.log('❌ TeacherRoute - School Settings feature disabled for this school');
         return <Navigate to="/app/dashboard" />;
       }
     }

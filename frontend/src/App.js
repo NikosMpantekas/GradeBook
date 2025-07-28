@@ -43,6 +43,9 @@ import Schedule from './pages/common/Schedule';
 import StudentStats from './pages/common/StudentStats';
 import PrintGradePage from './pages/print/PrintGradePage';
 
+// Teacher Pages
+import TeacherDashboard from './pages/teacher/TeacherDashboard';
+
 // Student Pages
 import StudentDashboard from './pages/student/StudentDashboard';
 import StudentGrades from './pages/student/StudentGrades';
@@ -401,9 +404,9 @@ function App() {
               <Layout />
             </PrivateRoute>
           }>
-            {/* Unified Dashboard Routes */}
+            {/* Dashboard Routes */}
             <Route path="/app/admin" element={<UnifiedDashboard />} />
-            <Route path="/app/teacher" element={<UnifiedDashboard />} />
+            <Route path="/app/teacher" element={<TeacherDashboard />} />
             <Route path="/app/student" element={<UnifiedDashboard />} />
             
             <Route path="/app/profile" element={<Profile />} />
@@ -522,42 +525,8 @@ function App() {
               </TeacherRoute>
             } />
             
-            {/* STEP 2: DUPLICATE ALL ADMIN FUNCTIONS FOR TEACHER ROLE */}
-            <Route path="/app/teacher/users" element={
-              <TeacherRoute>
-                <ManageUsers />
-              </TeacherRoute>
-            } />
-            <Route path="/app/teacher/users/create" element={
-              <TeacherRoute>
-                <CreateUserErrorWrapper />
-              </TeacherRoute>
-            } />
-            <Route path="/app/teacher/users/:id" element={
-              <TeacherRoute>
-                <EditUser />
-              </TeacherRoute>
-            } />
-            <Route path="/app/teacher/classes" element={
-              <TeacherRoute>
-                <ManageClasses />
-              </TeacherRoute>
-            } />
-            <Route path="/app/teacher/students" element={
-              <TeacherRoute>
-                <ManageUsers />
-              </TeacherRoute>
-            } />
-            <Route path="/app/teacher/teachers" element={
-              <TeacherRoute>
-                <ManageUsers />
-              </TeacherRoute>
-            } />
-            <Route path="/app/teacher/schools" element={
-              <TeacherRoute>
-                <SchoolBranchManager />
-              </TeacherRoute>
-            } />
+            {/* STEP 2: TEACHER FUNCTIONS (REFINED - REMOVED MANAGEMENT FUNCTIONS PER USER REQUEST) */}
+            {/* NOTE: Removed /app/teacher/users, /app/teacher/classes, /app/teacher/students, /app/teacher/teachers, /app/teacher/schools per user request */}
             <Route path="/app/teacher/schedule" element={
               <TeacherRoute>
                 <Schedule />

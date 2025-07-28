@@ -220,47 +220,9 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'teacher',
       },
       
-      // STEP 4: COMPLETE ADMIN FUNCTIONS FOR TEACHER ROLE
+      // STEP 4: TEACHER FUNCTIONS (REFINED - REMOVED MANAGEMENT FUNCTIONS PER USER REQUEST)
       
-      // 2. Manage Users (Teacher)
-      {
-        text: 'Manage Users',
-        icon: <UsersIcon />,
-        path: '/app/teacher/users',
-        roles: ['teacher'],
-        section: 'teacher',
-        checkPermission: () => isFeatureEnabled('enableUserManagement'),
-      },
-      
-      // 3. Manage Classes (Teacher)
-      {
-        text: 'Manage Classes',
-        icon: <ClassIcon />,
-        path: '/app/teacher/classes',
-        roles: ['teacher'],
-        section: 'teacher',
-        checkPermission: () => isFeatureEnabled('enableClasses'),
-      },
-      
-      // 4. Manage Students (Teacher)
-      {
-        text: 'Manage Students',
-        icon: <PersonIcon />,
-        path: '/app/teacher/students',
-        roles: ['teacher'],
-        section: 'teacher',
-        checkPermission: () => isFeatureEnabled('enableStudents'),
-      },
-      
-      // 5. Manage Teachers (Teacher)
-      {
-        text: 'Manage Teachers',
-        icon: <PersonIcon />,
-        path: '/app/teacher/teachers',
-        roles: ['teacher'],
-        section: 'teacher',
-        checkPermission: () => isFeatureEnabled('enableTeachers'),
-      },
+      // NOTE: Removed Manage Users, Manage Classes, Manage Students, Manage Teachers per user request
       
       // 6. Add Grades (Teacher)
       {
@@ -312,15 +274,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: () => isFeatureEnabled('enableNotifications'),
       },
       
-      // 11. Manage School Branches (Teacher)
-      {
-        text: 'Manage School Branches',
-        icon: <SchoolIcon />,
-        path: '/app/teacher/schools',
-        roles: ['teacher'],
-        section: 'teacher',
-        checkPermission: () => isFeatureEnabled('enableSchoolSettings'),
-      },
+      // NOTE: Removed Manage School Branches per user request
       
       // 12. Schedule (Teacher)
       {
