@@ -72,6 +72,30 @@ const TeacherNotifications = () => {
   });
   const [senders, setSenders] = useState([]); // Track available senders for filter
 
+  // Define fetchTeacherNotifications at component level so it's accessible by other functions
+  const fetchTeacherNotifications = async () => {
+    try {
+      const [receivedData, sentData] = await Promise.all([
+        dispatch(getMyNotifications()).unwrap(),
+        dispatch(getSentNotifications()).unwrap()
+      ]);
+      
+      console.log(`Teacher: Successfully fetched ${receivedData?.length || 0} received and ${sentData?.length || 0} sent notifications`);
+      
+      // Combine received and sent notifications, mark them for UI purposes
+      const receivedNotifications = Array.isArray(receivedData) ? receivedData.map(notif => ({ ...notif, notificationType: 'received' })) : [];
+      const sentNotifications = Array.isArray(sentData) ? sentData.map(notif => ({ ...notif, notificationType: 'sent' })) : [];
+      
+      const allNotifications = [...receivedNotifications, ...sentNotifications];
+      console.log(`Teacher: Combined ${allNotifications.length} total notifications`);
+      
+      setFilteredNotifications(allNotifications);
+    } catch (error) {
+      console.error('Error fetching teacher notifications:', error);
+      toast.error('Failed to load notifications');
+    }
+  };
+
   // Load notifications immediately on component mount
   useEffect(() => {
     console.log('TeacherNotifications component mounted - loading notifications');
@@ -95,29 +119,6 @@ const TeacherNotifications = () => {
     } else {
       // For teachers, fetch BOTH received and sent notifications
       console.log('Teacher user detected - loading BOTH received and sent notifications');
-      
-      const fetchTeacherNotifications = async () => {
-        try {
-          const [receivedData, sentData] = await Promise.all([
-            dispatch(getMyNotifications()).unwrap(),
-            dispatch(getSentNotifications()).unwrap()
-          ]);
-          
-          console.log(`Teacher: Successfully fetched ${receivedData?.length || 0} received and ${sentData?.length || 0} sent notifications`);
-          
-          // Combine received and sent notifications, mark them for UI purposes
-          const receivedNotifications = Array.isArray(receivedData) ? receivedData.map(notif => ({ ...notif, notificationType: 'received' })) : [];
-          const sentNotifications = Array.isArray(sentData) ? sentData.map(notif => ({ ...notif, notificationType: 'sent' })) : [];
-          
-          const allNotifications = [...receivedNotifications, ...sentNotifications];
-          console.log(`Teacher: Combined ${allNotifications.length} total notifications`);
-          
-          setFilteredNotifications(allNotifications);
-        } catch (error) {
-          console.error('Error fetching teacher notifications:', error);
-          toast.error('Failed to load notifications');
-        }
-      };
       
       fetchTeacherNotifications();
     }
