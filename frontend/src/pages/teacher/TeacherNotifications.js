@@ -93,20 +93,33 @@ const TeacherNotifications = () => {
           toast.error('Failed to load notifications');
         });
     } else {
-      // For teachers, fetch their RECEIVED notifications (not sent ones)
-      console.log('Teacher user detected - loading RECEIVED notifications');
-      dispatch(getMyNotifications())
-        .unwrap()
-        .then(data => {
-          console.log(`Teacher: Successfully fetched ${data?.length || 0} received notifications`);
-          if (Array.isArray(data)) {
-            setFilteredNotifications(data);
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching teacher received notifications:', error);
-          toast.error('Failed to load received notifications');
-        });
+      // For teachers, fetch BOTH received and sent notifications
+      console.log('Teacher user detected - loading BOTH received and sent notifications');
+      
+      const fetchTeacherNotifications = async () => {
+        try {
+          const [receivedData, sentData] = await Promise.all([
+            dispatch(getMyNotifications()).unwrap(),
+            dispatch(getSentNotifications()).unwrap()
+          ]);
+          
+          console.log(`Teacher: Successfully fetched ${receivedData?.length || 0} received and ${sentData?.length || 0} sent notifications`);
+          
+          // Combine received and sent notifications, mark them for UI purposes
+          const receivedNotifications = Array.isArray(receivedData) ? receivedData.map(notif => ({ ...notif, notificationType: 'received' })) : [];
+          const sentNotifications = Array.isArray(sentData) ? sentData.map(notif => ({ ...notif, notificationType: 'sent' })) : [];
+          
+          const allNotifications = [...receivedNotifications, ...sentNotifications];
+          console.log(`Teacher: Combined ${allNotifications.length} total notifications`);
+          
+          setFilteredNotifications(allNotifications);
+        } catch (error) {
+          console.error('Error fetching teacher notifications:', error);
+          toast.error('Failed to load notifications');
+        }
+      };
+      
+      fetchTeacherNotifications();
     }
     
     // Don't reset on unmount to avoid data flashing
@@ -397,6 +410,7 @@ const TeacherNotifications = () => {
           <Table stickyHeader aria-label="notifications table">
             <TableHead>
               <TableRow>
+                <TableCell>Type</TableCell>
                 <TableCell>Recipient</TableCell>
                 <TableCell>Title</TableCell>
                 <TableCell>Message</TableCell>
@@ -411,6 +425,14 @@ const TeacherNotifications = () => {
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                   .map((notification) => (
                     <TableRow hover key={notification._id || 'no-id-' + Math.random()}>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          label={notification.notificationType === 'received' ? 'Received' : 'Sent'}
+                          color={notification.notificationType === 'received' ? 'info' : 'primary'}
+                          variant="outlined"
+                        />
+                      </TableCell>
                       <TableCell>
                         {getRecipientDisplayText(notification)}
                       </TableCell>
@@ -443,6 +465,7 @@ const TeacherNotifications = () => {
                         )}
                       </TableCell>
                       <TableCell align="center">
+                        {/* Always show View action */}
                         <IconButton
                           color="primary"
                           onClick={() => handleViewNotification(notification._id)}
@@ -451,38 +474,56 @@ const TeacherNotifications = () => {
                         >
                           <VisibilityIcon />
                         </IconButton>
-                        <IconButton
-                          color="primary"
-                          onClick={() => handleEditClick(notification)}
-                          size="small"
-                          title="Edit notification"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        {!notification.isRead && (
-                          <IconButton
-                            color="success"
-                            onClick={() => handleMarkAsRead(notification._id)}
-                            size="small"
-                            title="Mark as read"
-                          >
-                            <MarkReadIcon />
-                          </IconButton>
+                        
+                        {/* For RECEIVED notifications: only show Mark as Read */}
+                        {notification.notificationType === 'received' ? (
+                          !notification.isRead && (
+                            <IconButton
+                              color="success"
+                              onClick={() => handleMarkAsRead(notification._id)}
+                              size="small"
+                              title="Mark as read"
+                            >
+                              <MarkReadIcon />
+                            </IconButton>
+                          )
+                        ) : (
+                          /* For SENT notifications: show all actions */
+                          <>
+                            <IconButton
+                              color="primary"
+                              onClick={() => handleEditClick(notification)}
+                              size="small"
+                              title="Edit notification"
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            {!notification.isRead && (
+                              <IconButton
+                                color="success"
+                                onClick={() => handleMarkAsRead(notification._id)}
+                                size="small"
+                                title="Mark as read"
+                              >
+                                <MarkReadIcon />
+                              </IconButton>
+                            )}
+                            <IconButton
+                              color="error"
+                              onClick={() => handleDeleteClick(notification)}
+                              size="small"
+                              title="Delete notification"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </>
                         )}
-                        <IconButton
-                          color="error"
-                          onClick={() => handleDeleteClick(notification)}
-                          size="small"
-                          title="Delete notification"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={7} align="center">
                     <Box py={2}>
                       <Typography variant="subtitle1" color="text.secondary">
                         {isError 

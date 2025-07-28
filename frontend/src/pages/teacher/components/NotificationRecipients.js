@@ -44,7 +44,8 @@ const NotificationRecipients = ({
   selectedRecipients,
   onRecipientsChange,
   error,
-  disabled
+  disabled,
+  currentUserRole = 'admin' // Default to admin if not provided
 }) => {
   // Filter states
   const [filterOptions, setFilterOptions] = useState({
@@ -267,26 +268,31 @@ const NotificationRecipients = ({
                   </Box>
                 }
               />
-              <FormControlLabel 
-                value="teacher" 
-                control={<Radio />} 
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <SupervisorAccountIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-                    Teachers
-                  </Box>
-                }
-              />
-              <FormControlLabel 
-                value="all" 
-                control={<Radio />} 
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <GroupIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-                    All Users
-                  </Box>
-                }
-              />
+              {/* Hide teacher and all users options for teachers */}
+              {currentUserRole === 'admin' && (
+                <>
+                  <FormControlLabel 
+                    value="teacher" 
+                    control={<Radio />} 
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <SupervisorAccountIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+                        Teachers
+                      </Box>
+                    }
+                  />
+                  <FormControlLabel 
+                    value="all" 
+                    control={<Radio />} 
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <GroupIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+                        All Users
+                      </Box>
+                    }
+                  />
+                </>
+              )}
             </RadioGroup>
           </FormControl>
         </Box>

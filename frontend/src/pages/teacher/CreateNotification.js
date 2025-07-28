@@ -278,6 +278,7 @@ const CreateNotification = () => {
             onRecipientsChange={handleRecipientsChange}
             error={formErrors.recipients}
             disabled={isSubmitting}
+            currentUserRole={user?.role || 'admin'}
           />
 
           {/* Submit Actions */}
