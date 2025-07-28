@@ -92,7 +92,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'Dashboard',
         icon: <DashboardIcon />,
-        path: '/app/dashboard',
+        path: '/app/student',
         roles: ['student'],
         section: 'student',
       },
@@ -458,24 +458,24 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     // Get current section for filtering
     const currentSection = getCurrentSection();
     
-    // TEMPORARY: Filter menu items - SHOW ALL ITEMS TO ALL USERS FOR TESTING
+    // Filter menu items based on user role and permissions
     const filteredItems = menuItems.filter(item => {
-      // TEMPORARY: Comment out role check to show everything to everyone
-      // if (!item.roles.includes(user?.role)) {
-      //   return false;
-      // }
+      // Check if user has required role
+      if (!item.roles.includes(user?.role)) {
+        return false;
+      }
 
-      // TEMPORARY: Comment out section check to show all sections to everyone  
-      // if (item.section && item.section !== currentSection) {
-      //   return false;
-      // }
+      // Check if section matches current context
+      if (item.section && item.section !== currentSection) {
+        return false;
+      }
 
-      // Keep permission checks for now (can be disabled later if needed)
+      // Check permission if specified
       if (item.checkPermission) {
         return item.checkPermission();
       }
 
-      return true; // Show everything for testing
+      return true;
     });
     
     // Enhanced debug logging for admin menu filtering
