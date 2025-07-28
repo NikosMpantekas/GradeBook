@@ -73,7 +73,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   }, [isSuperAdminRoute, isAdminRoute, location.pathname, user?.role]);
   
   // Make sidebar permanent for admin users or if specified in props
-  const isActuallyPermanent = permanent || isAdmin;
+  const isActuallyPermanent = false || isAdmin;
   
   // Debug sidebar state on route changes
   useEffect(() => {

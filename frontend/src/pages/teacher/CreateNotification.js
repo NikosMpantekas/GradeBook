@@ -78,7 +78,7 @@ const CreateNotification = () => {
       toast.success('Notification sent successfully');
       // Dynamic navigation based on user role
       if (user?.role === 'admin') {
-        navigate('/app/admin/notifications');
+        navigate('/app/admin/notifications/manage');
       } else {
         navigate('/app/teacher/notifications');
       }
@@ -210,7 +210,7 @@ const CreateNotification = () => {
   // Handle back navigation
   const handleBack = () => {
     if (user?.role === 'admin') {
-      navigate('/app/admin/notifications');
+      navigate('/app/admin/notifications/manage');
     } else {
       navigate('/app/teacher/notifications');
     }

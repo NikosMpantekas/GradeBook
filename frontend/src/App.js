@@ -555,6 +555,12 @@ function App() {
                 <StudentStats />
               </AdminRoute>
             } />
+            {/* Admin notifications - add missing base route that redirects to manage */}
+            <Route path="/app/admin/notifications" element={
+              <AdminRoute>
+                <TeacherNotifications />
+              </AdminRoute>
+            } />
             <Route path="/app/admin/notifications/create" element={
               <AdminRoute>
                 <CreateNotification />

@@ -51,7 +51,7 @@ const NotificationDetail = () => {
       toast.error(message);
       // Navigate to role-specific notifications page on error
       if (user?.role === 'admin') {
-        navigate('/app/admin/notifications');
+        navigate('/app/admin/notifications/manage');
       } else if (user?.role === 'teacher') {
         navigate('/app/teacher/notifications');
       } else if (user?.role === 'student') {
@@ -71,7 +71,7 @@ const NotificationDetail = () => {
     dispatch(deleteNotification(id)).then(() => {
       // Navigate to role-specific notifications page after delete
       if (user?.role === 'admin') {
-        navigate('/app/admin/notifications');
+        navigate('/app/admin/notifications/manage');
       } else if (user?.role === 'teacher') {
         navigate('/app/teacher/notifications');
       } else if (user?.role === 'student') {
@@ -92,7 +92,7 @@ const NotificationDetail = () => {
   const goBack = () => {
     // Navigate to role-specific notifications page
     if (user?.role === 'admin') {
-      navigate('/app/admin/notifications');
+      navigate('/app/admin/notifications/manage');
     } else if (user?.role === 'teacher') {
       navigate('/app/teacher/notifications');
     } else if (user?.role === 'student') {
