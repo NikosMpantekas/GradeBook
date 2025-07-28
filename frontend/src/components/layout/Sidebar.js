@@ -86,7 +86,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   // Generate menu items based on user role and school permissions
   const getMenuItems = () => {
     const menuItems = [
-      // STUDENT MENU ITEMS (in requested order)
+      // STUDENT MENU ITEMS (FOCUSED - ONLY GRADES AND NOTIFICATIONS)
       
       // 1. Student Dashboard
       {
@@ -97,116 +97,24 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'student',
       },
       
-      // STEP 4: COMPLETE ADMIN FUNCTIONS FOR STUDENT ROLE
-      
-      // 2. Manage Users (Student)
+      // 2. View My Grades (Student)
       {
-        text: 'Manage Users',
-        icon: <UsersIcon />,
-        path: '/app/student/users',
-        roles: ['student'],
-        section: 'student',
-        checkPermission: () => isFeatureEnabled('enableUserManagement'),
-      },
-      
-      // 3. Manage Classes (Student)
-      {
-        text: 'Manage Classes',
-        icon: <ClassIcon />,
-        path: '/app/student/classes',
-        roles: ['student'],
-        section: 'student',
-        checkPermission: () => isFeatureEnabled('enableClasses'),
-      },
-      
-      // 4. Manage Students (Student)
-      {
-        text: 'Manage Students',
-        icon: <PersonIcon />,
-        path: '/app/student/students',
-        roles: ['student'],
-        section: 'student',
-        checkPermission: () => isFeatureEnabled('enableStudents'),
-      },
-      
-      // 5. Manage Teachers (Student)
-      {
-        text: 'Manage Teachers',
-        icon: <PersonIcon />,
-        path: '/app/student/teachers',
-        roles: ['student'],
-        section: 'student',
-        checkPermission: () => isFeatureEnabled('enableTeachers'),
-      },
-      
-      // 6. Add Grades (Student)
-      {
-        text: 'Add Grades',
-        icon: <AddIcon />,
-        path: '/app/student/grades/create',
-        roles: ['student'],
-        section: 'student',
-        checkPermission: () => isFeatureEnabled('enableGrades'),
-      },
-      
-      // 7. Manage Grades (Student)
-      {
-        text: 'Manage Grades',
+        text: 'My Grades',
         icon: <GradesIcon />,
-        path: '/app/student/grades/manage',
+        path: '/app/student/grades',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableGrades'),
       },
       
-      // 8. Grades Overview (Student)
+      // 3. View My Notifications (Student)
       {
-        text: 'Grades Overview',
-        icon: <AnalyticsIcon />,
-        path: '/app/student/student-stats',
-        roles: ['student'],
-        section: 'student',
-        checkPermission: () => isFeatureEnabled('enableGrades'),
-      },
-      
-      // 9. Add Notifications (Student)
-      {
-        text: 'Add Notifications',
-        icon: <AddIcon />,
-        path: '/app/student/notifications/create',
-        roles: ['student'],
-        section: 'student',
-        checkPermission: () => isFeatureEnabled('enableNotifications'),
-      },
-      
-      // 10. Manage Notifications (Student)
-      {
-        text: 'Manage Notifications',
+        text: 'My Notifications',
         icon: <NotificationsIcon />,
-        path: '/app/student/notifications/manage',
+        path: '/app/student/notifications',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
-      },
-      
-      // 11. Manage School Branches (Student)
-      {
-        text: 'Manage School Branches',
-        icon: <SchoolIcon />,
-        path: '/app/student/schools',
-        roles: ['student'],
-        section: 'student',
-        checkPermission: () => isFeatureEnabled('enableSchoolSettings'),
-      },
-      
-      // 12. Schedule (Student)
-      {
-        text: 'Schedule',
-        icon: <ScheduleIcon />,
-        path: '/app/student/schedule',
-        roles: ['student'],
-        section: 'student',
-        checkPermission: () => isFeatureEnabled('enableSchedule'),
       },
       
       // TEACHER MENU ITEMS

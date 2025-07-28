@@ -5,28 +5,26 @@ import {
   Grid,
   Card,
   CardContent,
-  Chip,
-  Paper,
+  CardHeader,
   CircularProgress,
   Alert,
   Container,
-  Avatar,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
   Divider,
-  Button
+  Button,
+  Chip,
+  Stack
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
-  Person as PersonIcon,
-  School as SchoolIcon,
-  MenuBook as SubjectIcon,
   Grade as GradeIcon,
-  Schedule as ScheduleIcon,
   Notifications as NotificationsIcon,
-  TrendingUp as TrendingUpIcon
+  School as SchoolIcon,
+  TrendingUp as TrendingUpIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -36,70 +34,99 @@ import { API_URL } from '../../config/appConfig';
 const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dashboardData, setDashboardData] = useState({
-    studentInfo: null,
-    grades: [],
-    notifications: [],
-    subjects: [],
-    upcomingClasses: []
-  });
+  const [recentGrades, setRecentGrades] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState([]);
   
-  const { user, token } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
+  const token = user?.token;
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  console.log('STUDENT DASHBOARD - Component mounted');
+  console.log('STUDENT DASHBOARD - User:', user);
+  console.log('STUDENT DASHBOARD - Token:', token ? 'Present' : 'Missing');
 
-  const fetchDashboardData = async () => {
+  useEffect(() => {
+    if (!user || !token) {
+      console.error('STUDENT DASHBOARD - No user or token, redirecting to login');
+      navigate('/login');
+      return;
+    }
+    
+    if (user.role !== 'student' && user.role !== 'admin') {
+      console.error('STUDENT DASHBOARD - User is not student or admin, redirecting to dashboard');
+      navigate('/app/dashboard');
+      return;
+    }
+
+    fetchStudentDashboardData();
+  }, [user, token, navigate]);
+
+  const fetchStudentDashboardData = async () => {
     try {
+      console.log('STUDENT DASHBOARD - Starting data fetch');
       setLoading(true);
+      setError(null);
+      
       const config = {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       };
 
-      // Fetch student profile info
-      const profileResponse = await axios.get(`${API_URL}/api/users/profile`, config);
-      console.log('Student profile data:', profileResponse.data);
+      // Fetch recent grades and notifications in parallel
+      const promises = [
+        // Get recent grades
+        axios.get(`${API_URL}/api/grades/student`, config)
+          .then(response => {
+            console.log('STUDENT DASHBOARD - Grades response:', response.data);
+            const grades = response.data?.grades || response.data || [];
+            return Array.isArray(grades) ? grades.slice(0, 5) : [];
+          })
+          .catch(error => {
+            console.error('STUDENT DASHBOARD - Grades fetch error:', error);
+            return [];
+          }),
+        
+        // Get received notifications
+        axios.get(`${API_URL}/api/notifications?limit=5`, config)
+          .then(response => {
+            console.log('STUDENT DASHBOARD - Notifications response:', response.data);
+            const notifications = response.data?.notifications || response.data || [];
+            return Array.isArray(notifications) ? notifications.filter(n => !n.isRead) : [];
+          })
+          .catch(error => {
+            console.error('STUDENT DASHBOARD - Notifications fetch error:', error);
+            return [];
+          })
+      ];
 
-      // Fetch recent grades
-      const gradesResponse = await axios.get(`${API_URL}/api/grades/student`, config);
-      console.log('Student grades data:', gradesResponse.data);
-
-      // Fetch recent notifications
-      const notificationsResponse = await axios.get(`${API_URL}/api/notifications?limit=5`, config);
-      console.log('Student notifications data:', notificationsResponse.data);
-
-      // Fetch student's subjects from their classes
-      const classesResponse = await axios.get(`${API_URL}/api/classes/my-classes`, config);
-      console.log('Student classes data:', classesResponse.data);
-
-      // Fetch schedule for upcoming classes
-      const scheduleResponse = await axios.get(`${API_URL}/api/schedule`, config);
-      console.log('Student schedule data:', scheduleResponse.data);
-
-      setDashboardData({
-        studentInfo: profileResponse.data,
-        grades: gradesResponse.data?.grades?.slice(0, 5) || [],
-        notifications: notificationsResponse.data?.notifications?.slice(0, 3) || [],
-        subjects: classesResponse.data?.map(cls => cls.subject).filter((subject, index, self) => 
-          self.findIndex(s => s._id === subject._id) === index
-        ) || [],
-        upcomingClasses: scheduleResponse.data ? Object.values(scheduleResponse.data).flat().slice(0, 3) : []
-      });
+      const [grades, notifications] = await Promise.all(promises);
+      
+      console.log('STUDENT DASHBOARD - Processed data:', { grades, notifications });
+      
+      setRecentGrades(grades);
+      setUnreadNotifications(notifications);
 
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('STUDENT DASHBOARD - Error fetching dashboard data:', error);
       setError('Failed to load dashboard data. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
+  const getWelcomeMessage = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   const getGradeAverage = () => {
-    if (dashboardData.grades.length === 0) return 'N/A';
-    const sum = dashboardData.grades.reduce((acc, grade) => acc + grade.value, 0);
-    return (sum / dashboardData.grades.length).toFixed(1);
+    if (recentGrades.length === 0) return 'N/A';
+    const sum = recentGrades.reduce((acc, grade) => acc + grade.value, 0);
+    return (sum / recentGrades.length).toFixed(1);
   };
 
   if (loading) {
@@ -129,251 +156,187 @@ const StudentDashboard = () => {
           </Typography>
         </Box>
         <Typography variant="h6" color="text.secondary">
-          Welcome back, {dashboardData.studentInfo?.name || 'Student'}!
+          {getWelcomeMessage()}, {user?.name || 'Student'}! Here's your academic overview.
         </Typography>
       </Box>
 
       <Grid container spacing={3}>
-        {/* Student Info Card */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Avatar 
-                sx={{ 
-                  width: 80, 
-                  height: 80, 
-                  mx: 'auto', 
-                  mb: 2,
-                  bgcolor: 'primary.main',
-                  fontSize: '2rem'
-                }}
-              >
-                {dashboardData.studentInfo?.name?.charAt(0) || 'S'}
-              </Avatar>
-              <Typography variant="h6" gutterBottom>
-                {dashboardData.studentInfo?.name || 'Student Name'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                {dashboardData.studentInfo?.email || 'No email'}
-              </Typography>
-              
-              {/* School Branch Info */}
-              {dashboardData.studentInfo?.schoolBranch && (
-                <Box sx={{ mt: 2 }}>
-                  <Chip
-                    icon={<SchoolIcon />}
-                    label={dashboardData.studentInfo.schoolBranch.name || 'School Branch'}
-                    color="primary"
-                    variant="outlined"
-                    sx={{ mb: 1 }}
-                  />
-                </Box>
-              )}
-              
-              <Button
-                variant="contained"
-                startIcon={<PersonIcon />}
-                onClick={() => navigate('/app/profile')}
-                sx={{ mt: 2 }}
-                fullWidth
-              >
-                View Profile
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Academic Overview */}
-        <Grid item xs={12} md={8}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <TrendingUpIcon sx={{ mr: 1 }} />
-                Academic Overview
-              </Typography>
-              
-              <Grid container spacing={2}>
-                <Grid item xs={6} sm={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                    <Typography variant="h4" fontWeight="bold">
-                      {dashboardData.grades.length}
-                    </Typography>
-                    <Typography variant="body2">
-                      Total Grades
-                    </Typography>
-                  </Paper>
-                </Grid>
-                
-                <Grid item xs={6} sm={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'success.light', color: 'success.contrastText' }}>
-                    <Typography variant="h4" fontWeight="bold">
-                      {getGradeAverage()}
-                    </Typography>
-                    <Typography variant="body2">
-                      Average Grade
-                    </Typography>
-                  </Paper>
-                </Grid>
-                
-                <Grid item xs={6} sm={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'info.light', color: 'info.contrastText' }}>
-                    <Typography variant="h4" fontWeight="bold">
-                      {dashboardData.subjects.length}
-                    </Typography>
-                    <Typography variant="body2">
-                      Subjects
-                    </Typography>
-                  </Paper>
-                </Grid>
-                
-                <Grid item xs={6} sm={3}>
-                  <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'warning.light', color: 'warning.contrastText' }}>
-                    <Typography variant="h4" fontWeight="bold">
-                      {dashboardData.notifications.filter(n => !n.isRead).length}
-                    </Typography>
-                    <Typography variant="body2">
-                      Unread Notifications
-                    </Typography>
-                  </Paper>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* My Subjects */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <SubjectIcon sx={{ mr: 1 }} />
-                My Subjects
-              </Typography>
-              
-              {dashboardData.subjects.length > 0 ? (
-                <List dense>
-                  {dashboardData.subjects.map((subject, index) => (
-                    <ListItem key={subject._id || index} divider={index < dashboardData.subjects.length - 1}>
-                      <ListItemIcon>
-                        <SubjectIcon color="primary" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={subject.name || 'Unknown Subject'}
-                        secondary={subject.description || 'No description'}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                  No subjects found
-                </Typography>
-              )}
-              
-              <Button
-                variant="outlined"
-                startIcon={<ScheduleIcon />}
-                onClick={() => navigate('/app/schedule')}
-                fullWidth
-                sx={{ mt: 2 }}
-              >
-                View Schedule
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
 
         {/* Recent Grades */}
         <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%' }}>
+          <Card>
+            <CardHeader 
+              title={
+                <Box display="flex" alignItems="center" gap={1}>
+                  <GradeIcon color="primary" />
+                  <Typography variant="h6">Recent Grades</Typography>
+                </Box>
+              }
+              action={
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => navigate('/app/student/grades')}
+                  sx={{ minWidth: 'auto' }}
+                >
+                  View All
+                </Button>
+              }
+            />
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <GradeIcon sx={{ mr: 1 }} />
-                Recent Grades
-              </Typography>
-              
-              {dashboardData.grades.length > 0 ? (
-                <List dense>
-                  {dashboardData.grades.map((grade, index) => (
-                    <ListItem key={grade._id || index} divider={index < dashboardData.grades.length - 1}>
-                      <ListItemText
-                        primary={grade.subject?.name || 'Unknown Subject'}
-                        secondary={`Grade: ${grade.value}/20 - ${new Date(grade.createdAt).toLocaleDateString()}`}
-                      />
-                      <Chip
-                        label={grade.value}
-                        color={grade.value >= 15 ? 'success' : grade.value >= 10 ? 'warning' : 'error'}
-                        size="small"
-                      />
-                    </ListItem>
+              {recentGrades.length > 0 ? (
+                <List>
+                  {recentGrades.map((grade, index) => (
+                    <React.Fragment key={grade._id || index}>
+                      <ListItem>
+                        <ListItemIcon>
+                          <AssignmentIcon color="primary" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              {grade.subject?.name || 'Unknown Subject'}
+                            </Typography>
+                          }
+                          secondary={
+                            <Box>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                Grade: {grade.value}/20
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {grade.createdAt ? 
+                                  new Date(grade.createdAt).toLocaleDateString() : 
+                                  'Recent'
+                                }
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                        <Chip
+                          label={grade.value}
+                          color={grade.value >= 15 ? 'success' : grade.value >= 10 ? 'warning' : 'error'}
+                          size="small"
+                        />
+                      </ListItem>
+                      {index < recentGrades.length - 1 && <Divider />}
+                    </React.Fragment>
                   ))}
                 </List>
               ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                  No grades yet
-                </Typography>
+                <Box textAlign="center" py={4}>
+                  <GradeIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                  <Typography variant="body1" color="text.secondary">
+                    No grades yet
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Your grades will appear here once teachers add them
+                  </Typography>
+                </Box>
               )}
-              
-              <Button
-                variant="outlined"
-                startIcon={<GradeIcon />}
-                onClick={() => navigate('/app/grades')}
-                fullWidth
-                sx={{ mt: 2 }}
-              >
-                View All Grades
-              </Button>
             </CardContent>
           </Card>
         </Grid>
 
         {/* Recent Notifications */}
-        <Grid item xs={12}>
+        <Grid item xs={12} md={6}>
           <Card>
+            <CardHeader 
+              title={
+                <Box display="flex" alignItems="center" gap={1}>
+                  <NotificationsIcon color="primary" />
+                  <Typography variant="h6">Recent Notifications</Typography>
+                </Box>
+              }
+              action={
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => navigate('/app/student/notifications')}
+                  sx={{ minWidth: 'auto' }}
+                >
+                  View All
+                </Button>
+              }
+            />
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <NotificationsIcon sx={{ mr: 1 }} />
-                Recent Notifications
-              </Typography>
-              
-              {dashboardData.notifications.length > 0 ? (
+              {unreadNotifications.length > 0 ? (
                 <List>
-                  {dashboardData.notifications.map((notification, index) => (
-                    <ListItem key={notification._id || index} divider={index < dashboardData.notifications.length - 1}>
-                      <ListItemText
-                        primary={notification.title || 'No title'}
-                        secondary={
-                          <Box>
-                            <Typography variant="body2" color="text.secondary">
-                              {notification.message || 'No message'}
+                  {unreadNotifications.map((notification, index) => (
+                    <React.Fragment key={notification._id || index}>
+                      <ListItem>
+                        <ListItemIcon>
+                          <NotificationsIcon color="warning" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              {notification.title || 'Notification'}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {new Date(notification.createdAt).toLocaleDateString()}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                      {!notification.isRead && (
-                        <Chip label="New" color="primary" size="small" />
-                      )}
-                    </ListItem>
+                          }
+                          secondary={
+                            <Box>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                {notification.message || notification.content || 'No content'}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {notification.createdAt ? 
+                                  new Date(notification.createdAt).toLocaleDateString() : 
+                                  'Recent'
+                                }
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                      </ListItem>
+                      {index < unreadNotifications.length - 1 && <Divider />}
+                    </React.Fragment>
                   ))}
                 </List>
               ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                  No notifications
-                </Typography>
+                <Box textAlign="center" py={4}>
+                  <NotificationsIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                  <Typography variant="body1" color="text.secondary">
+                    No unread notifications
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    You're all caught up!
+                  </Typography>
+                </Box>
               )}
-              
-              <Button
-                variant="outlined"
-                startIcon={<NotificationsIcon />}
-                onClick={() => navigate('/app/notifications')}
-                fullWidth
-                sx={{ mt: 2 }}
-              >
-                View All Notifications
-              </Button>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Quick Actions */}
+        <Grid item xs={12}>
+          <Card>
+            <CardHeader 
+              title={
+                <Box display="flex" alignItems="center" gap={1}>
+                  <SchoolIcon color="primary" />
+                  <Typography variant="h6">Quick Actions</Typography>
+                </Box>
+              }
+            />
+            <CardContent>
+              <Stack direction="row" spacing={2} flexWrap="wrap" gap={2}>
+                <Button
+                  variant="contained"
+                  startIcon={<GradeIcon />}
+                  onClick={() => navigate('/app/student/grades')}
+                  size="large"
+                >
+                  View My Grades
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<NotificationsIcon />}
+                  onClick={() => navigate('/app/student/notifications')}
+                  size="large"
+                >
+                  View Notifications
+                </Button>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>
