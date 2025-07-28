@@ -59,16 +59,16 @@ export const FeatureToggleProvider = ({ children }) => {
       userId: user?._id
     });
     
-    // If no user or no token, reset features to default (disabled)
+    // If no user or no token, reset features to default (disabled) but KEEP WATCHING
     if (!user || !token) {
-      console.log(' EMERGENCY DEBUG: No user or token, resetting to default features');
+      console.log(' EMERGENCY DEBUG: No user or token yet, waiting for auth state...');
       setFeatures(defaultFeatures);
       setLoading(false);
       setError(null);
-      return;
+      return; // EXIT but useEffect will retrigger when user/token change
     }
 
-    console.log(' EMERGENCY DEBUG: About to call fetchFeatureToggles()');
+    console.log(' EMERGENCY DEBUG: User and token available, calling fetchFeatureToggles()');
 
     // Fetch feature toggles from the new permission system
     const fetchFeatureToggles = async () => {
