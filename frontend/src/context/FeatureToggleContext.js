@@ -75,8 +75,30 @@ export const FeatureToggleProvider = ({ children }) => {
         if (response.data && response.data.success && response.data.data) {
           const { features: fetchedFeatures, isSuperAdmin } = response.data.data;
           
-          // Set features from the permission system
           setFeatures(fetchedFeatures || defaultFeatures);
+          
+          console.log('========== FEATURE TOGGLE DEBUG ==========');
+          console.log('FeatureToggleProvider: Raw API response:', response.data);
+          console.log('FeatureToggleProvider: Extracted features:', fetchedFeatures);
+          console.log('FeatureToggleProvider: isSuperAdmin:', isSuperAdmin);
+          console.log('FeatureToggleProvider: Features count:', Object.keys(fetchedFeatures || {}).length);
+          
+          // Check specific admin features that should be visible
+          const expectedFeatures = [
+            'enableUserManagement',
+            'enableClasses', 
+            'enableGrades',
+            'enableNotifications',
+            'enableSchedule',
+            'enableSchoolSettings'
+          ];
+          
+          console.log('Expected admin features status:');
+          expectedFeatures.forEach(feature => {
+            const isEnabled = fetchedFeatures && fetchedFeatures[feature] === true;
+            console.log(`  ${feature}: ${isEnabled ? '✅ ENABLED' : '❌ DISABLED/MISSING'}`);
+          });
+          console.log('========== END FEATURE DEBUG ==========');
           
           console.log('FeatureToggleProvider: Features loaded successfully', {
             isSuperAdmin,

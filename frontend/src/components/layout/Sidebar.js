@@ -295,6 +295,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/users',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableUserManagement'),
       },
       
       // 3. Manage Classes (Admin)
