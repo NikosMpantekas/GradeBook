@@ -266,7 +266,20 @@ const getAllNotifications = asyncHandler(async (req, res) => {
       .populate('classes', 'name');
     
     console.log(`Found ${notifications.length} notifications`);
-    res.status(200).json(notifications);
+    
+    // Compute isRead for each notification for the current user (same as getMyNotifications and getSentNotifications)
+    const notificationsWithReadStatus = notifications.map(notification => {
+      const notificationObj = notification.toObject();
+      // Check if current user has read this notification by checking readBy array
+      const readEntry = notification.readBy?.find(entry => 
+        entry.userId && entry.userId.toString() === req.user._id.toString()
+      );
+      notificationObj.isRead = !!readEntry;
+      return notificationObj;
+    });
+    
+    console.log(`Returning ${notificationsWithReadStatus.length} notifications with read status for user ${req.user._id}`);
+    res.status(200).json(notificationsWithReadStatus);
   } catch (error) {
     console.error('Error fetching notifications:', error.message);
     res.status(500);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
   Typography, 
@@ -35,12 +35,9 @@ import {
   SupervisorAccount as SupervisorAccountIcon,
   Face as FaceIcon,
   Assessment as AssessmentIcon,
-  Email as EmailIcon,
-  Phone as PhoneIcon,
   Close as CloseIcon,
   Send as SendIcon,
-  Class as ClassIcon,
-  Search as SearchIcon
+  Class as ClassIcon
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
@@ -88,29 +85,7 @@ const AdminDashboard = () => {
     totalNotifications: 0
   });
   
-  // Search state for user contact directory
-  const [nameSearch, setNameSearch] = useState('');
-  
-  // Filtered users for contact directory
-  const getFilteredUsers = useCallback(() => {
-    if (!Array.isArray(users)) return [];
-    
-    console.log('Filtering users with search term:', nameSearch);
-    console.log('Sample user data:', users.length > 0 ? users[0] : 'No users');
-    
-    return users.filter(user => {
-      // Filter by name search
-      if (nameSearch && nameSearch.trim() !== '') {
-        const searchTerm = nameSearch.toLowerCase().trim();
-        const userName = (user.name || '').toLowerCase();
-        const userEmail = (user.email || '').toLowerCase();
-        
-        return userName.includes(searchTerm) || userEmail.includes(searchTerm);
-      }
-      
-      return true;
-    });
-  }, [users, nameSearch]);
+
   
   // Update stats when data changes
   useEffect(() => {
@@ -384,120 +359,100 @@ const AdminDashboard = () => {
         </Grid>
       </Grid>
       
-      {/* User Contact Directory - Full Width */}
+      {/* Recent Notifications - Full Width */}
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Paper elevation={3} sx={{ p: 3, borderRadius: 2, height: '100%', overflow: 'auto' }}>
             <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
-              <PeopleAltIcon sx={{ mr: 1 }} />
-              User Contact Directory
+              <NotificationsIcon sx={{ mr: 1 }} />
+              Recent Notifications
             </Typography>
             
-            {/* Name Search Bar */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  size="small"
-                  placeholder="Search users by name or email..."
-                  value={nameSearch}
-                  onChange={(e) => setNameSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
-                  }}
-                />
-              </Grid>
-            </Grid>
-            
-            {/* User Contact List */}
-            <Typography variant="subtitle1" gutterBottom>Contact Information Directory</Typography>
-            <List sx={{ maxHeight: 500, overflow: 'auto', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 2 }}>
-              {getFilteredUsers().length > 0 ? (
-                getFilteredUsers().map((user) => (
-                  <ListItem key={user._id} divider>
-                    <ListItemIcon>
-                      <Avatar sx={{ 
-                        width: 48, 
-                        height: 48,
-                        bgcolor: user.role === 'student' ? 'primary.main' : 
-                                 user.role === 'teacher' ? 'secondary.main' : 
-                                 user.role === 'admin' ? 'success.main' : 
-                                 user.role === 'secretary' ? 'info.main' : 'grey.500',
-                        borderRadius: 2,
-                        fontWeight: 'bold'
-                      }}>
-                        {user.name ? user.name[0].toUpperCase() : '?'}
-                      </Avatar>
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={
-                        <Typography variant="subtitle1" component="div" sx={{ fontWeight: 'bold' }}>
-                          {user.name} 
-                          <Chip 
-                            label={user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                            size="small"
-                            sx={{ 
-                              ml: 1, 
-                              height: 24,
-                              fontSize: '0.75rem',
-                              bgcolor: user.role === 'student' ? 'primary.light' : 
-                                       user.role === 'teacher' ? 'secondary.light' : 
-                                       user.role === 'admin' ? 'success.light' : 
-                                       user.role === 'secretary' ? 'info.light' : 'grey.200'
-                            }}
-                          />
-                        </Typography>
-                      }
-                      secondary={
-                        <Box sx={{ mt: 1 }}>
-                          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { xs: 'flex-start', sm: 'center' } }}>
-                            {/* Email */}
-                            <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                              <EmailIcon fontSize="small" sx={{ color: 'primary.main', mr: 1 }} />
-                              <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
-                                {user.personalEmail || user.email || 'No email provided'}
-                              </Typography>
-                            </Box>
-                            
-                            {/* Phone */}
-                            <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                              <PhoneIcon fontSize="small" sx={{ color: 'secondary.main', mr: 1 }} />
-                              <Typography variant="body2">
-                                {user.mobilePhone || user.phone || 'No phone provided'}
-                              </Typography>
-                            </Box>
+            {hasNotifications ? (
+              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+                {notifications.slice(0, 10).map((notification, index) => (
+                  <React.Fragment key={notification._id}>
+                    <ListItem alignItems="flex-start">
+                      <ListItemIcon>
+                        <NotificationsIcon 
+                          color={notification.isRead ? 'disabled' : 'primary'}
+                          sx={{ fontSize: 20 }}
+                        />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography 
+                              variant="body1" 
+                              sx={{ 
+                                fontWeight: notification.isRead ? 'normal' : 'bold',
+                                flex: 1 
+                              }}
+                            >
+                              {notification.title}
+                            </Typography>
+                            {notification.urgent && (
+                              <Chip 
+                                label="Urgent" 
+                                size="small" 
+                                color="error" 
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                            )}
+                            {!notification.isRead && (
+                              <Chip 
+                                label="New" 
+                                size="small" 
+                                color="primary" 
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                            )}
                           </Box>
-                          
-                          {/* School Information */}
-                          {Array.isArray(user.schools) && user.schools.length > 0 && (
-                            <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
-                              <SchoolIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                              {(schools || []).filter(s => user.schools.includes(s._id)).map(s => (
-                                <Chip 
-                                  key={s._id} 
-                                  label={s.name} 
-                                  size="small" 
-                                  variant="outlined" 
-                                  sx={{ height: 20, fontSize: '0.7rem' }}
-                                />
-                              ))}
-                            </Box>
-                          )}
-                        </Box>
-                      } 
-                    />
-                  </ListItem>
-                ))
-              ) : (
-                <ListItem>
-                  <ListItemText 
-                    primary={nameSearch ? "No users match your search" : "No users found"} 
-                    sx={{ textAlign: 'center', py: 4 }}
-                  />
-                </ListItem>
-              )}
-            </List>
+                        }
+                        secondary={
+                          <Box>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              {notification.message?.substring(0, 100)}{notification.message?.length > 100 ? '...' : ''}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(notification.createdAt).toLocaleDateString()} at {new Date(notification.createdAt).toLocaleTimeString()}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        component={RouterLink}
+                        to={`/app/admin/notifications/manage`}
+                        startIcon={<ArrowForwardIcon />}
+                        sx={{ ml: 2, alignSelf: 'center' }}
+                      >
+                        View All
+                      </Button>
+                    </ListItem>
+                    {index < Math.min(notifications.length, 10) - 1 && <Divider />}
+                  </React.Fragment>
+                ))}
+              </List>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <NotificationsIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="body1" color="text.secondary">
+                  No recent notifications
+                </Typography>
+                <Button
+                  variant="outlined"
+                  component={RouterLink}
+                  to="/app/admin/notifications/create"
+                  startIcon={<SendIcon />}
+                  sx={{ mt: 2 }}
+                >
+                  Create Notification
+                </Button>
+              </Box>
+            )}
+
           </Paper>
         </Grid>
       </Grid>
