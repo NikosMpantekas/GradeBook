@@ -303,8 +303,6 @@ const loginUser = asyncHandler(async (req, res) => {
         
         // Create default permissions using SchoolPermissions model (no legacy fallback)
         permissions = await SchoolPermissions.createDefaultPermissions(user.schoolId);
-          lastModifiedBy: user._id
-        });
         
         logger.info('AUTH', 'Created new school permissions from legacy data', {
           schoolId: user.schoolId,
