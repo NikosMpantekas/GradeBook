@@ -277,7 +277,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'teacher',
       },
       
-      // ADMIN MENU ITEMS - REFACTORED (only working features)
+      // ADMIN MENU ITEMS - Based on REAL implemented pages
       
       // 1. Admin Dashboard
       {
@@ -288,7 +288,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'admin',
       },
       
-      // 2. Manage Users (Admin)
+      // 2. Manage Users (ADMIN ONLY - Teachers excluded per requirement)
       {
         text: 'Manage Users',
         icon: <UsersIcon />,
@@ -298,7 +298,17 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: () => isFeatureEnabled('enableUserManagement'),
       },
       
-      // 3. Manage Classes (Admin)
+      // 3. Create User (ADMIN ONLY - Teachers excluded per requirement)
+      {
+        text: 'Create User',
+        icon: <PersonAddIcon />,
+        path: '/app/admin/users/create',
+        roles: ['admin'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableUserManagement'),
+      },
+      
+      // 4. Manage Classes (ADMIN ONLY - Teachers excluded per requirement)
       {
         text: 'Manage Classes',
         icon: <ClassIcon />,
@@ -308,92 +318,122 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: () => isFeatureEnabled('enableClasses'),
       },
       
-      // 4. Manage Students (Admin)
-      {
-        text: 'Manage Students',
-        icon: <PersonIcon />,
-        path: '/app/admin/students',
-        roles: ['admin'],
-        section: 'admin',
-        checkPermission: () => isFeatureEnabled('enableStudents'),
-      },
-      
-      // 5. Manage Teachers (Admin)
-      {
-        text: 'Manage Teachers',
-        icon: <PersonIcon />,
-        path: '/app/admin/teachers',
-        roles: ['admin'],
-        section: 'admin',
-        checkPermission: () => isFeatureEnabled('enableTeachers'),
-      },
-      
-      // 6. Add Grades (Admin) - RESTORED
-      {
-        text: 'Add Grades',
-        icon: <AddIcon />,
-        path: '/app/teacher/grades/create',
-        roles: ['admin'],
-        section: 'admin',
-        checkPermission: () => isFeatureEnabled('enableGrades'),
-      },
-      
-      // 7. Manage Grades (Admin) - RESTORED
-      {
-        text: 'Manage Grades',
-        icon: <GradesIcon />,
-        path: '/app/teacher/grades/manage',
-        roles: ['admin'],
-        section: 'admin',
-        checkPermission: () => isFeatureEnabled('enableGrades'),
-      },
-      
-      // 8. Grades Overview (Admin) - RESTORED
-      {
-        text: 'Grades Overview',
-        icon: <AnalyticsIcon />,
-        path: '/app/admin/student-stats',
-        roles: ['admin'],
-        section: 'admin',
-        checkPermission: () => isFeatureEnabled('enableGrades'),
-      },
-      
-      // 9. Add Notifications (Admin) - RESTORED
-      {
-        text: 'Add Notifications',
-        icon: <AddIcon />,
-        path: '/app/admin/notifications/create',
-        roles: ['admin'],
-        section: 'admin',
-        checkPermission: () => isFeatureEnabled('enableNotifications'),
-      },
-      
-      // 10. Manage Notifications (Admin) - RESTORED
-      {
-        text: 'Manage Notifications',
-        icon: <NotificationsIcon />,
-        path: '/app/teacher/notifications',
-        roles: ['admin'],
-        section: 'admin',
-        checkPermission: () => isFeatureEnabled('enableNotifications'),
-      },
-      
-      // 11. Manage School Branches (Admin) - RESTORED
+      // 5. Manage School Branches (ADMIN ONLY - Teachers excluded per requirement)
       {
         text: 'Manage School Branches',
-        icon: <SchoolIcon />,
+        icon: <SchoolsIcon />,
         path: '/app/admin/schools',
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableSchoolSettings'),
       },
       
-      // 12. Schedule (Admin) - KEPT
+      // 6. Add Grades (ADMIN & TEACHERS)
+      {
+        text: 'Add Grades',
+        icon: <AddIcon />,
+        path: '/app/teacher/grades/create',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableGrades'),
+      },
+      
+      // 7. Manage Grades (ADMIN & TEACHERS)
+      {
+        text: 'Manage Grades',
+        icon: <GradesIcon />,
+        path: '/app/teacher/grades/manage',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableGrades'),
+      },
+      
+      // 8. Manage Notifications (ADMIN & TEACHERS)
+      {
+        text: 'Manage Notifications',
+        icon: <NotificationsIcon />,
+        path: '/app/teacher/notifications',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableNotifications'),
+      },
+      
+      // 9. Manage Subjects (ADMIN & TEACHERS)
+      {
+        text: 'Manage Subjects',
+        icon: <SubjectsIcon />,
+        path: '/app/admin/subjects',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableSubjects'),
+      },
+      
+      // 10. Manage Directions (ADMIN & TEACHERS)
+      {
+        text: 'Manage Directions',
+        icon: <DirectionsIcon />,
+        path: '/app/admin/directions',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableDirections'),
+      },
+      
+      // 11. Rating Manager (ADMIN & TEACHERS)
+      {
+        text: 'Rating Manager',
+        icon: <RatingIcon />,
+        path: '/app/admin/rating',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableRatingSystem'),
+      },
+      
+      // 12. Rating Statistics (ADMIN & TEACHERS)
+      {
+        text: 'Rating Statistics',
+        icon: <AnalyticsIcon />,
+        path: '/app/admin/rating-statistics',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableRatingSystem'),
+      },
+      
+      // 13. Student Progress (ADMIN & TEACHERS)
+      {
+        text: 'Student Progress',
+        icon: <AssessmentIcon />,
+        path: '/app/admin/student-progress',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableStudentProgress'),
+      },
+      
+      // 14. System Maintenance (ADMIN & TEACHERS)
+      {
+        text: 'System Maintenance',
+        icon: <SettingsIcon />,
+        path: '/app/admin/maintenance',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableSystemMaintenance'),
+      },
+      
+      // 15. Contact Messages (ADMIN & TEACHERS)
+      {
+        text: 'Contact Messages',
+        icon: <EmailIcon />,
+        path: '/app/admin/contact',
+        roles: ['admin', 'teacher'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableContactMessages'),
+      },
+      
+      // 16. Schedule (ADMIN & TEACHERS)
       {
         text: 'Schedule',
         icon: <ScheduleIcon />,
-        path: '/app/admin/schedule',
-        roles: ['admin'],
+        path: '/app/schedule',
+        roles: ['admin', 'teacher'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableSchedule'),
       },
