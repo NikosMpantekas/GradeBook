@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { useFeatureToggle } from '../context/FeatureToggleContext';
+import { useFeatureToggles } from '../context/FeatureToggleContext';
 import LoadingState from './common/LoadingState';
 
 // AdminRoute component that checks if user is an admin or a secretary with appropriate permissions
@@ -8,7 +8,7 @@ import LoadingState from './common/LoadingState';
 const AdminRoute = ({ children }) => {
   const { user, isLoading } = useSelector((state) => state.auth);
   const location = useLocation();
-  const { isFeatureEnabled } = useFeatureToggle(); // Use database-driven feature checks
+  const { isFeatureEnabled } = useFeatureToggles(); // Use database-driven feature checks
 
   // Minimal logging for debugging
   if (!user) {
