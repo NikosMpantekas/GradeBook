@@ -34,7 +34,8 @@ const defaultFeatures = {
  */
 export const FeatureToggleProvider = ({ children }) => {
   // Get auth state from Redux store
-  const { user, token } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth);
+  const token = user?.token; // Token is INSIDE the user object
   const [features, setFeatures] = useState(defaultFeatures);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -59,6 +60,7 @@ export const FeatureToggleProvider = ({ children }) => {
       userId: user?._id
     });
     
+
     // If no user or no token, reset features to default (disabled) but KEEP WATCHING
     if (!user || !token) {
       console.log(' EMERGENCY DEBUG: No user or token yet, waiting for auth state...');
