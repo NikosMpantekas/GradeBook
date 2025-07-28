@@ -137,16 +137,11 @@ export const FeatureToggleProvider = ({ children }) => {
       return true;
     }
     
-    // ADMIN FIX: Enable all features for admin users by default
-    // This bypasses the broken legacy school permissions system
-    if (user?.role === 'admin') {
-      console.log(`[FEATURE TOGGLE FIX] Enabling '${featureName}' for admin user`);
-      return true;
-    }
-    
     // Check if the feature exists in the loaded features
     if (features && featureName in features) {
-      return features[featureName] === true;
+      const isEnabled = features[featureName] === true;
+      console.log(`[FEATURE TOGGLE] Feature '${featureName}' for ${user?.role}: ${isEnabled}`);
+      return isEnabled;
     }
     
     // Default to false for safety
@@ -165,17 +160,7 @@ export const FeatureToggleProvider = ({ children }) => {
       return allFeatures;
     }
     
-    // ADMIN FIX: Return all features as enabled for admin users
-    if (user?.role === 'admin') {
-      console.log('[FEATURE TOGGLE FIX] Returning all features enabled for admin user');
-      const allFeatures = {};
-      Object.keys(defaultFeatures).forEach(key => {
-        allFeatures[key] = true;
-      });
-      return allFeatures;
-    }
-    
-    // Filter only enabled features
+    // Filter only enabled features for all other users (including admin)
     const enabledFeatures = {};
     Object.keys(features).forEach(key => {
       if (features[key] === true) {
@@ -183,6 +168,7 @@ export const FeatureToggleProvider = ({ children }) => {
       }
     });
     
+    console.log(`[FEATURE TOGGLE] Enabled features for ${user?.role}:`, enabledFeatures);
     return enabledFeatures;
   };
 
