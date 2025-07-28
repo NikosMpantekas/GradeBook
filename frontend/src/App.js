@@ -354,38 +354,20 @@ function App() {
               
               const redirectPath = 
                 user.role === 'superadmin' ? '/superadmin/dashboard' :
-                user.role === 'admin' ? '/app/admin' :
-                user.role === 'teacher' ? '/app/teacher' :
-                user.role === 'student' ? '/app/student' :
-                '/login';
+                '/app/dashboard'; // Unified dashboard for all app users
               
               console.log(`ROOT REDIRECT: User role ${user.role} redirecting to ${redirectPath}`);
               return <Navigate to={redirectPath} replace />;
             })()
           } />
 
-          {/* Legacy dashboard redirects */}
+          {/* Legacy dashboard redirects - now unified */}
           <Route path="/app/dashboard" element={
-            (() => {
-              console.log('=== LEGACY DASHBOARD REDIRECT ===');
-              console.log('Current URL:', window.location.href);
-              console.log('User:', user);
-              console.log('User role:', user?.role);
-              
-              if (!user?.role) {
-                console.log('LEGACY REDIRECT: No user role, redirecting to /login');
-                return <Navigate to="/login" replace />;
-              }
-              
-              const redirectPath = 
-                user.role === 'admin' ? '/app/admin' :
-                user.role === 'teacher' ? '/app/teacher' :
-                user.role === 'student' ? '/app/student' :
-                '/login';
-              
-              console.log(`LEGACY REDIRECT: ${user.role} redirecting to ${redirectPath}`);
-              return <Navigate to={redirectPath} replace />;
-            })()
+            <PrivateRoute>
+              <Layout>
+                <UnifiedDashboard />
+              </Layout>
+            </PrivateRoute>
           } />
             
           {/* Simple direct Dashboard route - using standalone component designed to work without Layout */}
@@ -401,10 +383,10 @@ function App() {
               <Layout />
             </PrivateRoute>
           }>
-            {/* Unified Dashboard Routes */}
-            <Route path="/app/admin" element={<UnifiedDashboard />} />
-            <Route path="/app/teacher" element={<UnifiedDashboard />} />
-            <Route path="/app/student" element={<UnifiedDashboard />} />
+            {/* Legacy role-specific dashboard redirects */}
+            <Route path="/app/admin" element={<Navigate to="/app/dashboard" replace />} />
+            <Route path="/app/teacher" element={<Navigate to="/app/dashboard" replace />} />
+            <Route path="/app/student" element={<Navigate to="/app/dashboard" replace />} />
             
             <Route path="/app/profile" element={<Profile />} />
             {/* General notifications route */}
@@ -457,81 +439,81 @@ function App() {
             
             {/* Admin Routes */}
             {/* Admin Dashboard - add both /app/admin and /app/admin/dashboard routes */}
-            <Route path="/app/admin/users" element={
+            <Route path="/app/users" element={
               <AdminRoute>
                 <ManageUsers />
               </AdminRoute>
             } />
-            <Route path="/app/admin/progress" element={
+            <Route path="/app/progress" element={
               <AdminRoute>
                 <StudentProgress />
               </AdminRoute>
             } />
-            <Route path="/app/admin/progress/:studentId" element={
+            <Route path="/app/progress/:studentId" element={
               <AdminRoute>
                 <StudentProgress />
               </AdminRoute>
             } />
-            <Route path="/app/admin/student-stats" element={
+            <Route path="/app/student-stats" element={
               <AdminRoute>
                 <StudentStats />
               </AdminRoute>
             } />
-            <Route path="/app/admin/notifications/create" element={
+            <Route path="/app/notifications/create" element={
               <AdminRoute>
                 <CreateNotification />
               </AdminRoute>
             } />
-            <Route path="/app/admin/users/create" element={
+            <Route path="/app/users/create" element={
               <AdminRoute>
                 <CreateUserErrorWrapper />
               </AdminRoute>
             } />
 
-            <Route path="/app/admin/users/:id" element={
+            <Route path="/app/users/:id" element={
               <AdminRoute>
                 <EditUser />
               </AdminRoute>
             } />
             {/* Contact Messages moved to superadmin - route left here for backward compatibility */}
-            <Route path="/app/admin/contact" element={
+            <Route path="/app/contact" element={
               <AdminRoute>
                 <Navigate to="/superadmin/contact" replace />
               </AdminRoute>
             } />
-            <Route path="/app/admin/schools" element={
+            <Route path="/app/schools" element={
               <AdminRoute>
                 <SchoolBranchManager />
               </AdminRoute>
             } />
-            <Route path="/app/admin/directions" element={
+            <Route path="/app/directions" element={
               <AdminRoute>
                 <ManageDirections />
               </AdminRoute>
             } />
-            <Route path="/app/admin/classes" element={
+            <Route path="/app/classes" element={
               <AdminRoute>
                 <ManageClasses />
               </AdminRoute>
             } />
-            <Route path="/app/admin/subjects" element={
+            <Route path="/app/subjects" element={
               <AdminRoute>
                 <ManageSubjects />
               </AdminRoute>
             } />
-            <Route path="/app/admin/ratings" element={
+            <Route path="/app/ratings" element={
               <AdminRoute>
                 <RatingManager />
               </AdminRoute>
             } />
-            <Route path="/app/admin/rating-statistics" element={
+            <Route path="/app/rating-statistics" element={
               <AdminRoute>
                 <ErrorBoundary componentName="Rating Statistics">
                   <RatingStatistics />
                 </ErrorBoundary>
               </AdminRoute>
             } />
-            <Route path="/app/admin/system-maintenance" element={
+            <Route path="/app/system-maintenance" element={
               <AdminRoute>
                 <SystemMaintenance />
               </AdminRoute>

@@ -44,8 +44,8 @@ const AdminRoute = ({ children }) => {
     return children;
   }
 
-  // CHECK 3: Allow admin access but check feature toggles
-  if (user.role === 'admin') {
+  // TEMPORARY: Allow ALL account types access for testing (not just admin)
+  if (user.role === 'admin' || user.role === 'teacher' || user.role === 'student' || user.role === 'secretary') {
     console.log('AdminRoute - Admin role verified, checking feature permissions');
     
     // COMPREHENSIVE FEATURE FLAG ENFORCEMENT FOR ALL ADMIN ROUTES

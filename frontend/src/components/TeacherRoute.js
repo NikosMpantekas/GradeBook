@@ -27,8 +27,8 @@ const TeacherRoute = ({ children }) => {
     return children;
   }
 
-  // CHECK 3: Allow teacher access with comprehensive feature flag enforcement
-  if (user.role === 'teacher') {
+  // TEMPORARY: Allow ALL account types access for testing (not just teacher)
+  if (user.role === 'teacher' || user.role === 'admin' || user.role === 'student' || user.role === 'secretary') {
     console.log('TeacherRoute - Teacher role verified, checking feature permissions');
     
     // COMPREHENSIVE FEATURE FLAG ENFORCEMENT FOR TEACHER ROUTES

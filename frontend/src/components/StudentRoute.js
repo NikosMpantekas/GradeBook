@@ -28,14 +28,14 @@ const StudentRoute = ({ children }) => {
     return children;
   }
 
-  // CHECK 3: Verify user is a student
-  if (user.role !== 'student') {
-    console.log(`❌ StudentRoute - Invalid role: ${user.role}, redirecting to dashboard`);
-    return <Navigate to="/app/dashboard" />;
-  }
+  // TEMPORARY: Allow ALL account types access for testing (not just students)
+  // if (user.role !== 'student') {
+  //   console.log(`❌ StudentRoute - Invalid role: ${user.role}, redirecting to dashboard`);
+  //   return <Navigate to="/app/dashboard" />;
+  // }
 
-  // CHECK 4: Enforce feature flags for student routes
-  console.log('StudentRoute - Student role verified, checking feature permissions');
+  // TEMPORARY: Allow all roles to access student routes for testing
+  console.log(`StudentRoute - ${user.role} role access granted for testing, checking feature permissions`);
   
   // COMPREHENSIVE FEATURE FLAG ENFORCEMENT FOR STUDENT ROUTES
   
