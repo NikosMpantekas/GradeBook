@@ -360,19 +360,19 @@ const SchoolPermissionsManager = () => {
     );
   });
 
-  // Feature categories - UPDATED to match refactored admin menu
+  // Feature categories - FIXED to use valid backend feature names from schoolPermissionsModel
   const featureCategories = {
     'Core Management': [
       'enableUserManagement', 'enableClasses', 'enableStudents', 'enableTeachers'
     ],
     'Grade Management': [
-      'enableAddGrades', 'enableManageGrades', 'enableGradesOverview'
+      'enableGrades', 'enableAnalytics'
     ],
     'Notification Management': [
-      'enableAddNotifications', 'enableManageNotifications'
+      'enableNotifications'
     ],
     'School Administration': [
-      'enableSchoolBranches', 'enableSchedule'
+      'enableSchedule', 'enableSchoolSettings'
     ]
   };
 
