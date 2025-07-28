@@ -327,6 +327,14 @@ const getMyNotifications = asyncHandler(async (req, res) => {
     
     console.log(`Found ${notifications.length} notifications for user`);
     
+    // Add computed isRead field based on readBy array for current user
+    const notificationsWithReadStatus = notifications.map(notification => {
+      const notificationObj = notification.toObject();
+      const isReadByCurrentUser = notification.readBy.some(r => r.user.toString() === user._id.toString());
+      notificationObj.isRead = isReadByCurrentUser;
+      return notificationObj;
+    });
+    
     // Special handling for superadmin users - they see all notifications
     // unless they belong to a specific school
     if (user.role === 'superadmin' && !user.schoolId) {
@@ -338,11 +346,19 @@ const getMyNotifications = asyncHandler(async (req, res) => {
         .populate('schoolId', 'name')
         .populate('classes', 'name');
       
-      console.log(`Found ${allNotifications.length} total notifications for superadmin`);
-      return res.status(200).json(allNotifications);
+      // Add computed isRead field for superadmin notifications too
+      const allNotificationsWithReadStatus = allNotifications.map(notification => {
+        const notificationObj = notification.toObject();
+        const isReadByCurrentUser = notification.readBy.some(r => r.user.toString() === user._id.toString());
+        notificationObj.isRead = isReadByCurrentUser;
+        return notificationObj;
+      });
+      
+      console.log(`Found ${allNotificationsWithReadStatus.length} total notifications for superadmin`);
+      return res.status(200).json(allNotificationsWithReadStatus);
     }
     
-    return res.status(200).json(notifications);
+    return res.status(200).json(notificationsWithReadStatus);
   } catch (error) {
     console.error('Unexpected error in getMyNotifications:', error.message);
     return res.status(500).json({ message: 'Internal server error' });
@@ -378,7 +394,7 @@ const getSentNotifications = asyncHandler(async (req, res) => {
     // Add computed fields for frontend compatibility
     const enrichedNotifications = sentNotifications.map(notification => ({
       ...notification,
-      isRead: notification.readBy?.length > 0,
+      isRead: notification.readBy?.some(r => r.user.toString() === req.user._id.toString()) || false,
       totalRecipients: notification.deliveryStats?.totalRecipients || notification.recipients?.length || 0,
       readCount: notification.deliveryStats?.read || 0
     }));
