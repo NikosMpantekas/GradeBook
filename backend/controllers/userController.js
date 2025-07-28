@@ -297,27 +297,12 @@ const loginUser = asyncHandler(async (req, res) => {
       
       // If no permissions record exists yet, check legacy location and create one
       if (!permissions) {
-        logger.info('AUTH', 'No dedicated permissions found, checking legacy school model', {
+        logger.info('AUTH', 'No dedicated permissions found, creating default permissions', {
           schoolId: user.schoolId,
         });
         
-        // Check for legacy permissions in School model
-        const School = mongoose.model('School');
-        const school = await School.findById(user.schoolId).select('featurePermissions');
-        
-        // Create new permissions record using legacy data or defaults
-        const legacyFeatures = school && school.featurePermissions ? school.featurePermissions : {
-          enableNotifications: true,
-          enableGrades: true,
-          enableRatingSystem: true,
-          enableCalendar: true,
-          enableStudentProgress: true
-        };
-        
-        // Create new permissions entry
-        permissions = await SchoolPermissions.create({
-          schoolId: user.schoolId,
-          features: legacyFeatures,
+        // Create default permissions using SchoolPermissions model (no legacy fallback)
+        permissions = await SchoolPermissions.createDefaultPermissions(user.schoolId);
           lastModifiedBy: user._id
         });
         

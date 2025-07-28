@@ -39,6 +39,17 @@ export const FeatureToggleProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // EMERGENCY DEBUG: Show exact auth state
+  console.log('🚨 EMERGENCY DEBUG: FeatureToggleProvider initialized with auth state:', {
+    hasUser: !!user,
+    hasToken: !!token,
+    userEmail: user?.email,
+    userRole: user?.role,
+    userId: user?._id,
+    tokenLength: token?.length,
+    authStateKeys: Object.keys(useSelector((state) => state.auth))
+  });
+
   // Fetch feature toggles from the new permission system
   useEffect(() => {
     console.log(' EMERGENCY DEBUG: FeatureToggleProvider useEffect triggered', { 
