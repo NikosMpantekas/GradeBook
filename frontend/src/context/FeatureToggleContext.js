@@ -41,16 +41,23 @@ export const FeatureToggleProvider = ({ children }) => {
 
   // Fetch feature toggles from the new permission system
   useEffect(() => {
-    console.log('FeatureToggleProvider: Auth state changed', { user: user?.email, hasToken: !!token });
+    console.log(' EMERGENCY DEBUG: FeatureToggleProvider useEffect triggered', { 
+      user: !!user, 
+      token: !!token,
+      userRole: user?.role,
+      userId: user?._id
+    });
     
     // If no user or no token, reset features to default (disabled)
     if (!user || !token) {
-      console.log('FeatureToggleProvider: No user or token, resetting to default features');
+      console.log(' EMERGENCY DEBUG: No user or token, resetting to default features');
       setFeatures(defaultFeatures);
       setLoading(false);
       setError(null);
       return;
     }
+
+    console.log(' EMERGENCY DEBUG: About to call fetchFeatureToggles()');
 
     // Fetch feature toggles from the new permission system
     const fetchFeatureToggles = async () => {
@@ -58,6 +65,9 @@ export const FeatureToggleProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         
+        console.log('FeatureToggleProvider: Auth state changed', { user: user?.email, hasToken: !!token });
+        
+        // Fetch feature toggles from the new permission system
         console.log('FeatureToggleProvider: Fetching permissions from new system');
 
         const config = {
