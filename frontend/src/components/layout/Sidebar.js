@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { FeatureToggleContext } from '../../context/FeatureToggleContext';
 import { 
   Box, 
   Drawer, 
@@ -303,6 +304,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/classes',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableClasses'),
       },
       
       // 4. Manage Students (Admin)
@@ -312,6 +314,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/students',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableStudents'),
       },
       
       // 5. Manage Teachers (Admin)
@@ -321,6 +324,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/teachers',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableTeachers'),
       },
       
       // 6. Add Grades (Admin) - RESTORED
@@ -330,6 +334,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/teacher/grades/create',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableGrades'),
       },
       
       // 7. Manage Grades (Admin) - RESTORED
@@ -339,6 +344,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/teacher/grades/manage',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableGrades'),
       },
       
       // 8. Grades Overview (Admin) - RESTORED
@@ -348,6 +354,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/student-stats',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableGrades'),
       },
       
       // 9. Add Notifications (Admin) - RESTORED
@@ -357,6 +364,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/notifications/create',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableNotifications'),
       },
       
       // 10. Manage Notifications (Admin) - RESTORED
@@ -366,6 +374,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/teacher/notifications',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableNotifications'),
       },
       
       // 11. Manage School Branches (Admin) - RESTORED
@@ -375,6 +384,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/schools',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableSchoolSettings'),
       },
       
       // 12. Schedule (Admin) - KEPT
@@ -384,6 +394,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin/schedule',
         roles: ['admin'],
         section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableSchedule'),
       },
       
       // SUPERADMIN MENU ITEMS
