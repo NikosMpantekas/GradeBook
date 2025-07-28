@@ -1,11 +1,19 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { useFeatureToggles } from '../context/FeatureToggleContext';
+import LoadingState from './common/LoadingState';
 
 // TeacherRoute component that checks if user is a teacher, admin, or secretary with appropriate permissions
 // If not, redirects to dashboard
 const TeacherRoute = ({ children }) => {
-  const { user } = useSelector((state) => state.auth);
+  const { user, isLoading } = useSelector((state) => state.auth);
   const location = useLocation();
+  const { isFeatureEnabled } = useFeatureToggles(); // Use database-driven feature checks
+
+  // Show loading state while authentication is in progress
+  if (isLoading) {
+    return <LoadingState fullPage={true} message="Checking teacher access..." />;
+  }
 
   // Check if user exists
   if (!user) {
@@ -17,13 +25,71 @@ const TeacherRoute = ({ children }) => {
     return children;
   }
 
-  // Allow teacher access (with notification permission check when needed)
+  // COMPREHENSIVE FEATURE FLAG ENFORCEMENT FOR ALL TEACHER ROUTES
   if (user.role === 'teacher') {
-    const path = location.pathname;
     
-    // For notification routes, check if teacher has notification permission
-    if (path.includes('/notifications') && user.canSendNotifications === false) {
-      return <Navigate to="/app/dashboard" />;
+    // Classes Management
+    if (location.pathname.includes('/app/teacher/classes')) {
+      if (!isFeatureEnabled('enableClasses')) {
+        console.log('❌ TeacherRoute - Classes feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Grades Management
+    if (location.pathname.includes('/app/teacher/grades')) {
+      if (!isFeatureEnabled('enableGrades')) {
+        console.log('❌ TeacherRoute - Grades feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Notifications Management
+    if (location.pathname.includes('/app/teacher/notifications')) {
+      if (!isFeatureEnabled('enableNotifications')) {
+        console.log('❌ TeacherRoute - Notifications feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // User Management
+    if (location.pathname.includes('/app/teacher/users')) {
+      if (!isFeatureEnabled('enableUserManagement')) {
+        console.log('❌ TeacherRoute - User Management feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Students Management
+    if (location.pathname.includes('/app/teacher/students')) {
+      if (!isFeatureEnabled('enableStudents')) {
+        console.log('❌ TeacherRoute - Students feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Teachers Management
+    if (location.pathname.includes('/app/teacher/teachers')) {
+      if (!isFeatureEnabled('enableTeachers')) {
+        console.log('❌ TeacherRoute - Teachers feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // School Branches Management
+    if (location.pathname.includes('/app/teacher/schools')) {
+      if (!isFeatureEnabled('enableSchoolSettings')) {
+        console.log('❌ TeacherRoute - School Settings feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Schedule Management
+    if (location.pathname.includes('/app/teacher/schedule')) {
+      if (!isFeatureEnabled('enableSchedule')) {
+        console.log('❌ TeacherRoute - Schedule feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
     }
     
     return children;

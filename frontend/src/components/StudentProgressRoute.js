@@ -1,133 +1,123 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { useFeatureToggles } from '../context/FeatureToggleContext';
 import { Box, CircularProgress, Typography, Alert } from '@mui/material';
+import LoadingState from './common/LoadingState';
 
 /**
- * StudentProgressRoute - A comprehensive route component for student progress tracking access
+ * StudentProgressRoute - Route component for student access with comprehensive feature flag enforcement
  * 
- * This component has been completely redesigned to be more reliable by:
- * 1. Using the most direct method to check permissions
- * 2. Adding a loading state to ensure permissions are fully loaded
- * 3. Providing detailed error messages when access is denied
- * 4. Checking both localStorage and sessionStorage as backup
+ * Updated to use the same database-driven permission system as AdminRoute and TeacherRoute
  */
 const StudentProgressRoute = ({ children }) => {
-  // Access the current user from Redux store
-  const user = useSelector((state) => state.auth.user);
-  const [isChecking, setIsChecking] = useState(true);
-  const [accessGranted, setAccessGranted] = useState(false);
-  const [checkCompleted, setCheckCompleted] = useState(false);
-  
-  // Comprehensive permission check that doesn't rely solely on Redux state
-  useEffect(() => {
-    console.group('🔄 STUDENT PROGRESS ACCESS CHECK');
-    console.log('Current time:', new Date().toISOString());
-    console.log('Redux state user:', user);
-    
-    let hasAccess = false;
-    let secretaryWithPermission = false;
-    
-    // 1. Check if the user is an admin (always has access)
-    if (user?.role === 'admin') {
-      console.log('✅ Access granted: User is an admin');
-      hasAccess = true;
-    }
-    // 2. Check if user is a secretary with proper permission
-    else if (user?.role === 'secretary') {
-      console.log('Secretary permissions from Redux:', user.secretaryPermissions);
-      
-      // Primary check from Redux state
-      if (user.secretaryPermissions?.canAccessStudentProgress === true) {
-        console.log('✅ Access granted: Secretary with canAccessStudentProgress permission');
-        secretaryWithPermission = true;
-        hasAccess = true;
-      }
-      // Fallback check from localStorage (in case Redux state is stale)
-      else {
-        try {
-          const localUser = JSON.parse(localStorage.getItem('user'));
-          const sessionUser = JSON.parse(sessionStorage.getItem('user'));
-          
-          console.log('Fallback check - localStorage user:', localUser?.secretaryPermissions);
-          console.log('Fallback check - sessionStorage user:', sessionUser?.secretaryPermissions);
-          
-          if (localUser?.secretaryPermissions?.canAccessStudentProgress === true ||
-              sessionUser?.secretaryPermissions?.canAccessStudentProgress === true) {
-            console.log('✅ Access granted via storage fallback check');
-            secretaryWithPermission = true;
-            hasAccess = true;
-          } else {
-            console.log('❌ Secretary lacks required permission');
-          }
-        } catch (error) {
-          console.error('Error in fallback permission check:', error);
-        }
-      }
-    } else {
-      console.log('❌ Access denied: User is neither admin nor secretary');
-    }
-    
-    // Set state based on check results
-    setAccessGranted(hasAccess);
-    setIsChecking(false);
-    setCheckCompleted(true);
-    
-    // Log final decision
-    console.log('Final access decision:', hasAccess ? 'GRANTED ✅' : 'DENIED ❌');
-    console.groupEnd();
-    
-    // Save permission debug info to help troubleshoot
-    const debugData = {
-      timestamp: new Date().toISOString(),
-      userRole: user?.role,
-      permissions: user?.secretaryPermissions,
-      hasAccess,
-      secretaryWithPermission
-    };
-    
-    try {
-      // Store for later debugging if needed
-      localStorage.setItem('progress_access_debug', JSON.stringify(debugData));
-    } catch (e) {}
-    
-  }, [user]);
-  
-  // Loading state while checking permissions
-  if (isChecking) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress size={40} sx={{ mr: 2 }} />
-        <Typography variant="h6">Checking permissions...</Typography>
-      </Box>
-    );
+  const { user, isLoading } = useSelector((state) => state.auth);
+  const location = useLocation();
+  const { isFeatureEnabled } = useFeatureToggles(); // Use database-driven feature checks
+
+  // Show loading state while authentication is in progress
+  if (isLoading) {
+    return <LoadingState fullPage={true} message="Checking student access..." />;
   }
-  
-  // Provide children if access is granted
-  if (accessGranted) {
+
+  // Check if user exists
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  // Allow admin access to all routes
+  if (user.role === 'admin') {
+    return children;
+  }
+
+  // COMPREHENSIVE FEATURE FLAG ENFORCEMENT FOR ALL STUDENT ROUTES
+  if (user.role === 'student') {
+    
+    // Classes Management
+    if (location.pathname.includes('/app/student/classes')) {
+      if (!isFeatureEnabled('enableClasses')) {
+        console.log('❌ StudentRoute - Classes feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Grades Management
+    if (location.pathname.includes('/app/student/grades')) {
+      if (!isFeatureEnabled('enableGrades')) {
+        console.log('❌ StudentRoute - Grades feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Notifications Management
+    if (location.pathname.includes('/app/student/notifications')) {
+      if (!isFeatureEnabled('enableNotifications')) {
+        console.log('❌ StudentRoute - Notifications feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // User Management
+    if (location.pathname.includes('/app/student/users')) {
+      if (!isFeatureEnabled('enableUserManagement')) {
+        console.log('❌ StudentRoute - User Management feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Students Management
+    if (location.pathname.includes('/app/student/students')) {
+      if (!isFeatureEnabled('enableStudents')) {
+        console.log('❌ StudentRoute - Students feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Teachers Management
+    if (location.pathname.includes('/app/student/teachers')) {
+      if (!isFeatureEnabled('enableTeachers')) {
+        console.log('❌ StudentRoute - Teachers feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // School Branches Management
+    if (location.pathname.includes('/app/student/schools')) {
+      if (!isFeatureEnabled('enableSchoolSettings')) {
+        console.log('❌ StudentRoute - School Settings feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
+    // Schedule Management
+    if (location.pathname.includes('/app/student/schedule')) {
+      if (!isFeatureEnabled('enableSchedule')) {
+        console.log('❌ StudentRoute - Schedule feature disabled for this school');
+        return <Navigate to="/app/dashboard" />;
+      }
+    }
+    
     return children;
   }
   
-  // Detailed error message before redirecting
-  if (checkCompleted && !accessGranted) {
-    console.error('Access to Student Progress denied - insufficient permissions');
+  // For secretary role, maintain existing permissions but add feature flag checks
+  if (user.role === 'secretary') {
+    const path = location.pathname;
     
-    if (user?.role === 'secretary') {
-      console.log('Secretary permissions that would be needed:', {
-        canAccessStudentProgress: true,
-        currentPermissions: user.secretaryPermissions
-      });
+    // Check permissions based on the path
+    if (path.includes('/grades') && user.secretaryPermissions?.canManageGrades) {
+      return children;
     }
     
-    // Short delay before redirecting to show the error
-    setTimeout(() => {
-      // This will cleanup nicely
-    }, 100);  
+    if (path.includes('/notifications') && user.secretaryPermissions?.canSendNotifications) {
+      return children;
+    }
     
+    // If no matching permission, redirect to dashboard
     return <Navigate to="/app/dashboard" />;
   }
-  
-  // Default fallback (should never reach this)
+
+  // Default: redirect to dashboard
   return <Navigate to="/app/dashboard" />;
 };
 

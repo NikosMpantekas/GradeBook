@@ -425,6 +425,73 @@ function App() {
             <Route path="/app/grades/:id" element={<GradeDetail />} />
             <Route path="/app/ratings" element={<RatingSubmission />} />
             
+            {/* STEP 2: DUPLICATE ALL ADMIN FUNCTIONS FOR STUDENT ROLE */}
+            <Route path="/app/student/users" element={
+              <StudentProgressRoute>
+                <ManageUsers />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/users/create" element={
+              <StudentProgressRoute>
+                <CreateUserErrorWrapper />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/users/:id" element={
+              <StudentProgressRoute>
+                <EditUser />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/classes" element={
+              <StudentProgressRoute>
+                <ManageClasses />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/students" element={
+              <StudentProgressRoute>
+                <ManageUsers />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/teachers" element={
+              <StudentProgressRoute>
+                <ManageUsers />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/grades/create" element={
+              <StudentProgressRoute>
+                <CreateGradeSimple />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/grades/manage" element={
+              <StudentProgressRoute>
+                <ManageGrades />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/student-stats" element={
+              <StudentProgressRoute>
+                <StudentStats />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/notifications/create" element={
+              <StudentProgressRoute>
+                <CreateNotification />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/notifications/manage" element={
+              <StudentProgressRoute>
+                <TeacherNotifications />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/schools" element={
+              <StudentProgressRoute>
+                <SchoolBranchManager />
+              </StudentProgressRoute>
+            } />
+            <Route path="/app/student/schedule" element={
+              <StudentProgressRoute>
+                <Schedule />
+              </StudentProgressRoute>
+            } />
+            
             {/* Teacher Routes */}
             <Route path="/app/teacher/grades/manage" element={
               <TeacherRoute>
@@ -455,6 +522,48 @@ function App() {
               </TeacherRoute>
             } />
             
+            {/* STEP 2: DUPLICATE ALL ADMIN FUNCTIONS FOR TEACHER ROLE */}
+            <Route path="/app/teacher/users" element={
+              <TeacherRoute>
+                <ManageUsers />
+              </TeacherRoute>
+            } />
+            <Route path="/app/teacher/users/create" element={
+              <TeacherRoute>
+                <CreateUserErrorWrapper />
+              </TeacherRoute>
+            } />
+            <Route path="/app/teacher/users/:id" element={
+              <TeacherRoute>
+                <EditUser />
+              </TeacherRoute>
+            } />
+            <Route path="/app/teacher/classes" element={
+              <TeacherRoute>
+                <ManageClasses />
+              </TeacherRoute>
+            } />
+            <Route path="/app/teacher/students" element={
+              <TeacherRoute>
+                <ManageUsers />
+              </TeacherRoute>
+            } />
+            <Route path="/app/teacher/teachers" element={
+              <TeacherRoute>
+                <ManageUsers />
+              </TeacherRoute>
+            } />
+            <Route path="/app/teacher/schools" element={
+              <TeacherRoute>
+                <SchoolBranchManager />
+              </TeacherRoute>
+            } />
+            <Route path="/app/teacher/schedule" element={
+              <TeacherRoute>
+                <Schedule />
+              </TeacherRoute>
+            } />
+            
             {/* Admin Routes */}
             {/* Admin Dashboard - add both /app/admin and /app/admin/dashboard routes */}
             <Route path="/app/admin/users" element={
@@ -480,6 +589,21 @@ function App() {
             <Route path="/app/admin/notifications/create" element={
               <AdminRoute>
                 <CreateNotification />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/notifications/manage" element={
+              <AdminRoute>
+                <TeacherNotifications />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/grades/create" element={
+              <AdminRoute>
+                <CreateGradeSimple />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/grades/manage" element={
+              <AdminRoute>
+                <ManageGrades />
               </AdminRoute>
             } />
             <Route path="/app/admin/users/create" element={
@@ -534,6 +658,21 @@ function App() {
             <Route path="/app/admin/system-maintenance" element={
               <AdminRoute>
                 <SystemMaintenance />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/schedule" element={
+              <AdminRoute>
+                <Schedule />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/students" element={
+              <AdminRoute>
+                <ManageUsers />
+              </AdminRoute>
+            } />
+            <Route path="/app/admin/teachers" element={
+              <AdminRoute>
+                <ManageUsers />
               </AdminRoute>
             } />
           </Route>
