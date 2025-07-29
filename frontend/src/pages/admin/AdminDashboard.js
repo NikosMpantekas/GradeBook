@@ -37,11 +37,14 @@ import {
   Assessment as AssessmentIcon,
   Close as CloseIcon,
   Send as SendIcon,
-  Class as ClassIcon
+  Class as ClassIcon,
+  Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
+import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
 // Import action creators
 import { getUsers } from '../../features/users/userSlice';
@@ -85,6 +88,10 @@ const AdminDashboard = () => {
     totalNotifications: 0
   });
   
+  // Add upcoming classes state
+  const [upcomingClasses, setUpcomingClasses] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  
 
   
   // Update stats when data changes
@@ -103,6 +110,36 @@ const AdminDashboard = () => {
     });
   }, [users, schools, notifications]);
   
+  // Function to fetch upcoming classes
+  const fetchUpcomingClasses = async () => {
+    try {
+      setScheduleLoading(true);
+      const config = {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      };
+      
+      const response = await axios.get(`${API_URL}/api/schedule`, config);
+      console.log('Admin Dashboard - Schedule data:', response.data);
+      
+      // Process schedule data - get today's and upcoming classes
+      if (response.data) {
+        const allClasses = Object.values(response.data).flat();
+        // Filter and sort upcoming classes (next 3 classes)
+        const upcoming = allClasses
+          .filter(cls => cls && cls.subject && cls.startTime)
+          .slice(0, 3);
+        
+        setUpcomingClasses(upcoming);
+        console.log('Admin Dashboard - Upcoming classes:', upcoming);
+      }
+    } catch (error) {
+      console.error('Error fetching schedule:', error);
+      setUpcomingClasses([]);
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+  
   // Fetch data on component mount with force refresh  
   useEffect(() => {
     console.log('AdminDashboard - Initial data fetch');
@@ -111,24 +148,33 @@ const AdminDashboard = () => {
     dispatch(getUsers());
     dispatch(getSchools());
     dispatch(getMyNotifications());
-  }, [dispatch]);
+    
+    // Fetch upcoming classes
+    if (user?.token) {
+      fetchUpcomingClasses();
+    }
+  }, [dispatch, user?.token]);
   
   // Function to retry loading data
   const handleRetryDataLoad = () => {
     console.log('Retrying data load...');
-    // Force clear any persisted data that might be causing issues
     try {
       localStorage.removeItem('persist:users');
       localStorage.removeItem('persist:schools');
       localStorage.removeItem('persist:notifications');
     } catch (e) {
-      console.error('Error clearing localStorage:', e);
+      console.warn('Could not clear localStorage:', e);
     }
     
-    // Dispatch data loading actions again
+    // Re-dispatch actions to fetch fresh data
     dispatch(getUsers());
     dispatch(getSchools());
     dispatch(getMyNotifications());
+    
+    // Retry upcoming classes fetch
+    if (user?.token) {
+      fetchUpcomingClasses();
+    }
   };
   
   // Pie chart data for user roles
@@ -453,6 +499,57 @@ const AdminDashboard = () => {
               </Box>
             )}
 
+          </Paper>
+        </Grid>
+      </Grid>
+      
+      {/* Upcoming Classes */}
+      <Grid container spacing={3} sx={{ mt: 3 }}>
+        <Grid item xs={12}>
+          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+              <ScheduleIcon sx={{ mr: 1 }} />
+              Upcoming Classes
+            </Typography>
+            
+            {scheduleLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : upcomingClasses.length > 0 ? (
+              <List>
+                {upcomingClasses.map((classItem, index) => (
+                  <React.Fragment key={index}>
+                    <ListItem>
+                      <ListItemIcon>
+                        <ScheduleIcon />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={classItem.subject?.name || classItem.subject || 'Unknown Subject'}
+                        secondary={`${classItem.startTime || 'TBD'} - ${classItem.endTime || 'TBD'} | ${classItem.day || 'TBD'}`}
+                      />
+                    </ListItem>
+                    {index < upcomingClasses.length - 1 && <Divider />}
+                  </React.Fragment>
+                ))}
+              </List>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <ScheduleIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="body1" color="text.secondary">
+                  No upcoming classes
+                </Typography>
+                <Button
+                  variant="outlined"
+                  component={RouterLink}
+                  to="/app/admin/schedule"
+                  startIcon={<ScheduleIcon />}
+                  sx={{ mt: 2 }}
+                >
+                  View Schedule
+                </Button>
+              </Box>
+            )}
           </Paper>
         </Grid>
       </Grid>

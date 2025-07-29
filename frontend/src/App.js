@@ -679,6 +679,11 @@ function App() {
                 <AdminContactMessages />
               </SuperAdminRoute>
             } />
+            <Route path="/superadmin/patch-notes" element={
+              <SuperAdminRoute>
+                <ContactMessages />
+              </SuperAdminRoute>
+            } />
             <Route path="/superadmin/school-features" element={
               <SuperAdminRoute>
                 <ManageSchoolFeatures />

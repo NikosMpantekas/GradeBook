@@ -86,7 +86,7 @@ const ContactMessages = () => {
         },
       };
 
-      await axios.put(`/api/contact/${id}`, { read: !currentReadStatus }, config);
+      await axios.put(`${API_URL}/api/contact/${id}`, { read: !currentReadStatus }, config);
       
       // Update local state
       setMessages(
@@ -116,7 +116,7 @@ const ContactMessages = () => {
       }
 
       console.log(`Updating message ${id} with:`, requestData);
-      const response = await axios.put(`/api/contact/${id}`, requestData, config);
+      const response = await axios.put(`${API_URL}/api/contact/${id}`, requestData, config);
       
       // Update local state with ALL returned data, not just status
       setMessages(

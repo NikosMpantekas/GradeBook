@@ -34,6 +34,7 @@ import {
   Star as RatingIcon,
   RateReview as RateReviewIcon,
   ContactSupport as ContactSupportIcon,
+  Announcement as AnnouncementIcon,
   Class as ClassIcon,
   Analytics as AnalyticsIcon,
   Support as SupportIcon,
@@ -361,6 +362,15 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         text: 'Contact Messages',
         icon: <EmailIcon />,
         path: '/superadmin/contact',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      
+      // 4. Patch Notes (SuperAdmin)
+      {
+        text: 'Patch Notes',
+        icon: <AnnouncementIcon />,
+        path: '/superadmin/patch-notes',
         roles: ['superadmin'],
         section: 'superadmin',
       },
