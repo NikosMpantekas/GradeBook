@@ -99,7 +99,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'My Grades',
         icon: <GradesIcon />,
-        path: '/app/student/grades',
+        path: '/app/grades',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableGrades'),
@@ -109,7 +109,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'My Notifications',
         icon: <NotificationsIcon />,
-        path: '/app/student/notifications',
+        path: '/app/notifications',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
