@@ -428,6 +428,13 @@ function App() {
             <Route path="/app/grades/:id" element={<GradeDetail />} />
             <Route path="/app/ratings" element={<RatingSubmission />} />
             
+            {/* Student-specific routes (same content, different paths) */}
+            <Route path="/app/student/grades" element={<StudentGrades />} />
+            <Route path="/app/student/grades/:id" element={<GradeDetail />} />
+            <Route path="/app/student/notifications" element={<Notifications />} />
+            <Route path="/app/student/notifications/:id" element={<NotificationDetail />} />
+            <Route path="/app/student/schedule" element={<Schedule />} />
+            
             {/* STEP 2: DUPLICATE ALL ADMIN FUNCTIONS FOR STUDENT ROLE */}
             <Route path="/app/student/users" element={
               <StudentProgressRoute>
