@@ -71,14 +71,12 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       console.log(`[SIDEBAR ROUTE DEBUG] No section set, relying on user role`);
     }
   }, [isSuperAdminRoute, isAdminRoute, location.pathname, user?.role]);
-  
-  // Make sidebar permanent for admin users or if specified in props
-  const isActuallyPermanent = false;
+  // (Removed isActuallyPermanent logic)
   
   // Debug sidebar state on route changes
   useEffect(() => {
-    console.log(`Sidebar state - Route: ${location.pathname} | Permanent: ${isActuallyPermanent} | Open: ${mobileOpen}`);
-  }, [location.pathname, isActuallyPermanent, mobileOpen]);
+    console.log(`Sidebar state - Route: ${location.pathname} | Open: ${mobileOpen}`);
+  }, [location.pathname, mobileOpen]);
 
   // Get feature toggles from context
   const { features, isFeatureEnabled } = useFeatureToggles();
@@ -478,27 +476,18 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   const handleNavigate = (path) => {
     // Handle function paths that depend on user role
     const actualPath = typeof path === 'function' ? path(user) : path;
-    
     console.log('Navigation to path:', actualPath);
-    console.log('Navigation state before:', { isAdmin, isSuperAdmin, isActuallyPermanent });
-    
-    // Check if we're navigating to a special route
-    const isNavigatingToSuperAdmin = actualPath.includes('/superadmin/');
-    const isNavigatingToAdmin = actualPath.includes('/admin/') || isNavigatingToSuperAdmin;
-    
     // Store current section in localStorage for persistence across refreshes
-    if (isNavigatingToSuperAdmin) {
+    if (actualPath.includes('/superadmin/')) {
       localStorage.setItem('currentSection', 'superadmin');
-    } else if (isNavigatingToAdmin) {
+    } else if (actualPath.includes('/admin/')) {
       localStorage.setItem('currentSection', 'admin');
+    } else {
+      localStorage.removeItem('currentSection');
     }
-    
     // First navigate to the path
     navigate(actualPath);
-    
-
-    
-    // Only close drawer for regular users on mobile
+    // Always close drawer on mobile after navigation
     if (window.innerWidth < 600 && mobileOpen && handleDrawerToggle) {
       console.log('Closing sidebar for mobile navigation');
       handleDrawerToggle();
