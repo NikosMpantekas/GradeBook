@@ -33,6 +33,7 @@ import {
   Schedule as ScheduleIcon,
   Star as RatingIcon,
   RateReview as RateReviewIcon,
+  ContactSupport as ContactSupportIcon,
   Class as ClassIcon,
   Analytics as AnalyticsIcon,
   Support as SupportIcon,
@@ -125,6 +126,16 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: () => isFeatureEnabled('enableSchedule'),
       },
       
+      // 5. Contact (Student)
+      {
+        text: 'Contact',
+        icon: <ContactSupportIcon />,
+        path: '/app/student/contact',
+        roles: ['student'],
+        section: 'student',
+        checkPermission: () => isFeatureEnabled('enableContact'),
+      },
+      
       // TEACHER MENU ITEMS
       
       // 1. Teacher Dashboard
@@ -202,6 +213,16 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: () => isFeatureEnabled('enableSchedule'),
       },
       
+      // 13. Contact (Teacher)
+      {
+        text: 'Contact',
+        icon: <ContactSupportIcon />,
+        path: '/app/teacher/contact',
+        roles: ['teacher'],
+        section: 'teacher',
+        checkPermission: () => isFeatureEnabled('enableContact'),
+      },
+      
       // ADMIN MENU ITEMS - REFACTORED (only working features)
       
       // 1. Admin Dashboard
@@ -233,25 +254,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         checkPermission: () => isFeatureEnabled('enableClasses'),
       },
       
-      // 4. Manage Students (Admin)
-      {
-        text: 'Manage Students',
-        icon: <PersonIcon />,
-        path: '/app/admin/students',
-        roles: ['admin'],
-        section: 'admin',
-        checkPermission: () => isFeatureEnabled('enableStudents'),
-      },
-      
-      // 5. Manage Teachers (Admin)
-      {
-        text: 'Manage Teachers',
-        icon: <PersonIcon />,
-        path: '/app/admin/teachers',
-        roles: ['admin'],
-        section: 'admin',
-        checkPermission: () => isFeatureEnabled('enableTeachers'),
-      },
+
       
       // 6. Add Grades (Admin) - RESTORED
       {
@@ -321,6 +324,16 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableSchedule'),
+      },
+      
+      // 13. Contact (Admin)
+      {
+        text: 'Contact',
+        icon: <ContactSupportIcon />,
+        path: '/app/admin/contact',
+        roles: ['admin'],
+        section: 'admin',
+        checkPermission: () => isFeatureEnabled('enableContact'),
       },
       
       // SUPERADMIN MENU ITEMS

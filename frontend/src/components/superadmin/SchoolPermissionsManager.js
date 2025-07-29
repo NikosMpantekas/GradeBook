@@ -363,7 +363,7 @@ const SchoolPermissionsManager = () => {
   // Feature categories - FIXED to use valid backend feature names from schoolPermissionsModel
   const featureCategories = {
     'Core Management': [
-      'enableUserManagement', 'enableClasses', 'enableStudents', 'enableTeachers'
+      'enableUserManagement', 'enableClasses'
     ],
     'Grade Management': [
       'enableGrades', 'enableAnalytics'
@@ -373,6 +373,9 @@ const SchoolPermissionsManager = () => {
     ],
     'School Administration': [
       'enableSchedule', 'enableSchoolSettings'
+    ],
+    'Communication': [
+      'enableContact'
     ]
   };
 

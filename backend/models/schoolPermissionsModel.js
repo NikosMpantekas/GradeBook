@@ -61,6 +61,11 @@ const schoolPermissionsSchema = mongoose.Schema(
         default: true,
         description: 'Allow users to contact developers'
       },
+      enableContact: {
+        type: Boolean,
+        default: true,
+        description: 'Allow users to send contact messages'
+      },
       
       // Advanced Features
       enableCalendar: {
@@ -168,6 +173,7 @@ schoolPermissionsSchema.statics.getAvailableFeatures = function() {
     enableTeachers: 'Teacher Management',
     enableNotifications: 'Notifications',
     enableContactDeveloper: 'Contact Developer',
+    enableContact: 'Contact Messages',
     enableCalendar: 'Calendar',
     enableSchedule: 'Schedule',
     enableRatingSystem: 'Rating System',
@@ -215,6 +221,7 @@ schoolPermissionsSchema.statics.createDefaultPermissions = async function(school
         enableTeachers: true,
         enableNotifications: true,
         enableContactDeveloper: true,
+        enableContact: true,
         enableCalendar: true,
         enableSchedule: true,
         enableRatingSystem: true,

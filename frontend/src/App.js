@@ -414,9 +414,12 @@ function App() {
             <Route path="/app/notifications" element={<Notifications />} />
             {/* Notification detail route still available for deep linking */}
             <Route path="/app/notifications/:id" element={<NotificationDetail />} />
-            {/* User contact messages, bug reports and patch notes */}
+            {/* Contact routes for all account types */}
+            <Route path="/app/admin/contact" element={<ContactMessages />} />
+            <Route path="/app/teacher/contact" element={<ContactMessages />} />
+            <Route path="/app/student/contact" element={<ContactMessages />} />
+            {/* Legacy contact routes */}
             <Route path="/app/contact-messages" element={<ContactMessages />} />
-            {/* Contact support route for students (renamed from bug reports) */}
             <Route path="/app/contact-support" element={<ContactMessages />} />
             {/* Calendar for all users */}
             <Route path="/app/calendar" element={<Calendar />} />
@@ -647,16 +650,7 @@ function App() {
                 <Schedule />
               </AdminRoute>
             } />
-            <Route path="/app/admin/students" element={
-              <AdminRoute>
-                <ManageUsers />
-              </AdminRoute>
-            } />
-            <Route path="/app/admin/teachers" element={
-              <AdminRoute>
-                <ManageUsers />
-              </AdminRoute>
-            } />
+
           </Route>
 
           {/* SuperAdmin Routes - Using PrivateRoute + Layout + SuperAdminRoute pattern */}

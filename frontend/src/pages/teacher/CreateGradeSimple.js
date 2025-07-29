@@ -91,10 +91,15 @@ const CreateGradeSimple = () => {
         headers: { Authorization: `Bearer ${user.token}` }
       };
       
-      const endpoint = `${API_URL}/api/students/teacher/filters`;
+      // Use different endpoints based on user role
+      // Admins get access to ALL students, teachers get only their assigned students
+      const endpoint = user.role === 'admin' || user.role === 'superadmin' 
+        ? `${API_URL}/api/students/notification/filters`  // Admin endpoint - all students
+        : `${API_URL}/api/students/teacher/filters`;      // Teacher endpoint - assigned students only
+      
       const response = await axios.get(endpoint, config);
       setFilterOptions(response.data);
-      console.log(`[CreateGrade] Loaded filter options for ${user.role}:`, response.data);
+      console.log(`[CreateGrade] Loaded filter options for ${user.role} using ${endpoint}:`, response.data);
     } catch (error) {
       console.error('[CreateGrade] Error loading filter options:', error);
       toast.error('Failed to load filter options');
@@ -164,10 +169,15 @@ const CreateGradeSimple = () => {
         subject: formData.subject
       });
       
-      const endpoint = `${API_URL}/api/students/teacher/filtered?${params}`;
+      // Use different endpoints based on user role
+      // Admins get access to ALL students, teachers get only their assigned students
+      const endpoint = user.role === 'admin' || user.role === 'superadmin' 
+        ? `${API_URL}/api/students/notification/filtered?${params}`  // Admin endpoint - all students
+        : `${API_URL}/api/students/teacher/filtered?${params}`;      // Teacher endpoint - assigned students only
+      
       const response = await axios.get(endpoint, config);
       setStudents(response.data);
-      console.log(`[CreateGrade] Loaded ${response.data.length} students for ${user.role}:`, response.data);
+      console.log(`[CreateGrade] Loaded ${response.data.length} students for ${user.role} using ${endpoint}:`, response.data);
     } catch (error) {
       console.error('[CreateGrade] Error loading students:', error);
       toast.error('Failed to load students');
