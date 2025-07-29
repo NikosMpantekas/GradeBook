@@ -99,7 +99,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'My Grades',
         icon: <GradesIcon />,
-        path: '/app/grades',
+        path: '/app/student/grades',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableGrades'),
@@ -109,10 +109,20 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'My Notifications',
         icon: <NotificationsIcon />,
-        path: '/app/notifications',
+        path: '/app/student/notifications',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
+      },
+      
+      // 4. View My Schedule (Student)
+      {
+        text: 'My Schedule',
+        icon: <ScheduleIcon />,
+        path: '/app/student/schedule',
+        roles: ['student'],
+        section: 'student',
+        checkPermission: () => isFeatureEnabled('enableSchedule'),
       },
       
       // TEACHER MENU ITEMS

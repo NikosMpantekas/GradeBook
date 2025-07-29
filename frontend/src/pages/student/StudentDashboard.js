@@ -368,40 +368,6 @@ const StudentDashboard = () => {
             </CardContent>
           </Card>
         </Grid>
-
-        {/* Quick Actions */}
-        <Grid item xs={12}>
-          <Card>
-            <CardHeader
-              title={
-                <Box display="flex" alignItems="center" gap={1}>
-                  <SchoolIcon color="primary" />
-                  <Typography variant="h6">Quick Actions</Typography>
-                </Box>
-              }
-            />
-            <CardContent>
-              <Stack direction="row" spacing={2} flexWrap="wrap" gap={2}>
-                <Button
-                  variant="contained"
-                  startIcon={<GradeIcon />}
-                  onClick={() => navigate("/app/student/grades")}
-                  size="large"
-                >
-                  View My Grades
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<NotificationsIcon />}
-                  onClick={() => navigate("/app/student/notifications")}
-                  size="large"
-                >
-                  View Notifications
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
     </Container>
   );
