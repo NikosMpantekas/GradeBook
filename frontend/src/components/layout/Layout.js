@@ -12,8 +12,8 @@ const Layout = () => {
   // Retrieve previous mobileOpen state from localStorage to prevent it from resetting on navigation
   const [mobileOpen, setMobileOpen] = useState(() => {
     const savedState = localStorage.getItem('sidebarOpen');
-    // Always default to true for a better UX, especially on first load
-    return savedState ? savedState === 'true' : true;
+    // Always default to false for mobile, true for desktop
+    return window.innerWidth < 600 ? false : (savedState ? savedState === 'true' : true);
   });
 
   const { darkMode } = useSelector((state) => state.ui);
@@ -42,50 +42,19 @@ const Layout = () => {
   // Sidebar width for layout spacing
   const drawerWidth = 240;
 
-  // Check for special user roles and routes
-  const isSuperAdmin = user && user.role === 'superadmin';
-  const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
-  const isSuperAdminRoute = location.pathname.includes('/superadmin/');
-  const isAdminRoute = location.pathname.includes('/admin/') || isSuperAdminRoute;
-
   // Store the current section in localStorage to maintain context across refreshes
   useEffect(() => {
-    if (isSuperAdminRoute) {
+    if (location.pathname.includes('/superadmin/')) {
       localStorage.setItem('currentSection', 'superadmin');
-    } else if (isAdminRoute) {
+    } else if (location.pathname.includes('/admin/')) {
       localStorage.setItem('currentSection', 'admin');
     }
-  }, [isSuperAdminRoute, isAdminRoute]);
-
-  // Always ensure sidebar remains open for superadmin/admin users
-  useEffect(() => {
-    if ((isSuperAdmin || isAdmin) && !mobileOpen) {
-      console.log('FIXING SIDEBAR: Ensuring sidebar stays open for admin/superadmin');
-      setMobileOpen(true);
-      localStorage.setItem('sidebarOpen', 'true');
-    }
-  }, [isSuperAdmin, isAdmin, mobileOpen, location.pathname]);
-  
-  // Force sidebar open when navigating between admin and superadmin sections
-  useEffect(() => {
-    const currentSection = localStorage.getItem('currentSection');
-    
-    // When switching between admin/superadmin sections, ensure sidebar stays open
-    if (
-      (isSuperAdminRoute && currentSection !== 'superadmin') ||
-      (isAdminRoute && !isSuperAdminRoute && currentSection !== 'admin')
-    ) {
-      console.log('Section changed, ensuring sidebar remains open');
-      setMobileOpen(true);
-      localStorage.setItem('sidebarOpen', 'true');
-    }
-  }, [location.pathname, isSuperAdminRoute, isAdminRoute]);
+  }, [location.pathname]);
 
   // This ensures we have persistent sidebar state regardless of navigation
   useEffect(() => {
     // Save sidebar state on route change
     localStorage.setItem('sidebarOpen', mobileOpen.toString());
-    
     // Set up listener for browser back/forward navigation
     const handlePopState = () => {
       // Restore sidebar state from localStorage
@@ -94,7 +63,6 @@ const Layout = () => {
         setMobileOpen(savedState === 'true');
       }
     };
-    
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [mobileOpen, location.pathname]);
@@ -109,8 +77,6 @@ const Layout = () => {
         drawerWidth={drawerWidth} 
         mobileOpen={mobileOpen}
         handleDrawerToggle={handleDrawerToggle}
-        // Always set permanent=true for admin users for better UX
-        permanent={isAdmin}
       />
       <Box
         component="main"
