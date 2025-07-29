@@ -87,7 +87,7 @@ router.delete('/subscription', protect, async (req, res) => {
   }
 });
 
-// Get all notifications - teachers and admins only
-router.get('/', protect, canSendNotifications, getAllNotifications);
+// Get all notifications - all authenticated users can view
+router.get('/', protect, getAllNotifications);
 
 module.exports = router;

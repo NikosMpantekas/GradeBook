@@ -11,7 +11,8 @@ const {
   removeStudentsFromClass,
   addTeachersToClass,
   removeTeachersFromClass,
-  getMyTeachingClasses
+  getMyTeachingClasses,
+  getMyClasses
 } = require('../controllers/classController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -26,6 +27,10 @@ router.route('/categories')
 // Route for getting classes taught by authenticated teacher
 router.route('/my-teaching-classes')
   .get(protect, getMyTeachingClasses);
+
+// Route for getting classes where authenticated student is enrolled
+router.route('/my-classes')
+  .get(protect, getMyClasses);
 
 router.route('/:id')
   .get(protect, getClassById)
