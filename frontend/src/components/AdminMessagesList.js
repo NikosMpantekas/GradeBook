@@ -30,6 +30,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { API_URL } from '../config/appConfig';
 
 const AdminMessagesList = ({ messages, user, onMessagesChanged }) => {
   const [replyText, setReplyText] = useState({});
@@ -98,7 +99,7 @@ const AdminMessagesList = ({ messages, user, onMessagesChanged }) => {
         }
       };
 
-      await axios.put(`/api/contact/${messageId}`, { status: newStatus }, config);
+      await axios.put(`${API_URL}/api/contact/${messageId}`, { status: newStatus }, config);
 
       toast.success(`Message status updated to ${getStatusLabel(newStatus)}`);
       
@@ -122,7 +123,7 @@ const AdminMessagesList = ({ messages, user, onMessagesChanged }) => {
         }
       };
 
-      await axios.put(`/api/contact/${messageId}`, { read: true }, config);
+      await axios.put(`${API_URL}/api/contact/${messageId}`, { read: true }, config);
 
       toast.success('Message marked as read');
       
@@ -159,7 +160,7 @@ const AdminMessagesList = ({ messages, user, onMessagesChanged }) => {
       };
 
       await axios.put(
-        `/api/contact/${messageId}`, 
+        `${API_URL}/api/contact/${messageId}`, 
         { 
           adminReply: reply,
           status: 'replied'

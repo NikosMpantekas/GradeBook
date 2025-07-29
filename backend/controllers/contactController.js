@@ -80,13 +80,13 @@ const getContactMessages = asyncHandler(async (req, res) => {
   }
 
   try {
-    // For admin users, filter messages by their schoolId (multi-tenancy)
-    // Superadmins can see all messages across schools
+    // UPDATED: Admins now only see their own messages like other account types
+    // Only superadmins can see all messages across schools
     const filter = req.user.role === 'superadmin' 
       ? {} 
-      : { schoolId: req.user.schoolId };
+      : { user: req.user._id, schoolId: req.user.schoolId };
       
-    // Get all messages for this school, newest first
+    // Get messages for this user/superadmin, newest first
     const messages = await Contact.find(filter)
       .sort({ createdAt: -1 })
       .lean();

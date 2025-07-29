@@ -20,13 +20,8 @@ import {
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 
-// Try to import ReactMarkdown with a fallback mechanism
-let ReactMarkdown = null;
-try {
-  ReactMarkdown = require('react-markdown');
-} catch (error) {
-  console.warn('react-markdown package not available, using fallback rendering');
-}
+// Import ReactMarkdown safely
+import ReactMarkdown from 'react-markdown';
 
 const PatchNotesList = ({ patchNotes }) => {
   if (!patchNotes || patchNotes.length === 0) {
@@ -125,16 +120,9 @@ const PatchNotesList = ({ patchNotes }) => {
             <Box sx={{ px: 1 }}>
               <Paper variant="outlined" sx={{ p: 2, backgroundColor: 'rgba(0, 0, 0, 0.02)' }}>
                 {/* Using ReactMarkdown to support markdown in patch notes */}
-                {ReactMarkdown ? (
-                  <ReactMarkdown>
-                    {note.content}
-                  </ReactMarkdown>
-                ) : (
-                  /* Fallback rendering when ReactMarkdown isn't available */
-                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {note.content}
-                  </Typography>
-                )}
+                <ReactMarkdown>
+                  {note.content}
+                </ReactMarkdown>
                 
                 <Divider sx={{ my: 1 }} />
                 
