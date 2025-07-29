@@ -496,11 +496,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     // First navigate to the path
     navigate(actualPath);
     
-    // IMPORTANT: NEVER close the drawer for admin/superadmin users or admin routes
-    if (isAdmin || isNavigatingToAdmin || isActuallyPermanent) {
-      console.log('✅ Keeping sidebar open for admin/superadmin navigation');
-      return;
-    }
+
     
     // Only close drawer for regular users on mobile
     if (window.innerWidth < 600 && mobileOpen && handleDrawerToggle) {
