@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -16,45 +16,49 @@ import {
   Divider,
   Button,
   Chip,
-  Stack
-} from '@mui/material';
+  Stack,
+} from "@mui/material";
 import {
   Dashboard as DashboardIcon,
   Grade as GradeIcon,
   Notifications as NotificationsIcon,
   School as SchoolIcon,
   TrendingUp as TrendingUpIcon,
-  Assignment as AssignmentIcon
-} from '@mui/icons-material';
-import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { API_URL } from '../../config/appConfig';
+  Assignment as AssignmentIcon,
+} from "@mui/icons-material";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { API_URL } from "../../config/appConfig";
 
 const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [recentGrades, setRecentGrades] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState([]);
-  
+
   const { user } = useSelector((state) => state.auth);
   const token = user?.token;
   const navigate = useNavigate();
 
-  console.log('STUDENT DASHBOARD - Component mounted');
-  console.log('STUDENT DASHBOARD - User:', user);
-  console.log('STUDENT DASHBOARD - Token:', token ? 'Present' : 'Missing');
+  console.log("STUDENT DASHBOARD - Component mounted");
+  console.log("STUDENT DASHBOARD - User:", user);
+  console.log("STUDENT DASHBOARD - Token:", token ? "Present" : "Missing");
 
   useEffect(() => {
     if (!user || !token) {
-      console.error('STUDENT DASHBOARD - No user or token, redirecting to login');
-      navigate('/login');
+      console.error(
+        "STUDENT DASHBOARD - No user or token, redirecting to login"
+      );
+      navigate("/login");
       return;
     }
-    
-    if (user.role !== 'student' && user.role !== 'admin') {
-      console.error('STUDENT DASHBOARD - User is not student or admin, redirecting to dashboard');
-      navigate('/app/dashboard');
+
+    if (user.role !== "student" && user.role !== "admin") {
+      console.error(
+        "STUDENT DASHBOARD - User is not student or admin, redirecting to dashboard"
+      );
+      navigate("/app/dashboard");
       return;
     }
 
@@ -63,54 +67,81 @@ const StudentDashboard = () => {
 
   const fetchStudentDashboardData = async () => {
     try {
-      console.log('STUDENT DASHBOARD - Starting data fetch');
+      console.log("STUDENT DASHBOARD - Starting data fetch");
       setLoading(true);
       setError(null);
-      
+
       const config = {
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          "Content-Type": "application/json",
+        },
       };
 
       // Fetch recent grades and notifications in parallel
       const promises = [
         // Get recent grades
-        axios.get(`${API_URL}/api/grades/student`, config)
-          .then(response => {
-            console.log('STUDENT DASHBOARD - Grades response:', response.data);
+        axios
+          .get(`${API_URL}/api/grades`, config)
+          .then((response) => {
+            console.log("STUDENT DASHBOARD - Grades response:", response.data);
             const grades = response.data?.grades || response.data || [];
             return Array.isArray(grades) ? grades.slice(0, 5) : [];
           })
-          .catch(error => {
-            console.error('STUDENT DASHBOARD - Grades fetch error:', error);
+          .catch((error) => {
+            console.error("STUDENT DASHBOARD - Grades fetch error:", error);
             return [];
           }),
-        
+
         // Get received notifications
-        axios.get(`${API_URL}/api/notifications?limit=5`, config)
-          .then(response => {
-            console.log('STUDENT DASHBOARD - Notifications response:', response.data);
-            const notifications = response.data?.notifications || response.data || [];
-            return Array.isArray(notifications) ? notifications.filter(n => !n.isRead) : [];
+        axios
+          .get(`${API_URL}/api/notifications?limit=5`, config)
+          .then((response) => {
+            console.log(
+              "STUDENT DASHBOARD - Notifications response:",
+              response.data
+            );
+            // Handle different response formats
+            const notifications =
+              response.data?.notifications || response.data || [];
+            return Array.isArray(notifications) ? notifications : [];
           })
-          .catch(error => {
-            console.error('STUDENT DASHBOARD - Notifications fetch error:', error);
-            return [];
-          })
+          .catch((error) => {
+            console.error(
+              "STUDENT DASHBOARD - Notifications fetch error:",
+              error
+            );
+            // Try alternative endpoint for received notifications
+            return axios
+              .get(`${API_URL}/api/notifications/received?limit=5`, config)
+              .then((response) => {
+                console.log(
+                  "TEACHER DASHBOARD - Alternative notifications response:",
+                  response.data
+                );
+                const notifications =
+                  response.data?.notifications || response.data || [];
+                return Array.isArray(notifications) ? notifications : [];
+              })
+              .catch(() => []);
+          }),
       ];
 
       const [grades, notifications] = await Promise.all(promises);
-      
-      console.log('STUDENT DASHBOARD - Processed data:', { grades, notifications });
-      
+
+      console.log("STUDENT DASHBOARD - Processed data:", {
+        grades,
+        notifications,
+      });
+
       setRecentGrades(grades);
       setUnreadNotifications(notifications);
-
     } catch (error) {
-      console.error('STUDENT DASHBOARD - Error fetching dashboard data:', error);
-      setError('Failed to load dashboard data. Please try again later.');
+      console.error(
+        "STUDENT DASHBOARD - Error fetching dashboard data:",
+        error
+      );
+      setError("Failed to load dashboard data. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -118,20 +149,23 @@ const StudentDashboard = () => {
 
   const getWelcomeMessage = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   };
 
   const getGradeAverage = () => {
-    if (recentGrades.length === 0) return 'N/A';
+    if (recentGrades.length === 0) return "N/A";
     const sum = recentGrades.reduce((acc, grade) => acc + grade.value, 0);
     return (sum / recentGrades.length).toFixed(1);
   };
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ my: 4, display: 'flex', justifyContent: 'center' }}>
+      <Container
+        maxWidth="lg"
+        sx={{ my: 4, display: "flex", justifyContent: "center" }}
+      >
         <CircularProgress />
       </Container>
     );
@@ -149,23 +183,23 @@ const StudentDashboard = () => {
     <Container maxWidth="lg" sx={{ my: 4 }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <DashboardIcon sx={{ mr: 2, fontSize: 32, color: 'primary.main' }} />
+        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+          <DashboardIcon sx={{ mr: 2, fontSize: 32, color: "primary.main" }} />
           <Typography variant="h4" component="h1" fontWeight="bold">
             Student Dashboard
           </Typography>
         </Box>
         <Typography variant="h6" color="text.secondary">
-          {getWelcomeMessage()}, {user?.name || 'Student'}! Here's your academic overview.
+          {getWelcomeMessage()}, {user?.name || "Student"}! Here's your academic
+          overview.
         </Typography>
       </Box>
 
       <Grid container spacing={3}>
-
         {/* Recent Grades */}
         <Grid item xs={12} md={6}>
           <Card>
-            <CardHeader 
+            <CardHeader
               title={
                 <Box display="flex" alignItems="center" gap={1}>
                   <GradeIcon color="primary" />
@@ -176,8 +210,8 @@ const StudentDashboard = () => {
                 <Button
                   variant="text"
                   size="small"
-                  onClick={() => navigate('/app/student/grades')}
-                  sx={{ minWidth: 'auto' }}
+                  onClick={() => navigate("/app/student/grades")}
+                  sx={{ minWidth: "auto" }}
                 >
                   View All
                 </Button>
@@ -195,26 +229,40 @@ const StudentDashboard = () => {
                         <ListItemText
                           primary={
                             <Typography variant="subtitle1" fontWeight="bold">
-                              {grade.subject?.name || 'Unknown Subject'}
+                              {grade.subject?.name || "Unknown Subject"}
                             </Typography>
                           }
                           secondary={
                             <Box>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mb: 1 }}
+                              >
                                 Grade: {grade.value}/20
                               </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {grade.createdAt ? 
-                                  new Date(grade.createdAt).toLocaleDateString() : 
-                                  'Recent'
-                                }
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {grade.createdAt
+                                  ? new Date(
+                                      grade.createdAt
+                                    ).toLocaleDateString()
+                                  : "Recent"}
                               </Typography>
                             </Box>
                           }
                         />
                         <Chip
                           label={grade.value}
-                          color={grade.value >= 15 ? 'success' : grade.value >= 10 ? 'warning' : 'error'}
+                          color={
+                            grade.value >= 15
+                              ? "success"
+                              : grade.value >= 10
+                              ? "warning"
+                              : "error"
+                          }
                           size="small"
                         />
                       </ListItem>
@@ -224,7 +272,9 @@ const StudentDashboard = () => {
                 </List>
               ) : (
                 <Box textAlign="center" py={4}>
-                  <GradeIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                  <GradeIcon
+                    sx={{ fontSize: 48, color: "text.secondary", mb: 2 }}
+                  />
                   <Typography variant="body1" color="text.secondary">
                     No grades yet
                   </Typography>
@@ -240,7 +290,7 @@ const StudentDashboard = () => {
         {/* Recent Notifications */}
         <Grid item xs={12} md={6}>
           <Card>
-            <CardHeader 
+            <CardHeader
               title={
                 <Box display="flex" alignItems="center" gap={1}>
                   <NotificationsIcon color="primary" />
@@ -251,8 +301,8 @@ const StudentDashboard = () => {
                 <Button
                   variant="text"
                   size="small"
-                  onClick={() => navigate('/app/student/notifications')}
-                  sx={{ minWidth: 'auto' }}
+                  onClick={() => navigate("/app/student/notifications")}
+                  sx={{ minWidth: "auto" }}
                 >
                   View All
                 </Button>
@@ -270,19 +320,29 @@ const StudentDashboard = () => {
                         <ListItemText
                           primary={
                             <Typography variant="subtitle1" fontWeight="bold">
-                              {notification.title || 'Notification'}
+                              {notification.title || "Notification"}
                             </Typography>
                           }
                           secondary={
                             <Box>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                {notification.message || notification.content || 'No content'}
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mb: 1 }}
+                              >
+                                {notification.message ||
+                                  notification.content ||
+                                  "No content"}
                               </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {notification.createdAt ? 
-                                  new Date(notification.createdAt).toLocaleDateString() : 
-                                  'Recent'
-                                }
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {notification.createdAt
+                                  ? new Date(
+                                      notification.createdAt
+                                    ).toLocaleDateString()
+                                  : "Recent"}
                               </Typography>
                             </Box>
                           }
@@ -294,7 +354,9 @@ const StudentDashboard = () => {
                 </List>
               ) : (
                 <Box textAlign="center" py={4}>
-                  <NotificationsIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                  <NotificationsIcon
+                    sx={{ fontSize: 48, color: "text.secondary", mb: 2 }}
+                  />
                   <Typography variant="body1" color="text.secondary">
                     No unread notifications
                   </Typography>
@@ -310,7 +372,7 @@ const StudentDashboard = () => {
         {/* Quick Actions */}
         <Grid item xs={12}>
           <Card>
-            <CardHeader 
+            <CardHeader
               title={
                 <Box display="flex" alignItems="center" gap={1}>
                   <SchoolIcon color="primary" />
@@ -323,7 +385,7 @@ const StudentDashboard = () => {
                 <Button
                   variant="contained"
                   startIcon={<GradeIcon />}
-                  onClick={() => navigate('/app/student/grades')}
+                  onClick={() => navigate("/app/student/grades")}
                   size="large"
                 >
                   View My Grades
@@ -331,7 +393,7 @@ const StudentDashboard = () => {
                 <Button
                   variant="outlined"
                   startIcon={<NotificationsIcon />}
-                  onClick={() => navigate('/app/student/notifications')}
+                  onClick={() => navigate("/app/student/notifications")}
                   size="large"
                 >
                   View Notifications
