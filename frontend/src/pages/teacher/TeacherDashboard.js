@@ -1,413 +1,292 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
+  Container,
+  Grid,
   Box,
   Typography,
-  Grid,
-  Card,
-  CardContent,
-  CardHeader,
-  Paper,
-  CircularProgress,
   Alert,
-  Container,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  Button,
-  Chip,
-  Stack,
-  Avatar
+  CircularProgress,
+  Fade
 } from '@mui/material';
 import {
-  Schedule as ScheduleIcon,
-  Notifications as NotificationsIcon,
-  Class as ClassIcon,
-  Person as PersonIcon,
-  AccessTime as TimeIcon,
-  Today as TodayIcon,
-  Assignment as GradeIcon,
-  Send as SendIcon,
-  School as SchoolIcon,
-  Dashboard as DashboardIcon
-} from '@mui/icons-material';
-import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+  WelcomePanel,
+  ProfileInfoPanel,
+  RecentNotificationsPanel,
+  RecentGradesPanel,
+  UpcomingClassesPanel
+} from '../../components/dashboard/DashboardComponents';
+import { useFeatureToggles } from '../../context/FeatureToggleContext';
 import axios from 'axios';
 import { API_URL } from '../../config/appConfig';
+import { toast } from 'react-toastify';
 
+/**
+ * TeacherDashboard Component
+ * Rebuilt to match AdminDashboard design exactly
+ * Shows: Welcome, Profile, Recent Notifications, Recent Grades, Upcoming Classes
+ */
 const TeacherDashboard = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+  const { isFeatureEnabled, loading: featuresLoading } = useFeatureToggles();
+  
+  // Component state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [todaySchedule, setTodaySchedule] = useState([]);
-  const [unreadNotifications, setUnreadNotifications] = useState([]);
+  const [dashboardData, setDashboardData] = useState({
+    notifications: [],
+    grades: [],
+    classes: [],
+    stats: {}
+  });
   
-  const { user } = useSelector((state) => state.auth);
-  const token = user?.token;
-  const navigate = useNavigate();
+  // Loading states for individual panels
+  const [panelLoading, setPanelLoading] = useState({
+    notifications: false,
+    grades: false,
+    classes: false
+  });
 
-  console.log('TEACHER DASHBOARD - Component mounted');
-  console.log('TEACHER DASHBOARD - User:', user);
-  console.log('TEACHER DASHBOARD - Token:', token ? 'Present' : 'Missing');
-
+  // Check authentication and role
   useEffect(() => {
-    if (!user || !token) {
-      console.error('TEACHER DASHBOARD - No user or token, redirecting to login');
+    if (!user) {
+      console.log('TeacherDashboard: No user found, redirecting to login');
       navigate('/login');
       return;
     }
     
     if (user.role !== 'teacher' && user.role !== 'admin') {
-      console.error('TEACHER DASHBOARD - User is not teacher or admin, redirecting to dashboard');
+      console.log('TeacherDashboard: User is not teacher or admin, redirecting');
+      toast.error('Access denied. Teacher privileges required.');
       navigate('/app/dashboard');
       return;
     }
+    
+    console.log('TeacherDashboard: Teacher user authenticated:', user.email);
+  }, [user, navigate]);
 
-    fetchTeacherDashboardData();
-  }, [user, token, navigate]);
+  // Fetch dashboard data
+  useEffect(() => {
+    if (user && (user.role === 'teacher' || user.role === 'admin') && !featuresLoading) {
+      fetchDashboardData();
+    }
+  }, [user, featuresLoading]);
 
-  const fetchTeacherDashboardData = async () => {
+  const getAuthConfig = () => {
+    return {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+        'Content-Type': 'application/json'
+      }
+    };
+  };
+
+  const fetchDashboardData = async () => {
     try {
-      console.log('TEACHER DASHBOARD - Starting data fetch');
       setLoading(true);
       setError(null);
       
-      const config = {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      console.log('TeacherDashboard: Fetching dashboard data...');
+      
+      const promises = [];
+      const dataKeys = [];
+      
+      // Only fetch data for enabled features
+      if (isFeatureEnabled('enableNotifications')) {
+        setPanelLoading(prev => ({ ...prev, notifications: true }));
+        promises.push(fetchNotifications());
+        dataKeys.push('notifications');
+      }
+      
+      if (isFeatureEnabled('enableGrades')) {
+        setPanelLoading(prev => ({ ...prev, grades: true }));
+        promises.push(fetchRecentGrades());
+        dataKeys.push('grades');
+      }
+      
+      if (isFeatureEnabled('enableClasses') || isFeatureEnabled('enableSchedule')) {
+        setPanelLoading(prev => ({ ...prev, classes: true }));
+        promises.push(fetchUpcomingClasses());
+        dataKeys.push('classes');
+      }
+      
+      // Execute all enabled data fetches
+      const results = await Promise.allSettled(promises);
+      
+      // Process results
+      const newData = { ...dashboardData };
+      results.forEach((result, index) => {
+        const key = dataKeys[index];
+        if (result.status === 'fulfilled') {
+          newData[key] = result.value;
+        } else {
+          console.error(`TeacherDashboard: Error fetching ${key}:`, result.reason);
+          newData[key] = [];
         }
-      };
-
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-      
-      console.log('TEACHER DASHBOARD - Today:', todayStr, 'Day:', dayOfWeek);
-
-      // Fetch today's schedule and notifications in parallel
-      const promises = [
-        // Get today's schedule - match the format expected by Schedule component
-        axios.get(`${API_URL}/api/schedule`, config)
-          .then(response => {
-            console.log('TEACHER DASHBOARD - Schedule response:', response.data);
-            // Extract today's classes from the schedule
-            // The API returns either { schedule: { monday: [...], tuesday: [...] } } or direct { monday: [...] }
-            let scheduleData = response.data;
-            if (scheduleData && scheduleData.schedule) {
-              scheduleData = scheduleData.schedule;
-            }
-            const todayClasses = scheduleData[dayOfWeek] || [];
-            console.log('TEACHER DASHBOARD - Today classes for', dayOfWeek, ':', todayClasses);
-            return todayClasses;
-          })
-          .catch(error => {
-            console.error('TEACHER DASHBOARD - Schedule fetch error:', error);
-            return [];
-          }),
-        
-        // Get received notifications (not sent ones) - fix the endpoint
-        axios.get(`${API_URL}/api/notifications?limit=5`, config)
-          .then(response => {
-            console.log('TEACHER DASHBOARD - Notifications response:', response.data);
-            // Handle different response formats
-            const notifications = response.data?.notifications || response.data || [];
-            return Array.isArray(notifications) ? notifications : [];
-          })
-          .catch(error => {
-            console.error('TEACHER DASHBOARD - Notifications fetch error:', error);
-            // Try alternative endpoint for received notifications
-            return axios.get(`${API_URL}/api/notifications/received?limit=5`, config)
-              .then(response => {
-                console.log('TEACHER DASHBOARD - Alternative notifications response:', response.data);
-                const notifications = response.data?.notifications || response.data || [];
-                return Array.isArray(notifications) ? notifications : [];
-              })
-              .catch(() => []);
-          })
-      ];
-
-      const [schedule, notifications] = await Promise.all(promises);
-      
-      console.log('TEACHER DASHBOARD - Processed data:', {
-        schedule,
-        notifications
       });
-
-      setTodaySchedule(schedule);
-      setUnreadNotifications(notifications);
-
+      
+      setDashboardData(newData);
+      console.log('TeacherDashboard: Dashboard data loaded successfully');
+      
     } catch (error) {
-      console.error('TEACHER DASHBOARD - Error fetching data:', error);
-      setError('Unable to load dashboard data. Some features may be unavailable.');
+      console.error('TeacherDashboard: Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data. Please refresh the page.');
     } finally {
       setLoading(false);
+      setPanelLoading({ notifications: false, grades: false, classes: false });
     }
   };
 
-  const getWelcomeMessage = () => {
-    const hour = new Date().getHours();
-    const name = user?.name || 'Teacher';
-    
-    if (hour < 12) return `Good morning, ${name}!`;
-    if (hour < 17) return `Good afternoon, ${name}!`;
-    return `Good evening, ${name}!`;
-  };
-
-  const formatTime = (timeStr) => {
-    if (!timeStr) return 'Time TBD';
+  const fetchNotifications = async () => {
     try {
-      const [hours, minutes] = timeStr.split(':');
-      const time = new Date();
-      time.setHours(parseInt(hours), parseInt(minutes));
-      return time.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
+      const response = await axios.get(`${API_URL}/api/notifications?limit=10`, getAuthConfig());
+      return response.data || [];
     } catch (error) {
-      return timeStr;
+      console.error('TeacherDashboard: Error fetching notifications:', error);
+      return [];
     }
   };
 
-  if (loading) {
+  const fetchRecentGrades = async () => {
+    try {
+      // For teacher, get recent grades from their classes/students
+      const response = await axios.get(`${API_URL}/api/grades/recent?limit=10`, getAuthConfig());
+      return response.data || [];
+    } catch (error) {
+      console.error('TeacherDashboard: Error fetching recent grades:', error);
+      return [];
+    }
+  };
+
+  const fetchUpcomingClasses = async () => {
+    try {
+      // For teacher, get their upcoming classes
+      const response = await axios.get(`${API_URL}/api/schedule`, getAuthConfig());
+      
+      // Process schedule data to get upcoming classes
+      if (response.data) {
+        const today = new Date();
+        const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        
+        let scheduleData = response.data;
+        if (scheduleData && scheduleData.schedule) {
+          scheduleData = scheduleData.schedule;
+        }
+        
+        const todayClasses = scheduleData[dayOfWeek] || [];
+        return todayClasses.slice(0, 10); // Limit to 10 classes
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('TeacherDashboard: Error fetching upcoming classes:', error);
+      return [];
+    }
+  };
+
+  // Navigation handlers
+  const handleViewAllNotifications = () => {
+    navigate('/app/teacher/notifications');
+  };
+
+  const handleViewAllGrades = () => {
+    navigate('/app/teacher/grades/manage');
+  };
+
+  const handleViewAllClasses = () => {
+    navigate('/app/teacher/schedule');
+  };
+
+  // Show loading state
+  if (featuresLoading || loading) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
           <CircularProgress size={60} />
-          <Typography variant="h6" sx={{ ml: 2 }}>
-            Loading your dashboard...
-          </Typography>
         </Box>
       </Container>
     );
   }
 
-  return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Welcome Header */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3, background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)', color: 'white' }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
-            <DashboardIcon fontSize="large" />
-          </Avatar>
-          <Box>
-            <Typography variant="h4" component="h1" fontWeight="bold">
-              {getWelcomeMessage()}
-            </Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9 }}>
-              Teacher Dashboard - {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </Typography>
-          </Box>
-        </Box>
-      </Paper>
-
-      {/* Error Alert */}
-      {error && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
+  // Show error state
+  if (error) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
-      )}
+      </Container>
+    );
+  }
 
-      {/* Stats section removed per user request */}
+  // Show access denied if not teacher or admin
+  if (!user || (user.role !== 'teacher' && user.role !== 'admin')) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Access denied. Teacher privileges required.
+        </Alert>
+      </Container>
+    );
+  }
 
-      <Grid container spacing={3}>
-        {/* Today's Schedule */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader 
-              title={
-                <Box display="flex" alignItems="center" gap={1}>
-                  <TodayIcon color="primary" />
-                  <Typography variant="h6">Today's Schedule</Typography>
-                </Box>
-              }
-              action={
-                <Button 
-                  size="small" 
-                  onClick={() => navigate('/app/teacher/schedule')}
-                  startIcon={<ScheduleIcon />}
-                >
-                  View Full Schedule
-                </Button>
-              }
-            />
-            <CardContent>
-              {todaySchedule.length > 0 ? (
-                <List>
-                  {todaySchedule.map((classItem, index) => (
-                    <React.Fragment key={index}>
-                      <ListItem>
-                        <ListItemIcon>
-                          <TimeIcon color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <Typography variant="subtitle1" fontWeight="bold">
-                                {classItem.subject?.name || classItem.subject || 'Subject'}
-                              </Typography>
-                              <Chip 
-                                label={`${formatTime(classItem.startTime)} - ${formatTime(classItem.endTime)}`}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                              />
-                            </Box>
-                          }
-                          secondary={
-                            <Typography variant="body2" color="text.secondary">
-                              {classItem.class?.name || classItem.className || 'Class'} • 
-                              {classItem.room || 'Room TBD'}
-                            </Typography>
-                          }
-                        />
-                      </ListItem>
-                      {index < todaySchedule.length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-                </List>
-              ) : (
-                <Box textAlign="center" py={4}>
-                  <ScheduleIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="body1" color="text.secondary">
-                    No classes scheduled for today
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Enjoy your free day!
-                  </Typography>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Unread Notifications */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader 
-              title={
-                <Box display="flex" alignItems="center" gap={1}>
-                  <NotificationsIcon color="warning" />
-                  <Typography variant="h6">Recent Notifications</Typography>
-                </Box>
-              }
-              action={
-                <Button 
-                  size="small" 
-                  onClick={() => navigate('/app/teacher/notifications')}
-                  startIcon={<NotificationsIcon />}
-                >
-                  View All
-                </Button>
-              }
-            />
-            <CardContent>
-              {unreadNotifications.length > 0 ? (
-                <List>
-                  {unreadNotifications.map((notification, index) => (
-                    <React.Fragment key={notification._id || index}>
-                      <ListItem>
-                        <ListItemIcon>
-                          <NotificationsIcon color="warning" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {notification.title || 'Notification'}
-                            </Typography>
-                          }
-                          secondary={
-                            <Box>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                {notification.message || notification.content || 'No content'}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {notification.createdAt ? 
-                                  new Date(notification.createdAt).toLocaleDateString() : 
-                                  'Recent'
-                                }
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                      </ListItem>
-                      {index < unreadNotifications.length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-                </List>
-              ) : (
-                <Box textAlign="center" py={4}>
-                  <NotificationsIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="body1" color="text.secondary">
-                    No unread notifications
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    You're all caught up!
-                  </Typography>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Quick Actions */}
-        <Grid item xs={12}>
-          <Card>
-            <CardHeader 
-              title={
-                <Box display="flex" alignItems="center" gap={1}>
-                  <SchoolIcon color="primary" />
-                  <Typography variant="h6">Quick Actions</Typography>
-                </Box>
-              }
-            />
-            <CardContent>
-              <Stack direction="row" spacing={2} flexWrap="wrap" gap={2}>
-                <Button
-                  variant="contained"
-                  startIcon={<GradeIcon />}
-                  onClick={() => navigate('/app/teacher/grades/create')}
-                  size="large"
-                >
-                  Add Grades
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<GradeIcon />}
-                  onClick={() => navigate('/app/teacher/grades/manage')}
-                  size="large"
-                >
-                  Manage Grades
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<SendIcon />}
-                  onClick={() => navigate('/app/teacher/notifications/create')}
-                  size="large"
-                >
-                  Send Notification
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<ScheduleIcon />}
-                  onClick={() => navigate('/app/teacher/schedule')}
-                  size="large"
-                >
-                  View Schedule
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+  return (
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Fade in={true} timeout={800}>
+        <Box>
+          {/* Welcome Panel - Always shown */}
+          <WelcomePanel user={user} />
+          
+          <Grid container spacing={3}>
+            {/* Profile Information - Always shown */}
+            <Grid item xs={12} md={4}>
+              <ProfileInfoPanel user={user} loading={false} />
+            </Grid>
+            
+            {/* Recent Notifications - Only if feature enabled */}
+            <Grid item xs={12} md={8}>
+              <RecentNotificationsPanel 
+                notifications={dashboardData.notifications}
+                loading={panelLoading.notifications}
+                onViewAll={handleViewAllNotifications}
+              />
+            </Grid>
+            
+            {/* Recent Grades - Only if feature enabled */}
+            <Grid item xs={12} md={6}>
+              <RecentGradesPanel 
+                grades={dashboardData.grades}
+                loading={panelLoading.grades}
+                onViewAll={handleViewAllGrades}
+                userRole="teacher"
+              />
+            </Grid>
+            
+            {/* Upcoming Classes - Only if feature enabled */}
+            <Grid item xs={12} md={6}>
+              <UpcomingClassesPanel 
+                classes={dashboardData.classes}
+                loading={panelLoading.classes}
+                onViewAll={handleViewAllClasses}
+                userRole="teacher"
+              />
+            </Grid>
+          </Grid>
+          
+          {/* Show message if no features are enabled */}
+          {!isFeatureEnabled('enableNotifications') && 
+           !isFeatureEnabled('enableGrades') && 
+           !isFeatureEnabled('enableClasses') && 
+           !isFeatureEnabled('enableSchedule') && (
+            <Alert severity="info" sx={{ mt: 3 }}>
+              Some dashboard features are currently disabled. Contact your system administrator to enable additional features.
+            </Alert>
+          )}
+        </Box>
+      </Fade>
     </Container>
   );
 };

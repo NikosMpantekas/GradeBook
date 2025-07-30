@@ -1,374 +1,293 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
+  Container,
+  Grid,
   Box,
   Typography,
-  Grid,
-  Card,
-  CardContent,
-  CardHeader,
-  CircularProgress,
   Alert,
-  Container,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  Button,
-  Chip,
-  Stack,
-} from "@mui/material";
+  CircularProgress,
+  Fade
+} from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
-  Grade as GradeIcon,
-  Notifications as NotificationsIcon,
-  School as SchoolIcon,
-  TrendingUp as TrendingUpIcon,
-  Assignment as AssignmentIcon,
-} from "@mui/icons-material";
-import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { API_URL } from "../../config/appConfig";
+  WelcomePanel,
+  ProfileInfoPanel,
+  RecentNotificationsPanel,
+  RecentGradesPanel,
+  UpcomingClassesPanel
+} from '../../components/dashboard/DashboardComponents';
+import { useFeatureToggles } from '../../context/FeatureToggleContext';
+import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
+import { toast } from 'react-toastify';
 
+/**
+ * StudentDashboard Component
+ * Rebuilt to match AdminDashboard design exactly
+ * Shows: Welcome, Profile, Recent Notifications, Recent Grades, Upcoming Classes
+ */
 const StudentDashboard = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+  const { isFeatureEnabled, loading: featuresLoading } = useFeatureToggles();
+  
+  // Component state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [recentGrades, setRecentGrades] = useState([]);
-  const [unreadNotifications, setUnreadNotifications] = useState([]);
+  const [dashboardData, setDashboardData] = useState({
+    notifications: [],
+    grades: [],
+    classes: [],
+    stats: {}
+  });
+  
+  // Loading states for individual panels
+  const [panelLoading, setPanelLoading] = useState({
+    notifications: false,
+    grades: false,
+    classes: false
+  });
 
-  const { user } = useSelector((state) => state.auth);
-  const token = user?.token;
-  const navigate = useNavigate();
-
-  console.log("STUDENT DASHBOARD - Component mounted");
-  console.log("STUDENT DASHBOARD - User:", user);
-  console.log("STUDENT DASHBOARD - Token:", token ? "Present" : "Missing");
-
+  // Check authentication and role
   useEffect(() => {
-    if (!user || !token) {
-      console.error(
-        "STUDENT DASHBOARD - No user or token, redirecting to login"
-      );
-      navigate("/login");
+    if (!user) {
+      console.log('StudentDashboard: No user found, redirecting to login');
+      navigate('/login');
       return;
     }
-
-    if (user.role !== "student" && user.role !== "admin") {
-      console.error(
-        "STUDENT DASHBOARD - User is not student or admin, redirecting to dashboard"
-      );
-      navigate("/app/dashboard");
+    
+    if (user.role !== 'student' && user.role !== 'admin') {
+      console.log('StudentDashboard: User is not student or admin, redirecting');
+      toast.error('Access denied. Student privileges required.');
+      navigate('/app/dashboard');
       return;
     }
+    
+    console.log('StudentDashboard: Student user authenticated:', user.email);
+  }, [user, navigate]);
 
-    fetchStudentDashboardData();
-  }, [user, token, navigate]);
+  // Fetch dashboard data
+  useEffect(() => {
+    if (user && (user.role === 'student' || user.role === 'admin') && !featuresLoading) {
+      fetchDashboardData();
+    }
+  }, [user, featuresLoading]);
 
-  const fetchStudentDashboardData = async () => {
+  const getAuthConfig = () => {
+    return {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+        'Content-Type': 'application/json'
+      }
+    };
+  };
+
+  const fetchDashboardData = async () => {
     try {
-      console.log("STUDENT DASHBOARD - Starting data fetch");
       setLoading(true);
       setError(null);
-
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      };
-
-      // Fetch recent grades and notifications in parallel
-      const promises = [
-        // Get recent grades
-        axios
-          .get(`${API_URL}/api/grades`, config)
-          .then((response) => {
-            console.log("STUDENT DASHBOARD - Grades response:", response.data);
-            const grades = response.data?.grades || response.data || [];
-            return Array.isArray(grades) ? grades.slice(0, 5) : [];
-          })
-          .catch((error) => {
-            console.error("STUDENT DASHBOARD - Grades fetch error:", error);
-            return [];
-          }),
-
-        // Get received notifications
-        axios
-          .get(`${API_URL}/api/notifications/me?limit=5`, config)
-          .then((response) => {
-            console.log(
-              "STUDENT DASHBOARD - Notifications response:",
-              response.data
-            );
-            // Handle different response formats
-            const notifications =
-              response.data?.notifications || response.data || [];
-            return Array.isArray(notifications) ? notifications : [];
-          })
-          .catch((error) => {
-            console.error(
-              "STUDENT DASHBOARD - Notifications fetch error:",
-              error
-            );
-            // Try alternative endpoint for received notifications
-            return axios
-              .get(`${API_URL}/api/notifications/received?limit=5`, config)
-              .then((response) => {
-                console.log(
-                  "TEACHER DASHBOARD - Alternative notifications response:",
-                  response.data
-                );
-                const notifications =
-                  response.data?.notifications || response.data || [];
-                return Array.isArray(notifications) ? notifications : [];
-              })
-              .catch(() => []);
-          }),
-      ];
-
-      const [grades, notifications] = await Promise.all(promises);
-
-      console.log("STUDENT DASHBOARD - Processed data:", {
-        grades,
-        notifications,
+      
+      console.log('StudentDashboard: Fetching dashboard data...');
+      
+      const promises = [];
+      const dataKeys = [];
+      
+      // Only fetch data for enabled features
+      if (isFeatureEnabled('enableNotifications')) {
+        setPanelLoading(prev => ({ ...prev, notifications: true }));
+        promises.push(fetchNotifications());
+        dataKeys.push('notifications');
+      }
+      
+      if (isFeatureEnabled('enableGrades')) {
+        setPanelLoading(prev => ({ ...prev, grades: true }));
+        promises.push(fetchRecentGrades());
+        dataKeys.push('grades');
+      }
+      
+      if (isFeatureEnabled('enableClasses') || isFeatureEnabled('enableSchedule')) {
+        setPanelLoading(prev => ({ ...prev, classes: true }));
+        promises.push(fetchUpcomingClasses());
+        dataKeys.push('classes');
+      }
+      
+      // Execute all enabled data fetches
+      const results = await Promise.allSettled(promises);
+      
+      // Process results
+      const newData = { ...dashboardData };
+      results.forEach((result, index) => {
+        const key = dataKeys[index];
+        if (result.status === 'fulfilled') {
+          newData[key] = result.value;
+        } else {
+          console.error(`StudentDashboard: Error fetching ${key}:`, result.reason);
+          newData[key] = [];
+        }
       });
-
-      setRecentGrades(grades);
-      setUnreadNotifications(notifications);
+      
+      setDashboardData(newData);
+      console.log('StudentDashboard: Dashboard data loaded successfully');
+      
     } catch (error) {
-      console.error(
-        "STUDENT DASHBOARD - Error fetching dashboard data:",
-        error
-      );
-      setError("Failed to load dashboard data. Please try again later.");
+      console.error('StudentDashboard: Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data. Please refresh the page.');
     } finally {
       setLoading(false);
+      setPanelLoading({ notifications: false, grades: false, classes: false });
     }
   };
 
-  const getWelcomeMessage = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
+  const fetchNotifications = async () => {
+    try {
+      // For student, get their received notifications
+      const response = await axios.get(`${API_URL}/api/notifications?limit=10`, getAuthConfig());
+      return response.data || [];
+    } catch (error) {
+      console.error('StudentDashboard: Error fetching notifications:', error);
+      return [];
+    }
   };
 
-  const getGradeAverage = () => {
-    if (recentGrades.length === 0) return "N/A";
-    const sum = recentGrades.reduce((acc, grade) => acc + grade.value, 0);
-    return (sum / recentGrades.length).toFixed(1);
+  const fetchRecentGrades = async () => {
+    try {
+      // For student, get their grades
+      const response = await axios.get(`${API_URL}/api/grades/student?limit=10`, getAuthConfig());
+      return response.data || [];
+    } catch (error) {
+      console.error('StudentDashboard: Error fetching recent grades:', error);
+      return [];
+    }
   };
 
-  if (loading) {
+  const fetchUpcomingClasses = async () => {
+    try {
+      // For student, get their upcoming classes
+      const response = await axios.get(`${API_URL}/api/schedule`, getAuthConfig());
+      
+      // Process schedule data to get upcoming classes
+      if (response.data) {
+        const today = new Date();
+        const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        
+        let scheduleData = response.data;
+        if (scheduleData && scheduleData.schedule) {
+          scheduleData = scheduleData.schedule;
+        }
+        
+        const todayClasses = scheduleData[dayOfWeek] || [];
+        return todayClasses.slice(0, 10); // Limit to 10 classes
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('StudentDashboard: Error fetching upcoming classes:', error);
+      return [];
+    }
+  };
+
+  // Navigation handlers
+  const handleViewAllNotifications = () => {
+    navigate('/app/student/notifications');
+  };
+
+  const handleViewAllGrades = () => {
+    navigate('/app/student/grades');
+  };
+
+  const handleViewAllClasses = () => {
+    navigate('/app/student/schedule');
+  };
+
+  // Show loading state
+  if (featuresLoading || loading) {
     return (
-      <Container
-        maxWidth="lg"
-        sx={{ my: 4, display: "flex", justifyContent: "center" }}
-      >
-        <CircularProgress />
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <CircularProgress size={60} />
+        </Box>
       </Container>
     );
   }
 
+  // Show error state
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ my: 4 }}>
-        <Alert severity="error">{error}</Alert>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      </Container>
+    );
+  }
+
+  // Show access denied if not student or admin
+  if (!user || (user.role !== 'student' && user.role !== 'admin')) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Access denied. Student privileges required.
+        </Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ my: 4 }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <DashboardIcon sx={{ mr: 2, fontSize: 32, color: "primary.main" }} />
-          <Typography variant="h4" component="h1" fontWeight="bold">
-            Student Dashboard
-          </Typography>
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Fade in={true} timeout={800}>
+        <Box>
+          {/* Welcome Panel - Always shown */}
+          <WelcomePanel user={user} />
+          
+          <Grid container spacing={3}>
+            {/* Profile Information - Always shown */}
+            <Grid item xs={12} md={4}>
+              <ProfileInfoPanel user={user} loading={false} />
+            </Grid>
+            
+            {/* Recent Notifications - Only if feature enabled */}
+            <Grid item xs={12} md={8}>
+              <RecentNotificationsPanel 
+                notifications={dashboardData.notifications}
+                loading={panelLoading.notifications}
+                onViewAll={handleViewAllNotifications}
+              />
+            </Grid>
+            
+            {/* Recent Grades - Only if feature enabled */}
+            <Grid item xs={12} md={6}>
+              <RecentGradesPanel 
+                grades={dashboardData.grades}
+                loading={panelLoading.grades}
+                onViewAll={handleViewAllGrades}
+                userRole="student"
+              />
+            </Grid>
+            
+            {/* Upcoming Classes - Only if feature enabled */}
+            <Grid item xs={12} md={6}>
+              <UpcomingClassesPanel 
+                classes={dashboardData.classes}
+                loading={panelLoading.classes}
+                onViewAll={handleViewAllClasses}
+                userRole="student"
+              />
+            </Grid>
+          </Grid>
+          
+          {/* Show message if no features are enabled */}
+          {!isFeatureEnabled('enableNotifications') && 
+           !isFeatureEnabled('enableGrades') && 
+           !isFeatureEnabled('enableClasses') && 
+           !isFeatureEnabled('enableSchedule') && (
+            <Alert severity="info" sx={{ mt: 3 }}>
+              Some dashboard features are currently disabled. Contact your system administrator to enable additional features.
+            </Alert>
+          )}
         </Box>
-        <Typography variant="h6" color="text.secondary">
-          {getWelcomeMessage()}, {user?.name || "Student"}! Here's your academic
-          overview.
-        </Typography>
-      </Box>
-
-      <Grid container spacing={3}>
-        {/* Recent Grades */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader
-              title={
-                <Box display="flex" alignItems="center" gap={1}>
-                  <GradeIcon color="primary" />
-                  <Typography variant="h6">Recent Grades</Typography>
-                </Box>
-              }
-              action={
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => navigate("/app/student/grades")}
-                  sx={{ minWidth: "auto" }}
-                >
-                  View All
-                </Button>
-              }
-            />
-            <CardContent>
-              {recentGrades.length > 0 ? (
-                <List>
-                  {recentGrades.map((grade, index) => (
-                    <React.Fragment key={grade._id || index}>
-                      <ListItem>
-                        <ListItemIcon>
-                          <AssignmentIcon color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {grade.subject?.name || "Unknown Subject"}
-                            </Typography>
-                          }
-                          secondary={
-                            <Box>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ mb: 1 }}
-                              >
-                                Grade: {grade.value}/20
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {grade.createdAt
-                                  ? new Date(
-                                      grade.createdAt
-                                    ).toLocaleDateString()
-                                  : "Recent"}
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                        <Chip
-                          label={grade.value}
-                          color={
-                            grade.value >= 15
-                              ? "success"
-                              : grade.value >= 10
-                              ? "warning"
-                              : "error"
-                          }
-                          size="small"
-                        />
-                      </ListItem>
-                      {index < recentGrades.length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-                </List>
-              ) : (
-                <Box textAlign="center" py={4}>
-                  <GradeIcon
-                    sx={{ fontSize: 48, color: "text.secondary", mb: 2 }}
-                  />
-                  <Typography variant="body1" color="text.secondary">
-                    No grades yet
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Your grades will appear here once teachers add them
-                  </Typography>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Recent Notifications */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardHeader
-              title={
-                <Box display="flex" alignItems="center" gap={1}>
-                  <NotificationsIcon color="primary" />
-                  <Typography variant="h6">Recent Notifications</Typography>
-                </Box>
-              }
-              action={
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => navigate("/app/student/notifications")}
-                  sx={{ minWidth: "auto" }}
-                >
-                  View All
-                </Button>
-              }
-            />
-            <CardContent>
-              {unreadNotifications.length > 0 ? (
-                <List>
-                  {unreadNotifications.map((notification, index) => (
-                    <React.Fragment key={notification._id || index}>
-                      <ListItem>
-                        <ListItemIcon>
-                          <NotificationsIcon color="warning" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography variant="subtitle1" fontWeight="bold">
-                              {notification.title || "Notification"}
-                            </Typography>
-                          }
-                          secondary={
-                            <Box>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ mb: 1 }}
-                              >
-                                {notification.message ||
-                                  notification.content ||
-                                  "No content"}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {notification.createdAt
-                                  ? new Date(
-                                      notification.createdAt
-                                    ).toLocaleDateString()
-                                  : "Recent"}
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                      </ListItem>
-                      {index < unreadNotifications.length - 1 && <Divider />}
-                    </React.Fragment>
-                  ))}
-                </List>
-              ) : (
-                <Box textAlign="center" py={4}>
-                  <NotificationsIcon
-                    sx={{ fontSize: 48, color: "text.secondary", mb: 2 }}
-                  />
-                  <Typography variant="body1" color="text.secondary">
-                    No unread notifications
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    You're all caught up!
-                  </Typography>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      </Fade>
     </Container>
   );
 };
