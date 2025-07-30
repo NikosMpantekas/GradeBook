@@ -29,13 +29,8 @@ import {
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { API_URL } from '../config/appConfig';
-// Try to import ReactMarkdown with a fallback mechanism
-let ReactMarkdown = null;
-try {
-  ReactMarkdown = require('react-markdown');
-} catch (error) {
-  console.warn('react-markdown package not available in PatchNoteEditor, using fallback rendering');
-}
+// Import ReactMarkdown properly
+import ReactMarkdown from 'react-markdown';
 
 const PatchNoteEditor = forwardRef(({ user, onPatchNotesChanged }, ref) => {
   const [open, setOpen] = useState(false);
@@ -240,16 +235,9 @@ const PatchNoteEditor = forwardRef(({ user, onPatchNotesChanged }, ref) => {
                   <Typography variant="h5" gutterBottom>
                     {formData.title || 'Untitled Patch Note'} <Typography component="span" variant="caption" color="text.secondary">v{formData.version || '0.0.0'}</Typography>
                   </Typography>
-                  {ReactMarkdown ? (
-                    <ReactMarkdown>
-                      {formData.content || '*No content provided*'}
-                    </ReactMarkdown>
-                  ) : (
-                    /* Fallback rendering when ReactMarkdown isn't available */
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {formData.content || '*No content provided*'}
-                    </Typography>
-                  )}
+                  <ReactMarkdown>
+                    {formData.content || '*No content provided*'}
+                  </ReactMarkdown>
                 </Paper>
                 <Button
                   variant="outlined"

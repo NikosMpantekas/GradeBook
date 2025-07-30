@@ -60,7 +60,7 @@ const ContactMessages = () => {
   
   // For patch notes management (superadmin only)
   const [editingPatchNote, setEditingPatchNote] = useState(null);
-  const [patchNoteEditorRef, setPatchNoteEditorRef] = useState(null);
+  const patchNoteEditorRef = React.useRef(null);
   const [patchNoteForm, setPatchNoteForm] = useState({
     title: '',
     content: '',
@@ -167,9 +167,9 @@ const ContactMessages = () => {
   
   // Handle patch note edit
   const handleEditPatchNote = (patchNote) => {
-    if (user?.role === 'superadmin' && patchNoteEditorRef) {
-      console.log('Editing patch note:', patchNote);
-      patchNoteEditorRef.handleEdit(patchNote);
+    setEditingPatchNote(patchNote);
+    if (patchNoteEditorRef.current && patchNoteEditorRef.current.handleEdit) {
+      patchNoteEditorRef.current.handleEdit(patchNote);
     }
   };
   
@@ -282,7 +282,7 @@ const ContactMessages = () => {
               {/* Super admin can create/edit patch notes */}
               {user?.role === 'superadmin' && (
                 <PatchNoteEditor 
-                  ref={(ref) => setPatchNoteEditorRef(ref)}
+                  ref={patchNoteEditorRef}
                   user={user} 
                   onPatchNotesChanged={fetchPatchNotes} 
                 />
