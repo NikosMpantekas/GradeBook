@@ -153,10 +153,16 @@ const StudentDashboard = () => {
 
   const fetchRecentGrades = async () => {
     try {
-      // For student, get their grades using the correct endpoint
-      const response = await axios.get(`${API_URL}/api/grades`, getAuthConfig());
+      // For student, get their grades using the student-specific endpoint
+      const response = await axios.get(`${API_URL}/api/grades/student`, getAuthConfig());
+      
+      console.log('StudentDashboard: Grades response:', response.data);
+      
       const grades = response.data?.grades || response.data || [];
-      return Array.isArray(grades) ? grades.slice(0, 10) : [];
+      const recentGrades = Array.isArray(grades) ? grades.slice(0, 10) : [];
+      
+      console.log('StudentDashboard: Recent grades:', recentGrades);
+      return recentGrades;
     } catch (error) {
       console.error('StudentDashboard: Error fetching recent grades:', error);
       return [];
@@ -177,19 +183,28 @@ const StudentDashboard = () => {
         
         console.log('StudentDashboard: Today is:', dayOfWeek);
         
-        // Handle different response formats
+        // Handle different response formats - backend returns direct schedule object
         let scheduleData = response.data;
+        
+        // If response has a schedule property, use it
         if (scheduleData && scheduleData.schedule) {
           scheduleData = scheduleData.schedule;
         }
         
-        console.log('StudentDashboard: Schedule data:', scheduleData);
+        console.log('StudentDashboard: Schedule data structure:', Object.keys(scheduleData));
+        console.log('StudentDashboard: Full schedule data:', scheduleData);
         
-        // Get today's classes
-        const todayClasses = scheduleData[dayOfWeek] || [];
-        console.log('StudentDashboard: Today classes:', todayClasses);
+        // Get today's classes - handle both lowercase and capitalized day names
+        let todayClasses = scheduleData[dayOfWeek] || scheduleData[dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)] || [];
         
-        return todayClasses.slice(0, 10); // Limit to 10 classes
+        console.log('StudentDashboard: Today classes found:', todayClasses.length);
+        console.log('StudentDashboard: Today classes data:', todayClasses);
+        
+        // Return the classes for today
+        const upcomingClasses = Array.isArray(todayClasses) ? todayClasses.slice(0, 10) : [];
+        console.log('StudentDashboard: Returning upcoming classes:', upcomingClasses);
+        
+        return upcomingClasses;
       }
       
       return [];

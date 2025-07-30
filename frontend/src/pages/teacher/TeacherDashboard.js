@@ -158,19 +158,28 @@ const TeacherDashboard = () => {
         
         console.log('TeacherDashboard: Today is:', dayOfWeek);
         
-        // Handle different response formats
+        // Handle different response formats - backend returns direct schedule object
         let scheduleData = response.data;
+        
+        // If response has a schedule property, use it
         if (scheduleData && scheduleData.schedule) {
           scheduleData = scheduleData.schedule;
         }
         
-        console.log('TeacherDashboard: Schedule data:', scheduleData);
+        console.log('TeacherDashboard: Schedule data structure:', Object.keys(scheduleData));
+        console.log('TeacherDashboard: Full schedule data:', scheduleData);
         
-        // Get today's classes
-        const todayClasses = scheduleData[dayOfWeek] || [];
-        console.log('TeacherDashboard: Today classes:', todayClasses);
+        // Get today's classes - handle both lowercase and capitalized day names
+        let todayClasses = scheduleData[dayOfWeek] || scheduleData[dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)] || [];
         
-        return todayClasses.slice(0, 10); // Limit to 10 classes
+        console.log('TeacherDashboard: Today classes found:', todayClasses.length);
+        console.log('TeacherDashboard: Today classes data:', todayClasses);
+        
+        // Return the classes for today
+        const upcomingClasses = Array.isArray(todayClasses) ? todayClasses.slice(0, 10) : [];
+        console.log('TeacherDashboard: Returning upcoming classes:', upcomingClasses);
+        
+        return upcomingClasses;
       }
       
       return [];
