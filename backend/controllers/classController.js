@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Class = require('../models/classModel');
 const User = require('../models/userModel');
+const Subject = require('../models/subjectModel');
 const mongoose = require('mongoose');
 
 // @desc    Create a new class
@@ -99,6 +100,49 @@ const createClass = asyncHandler(async (req, res) => {
     console.log('Processed teachers:', processedTeachers);
   }
 
+  // Auto-create Subject document if it doesn't exist
+  console.log('Checking if Subject exists for:', classSubject);
+  
+  let subjectDoc = await Subject.findOne({
+    name: classSubject,
+    schoolId: req.user.schoolId
+  });
+  
+  if (!subjectDoc) {
+    console.log('Subject not found, creating new Subject document:', classSubject);
+    
+    try {
+      subjectDoc = await Subject.create({
+        name: classSubject,
+        description: `Auto-created subject for ${classSubject}`,
+        schoolId: req.user.schoolId,
+        teachers: processedTeachers, // Link teachers to the subject
+        directions: []
+      });
+      
+      console.log('Successfully created Subject document:', subjectDoc._id);
+    } catch (subjectError) {
+      console.error('Error creating Subject document:', subjectError.message);
+      // Continue with class creation even if subject creation fails
+    }
+  } else {
+    console.log('Subject already exists:', subjectDoc._id);
+    
+    // Update subject with new teachers if they're not already included
+    let subjectUpdated = false;
+    for (const teacherId of processedTeachers) {
+      if (!subjectDoc.teachers.includes(teacherId)) {
+        subjectDoc.teachers.push(teacherId);
+        subjectUpdated = true;
+      }
+    }
+    
+    if (subjectUpdated) {
+      await subjectDoc.save();
+      console.log('Updated Subject with new teachers');
+    }
+  }
+  
   console.log('Creating class with schoolId:', req.user.schoolId);
   console.log('Class creation data:', {
     name: className,
