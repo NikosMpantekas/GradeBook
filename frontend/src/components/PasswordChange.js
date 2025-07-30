@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { LockOutlined as LockOutlinedIcon } from '@mui/icons-material';
 import { logout } from '../features/auth/authSlice';
-import API_URL from '../config/appConfig';
+import { API_URL } from '../config/appConfig';
 
 const PasswordChange = () => {
   const [formData, setFormData] = useState({
