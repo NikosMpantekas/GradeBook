@@ -510,8 +510,7 @@ app.get("/api/stats/overview", protect, async (req, res) => {
   }
 });
 
-// Migration routes for superadmins
-app.use("/api/admin/migrations", require("./routes/migrationRoutes")); // Migration system for DB updates
+// Migration routes removed - migration system has been discontinued
 app.use("/api/superadmin", require("./routes/superAdminRoutes")); // Superadmin routes bypass schoolId filtering
 app.use("/api/ratings", require("./routes/ratingRoutes")); // Rating system for teachers and subjects
 
