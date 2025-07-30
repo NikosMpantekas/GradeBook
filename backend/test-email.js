@@ -4,7 +4,7 @@ require('dotenv').config();
 const testBrevoEmail = async () => {
   console.log('Testing Brevo SMTP configuration...');
   
-  const transporter = nodemailer.createTransporter({
+  const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
     port: process.env.SMTP_PORT || 587,
     secure: false,
@@ -16,7 +16,7 @@ const testBrevoEmail = async () => {
 
   const testEmail = {
     from: `"GradeBook System" <${process.env.SMTP_FROM_EMAIL || 'mail@gradebook.pro'}>`,
-    to: 'your-test-email@example.com', // Replace with your email
+    to: 'nikosmpantekas@gmail.com', // Your email for testing
     subject: '🧪 Brevo SMTP Test - GradeBook System',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

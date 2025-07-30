@@ -523,7 +523,16 @@ const CreateUser = (props) => {
         userData.school = null;
       }
       
-      console.log('Submitting user data:', userData);
+      // Add email credentials data if password was generated
+      if (passwordGenerated) {
+        userData.emailCredentials = emailCredentials;
+        userData.generatedPassword = generatedPassword;
+      }
+      
+      console.log('Submitting user data:', {
+        ...userData,
+        generatedPassword: userData.generatedPassword ? '[HIDDEN]' : undefined
+      });
       
       // Set the submission flag to true
       hasSubmitted.current = true;

@@ -11,7 +11,7 @@ const logger = require('../utils/logger');
 // Email service function for sending credentials via Brevo SMTP
 const sendCredentialsEmail = async ({ name, email, loginEmail, password, role }) => {
   // Create transporter for Brevo SMTP
-  const transporter = nodemailer.createTransporter({
+  const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
     port: process.env.SMTP_PORT || 587,
     secure: false, // false for port 587
@@ -662,6 +662,15 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       emailCredentials,
       generatedPassword
     } = req.body;
+    
+    // Debug email credentials
+    console.log('Email credentials debug:', {
+      emailCredentials,
+      generatedPassword: generatedPassword ? '[PRESENT]' : '[MISSING]',
+      personalEmail,
+      hasEmailCredentials: !!emailCredentials,
+      hasGeneratedPassword: !!generatedPassword
+    });
 
     // Validate required fields
     if (!name || !email || !password || !role) {
@@ -870,6 +879,7 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       
       // Handle email credentials if requested
       if (emailCredentials && generatedPassword) {
+        console.log('Attempting to send credentials email...');
         try {
           await sendCredentialsEmail({
             name: user.name,
@@ -878,11 +888,18 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
             password: generatedPassword,
             role: user.role
           });
+          console.log('✅ Credentials email sent successfully');
           responseMessage += ' and credentials sent via email';
         } catch (emailError) {
-          console.error('Failed to send credentials email:', emailError);
+          console.error('❌ Failed to send credentials email:', emailError.message);
+          console.error('Email error details:', emailError);
           responseMessage += ' but failed to send email credentials';
         }
+      } else {
+        console.log('Email credentials not requested or missing data:', {
+          emailCredentials,
+          hasGeneratedPassword: !!generatedPassword
+        });
       }
       
       res.status(201).json({
