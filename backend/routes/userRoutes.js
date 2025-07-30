@@ -12,7 +12,8 @@ const {
   getUsersByRole,
   updateUser,
   deleteUser,
-  getTeachers
+  getTeachers,
+  changePassword
 } = require('../controllers/userController');
 const { protect, admin, canManageUsers } = require('../middleware/authMiddleware');
 
@@ -25,6 +26,7 @@ router.post('/refresh-token', refreshToken);
 router.get('/me', protect, getMe);
 router.get('/profile', protect, getMe); // GET profile uses same logic as /me
 router.put('/profile', protect, updateProfile);
+router.post('/change-password', protect, changePassword);
 
 // Admin routes for user management
 router.get('/', protect, admin, getUsers);

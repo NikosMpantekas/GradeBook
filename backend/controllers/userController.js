@@ -1314,6 +1314,78 @@ const generateRefreshToken = (id, schoolId = null) => {
   });
 };
 
+// @desc    Change user password
+// @route   POST /api/users/change-password
+// @access  Private
+const changePassword = asyncHandler(async (req, res) => {
+  console.log(`changePassword endpoint called for user ${req.user.name} (${req.user._id})`);
+  
+  const { currentPassword, newPassword } = req.body;
+  
+  // Validate required fields
+  if (!currentPassword || !newPassword) {
+    res.status(400);
+    throw new Error('Current password and new password are required');
+  }
+  
+  // Validate new password length
+  if (newPassword.length < 6) {
+    res.status(400);
+    throw new Error('New password must be at least 6 characters long');
+  }
+  
+  try {
+    // Get the current user
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+    
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    
+    if (!isCurrentPasswordValid) {
+      console.log(`Invalid current password for user: ${user.email}`);
+      res.status(400);
+      throw new Error('Current password is incorrect');
+    }
+    
+    // Check if new password is different from current
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    
+    if (isSamePassword) {
+      res.status(400);
+      throw new Error('New password must be different from current password');
+    }
+    
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+    
+    // Update user password and clear first-login flags
+    user.password = hashedNewPassword;
+    user.requirePasswordChange = false;
+    user.isFirstLogin = false;
+    
+    await user.save();
+    
+    console.log(`Password changed successfully for user: ${user.email}`);
+    
+    res.json({
+      message: 'Password changed successfully',
+      requirePasswordChange: false,
+      isFirstLogin: false
+    });
+    
+  } catch (error) {
+    console.error(`Error changing password for user ${req.user._id}:`, error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Failed to change password');
+  }
+});
+
 // Export functions
 module.exports = {
   registerUser,
@@ -1328,6 +1400,7 @@ module.exports = {
   updateUser,
   deleteUser,
   getTeachers,
+  changePassword,
   generateToken,
   generateRefreshToken
 };

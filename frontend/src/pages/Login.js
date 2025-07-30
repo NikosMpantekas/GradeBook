@@ -55,6 +55,15 @@ const Login = () => {
     if (isSuccess || user) {
       console.log('=== LOGIN SUCCESSFUL - DETERMINING REDIRECT ===');
       console.log('User role:', user?.role);
+      console.log('Password change required:', user?.requirePasswordChange);
+      console.log('Is first login:', user?.isFirstLogin);
+      
+      // Check if password change is required
+      if (user?.requirePasswordChange || user?.isFirstLogin) {
+        console.log('PASSWORD CHANGE REQUIRED - Redirecting to password change page');
+        navigate('/change-password');
+        return;
+      }
       
       // Navigate directly to role-specific route instead of /app/dashboard
       // This prevents redirect loops through /app/dashboard
