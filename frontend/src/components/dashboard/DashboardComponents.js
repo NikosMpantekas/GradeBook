@@ -544,7 +544,7 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
                 <ListItemText
                   primary={
                     <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                      {classItem.subject?.name || classItem.subjectName || 'Unknown Subject'}
+                      {classItem.subject || classItem.className || 'Unknown Subject'}
                       {userRole === 'admin' && classItem.teacher && (
                         <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                           - {classItem.teacher.name}
