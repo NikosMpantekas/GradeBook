@@ -27,7 +27,7 @@ import {
   Close, 
   Delete, 
   School,
-  Premium as PremiumIcon,
+  WorkspacePremium as PremiumIcon,
   LightMode as LightIcon
 } from '@mui/icons-material';
 
