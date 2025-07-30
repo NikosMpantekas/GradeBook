@@ -72,7 +72,7 @@ const userSchema = mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['superadmin', 'admin', 'secretary', 'teacher', 'student'],
+      enum: ['superadmin', 'admin', 'secretary', 'teacher', 'student', 'parent'],
       default: 'student',
     },
     // Account status (can be disabled by superadmin)
@@ -225,6 +225,19 @@ const userSchema = mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    
+    // Parent-Student Many-to-Many Relationship
+    // For parent role users: array of linked student IDs
+    linkedStudentIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    }],
+    
+    // For student role users: array of parent IDs
+    parentIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    }],
   },
   {
     timestamps: true,
@@ -237,6 +250,12 @@ userSchema.index({ email: 1, schoolId: 1 }, { unique: true });
 
 // Index for faster queries by schoolId and role (common query pattern)
 userSchema.index({ schoolId: 1, role: 1 });
+
+// Index for parent-student many-to-many relationship queries
+userSchema.index({ linkedStudentIds: 1 });
+userSchema.index({ parentIds: 1 });
+userSchema.index({ role: 1, linkedStudentIds: 1 });
+userSchema.index({ role: 1, parentIds: 1 });
 
 // Method to compare entered password with hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {

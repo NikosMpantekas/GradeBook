@@ -9,7 +9,7 @@ const logger = require('../utils/logger');
 // Single database architecture - no need for multiDbConnect
 
 // Email service function for sending credentials via Brevo SMTP
-const sendCredentialsEmail = async ({ name, email, loginEmail, password, role }) => {
+const sendCredentialsEmail = async ({ name, email, loginEmail, password, role, studentName }) => {
   // Create transporter for Brevo SMTP
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
@@ -34,8 +34,8 @@ const sendCredentialsEmail = async ({ name, email, loginEmail, password, role })
         <p style="color: #555; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
         
         <p style="color: #555; line-height: 1.6;">
-          Your account has been created as a <strong>${role}</strong> in the GradeBook system. 
-          Below are your login credentials:
+          Your account has been created in the GradeBook system with the role of <strong>${role}</strong>.
+          ${role === 'parent' ? `This account is linked to your child <strong>${studentName}</strong>, allowing you to monitor their academic progress, grades, and school communications.` : 'You can now access the system using the credentials below.'}
         </p>
         
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1976d2;">
@@ -1386,6 +1386,431 @@ const changePassword = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Create parent account for existing student(s)
+// @route   POST /api/users/create-parent
+// @access  Private/Admin
+const createParentAccount = asyncHandler(async (req, res) => {
+  console.log('createParentAccount endpoint called');
+  
+  const {
+    studentIds, // Now accepts array of student IDs
+    parentName,
+    parentEmail,
+    parentPassword,
+    parentMobilePhone,
+    parentPersonalEmail,
+    emailCredentials
+  } = req.body;
+  
+  // Validate required fields
+  if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0 || !parentName || !parentEmail || !parentPassword) {
+    res.status(400);
+    throw new Error('Student IDs (array), parent name, email, and password are required');
+  }
+  
+  try {
+    // Verify all students exist and belong to admin's school
+    const students = await User.find({
+      _id: { $in: studentIds },
+      role: 'student',
+      schoolId: req.user.schoolId
+    });
+    
+    if (students.length !== studentIds.length) {
+      res.status(404);
+      throw new Error('One or more students not found or not in your school');
+    }
+    
+    // Check if parent email already exists in this school
+    const emailExists = await User.findOne({
+      email: parentEmail,
+      schoolId: req.user.schoolId
+    });
+    
+    if (emailExists) {
+      // If parent already exists, link to additional students
+      if (emailExists.role !== 'parent') {
+        res.status(400);
+        throw new Error('Email already exists for a non-parent account');
+      }
+      
+      // Add new students to existing parent's linkedStudentIds
+      const newStudentIds = studentIds.filter(id => !emailExists.linkedStudentIds.includes(id));
+      
+      if (newStudentIds.length === 0) {
+        res.status(400);
+        throw new Error('Parent is already linked to all specified students');
+      }
+      
+      emailExists.linkedStudentIds.push(...newStudentIds);
+      await emailExists.save();
+      
+      // Update students' parentIds arrays
+      await User.updateMany(
+        { _id: { $in: newStudentIds } },
+        { $addToSet: { parentIds: emailExists._id } }
+      );
+      
+      console.log(`Linked existing parent ${emailExists.name} to ${newStudentIds.length} additional students`);
+      
+      return res.status(200).json({
+        _id: emailExists._id,
+        name: emailExists.name,
+        email: emailExists.email,
+        role: emailExists.role,
+        linkedStudentIds: emailExists.linkedStudentIds,
+        linkedStudentNames: students.map(s => s.name),
+        mobilePhone: emailExists.mobilePhone,
+        personalEmail: emailExists.personalEmail,
+        message: 'Parent linked to additional students'
+      });
+    }
+    
+    // Hash password for new parent
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(parentPassword, salt);
+    
+    // Create new parent account
+    const parentData = {
+      name: parentName,
+      email: parentEmail,
+      password: hashedPassword,
+      role: 'parent',
+      schoolId: req.user.schoolId,
+      linkedStudentIds: studentIds,
+      mobilePhone: parentMobilePhone || '',
+      personalEmail: parentPersonalEmail || '',
+      active: true,
+      requirePasswordChange: true, // Force password change on first login
+      isFirstLogin: true
+    };
+    
+    const parent = await User.create(parentData);
+    
+    // Update all students' parentIds arrays
+    await User.updateMany(
+      { _id: { $in: studentIds } },
+      { $addToSet: { parentIds: parent._id } }
+    );
+    
+    console.log(`Parent account created: ${parent.name} (${parent.email}) linked to ${students.length} students`);
+    
+    // Send credentials email if requested
+    if (emailCredentials && parentEmail) {
+      try {
+        await sendCredentialsEmail({
+          name: parentName,
+          email: parentEmail,
+          loginEmail: parentEmail,
+          password: parentPassword,
+          role: 'parent',
+          studentName: students.map(s => s.name).join(', ')
+        });
+        console.log(`Credentials email sent to parent: ${parentEmail}`);
+      } catch (emailError) {
+        console.error('Failed to send parent credentials email:', emailError);
+        // Don't fail the entire operation if email fails
+      }
+    }
+    
+    // Return parent account info (without password)
+    res.status(201).json({
+      _id: parent._id,
+      name: parent.name,
+      email: parent.email,
+      role: parent.role,
+      linkedStudentIds: parent.linkedStudentIds,
+      linkedStudentNames: students.map(s => s.name),
+      mobilePhone: parent.mobilePhone,
+      personalEmail: parent.personalEmail,
+      createdAt: parent.createdAt
+    });
+    
+  } catch (error) {
+    console.error('Error creating parent account:', error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Failed to create parent account');
+  }
+});
+
+// @desc    Get all parent accounts for student
+// @route   GET /api/users/student/:studentId/parents
+// @access  Private/Admin
+const getParentsByStudent = asyncHandler(async (req, res) => {
+  console.log(`getParentsByStudent called for student ID: ${req.params.studentId}`);
+  
+  try {
+    // Verify student exists and belongs to admin's school
+    const student = await User.findOne({
+      _id: req.params.studentId,
+      role: 'student',
+      schoolId: req.user.schoolId
+    });
+    
+    if (!student) {
+      res.status(404);
+      throw new Error('Student not found or not in your school');
+    }
+    
+    // Find all parent accounts linked to this student
+    const parents = await User.find({
+      role: 'parent',
+      linkedStudentIds: req.params.studentId
+    }).select('-password');
+    
+    res.json({
+      hasParents: parents.length > 0,
+      parentCount: parents.length,
+      parents: parents.map(parent => ({
+        _id: parent._id,
+        name: parent.name,
+        email: parent.email,
+        role: parent.role,
+        linkedStudentIds: parent.linkedStudentIds,
+        mobilePhone: parent.mobilePhone,
+        personalEmail: parent.personalEmail,
+        active: parent.active,
+        createdAt: parent.createdAt
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Error getting parents by student:', error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Failed to get parent accounts');
+  }
+});
+
+// @desc    Get all students data for parent dashboard
+// @route   GET /api/users/parent/students-data
+// @access  Private/Parent
+const getStudentsDataForParent = asyncHandler(async (req, res) => {
+  console.log(`getStudentsDataForParent called for parent: ${req.user.email}`);
+  
+  try {
+    // Verify user is a parent
+    if (req.user.role !== 'parent') {
+      res.status(403);
+      throw new Error('Access denied. Parent role required.');
+    }
+    
+    // Get all parent's linked students
+    const students = await User.find({
+      _id: { $in: req.user.linkedStudentIds },
+      role: 'student'
+    }).select('-password');
+    
+    if (students.length === 0) {
+      res.status(404);
+      throw new Error('No linked students found');
+    }
+    
+    const Grade = require('../models/gradeModel');
+    const Notification = require('../models/notificationModel');
+    
+    // Get data for each student
+    const studentsData = await Promise.all(students.map(async (student) => {
+      // Get recent grades for this student
+      const recentGrades = await Grade.find({
+        studentId: student._id
+      })
+      .populate('subjectId', 'name')
+      .populate('teacherId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(5); // Limit per student to avoid too much data
+      
+      // Get recent notifications for this student
+      const recentNotifications = await Notification.find({
+        $or: [
+          { recipientIds: student._id },
+          { recipientRole: 'student' }
+        ]
+      })
+      .populate('senderId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(5); // Limit per student
+      
+      return {
+        student: {
+          _id: student._id,
+          name: student.name,
+          email: student.email,
+          mobilePhone: student.mobilePhone,
+          personalEmail: student.personalEmail,
+          active: student.active,
+          createdAt: student.createdAt
+        },
+        recentGrades: recentGrades.map(grade => ({
+          _id: grade._id,
+          value: grade.value,
+          subject: grade.subjectId?.name || 'Unknown Subject',
+          teacher: grade.teacherId?.name || 'Unknown Teacher',
+          description: grade.description,
+          createdAt: grade.createdAt
+        })),
+        recentNotifications: recentNotifications.map(notification => ({
+          _id: notification._id,
+          title: notification.title,
+          message: notification.message,
+          sender: notification.senderId?.name || 'System',
+          priority: notification.priority,
+          createdAt: notification.createdAt
+        }))
+      };
+    }));
+    
+    // Also get combined recent activity across all students
+    const allStudentIds = students.map(s => s._id);
+    
+    const allRecentGrades = await Grade.find({
+      studentId: { $in: allStudentIds }
+    })
+    .populate('studentId', 'name')
+    .populate('subjectId', 'name')
+    .populate('teacherId', 'name')
+    .sort({ createdAt: -1 })
+    .limit(10);
+    
+    const allRecentNotifications = await Notification.find({
+      $or: [
+        { recipientIds: { $in: allStudentIds } },
+        { recipientRole: 'student' }
+      ]
+    })
+    .populate('senderId', 'name')
+    .sort({ createdAt: -1 })
+    .limit(10);
+    
+    res.json({
+      studentsCount: students.length,
+      studentsData,
+      combinedRecentGrades: allRecentGrades.map(grade => ({
+        _id: grade._id,
+        value: grade.value,
+        studentName: grade.studentId?.name || 'Unknown Student',
+        subject: grade.subjectId?.name || 'Unknown Subject',
+        teacher: grade.teacherId?.name || 'Unknown Teacher',
+        description: grade.description,
+        createdAt: grade.createdAt
+      })),
+      combinedRecentNotifications: allRecentNotifications.map(notification => ({
+        _id: notification._id,
+        title: notification.title,
+        message: notification.message,
+        sender: notification.senderId?.name || 'System',
+        priority: notification.priority,
+        createdAt: notification.createdAt
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Error getting students data for parent:', error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Failed to get students data');
+  }
+});
+
+// @desc    Get all students linked to a parent
+// @route   GET /api/users/parent/:parentId/students
+// @access  Private/Admin
+const getStudentsByParent = asyncHandler(async (req, res) => {
+  console.log(`getStudentsByParent called for parent ID: ${req.params.parentId}`);
+  
+  try {
+    // Verify parent exists and belongs to admin's school
+    const parent = await User.findOne({
+      _id: req.params.parentId,
+      role: 'parent',
+      schoolId: req.user.schoolId
+    });
+    
+    if (!parent) {
+      res.status(404);
+      throw new Error('Parent not found or not in your school');
+    }
+    
+    // Get all students linked to this parent
+    const students = await User.find({
+      _id: { $in: parent.linkedStudentIds },
+      role: 'student'
+    }).select('-password');
+    
+    res.json({
+      parentId: parent._id,
+      parentName: parent.name,
+      studentsCount: students.length,
+      students: students.map(student => ({
+        _id: student._id,
+        name: student.name,
+        email: student.email,
+        mobilePhone: student.mobilePhone,
+        personalEmail: student.personalEmail,
+        active: student.active,
+        createdAt: student.createdAt
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Error getting students by parent:', error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Failed to get students');
+  }
+});
+
+// @desc    Unlink parent from student(s)
+// @route   DELETE /api/users/parent/:parentId/students
+// @access  Private/Admin
+const unlinkParentFromStudents = asyncHandler(async (req, res) => {
+  console.log(`unlinkParentFromStudents called for parent ID: ${req.params.parentId}`);
+  
+  const { studentIds } = req.body; // Array of student IDs to unlink
+  
+  if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+    res.status(400);
+    throw new Error('Student IDs array is required');
+  }
+  
+  try {
+    // Verify parent exists and belongs to admin's school
+    const parent = await User.findOne({
+      _id: req.params.parentId,
+      role: 'parent',
+      schoolId: req.user.schoolId
+    });
+    
+    if (!parent) {
+      res.status(404);
+      throw new Error('Parent not found or not in your school');
+    }
+    
+    // Remove students from parent's linkedStudentIds
+    parent.linkedStudentIds = parent.linkedStudentIds.filter(
+      id => !studentIds.includes(id.toString())
+    );
+    await parent.save();
+    
+    // Remove parent from students' parentIds arrays
+    await User.updateMany(
+      { _id: { $in: studentIds } },
+      { $pull: { parentIds: parent._id } }
+    );
+    
+    console.log(`Unlinked parent ${parent.name} from ${studentIds.length} students`);
+    
+    res.json({
+      message: 'Parent-student links removed successfully',
+      parentId: parent._id,
+      unlinkedStudentIds: studentIds,
+      remainingLinkedStudents: parent.linkedStudentIds.length
+    });
+    
+  } catch (error) {
+    console.error('Error unlinking parent from students:', error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Failed to unlink parent from students');
+  }
+});
+
 // Export functions
 module.exports = {
   registerUser,
@@ -1395,12 +1820,17 @@ module.exports = {
   updateProfile,
   getUsers,
   getUserById,
-  createUserByAdmin,
-  getUsersByRole,
+  createUser,
   updateUser,
   deleteUser,
+  getStudents,
   getTeachers,
   changePassword,
+  createParentAccount,
+  getParentsByStudent,
+  getStudentsDataForParent,
+  getStudentsByParent,
+  unlinkParentFromStudents,
   generateToken,
   generateRefreshToken
 };

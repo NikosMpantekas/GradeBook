@@ -21,6 +21,7 @@ import AdminRoute from './components/AdminRoute';
 import SuperAdminRoute from './components/SuperAdminRoute';
 import TeacherRoute from './components/TeacherRoute';
 import StudentProgressRoute from './components/StudentProgressRoute';
+import ParentRoute from './components/ParentRoute';
 
 // Public Pages
 import Home from './pages/Home';
@@ -52,6 +53,9 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import StudentGrades from './pages/student/StudentGrades';
 import GradeDetail from './pages/student/GradeDetail';
 import RatingSubmission from './pages/student/RatingSubmission';
+
+// Parent Pages
+import ParentDashboard from './pages/ParentDashboard';
 
 // Teacher Pages
 import TeacherGrades from './pages/teacher/TeacherGrades';

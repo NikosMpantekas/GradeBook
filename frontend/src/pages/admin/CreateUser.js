@@ -1061,6 +1061,154 @@ const CreateUser = (props) => {
               </Grid>
             )}
             
+            {/* Parent Account Creation Section */}
+            {formData.role === 'student' && (
+              <Grid item xs={12}>
+                <Paper elevation={1} sx={{ p: 2, mt: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
+                    👨‍👩‍👧‍👦 Parent Account Creation
+                  </Typography>
+                  
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData.createParentAccount || false}
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            createParentAccount: e.target.checked,
+                            // Reset parent fields if unchecked
+                            ...(!e.target.checked && {
+                              parentName: '',
+                              parentEmail: '',
+                              parentPassword: '',
+                              parentMobilePhone: '',
+                              parentPersonalEmail: '',
+                              emailParentCredentials: false
+                            })
+                          });
+                        }}
+                        color="primary"
+                      />
+                    }
+                    label="Create parent account for this student"
+                  />
+                  <FormHelperText sx={{ mb: 2 }}>Enable this to create a parent account that can monitor this student's academic progress</FormHelperText>
+                  
+                  {formData.createParentAccount && (
+                    <Box sx={{ mt: 2 }}>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Parent Name"
+                            name="parentName"
+                            value={formData.parentName || ''}
+                            onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
+                            required={formData.createParentAccount}
+                            error={formData.createParentAccount && !formData.parentName}
+                            helperText={formData.createParentAccount && !formData.parentName ? 'Parent name is required' : ''}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Parent Email"
+                            name="parentEmail"
+                            type="email"
+                            value={formData.parentEmail || ''}
+                            onChange={(e) => setFormData({ ...formData, parentEmail: e.target.value })}
+                            required={formData.createParentAccount}
+                            error={formData.createParentAccount && !formData.parentEmail}
+                            helperText={formData.createParentAccount && !formData.parentEmail ? 'Parent email is required' : ''}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12} md={6}>
+                          <Box display="flex" gap={1}>
+                            <TextField
+                              fullWidth
+                              label="Parent Password"
+                              name="parentPassword"
+                              type="password"
+                              value={formData.parentPassword || ''}
+                              onChange={(e) => setFormData({ ...formData, parentPassword: e.target.value })}
+                              required={formData.createParentAccount}
+                              error={formData.createParentAccount && !formData.parentPassword}
+                              helperText={formData.createParentAccount && !formData.parentPassword ? 'Parent password is required' : ''}
+                            />
+                            <Tooltip title="Generate random password">
+                              <IconButton
+                                onClick={() => {
+                                  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+                                  let password = '';
+                                  for (let i = 0; i < 8; i++) {
+                                    password += chars.charAt(Math.floor(Math.random() * chars.length));
+                                  }
+                                  setFormData({ ...formData, parentPassword: password });
+                                }}
+                                sx={{ mt: 1 }}
+                              >
+                                <RefreshIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </Grid>
+                        
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Parent Mobile Phone (Optional)"
+                            name="parentMobilePhone"
+                            value={formData.parentMobilePhone || ''}
+                            onChange={(e) => setFormData({ ...formData, parentMobilePhone: e.target.value })}
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12}>
+                          <TextField
+                            fullWidth
+                            label="Parent Personal Email (Optional)"
+                            name="parentPersonalEmail"
+                            type="email"
+                            value={formData.parentPersonalEmail || ''}
+                            onChange={(e) => setFormData({ ...formData, parentPersonalEmail: e.target.value })}
+                            helperText="Alternative email address for the parent"
+                          />
+                        </Grid>
+                        
+                        <Grid item xs={12}>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={formData.emailParentCredentials || false}
+                                onChange={(e) => setFormData({ ...formData, emailParentCredentials: e.target.checked })}
+                                color="primary"
+                              />
+                            }
+                            label="Email login credentials to parent"
+                          />
+                          <FormHelperText>Send the parent's login credentials via email</FormHelperText>
+                        </Grid>
+                        
+                        {formData.emailParentCredentials && (
+                          <Grid item xs={12}>
+                            <Alert severity="info" sx={{ mt: 1 }}>
+                              <Typography variant="body2">
+                                📧 Parent credentials will be sent to: <strong>{formData.parentPersonalEmail || formData.parentEmail}</strong><br/>
+                                The parent will be able to log in and view their child's academic progress.
+                              </Typography>
+                            </Alert>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Box>
+                  )}
+                </Paper>
+              </Grid>
+            )}
+            
             <Grid item xs={12}>
               <Box sx={{ mt: 2 }}>
                 <Button
