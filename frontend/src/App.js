@@ -406,9 +406,9 @@ function App() {
             </PrivateRoute>
           }>
             {/* Dashboard Routes */}
-            <Route path="/app/admin" element={<UnifiedDashboard />} />
+            <Route path="/app/admin" element={<AdminDashboard />} />
             <Route path="/app/teacher" element={<TeacherDashboard />} />
-            <Route path="/app/student" element={<UnifiedDashboard />} />
+            <Route path="/app/student" element={<StudentDashboard />} />
             
             <Route path="/app/profile" element={<Profile />} />
             {/* General notifications route */}
