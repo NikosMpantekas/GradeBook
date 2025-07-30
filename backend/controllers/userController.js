@@ -1215,6 +1215,77 @@ const getTeachers = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Delete user
+// @route   DELETE /api/users/:id
+// @access  Private/Admin
+const deleteUser = asyncHandler(async (req, res) => {
+  console.log(`deleteUser endpoint called for ID: ${req.params.id} by user ${req.user.name} (${req.user.role})`);
+  
+  try {
+    // Check if id is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      console.error(`Invalid user ID format: ${req.params.id}`);
+      res.status(400);
+      throw new Error('Invalid user ID format');
+    }
+    
+    // Prevent users from deleting themselves
+    if (req.params.id === req.user.id.toString()) {
+      console.error(`User ${req.user.name} attempted to delete themselves`);
+      res.status(400);
+      throw new Error('Cannot delete your own account');
+    }
+    
+    // Find the user with multi-tenancy filtering for regular admins
+    // Superadmins can delete any user
+    const query = { _id: req.params.id };
+    
+    // If not superadmin, restrict to users in the same school
+    if (req.user.role !== 'superadmin') {
+      query.schoolId = req.user.schoolId;
+    }
+    
+    console.log(`Searching for user to delete with query:`, query);
+    
+    // Find the user first to check if it exists
+    const userToDelete = await User.findOne(query);
+    
+    if (!userToDelete) {
+      console.error(`User not found with ID: ${req.params.id}`);
+      res.status(404);
+      throw new Error('User not found');
+    }
+    
+    // Prevent deletion of superadmin users by non-superadmins
+    if (userToDelete.role === 'superadmin' && req.user.role !== 'superadmin') {
+      console.error(`Non-superadmin ${req.user.name} attempted to delete superadmin user`);
+      res.status(403);
+      throw new Error('Cannot delete superadmin users');
+    }
+    
+    console.log(`Deleting user: ${userToDelete.name} (${userToDelete.email}) - Role: ${userToDelete.role}`);
+    
+    // Delete the user
+    await User.findByIdAndDelete(req.params.id);
+    
+    console.log(`Successfully deleted user: ${userToDelete.name}`);
+    
+    res.json({
+      message: `User ${userToDelete.name} deleted successfully`,
+      deletedUser: {
+        _id: userToDelete._id,
+        name: userToDelete.name,
+        email: userToDelete.email,
+        role: userToDelete.role
+      }
+    });
+  } catch (error) {
+    console.error(`Error in deleteUser:`, error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Failed to delete user');
+  }
+});
+
 // Generate JWT
 // Generate main access token (short-lived)
 const generateToken = (id, schoolId = null) => {
@@ -1255,6 +1326,7 @@ module.exports = {
   createUserByAdmin,
   getUsersByRole,
   updateUser,
+  deleteUser,
   getTeachers,
   generateToken,
   generateRefreshToken
