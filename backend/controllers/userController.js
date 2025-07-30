@@ -1820,7 +1820,6 @@ module.exports = {
   updateProfile,
   getUsers,
   getUserById,
-  createUser,
   updateUser,
   deleteUser,
   getStudents,

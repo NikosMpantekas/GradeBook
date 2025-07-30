@@ -8,7 +8,6 @@ const {
   updateProfile,
   getUsers,
   getUserById,
-  createUser,
   updateUser,
   getStudents,
   getTeachers,
