@@ -57,33 +57,37 @@ const createGrade = asyncHandler(async (req, res) => {
       throw new Error('Subject not found in this school');
     }
 
-    // Class-based validation: Check if teacher can add grades to this student
-    // Find classes where both teacher and student are present and the subject matches
-    console.log('Checking class-based authorization for teacher:', req.user._id, 'student:', student, 'subject:', subject);
-    
-    const classes = await Class.find({
-      schoolId: req.user.schoolId,
-      teachers: req.user._id,
-      students: student,
-      subject: subjectDoc.name // Use subject name to match class subject
-    });
-    
-    console.log(`Found ${classes.length} classes where teacher and student are both assigned with matching subject`);
-    
-    if (classes.length === 0) {
-      console.log('No shared classes found with matching criteria');
-      res.status(403);
-      throw new Error('You are not authorized to add grades for this student with this subject. The student must be in one of your classes with the matching subject.');
+    // Class-based validation: Admin users can bypass this check, teachers must be in same class
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      // Only apply class-based restrictions to teachers, not admins
+      console.log('Checking class-based authorization for teacher:', req.user._id, 'student:', student, 'subject:', subject);
+      
+      const classes = await Class.find({
+        schoolId: req.user.schoolId,
+        teachers: req.user._id,
+        students: student,
+        subject: subjectDoc.name // Use subject name to match class subject
+      });
+      
+      console.log(`Found ${classes.length} classes where teacher and student are both assigned with matching subject`);
+      
+      if (classes.length === 0) {
+        console.log('No shared classes found with matching criteria');
+        res.status(403);
+        throw new Error('You are not authorized to add grades for this student with this subject. The student must be in one of your classes with the matching subject.');
+      }
+      
+      // Log the found classes for debugging
+      console.log('Matching classes:', classes.map(c => ({
+        id: c._id,
+        name: c.name,
+        subject: c.subject,
+        direction: c.direction,
+        schoolBranch: c.schoolBranch
+      })));
+    } else {
+      console.log('Admin user detected - bypassing class-based authorization check for user:', req.user._id, 'role:', req.user.role);
     }
-    
-    // Log the found classes for debugging
-    console.log('Matching classes:', classes.map(c => ({
-      id: c._id,
-      name: c.name,
-      subject: c.subject,
-      direction: c.direction,
-      schoolBranch: c.schoolBranch
-    })));
     
     // Convert value to number and ensure it's within valid range (0-100)
     const numericValue = Number(value);

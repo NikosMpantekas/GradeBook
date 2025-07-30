@@ -17,9 +17,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Switch,
-  FormControlLabel,
-  FormGroup,
+
   Paper
 } from '@mui/material';
 import axios from 'axios';
@@ -28,15 +26,9 @@ import {
   Check, 
   Close, 
   Delete, 
-  Edit, 
-  Notifications, 
-  Grade, 
-  Group, 
-  School, 
-  MenuBook, 
-  Folder, 
-  Assessment, 
-  Event
+  School,
+  Premium as PremiumIcon,
+  LightMode as LightIcon
 } from '@mui/icons-material';
 
 function SchoolOwnerDetails() {
@@ -44,12 +36,6 @@ function SchoolOwnerDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  // Only initialize the two permissions we're managing
-  const [permissions, setPermissions] = useState({
-    canAccessReports: true,
-    canManageEvents: true
-  });
-  const [updatingPermissions, setUpdatingPermissions] = useState(false);
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -66,13 +52,6 @@ function SchoolOwnerDetails() {
         
         const response = await axios.get(`${API_URL}/api/superadmin/school-owners/${id}`, config);
         setSchoolOwner(response.data);
-        
-        // Initialize only the two permissions we want to display/manage
-        if (response.data.adminPermissions) {
-          // Extract only the two permissions we care about
-          const { canAccessReports = true, canManageEvents = true } = response.data.adminPermissions;
-          setPermissions({ canAccessReports, canManageEvents });
-        }
         
         setLoading(false);
       } catch (error) {
@@ -131,44 +110,7 @@ function SchoolOwnerDetails() {
     }
   };
 
-  const handlePermissionChange = async (permission) => {
-    try {
-      setUpdatingPermissions(true);
-      
-      // Update local state first for immediate feedback
-      const updatedPermissions = {
-        ...permissions,
-        [permission]: !permissions[permission]
-      };
-      setPermissions(updatedPermissions);
-      
-      // Send the update to the server
-      const config = {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-          'Content-Type': 'application/json'
-        }
-      };
-      
-      // Only send the changed permission to the API
-      await axios.put(
-        `${API_URL}/api/superadmin/school-owners/${id}/permissions`,
-        { 
-          permissions: { [permission]: updatedPermissions[permission] } 
-        },
-        config
-      );
-      
-      toast.success(`Permission updated successfully`);
-    } catch (error) {
-      // Revert the change if the server update fails
-      setPermissions(permissions);
-      toast.error('Failed to update permission: ' + 
-        (error.response?.data?.message || error.message));
-    } finally {
-      setUpdatingPermissions(false);
-    }
-  };
+
 
   if (loading) {
     return (
@@ -291,59 +233,55 @@ function SchoolOwnerDetails() {
           <Divider sx={{ my: 2 }} />
           
           <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-            Feature Permissions
+            Subscription Plan
           </Typography>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            Enable or disable features for this school owner
+            Current subscription plan for this school owner
           </Typography>
           
-          <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
-            <FormGroup>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    Enable or disable features for this school owner
-                  </Typography>
-                </Grid>
-                {/* Only showing Access Reports and Manage Events as per requirements */}
-                <Grid item xs={12} sm={6}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={permissions.canAccessReports}
-                        onChange={() => handlePermissionChange('canAccessReports')}
-                        disabled={updatingPermissions}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Assessment sx={{ mr: 1, color: permissions.canAccessReports ? 'primary.main' : 'text.disabled' }} />
-                        <Typography>Access Reports</Typography>
+          <Paper elevation={2} sx={{ p: 3, mt: 2 }}>
+            <Grid container spacing={3} alignItems="center">
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  {/* Display subscription pack - defaulting to 'pro' if not specified */}
+                  {(schoolOwner.subscriptionPlan || 'pro') === 'pro' ? (
+                    <>
+                      <PremiumIcon sx={{ mr: 2, fontSize: 40, color: 'primary.main' }} />
+                      <Box>
+                        <Typography variant="h6" color="primary.main">
+                          Pro Pack
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Full feature access with premium support
+                        </Typography>
                       </Box>
-                    }
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={permissions.canManageEvents}
-                        onChange={() => handlePermissionChange('canManageEvents')}
-                        disabled={updatingPermissions}
-                        color="primary"
-                      />
-                    }
-                    label={
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Event sx={{ mr: 1, color: permissions.canManageEvents ? 'primary.main' : 'text.disabled' }} />
-                        <Typography>Manage Events</Typography>
+                    </>
+                  ) : (
+                    <>
+                      <LightIcon sx={{ mr: 2, fontSize: 40, color: 'warning.main' }} />
+                      <Box>
+                        <Typography variant="h6" color="warning.main">
+                          Light Pack
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Basic features with limited access
+                        </Typography>
                       </Box>
-                    }
-                  />
-                </Grid>
+                    </>
+                  )}
+                </Box>
               </Grid>
-            </FormGroup>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Plan Status: <strong>Active</strong>
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Billing: <strong>Monthly</strong>
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
           </Paper>
         </CardContent>
       </Card>

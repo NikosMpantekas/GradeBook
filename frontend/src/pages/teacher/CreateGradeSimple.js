@@ -176,8 +176,12 @@ const CreateGradeSimple = () => {
         : `${API_URL}/api/students/teacher/filtered?${params}`;      // Teacher endpoint - assigned students only
       
       const response = await axios.get(endpoint, config);
-      setStudents(response.data);
-      console.log(`[CreateGrade] Loaded ${response.data.length} students for ${user.role} using ${endpoint}:`, response.data);
+      
+      // Filter to only include students (no teachers) for grade creation
+      const studentsOnly = response.data.filter(user => user.role === 'student');
+      setStudents(studentsOnly);
+      
+      console.log(`[CreateGrade] Loaded ${response.data.length} total users, filtered to ${studentsOnly.length} students for ${user.role}:`, studentsOnly);
     } catch (error) {
       console.error('[CreateGrade] Error loading students:', error);
       toast.error('Failed to load students');

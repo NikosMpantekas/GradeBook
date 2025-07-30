@@ -11,9 +11,7 @@ import {
   CardContent, 
   Button,
   Avatar,
-  Chip,
-  Tab,
-  Tabs
+  Chip
 } from '@mui/material';
 import { 
   School, 
@@ -24,13 +22,10 @@ import {
   ArrowForward as ArrowForwardIcon,
   Notifications as NotificationsIcon,
   Grade as GradeIcon,
-  Settings as SettingsIcon,
-  Storage as DatabaseIcon
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { getSchoolOwners, updateSchoolOwnerStatus, reset } from '../../features/superadmin/superAdminSlice';
 import LoadingState from '../../components/common/LoadingState';
-import MigrationManager from '../../components/superadmin/MigrationManager';
-import SchoolPermissionsMigration from '../../components/superadmin/SchoolPermissionsMigration';
 
 function SuperAdminDashboard() {
   const navigate = useNavigate();
@@ -46,12 +41,6 @@ function SuperAdminDashboard() {
     activeOwners: 0,
     inactiveOwners: 0
   });
-  
-  const [activeTab, setActiveTab] = useState(0);
-  
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
 
   useEffect(() => {
     if (isError) {
@@ -96,16 +85,8 @@ function SuperAdminDashboard() {
         Welcome to the Super Admin Control Panel
       </Typography>
       
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, mt: 2 }}>
-        <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tab icon={<School />} label="School Owners" />
-          <Tab icon={<DatabaseIcon />} label="System Maintenance" />
-        </Tabs>
-      </Box>
-
-      {activeTab === 0 && (
-        <>
-          <Grid container spacing={3} sx={{ mt: 2, mb: 4 }}>
+      {/* School Owner Statistics */}
+      <Grid container spacing={3} sx={{ mt: 2, mb: 4 }}>
             <Grid item xs={12} sm={4}>
               <Paper elevation={3} sx={{ p: 2, borderRadius: 2, height: '100%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -265,31 +246,6 @@ function SuperAdminDashboard() {
               )}
             </Box>
           </Paper>
-        </>
-      )}
-
-      {activeTab === 1 && (
-        <Box>
-          <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
-            <DatabaseIcon sx={{ mr: 1 }} /> System Maintenance
-          </Typography>
-          <Typography variant="body2" color="text.secondary" paragraph>
-            This section allows you to manage system-wide maintenance tasks such as database migrations and feature updates.
-          </Typography>
-
-          {/* School Feature Permissions Migration */}
-          <Paper elevation={3} sx={{ p: 3, mt: 2, mb: 4 }}>
-            <Typography variant="h6" component="h3" sx={{ mb: 1 }}>School Feature Permissions</Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Updates schools with feature permissions and synchronizes admin permissions. 
-              This migration moves feature toggles from the School collection to the new SchoolPermissions collection.
-            </Typography>
-            <SchoolPermissionsMigration />
-          </Paper>
-          
-          <MigrationManager />
-        </Box>
-      )}
     </Box>
   );
 }

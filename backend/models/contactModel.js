@@ -24,7 +24,7 @@ const contactSchema = mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['new', 'read', 'replied'],
+      enum: ['new', 'read', 'replied', 'closed'],
       default: 'new',
     },
     read: {
