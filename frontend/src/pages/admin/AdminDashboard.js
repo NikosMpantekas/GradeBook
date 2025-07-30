@@ -101,18 +101,6 @@ const AdminDashboard = () => {
         dataKeys.push('notifications');
       }
       
-      if (isFeatureEnabled('enableGrades')) {
-        setPanelLoading(prev => ({ ...prev, grades: true }));
-        promises.push(fetchRecentGrades());
-        dataKeys.push('grades');
-      }
-      
-      if (isFeatureEnabled('enableClasses') || isFeatureEnabled('enableSchedule')) {
-        setPanelLoading(prev => ({ ...prev, classes: true }));
-        promises.push(fetchUpcomingClasses());
-        dataKeys.push('classes');
-      }
-      
       // Execute all enabled data fetches
       const results = await Promise.allSettled(promises);
       
@@ -240,32 +228,11 @@ const AdminDashboard = () => {
               />
             </Grid>
             
-            {/* Recent Grades - Only if feature enabled */}
-            <Grid item xs={12} md={6}>
-              <RecentGradesPanel 
-                grades={dashboardData.grades}
-                loading={panelLoading.grades}
-                onViewAll={handleViewAllGrades}
-                userRole="admin"
-              />
-            </Grid>
-            
-            {/* Upcoming Classes - Only if feature enabled */}
-            <Grid item xs={12} md={6}>
-              <UpcomingClassesPanel 
-                classes={dashboardData.classes}
-                loading={panelLoading.classes}
-                onViewAll={handleViewAllClasses}
-                userRole="admin"
-              />
-            </Grid>
+
           </Grid>
           
           {/* Show message if no features are enabled */}
-          {!isFeatureEnabled('enableNotifications') && 
-           !isFeatureEnabled('enableGrades') && 
-           !isFeatureEnabled('enableClasses') && 
-           !isFeatureEnabled('enableSchedule') && (
+          {!isFeatureEnabled('enableNotifications') && (
             <Alert severity="info" sx={{ mt: 3 }}>
               Some dashboard features are currently disabled. Contact your system administrator to enable additional features.
             </Alert>

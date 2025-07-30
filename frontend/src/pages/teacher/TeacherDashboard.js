@@ -101,12 +101,6 @@ const TeacherDashboard = () => {
         dataKeys.push('notifications');
       }
       
-      if (isFeatureEnabled('enableGrades')) {
-        setPanelLoading(prev => ({ ...prev, grades: true }));
-        promises.push(fetchRecentGrades());
-        dataKeys.push('grades');
-      }
-      
       if (isFeatureEnabled('enableClasses') || isFeatureEnabled('enableSchedule')) {
         setPanelLoading(prev => ({ ...prev, classes: true }));
         promises.push(fetchUpcomingClasses());
@@ -150,33 +144,32 @@ const TeacherDashboard = () => {
     }
   };
 
-  const fetchRecentGrades = async () => {
-    try {
-      // For teacher, get recent grades from their classes/students
-      const response = await axios.get(`${API_URL}/api/grades/recent?limit=10`, getAuthConfig());
-      return response.data || [];
-    } catch (error) {
-      console.error('TeacherDashboard: Error fetching recent grades:', error);
-      return [];
-    }
-  };
-
   const fetchUpcomingClasses = async () => {
     try {
-      // For teacher, get their upcoming classes
+      // For teacher, get their schedule
       const response = await axios.get(`${API_URL}/api/schedule`, getAuthConfig());
+      
+      console.log('TeacherDashboard: Schedule response:', response.data);
       
       // Process schedule data to get upcoming classes
       if (response.data) {
         const today = new Date();
         const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
         
+        console.log('TeacherDashboard: Today is:', dayOfWeek);
+        
+        // Handle different response formats
         let scheduleData = response.data;
         if (scheduleData && scheduleData.schedule) {
           scheduleData = scheduleData.schedule;
         }
         
+        console.log('TeacherDashboard: Schedule data:', scheduleData);
+        
+        // Get today's classes
         const todayClasses = scheduleData[dayOfWeek] || [];
+        console.log('TeacherDashboard: Today classes:', todayClasses);
+        
         return todayClasses.slice(0, 10); // Limit to 10 classes
       }
       
@@ -190,10 +183,6 @@ const TeacherDashboard = () => {
   // Navigation handlers
   const handleViewAllNotifications = () => {
     navigate('/app/teacher/notifications');
-  };
-
-  const handleViewAllGrades = () => {
-    navigate('/app/teacher/grades/manage');
   };
 
   const handleViewAllClasses = () => {
@@ -255,18 +244,8 @@ const TeacherDashboard = () => {
               />
             </Grid>
             
-            {/* Recent Grades - Only if feature enabled */}
-            <Grid item xs={12} md={6}>
-              <RecentGradesPanel 
-                grades={dashboardData.grades}
-                loading={panelLoading.grades}
-                onViewAll={handleViewAllGrades}
-                userRole="teacher"
-              />
-            </Grid>
-            
             {/* Upcoming Classes - Only if feature enabled */}
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={8}>
               <UpcomingClassesPanel 
                 classes={dashboardData.classes}
                 loading={panelLoading.classes}
@@ -278,7 +257,6 @@ const TeacherDashboard = () => {
           
           {/* Show message if no features are enabled */}
           {!isFeatureEnabled('enableNotifications') && 
-           !isFeatureEnabled('enableGrades') && 
            !isFeatureEnabled('enableClasses') && 
            !isFeatureEnabled('enableSchedule') && (
             <Alert severity="info" sx={{ mt: 3 }}>

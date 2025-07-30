@@ -153,9 +153,10 @@ const StudentDashboard = () => {
 
   const fetchRecentGrades = async () => {
     try {
-      // For student, get their grades
-      const response = await axios.get(`${API_URL}/api/grades/student?limit=10`, getAuthConfig());
-      return response.data || [];
+      // For student, get their grades using the correct endpoint
+      const response = await axios.get(`${API_URL}/api/grades`, getAuthConfig());
+      const grades = response.data?.grades || response.data || [];
+      return Array.isArray(grades) ? grades.slice(0, 10) : [];
     } catch (error) {
       console.error('StudentDashboard: Error fetching recent grades:', error);
       return [];
@@ -164,20 +165,30 @@ const StudentDashboard = () => {
 
   const fetchUpcomingClasses = async () => {
     try {
-      // For student, get their upcoming classes
+      // For student, get their schedule
       const response = await axios.get(`${API_URL}/api/schedule`, getAuthConfig());
+      
+      console.log('StudentDashboard: Schedule response:', response.data);
       
       // Process schedule data to get upcoming classes
       if (response.data) {
         const today = new Date();
         const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
         
+        console.log('StudentDashboard: Today is:', dayOfWeek);
+        
+        // Handle different response formats
         let scheduleData = response.data;
         if (scheduleData && scheduleData.schedule) {
           scheduleData = scheduleData.schedule;
         }
         
+        console.log('StudentDashboard: Schedule data:', scheduleData);
+        
+        // Get today's classes
         const todayClasses = scheduleData[dayOfWeek] || [];
+        console.log('StudentDashboard: Today classes:', todayClasses);
+        
         return todayClasses.slice(0, 10); // Limit to 10 classes
       }
       
