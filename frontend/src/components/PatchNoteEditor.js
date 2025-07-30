@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { API_URL } from '../config/appConfig';
 // Try to import ReactMarkdown with a fallback mechanism
 let ReactMarkdown = null;
 try {
@@ -130,14 +131,14 @@ const PatchNoteEditor = ({ user, onPatchNotesChanged }) => {
       if (isEditing) {
         // Update existing patch note
         response = await axios.put(
-          `/api/patch-notes/${formData._id}`,
+          `${API_URL}/api/patch-notes/${formData._id}`,
           formData,
           config
         );
         toast.success('Patch note updated successfully');
       } else {
         // Create new patch note
-        response = await axios.post('/api/patch-notes', formData, config);
+        response = await axios.post(`${API_URL}/api/patch-notes`, formData, config);
         toast.success('Patch note created successfully');
       }
       
@@ -168,7 +169,7 @@ const PatchNoteEditor = ({ user, onPatchNotesChanged }) => {
         }
       };
       
-      await axios.delete(`/api/patch-notes/${formData._id}`, config);
+      await axios.delete(`${API_URL}/api/patch-notes/${formData._id}`, config);
       
       toast.success('Patch note deleted successfully');
       
@@ -329,18 +330,7 @@ const PatchNoteEditor = ({ user, onPatchNotesChanged }) => {
                     label="Active (visible to users)"
                   />
                 </Grid>
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <Button
-                      variant="outlined"
-                      onClick={togglePreviewMode}
-                      startIcon={<PreviewIcon />}
-                      sx={{ mr: 1 }}
-                    >
-                      Preview
-                    </Button>
-                  </Box>
-                </Grid>
+
               </Grid>
             )}
           </DialogContent>

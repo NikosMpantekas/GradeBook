@@ -375,6 +375,15 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         section: 'superadmin',
       },
       
+      // 5. Notifications (SuperAdmin)
+      {
+        text: 'Notifications',
+        icon: <NotificationsIcon />,
+        path: '/superadmin/notifications',
+        roles: ['superadmin'],
+        section: 'superadmin',
+      },
+      
       // 6. System Migration (SuperAdmin)
       {
         text: 'Database Migration',

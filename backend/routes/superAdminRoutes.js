@@ -7,7 +7,10 @@ const {
   updateSchoolOwnerStatus,
   deleteSchoolOwner,
   createFirstSuperAdmin,
-  updateSchoolOwnerPermissions
+  updateSchoolOwnerPermissions,
+  sendSuperAdminNotification,
+  getSchoolsForNotifications,
+  searchUsersForNotifications
 } = require('../controllers/superAdminController');
 const { protect, superadmin } = require('../middleware/authMiddleware');
 const asyncHandler = require('express-async-handler');
@@ -25,6 +28,11 @@ router.get('/school-owners/:id', getSchoolOwnerById);
 router.put('/school-owners/:id/status', updateSchoolOwnerStatus);
 router.put('/school-owners/:id/permissions', updateSchoolOwnerPermissions);
 router.delete('/school-owners/:id', deleteSchoolOwner);
+
+// Superadmin notification routes
+router.post('/notifications', sendSuperAdminNotification);
+router.get('/schools', getSchoolsForNotifications);
+router.get('/users/search', searchUsersForNotifications);
 
 // REMOVED: Legacy school function permission toggle routes
 // - PUT /schools/:id/features: updateSchoolFeaturePermissions endpoint

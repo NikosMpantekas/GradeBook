@@ -259,9 +259,13 @@ const CreateGradeSimple = () => {
       await axios.post(endpoint, gradeData, config);
       
       toast.success('Grade added successfully!');
-      // Fix redirect path to the correct URL format with /app prefix
-      console.log('[CreateGrade] Redirecting to grade management page after successful creation');
-      navigate('/app/teacher/grades/manage');
+      // Role-aware redirect - admin goes to admin routes, teachers to teacher routes
+      const redirectPath = user.role === 'admin' || user.role === 'superadmin' 
+        ? '/app/admin/grades/manage'
+        : '/app/teacher/grades/manage';
+      
+      console.log(`[CreateGrade] Redirecting ${user.role} to: ${redirectPath}`);
+      navigate(redirectPath);
       
     } catch (error) {
       console.error('[CreateGrade] Error creating grade:', error);
@@ -491,7 +495,12 @@ const CreateGradeSimple = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
                     <Button
                       variant="outlined"
-                      onClick={() => navigate('/teacher/grades')}
+                      onClick={() => {
+                        const cancelPath = user.role === 'admin' || user.role === 'superadmin' 
+                          ? '/app/admin/grades/manage'
+                          : '/app/teacher/grades/manage';
+                        navigate(cancelPath);
+                      }}
                       disabled={loading}
                     >
                       Cancel

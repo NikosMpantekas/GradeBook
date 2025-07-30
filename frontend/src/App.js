@@ -81,6 +81,7 @@ import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import CreateSchoolOwner from './pages/superadmin/CreateSchoolOwner';
 import SchoolOwnerDetails from './pages/superadmin/SchoolOwnerDetails';
 import ManageSchoolFeatures from './pages/superadmin/ManageSchoolFeatures';
+import SuperAdminNotifications from './pages/superadmin/SuperAdminNotifications';
 import SchoolPermissionsManager from './components/superadmin/SchoolPermissionsManager';
 
 // Push notification service
@@ -682,6 +683,11 @@ function App() {
             <Route path="/superadmin/patch-notes" element={
               <SuperAdminRoute>
                 <ContactMessages />
+              </SuperAdminRoute>
+            } />
+            <Route path="/superadmin/notifications" element={
+              <SuperAdminRoute>
+                <SuperAdminNotifications />
               </SuperAdminRoute>
             } />
             <Route path="/superadmin/school-features" element={

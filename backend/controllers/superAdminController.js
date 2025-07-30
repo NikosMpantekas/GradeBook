@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const User = require('../models/userModel');
 const School = require('../models/schoolModel');
+const Notification = require('../models/notificationModel');
 const jwt = require('jsonwebtoken');
 
 // @desc    Create a new school owner (admin)
@@ -377,6 +378,171 @@ const updateSchoolOwnerPermissions = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Send superadmin notifications with filters
+// @route   POST /api/superadmin/notifications
+// @access  Private/SuperAdmin
+const sendSuperAdminNotification = asyncHandler(async (req, res) => {
+  const { title, message, recipientType, schoolId, userId } = req.body;
+
+  if (!title || !message || !recipientType) {
+    res.status(400);
+    throw new Error('Please provide title, message, and recipient type');
+  }
+
+  console.log(`📢 SUPERADMIN NOTIFICATION: Sending notification titled "${title}" to ${recipientType}`);
+
+  try {
+    let recipients = [];
+    let notificationData = {
+      title,
+      message,
+      sender: req.user._id,
+      senderRole: 'superadmin',
+      createdAt: new Date(),
+      readBy: []
+    };
+
+    // Filter recipients based on type
+    switch (recipientType) {
+      case 'all_admins':
+        recipients = await User.find({ role: 'admin', active: true }).select('_id name email schoolId');
+        console.log(`📢 Found ${recipients.length} admin users to notify`);
+        break;
+
+      case 'all_users':
+        recipients = await User.find({ active: true }).select('_id name email role schoolId');
+        console.log(`📢 Found ${recipients.length} total users to notify`);
+        break;
+
+      case 'specific_school':
+        if (!schoolId) {
+          res.status(400);
+          throw new Error('Please provide schoolId for specific school notifications');
+        }
+        recipients = await User.find({ 
+          $or: [{ schoolId: schoolId }, { school: schoolId }],
+          active: true 
+        }).select('_id name email role schoolId');
+        console.log(`📢 Found ${recipients.length} users in school ${schoolId} to notify`);
+        break;
+
+      case 'specific_user':
+        if (!userId) {
+          res.status(400);
+          throw new Error('Please provide userId for specific user notifications');
+        }
+        const specificUser = await User.findById(userId).select('_id name email role schoolId');
+        if (!specificUser) {
+          res.status(404);
+          throw new Error('User not found');
+        }
+        recipients = [specificUser];
+        console.log(`📢 Sending notification to specific user: ${specificUser.name} (${specificUser.email})`);
+        break;
+
+      default:
+        res.status(400);
+        throw new Error('Invalid recipient type. Use: all_admins, all_users, specific_school, or specific_user');
+    }
+
+    if (recipients.length === 0) {
+      res.status(404);
+      throw new Error('No recipients found for the specified filter');
+    }
+
+    // Create notifications for each recipient
+    const notifications = [];
+    for (const recipient of recipients) {
+      const notification = await Notification.create({
+        ...notificationData,
+        recipient: recipient._id,
+        recipientRole: recipient.role || 'user'
+      });
+      notifications.push(notification);
+    }
+
+    console.log(`📢 SUPERADMIN NOTIFICATION: Successfully created ${notifications.length} notifications`);
+
+    res.status(201).json({
+      message: `Notification sent successfully to ${recipients.length} recipient(s)`,
+      recipientCount: recipients.length,
+      recipientType,
+      notificationId: notifications[0]?._id, // Return first notification ID for reference
+      recipients: recipients.map(r => ({ id: r._id, name: r.name, email: r.email, role: r.role }))
+    });
+
+  } catch (error) {
+    console.error('❌ SUPERADMIN NOTIFICATION ERROR:', error.message);
+    res.status(500);
+    throw new Error(`Failed to send notification: ${error.message}`);
+  }
+});
+
+// @desc    Get schools for superadmin notification filtering
+// @route   GET /api/superadmin/schools
+// @access  Private/SuperAdmin
+const getSchoolsForNotifications = asyncHandler(async (req, res) => {
+  try {
+    const schools = await School.find({ active: true })
+      .select('_id name emailDomain')
+      .sort({ name: 1 });
+
+    console.log(`📚 SUPERADMIN: Found ${schools.length} active schools for notifications`);
+
+    res.status(200).json(schools);
+  } catch (error) {
+    console.error('❌ SUPERADMIN SCHOOLS ERROR:', error.message);
+    res.status(500);
+    throw new Error(`Failed to fetch schools: ${error.message}`);
+  }
+});
+
+// @desc    Search users for superadmin notification targeting
+// @route   GET /api/superadmin/users/search
+// @access  Private/SuperAdmin
+const searchUsersForNotifications = asyncHandler(async (req, res) => {
+  try {
+    const { query, role, schoolId } = req.query;
+    
+    let searchFilter = { active: true };
+    
+    // Add text search if query provided
+    if (query) {
+      searchFilter.$or = [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ];
+    }
+    
+    // Filter by role if provided
+    if (role && role !== 'all') {
+      searchFilter.role = role;
+    }
+    
+    // Filter by school if provided
+    if (schoolId) {
+      searchFilter.$or = [
+        { schoolId: schoolId },
+        { school: schoolId }
+      ];
+    }
+    
+    const users = await User.find(searchFilter)
+      .select('_id name email role schoolId')
+      .populate('schoolId', 'name emailDomain')
+      .sort({ name: 1 })
+      .limit(50); // Limit results for performance
+
+    console.log(`🔍 SUPERADMIN USER SEARCH: Found ${users.length} users matching criteria`);
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('❌ SUPERADMIN USER SEARCH ERROR:', error.message);
+    res.status(500);
+    throw new Error(`Failed to search users: ${error.message}`);
+  }
+});
+
 // REMOVED: Legacy school feature permission functions
 // - updateSchoolFeaturePermissionsFromAdmin: Helper function that synced admin permissions with school.featurePermissions
 // - updateSchoolFeaturePermissions: API endpoint that managed school.featurePermissions
@@ -390,5 +556,8 @@ module.exports = {
   updateSchoolOwnerStatus,
   deleteSchoolOwner,
   createFirstSuperAdmin,
-  updateSchoolOwnerPermissions
+  updateSchoolOwnerPermissions,
+  sendSuperAdminNotification,
+  getSchoolsForNotifications,
+  searchUsersForNotifications
 };
