@@ -393,24 +393,29 @@ const sendSuperAdminNotification = asyncHandler(async (req, res) => {
 
   try {
     let recipients = [];
-    let notificationData = {
-      title,
-      message,
-      sender: req.user._id,
-      senderRole: 'superadmin',
-      createdAt: new Date(),
-      readBy: []
-    };
+    
+    // Get superadmin user details for notification metadata
+    const superAdminUser = await User.findById(req.user._id).select('name email');
+    if (!superAdminUser) {
+      res.status(404);
+      throw new Error('SuperAdmin user not found');
+    }
 
     // Filter recipients based on type
     switch (recipientType) {
       case 'all_admins':
-        recipients = await User.find({ role: 'admin', active: true }).select('_id name email schoolId');
+        recipients = await User.find({ role: 'admin', active: true })
+          .select('_id name email schoolId school')
+          .populate('schoolId', '_id name')
+          .populate('school', '_id name');
         console.log(`📢 Found ${recipients.length} admin users to notify`);
         break;
 
       case 'all_users':
-        recipients = await User.find({ active: true }).select('_id name email role schoolId');
+        recipients = await User.find({ active: true })
+          .select('_id name email role schoolId school')
+          .populate('schoolId', '_id name')
+          .populate('school', '_id name');
         console.log(`📢 Found ${recipients.length} total users to notify`);
         break;
 
@@ -422,7 +427,10 @@ const sendSuperAdminNotification = asyncHandler(async (req, res) => {
         recipients = await User.find({ 
           $or: [{ schoolId: schoolId }, { school: schoolId }],
           active: true 
-        }).select('_id name email role schoolId');
+        })
+          .select('_id name email role schoolId school')
+          .populate('schoolId', '_id name')
+          .populate('school', '_id name');
         console.log(`📢 Found ${recipients.length} users in school ${schoolId} to notify`);
         break;
 
@@ -431,7 +439,10 @@ const sendSuperAdminNotification = asyncHandler(async (req, res) => {
           res.status(400);
           throw new Error('Please provide userId for specific user notifications');
         }
-        const specificUser = await User.findById(userId).select('_id name email role schoolId');
+        const specificUser = await User.findById(userId)
+          .select('_id name email role schoolId school')
+          .populate('schoolId', '_id name')
+          .populate('school', '_id name');
         if (!specificUser) {
           res.status(404);
           throw new Error('User not found');
@@ -453,11 +464,36 @@ const sendSuperAdminNotification = asyncHandler(async (req, res) => {
     // Create notifications for each recipient
     const notifications = [];
     for (const recipient of recipients) {
-      const notification = await Notification.create({
-        ...notificationData,
-        recipient: recipient._id,
-        recipientRole: recipient.role || 'user'
-      });
+      // Determine the schoolId for this notification
+      const recipientSchoolId = recipient.schoolId?._id || recipient.school?._id;
+      
+      if (!recipientSchoolId) {
+        console.warn(`⚠️ Warning: Recipient ${recipient.name} has no associated school, skipping notification`);
+        continue;
+      }
+      
+      // Create notification data with all required fields
+      const notificationData = {
+        title,
+        message,
+        sender: req.user._id,
+        senderName: superAdminUser.name,
+        senderRole: 'admin', // Use 'admin' instead of 'superadmin' as it's not in enum
+        schoolId: recipientSchoolId, // Required field
+        recipients: [recipient._id], // Array of recipients
+        targetRole: 'all', // Default target role
+        sendToAll: false,
+        status: 'sent',
+        deliveryStats: {
+          totalRecipients: 1,
+          delivered: 1,
+          read: 0
+        }
+      };
+      
+      console.log(`📢 Creating notification for ${recipient.name} in school ${recipientSchoolId}`);
+      
+      const notification = await Notification.create(notificationData);
       notifications.push(notification);
     }
 
@@ -483,11 +519,23 @@ const sendSuperAdminNotification = asyncHandler(async (req, res) => {
 // @access  Private/SuperAdmin
 const getSchoolsForNotifications = asyncHandler(async (req, res) => {
   try {
-    const schools = await School.find({ active: true })
-      .select('_id name emailDomain')
+    // Only fetch main schools (not branches) - parentCluster should be null
+    const schools = await School.find({ 
+      active: true,
+      $or: [
+        { parentCluster: null },
+        { parentCluster: { $exists: false } }
+      ]
+    })
+      .select('_id name emailDomain isClusterSchool')
       .sort({ name: 1 });
 
-    console.log(`📚 SUPERADMIN: Found ${schools.length} active schools for notifications`);
+    console.log(`📚 SUPERADMIN: Found ${schools.length} main schools (excluding branches) for notifications`);
+    
+    // Log which schools are being returned for debugging
+    schools.forEach(school => {
+      console.log(`  - ${school.name} (${school.emailDomain}) - isCluster: ${school.isClusterSchool || false}`);
+    });
 
     res.status(200).json(schools);
   } catch (error) {
@@ -504,40 +552,70 @@ const searchUsersForNotifications = asyncHandler(async (req, res) => {
   try {
     const { query, role, schoolId } = req.query;
     
+    console.log(`🔍 SUPERADMIN USER SEARCH: Starting search with params:`, { query, role, schoolId });
+    
     let searchFilter = { active: true };
+    let andConditions = [];
     
     // Add text search if query provided
-    if (query) {
-      searchFilter.$or = [
-        { name: { $regex: query, $options: 'i' } },
-        { email: { $regex: query, $options: 'i' } }
-      ];
+    if (query && query.trim()) {
+      andConditions.push({
+        $or: [
+          { name: { $regex: query.trim(), $options: 'i' } },
+          { email: { $regex: query.trim(), $options: 'i' } }
+        ]
+      });
+      console.log(`  - Added text search for: "${query.trim()}"`);
     }
     
     // Filter by role if provided
     if (role && role !== 'all') {
       searchFilter.role = role;
+      console.log(`  - Added role filter: ${role}`);
     }
     
-    // Filter by school if provided
-    if (schoolId) {
-      searchFilter.$or = [
-        { schoolId: schoolId },
-        { school: schoolId }
-      ];
+    // Filter by school if provided (fixed - no longer overwrites $or)
+    if (schoolId && schoolId.trim()) {
+      andConditions.push({
+        $or: [
+          { schoolId: schoolId },
+          { school: schoolId }
+        ]
+      });
+      console.log(`  - Added school filter: ${schoolId}`);
     }
+    
+    // Combine all conditions properly
+    if (andConditions.length > 0) {
+      searchFilter.$and = andConditions;
+    }
+    
+    console.log(`  - Final search filter:`, JSON.stringify(searchFilter, null, 2));
     
     const users = await User.find(searchFilter)
-      .select('_id name email role schoolId')
+      .select('_id name email role schoolId school')
       .populate('schoolId', 'name emailDomain')
+      .populate('school', 'name emailDomain') // Also populate legacy school field
       .sort({ name: 1 })
       .limit(50); // Limit results for performance
 
     console.log(`🔍 SUPERADMIN USER SEARCH: Found ${users.length} users matching criteria`);
+    
+    // Log sample results for debugging
+    if (users.length > 0) {
+      console.log(`  - Sample results:`);
+      users.slice(0, 3).forEach(user => {
+        const schoolName = user.schoolId?.name || user.school?.name || 'No school';
+        console.log(`    * ${user.name} (${user.email}) - ${user.role} - ${schoolName}`);
+      });
+    } else {
+      console.log(`  - No users found with current filters`);
+    }
 
     res.status(200).json(users);
   } catch (error) {
     console.error('❌ SUPERADMIN USER SEARCH ERROR:', error.message);
+    console.error('❌ Full error:', error);
     res.status(500);
     throw new Error(`Failed to search users: ${error.message}`);
   }
