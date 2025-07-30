@@ -1822,8 +1822,6 @@ module.exports = {
   getUserById,
   updateUser,
   deleteUser,
-  getStudents,
-  getTeachers,
   changePassword,
   createParentAccount,
   getParentsByStudent,

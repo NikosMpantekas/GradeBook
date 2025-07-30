@@ -9,8 +9,6 @@ const {
   getUsers,
   getUserById,
   updateUser,
-  getStudents,
-  getTeachers,
   deleteUser,
   changePassword,
   createParentAccount,
@@ -34,16 +32,16 @@ router.post('/change-password', protect, changePassword);
 
 // Admin routes for user management
 router.get('/', protect, admin, getUsers);
-router.post('/admin/create', protect, admin, createUserByAdmin);
+// router.post('/admin/create', protect, admin, createUserByAdmin); // DISABLED - function not implemented
 router.get('/:id', protect, getUserById);
 router.put('/:id', protect, canManageUsers, updateUser);
 router.delete('/:id', protect, admin, deleteUser);
 
 // Routes to get users filtered by role - accessible to authenticated users
-router.get('/role/:role', protect, getUsersByRole);
+// router.get('/role/:role', protect, getUsersByRole); // DISABLED - function not implemented
 
 // Route to get all teachers - accessible to authenticated users  
-router.get('/teachers', protect, getTeachers);
+// router.get('/teachers', protect, getTeachers); // DISABLED - function not implemented
 
 // Parent account management routes
 router.post('/create-parent', protect, admin, createParentAccount);
