@@ -32,6 +32,9 @@ import {
   ArrowBack as ArrowBackIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
+  Refresh as RefreshIcon,
+  Email as EmailIcon,
+  ContentCopy as CopyIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { createUser, reset } from '../../features/users/userSlice';
@@ -195,6 +198,13 @@ const CreateUser = (props) => {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  
+  // Password generation and email credentials state
+  const [passwordGenerated, setPasswordGenerated] = useState(false);
+  const [showCredentials, setShowCredentials] = useState(false);
+  const [emailCredentials, setEmailCredentials] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '', // This is now the User ID / login email
@@ -312,6 +322,52 @@ const CreateUser = (props) => {
   
   const handleMouseDownPassword = (e) => {
     e.preventDefault();
+  };
+
+  // Password generation functions
+  const generateEasyPassword = () => {
+    // Generate an easy-to-remember password with format: Word1234!
+    const words = [
+      'Apple', 'Beach', 'Cloud', 'Dance', 'Eagle', 'Flame', 'Grace', 'Happy',
+      'Island', 'Jungle', 'Knight', 'Light', 'Magic', 'Night', 'Ocean', 'Peace',
+      'Quick', 'River', 'Smile', 'Trust', 'Unity', 'Voice', 'Water', 'Youth'
+    ];
+    
+    const word = words[Math.floor(Math.random() * words.length)];
+    const numbers = Math.floor(1000 + Math.random() * 9000); // 4-digit number
+    const symbols = ['!', '@', '#', '$', '%'];
+    const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+    
+    return `${word}${numbers}${symbol}`;
+  };
+
+  const handleGeneratePassword = () => {
+    const newPassword = generateEasyPassword();
+    setGeneratedPassword(newPassword);
+    setFormData({
+      ...formData,
+      password: newPassword,
+      confirmPassword: newPassword
+    });
+    setPasswordGenerated(true);
+    toast.success('Password generated successfully!');
+  };
+
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPassword);
+      toast.success('Password copied to clipboard!');
+    } catch (error) {
+      toast.error('Failed to copy password');
+    }
+  };
+
+  const handleToggleShowCredentials = () => {
+    setShowCredentials(!showCredentials);
+  };
+
+  const handleToggleEmailCredentials = () => {
+    setEmailCredentials(!emailCredentials);
   };
   
   // Fetch schools when component mounts
@@ -762,6 +818,90 @@ const CreateUser = (props) => {
                   )
                 }}
               />
+            </Grid>
+            
+            {/* Password Generation Controls */}
+            <Grid item xs={12}>
+              <Paper elevation={1} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
+                  Password Generation
+                </Typography>
+                
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<RefreshIcon />}
+                      onClick={handleGeneratePassword}
+                      sx={{ minWidth: 'auto' }}
+                    >
+                      Generate Easy Password
+                    </Button>
+                    
+                    {passwordGenerated && (
+                      <Button
+                        variant="outlined"
+                        startIcon={<CopyIcon />}
+                        onClick={handleCopyPassword}
+                        size="small"
+                      >
+                        Copy Password
+                      </Button>
+                    )}
+                  </Box>
+                  
+                  {passwordGenerated && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Generated Password Options:
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={showCredentials}
+                              onChange={handleToggleShowCredentials}
+                              color="primary"
+                            />
+                          }
+                          label="Show Credentials to Admin"
+                        />
+                        
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={emailCredentials}
+                              onChange={handleToggleEmailCredentials}
+                              color="primary"
+                            />
+                          }
+                          label="Email Credentials to User"
+                        />
+                      </Box>
+                      
+                      {showCredentials && (
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                          <Typography variant="body2">
+                            <strong>Login Credentials:</strong><br/>
+                            Email: {formData.email}<br/>
+                            Password: {generatedPassword}
+                          </Typography>
+                        </Alert>
+                      )}
+                      
+                      {emailCredentials && (
+                        <Alert severity="warning" sx={{ mt: 2 }}>
+                          <Typography variant="body2">
+                            📧 Credentials will be sent to: <strong>{formData.personalEmail || formData.email}</strong><br/>
+                            Make sure the email address is correct before creating the user.
+                          </Typography>
+                        </Alert>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              </Paper>
             </Grid>
             
             <Grid item xs={12}>

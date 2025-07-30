@@ -211,6 +211,20 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: true, // Default to true for backward compatibility
     },
+    
+    // First-login password change fields
+    requirePasswordChange: {
+      type: Boolean,
+      default: false,
+    },
+    isFirstLogin: {
+      type: Boolean,
+      default: false,
+    },
+    lastPasswordChange: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,

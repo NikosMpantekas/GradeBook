@@ -2,10 +2,83 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
+const nodemailer = require('nodemailer');
 const User = require('../models/userModel');
 const Class = require('../models/classModel');
 const logger = require('../utils/logger');
 // Single database architecture - no need for multiDbConnect
+
+// Email service function for sending credentials via Brevo SMTP
+const sendCredentialsEmail = async ({ name, email, loginEmail, password, role }) => {
+  // Create transporter for Brevo SMTP
+  const transporter = nodemailer.createTransporter({
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    port: process.env.SMTP_PORT || 587,
+    secure: false, // false for port 587
+    auth: {
+      user: process.env.SMTP_USER, // Your Brevo account email
+      pass: process.env.SMTP_PASS  // Your Brevo SMTP key
+    }
+  });
+
+  const emailTemplate = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+      <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #1976d2; margin: 0;">📚 GradeBook</h1>
+          <p style="color: #666; margin: 5px 0 0 0;">Your Educational Management System</p>
+        </div>
+        
+        <h2 style="color: #333; margin-bottom: 20px;">Welcome to GradeBook!</h2>
+        
+        <p style="color: #555; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
+        
+        <p style="color: #555; line-height: 1.6;">
+          Your account has been created as a <strong>${role}</strong> in the GradeBook system. 
+          Below are your login credentials:
+        </p>
+        
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1976d2;">
+          <h3 style="color: #1976d2; margin-top: 0;">🔐 Login Credentials</h3>
+          <p style="margin: 10px 0;"><strong>Email:</strong> ${loginEmail}</p>
+          <p style="margin: 10px 0;"><strong>Password:</strong> <code style="background: #e3f2fd; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${password}</code></p>
+        </div>
+        
+        <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+          <h4 style="color: #856404; margin-top: 0;">⚠️ Important Security Notice</h4>
+          <p style="color: #856404; margin: 0; line-height: 1.5;">
+            For your security, you will be required to change this password when you first log in. 
+            Please choose a strong, unique password that only you know.
+          </p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" 
+             style="background-color: #1976d2; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+            🚀 Login to GradeBook
+          </a>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        
+        <p style="color: #888; font-size: 12px; text-align: center; margin: 0;">
+          This email was sent from GradeBook System. If you did not expect this email, please contact your administrator.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const mailOptions = {
+    from: `"${process.env.SMTP_FROM_NAME || 'GradeBook System'}" <${process.env.SMTP_FROM_EMAIL || 'mail@gradebook.pro'}>`,
+    to: email,
+    subject: `🎓 Welcome to GradeBook - Your Login Credentials`,
+    html: emailTemplate,
+    replyTo: process.env.SMTP_FROM_EMAIL || 'mail@gradebook.pro'
+  };
+
+  await transporter.sendMail(mailOptions);
+  console.log(`Credentials email sent to ${email} for user ${name}`);
+};
 
 // @desc    Register new user
 // @route   POST /api/users
@@ -342,6 +415,9 @@ const loginUser = asyncHandler(async (req, res) => {
       adminPermissions: user.adminPermissions,
       // Include school feature permissions
       schoolFeatures,
+      // First-login password change fields
+      requirePasswordChange: user.requirePasswordChange,
+      isFirstLogin: user.isFirstLogin,
       token,
     });
     
@@ -582,7 +658,9 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       direction, 
       subjects,
       mobilePhone,
-      personalEmail
+      personalEmail,
+      emailCredentials,
+      generatedPassword
     } = req.body;
 
     // Validate required fields
@@ -647,7 +725,9 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       role,
       mobilePhone: mobilePhone || '',
       personalEmail: personalEmail || '',
-      active: true
+      active: true,
+      requirePasswordChange: true, // Force password change on first login
+      isFirstLogin: true
     };
 
     // Set school differently based on role
@@ -786,13 +866,34 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
     const user = await User.create(userData);
 
     if (user) {
+      let responseMessage = 'User created successfully';
+      
+      // Handle email credentials if requested
+      if (emailCredentials && generatedPassword) {
+        try {
+          await sendCredentialsEmail({
+            name: user.name,
+            email: personalEmail || user.email,
+            loginEmail: user.email,
+            password: generatedPassword,
+            role: user.role
+          });
+          responseMessage += ' and credentials sent via email';
+        } catch (emailError) {
+          console.error('Failed to send credentials email:', emailError);
+          responseMessage += ' but failed to send email credentials';
+        }
+      }
+      
       res.status(201).json({
         _id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
         schoolId: user.schoolId,
-        message: 'User created successfully'
+        requirePasswordChange: user.requirePasswordChange,
+        isFirstLogin: user.isFirstLogin,
+        message: responseMessage
       });
     } else {
       res.status(400);
