@@ -8,7 +8,9 @@ import {
   AccordionDetails,
   Chip,
   Grid,
-  Divider
+  Divider,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import { 
   ExpandMore as ExpandMoreIcon,
@@ -16,14 +18,16 @@ import {
   BugReport as BugReportIcon,
   CodeRounded as CodeIcon,
   AutoFixHigh as FixIcon,
-  PriorityHigh as CriticalIcon
+  PriorityHigh as CriticalIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 
 // Import ReactMarkdown safely
 import ReactMarkdown from 'react-markdown';
 
-const PatchNotesList = ({ patchNotes }) => {
+const PatchNotesList = ({ patchNotes, user, onEdit, onDelete }) => {
   if (!patchNotes || patchNotes.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -114,6 +118,51 @@ const PatchNotesList = ({ patchNotes }) => {
                   variant="outlined"
                 />
               </Grid>
+              
+              {/* Edit/Delete buttons for superadmin */}
+              {user?.role === 'superadmin' && (
+                <Grid item>
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Tooltip title="Edit patch note">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onEdit) onEdit(note);
+                        }}
+                        sx={{ 
+                          '&:hover': { 
+                            backgroundColor: 'primary.light',
+                            color: 'primary.contrastText'
+                          }
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    
+                    <Tooltip title="Delete patch note">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onDelete) onDelete(note);
+                        }}
+                        sx={{ 
+                          '&:hover': { 
+                            backgroundColor: 'error.light',
+                            color: 'error.contrastText'
+                          }
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Grid>
+              )}
             </Grid>
           </AccordionSummary>
           <AccordionDetails>

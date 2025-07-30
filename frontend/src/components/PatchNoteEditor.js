@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { 
   Box, 
   Typography, 
@@ -37,7 +37,7 @@ try {
   console.warn('react-markdown package not available in PatchNoteEditor, using fallback rendering');
 }
 
-const PatchNoteEditor = ({ user, onPatchNotesChanged }) => {
+const PatchNoteEditor = forwardRef(({ user, onPatchNotesChanged }, ref) => {
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
@@ -95,6 +95,11 @@ const PatchNoteEditor = ({ user, onPatchNotesChanged }) => {
     setIsEditing(true);
     setOpen(true);
   };
+  
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    handleEdit
+  }));
   
   const togglePreviewMode = () => {
     setPreviewMode(!previewMode);
@@ -393,6 +398,6 @@ const PatchNoteEditor = ({ user, onPatchNotesChanged }) => {
       </Dialog>
     </>
   );
-};
+});
 
 export default PatchNoteEditor;

@@ -60,6 +60,7 @@ const ContactMessages = () => {
   
   // For patch notes management (superadmin only)
   const [editingPatchNote, setEditingPatchNote] = useState(null);
+  const [patchNoteEditorRef, setPatchNoteEditorRef] = useState(null);
   const [patchNoteForm, setPatchNoteForm] = useState({
     title: '',
     content: '',
@@ -163,6 +164,39 @@ const ContactMessages = () => {
       setLoading(false);
     }
   };
+  
+  // Handle patch note edit
+  const handleEditPatchNote = (patchNote) => {
+    if (user?.role === 'superadmin' && patchNoteEditorRef) {
+      console.log('Editing patch note:', patchNote);
+      patchNoteEditorRef.handleEdit(patchNote);
+    }
+  };
+  
+  // Handle patch note delete
+  const handleDeletePatchNote = async (patchNote) => {
+    if (user?.role !== 'superadmin') {
+      toast.error('Only superadmins can delete patch notes');
+      return;
+    }
+    
+    if (window.confirm(`Are you sure you want to delete the patch note "${patchNote.title}"? This action cannot be undone.`)) {
+      try {
+        const config = {
+          headers: {
+            Authorization: `Bearer ${user.token}`
+          }
+        };
+        
+        await axios.delete(`${API_URL}/api/patch-notes/${patchNote._id}`, config);
+        toast.success('Patch note deleted successfully');
+        fetchPatchNotes(); // Refresh the list
+      } catch (error) {
+        console.error('Error deleting patch note:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete patch note');
+      }
+    }
+  };
 
   return (
     <Container component="main" maxWidth="md">
@@ -248,11 +282,17 @@ const ContactMessages = () => {
               {/* Super admin can create/edit patch notes */}
               {user?.role === 'superadmin' && (
                 <PatchNoteEditor 
+                  ref={(ref) => setPatchNoteEditorRef(ref)}
                   user={user} 
                   onPatchNotesChanged={fetchPatchNotes} 
                 />
               )}
-              <PatchNotesList patchNotes={patchNotes} />
+              <PatchNotesList 
+                patchNotes={patchNotes} 
+                user={user}
+                onEdit={handleEditPatchNote}
+                onDelete={handleDeletePatchNote}
+              />
             </>
           )}
         </TabPanel>
