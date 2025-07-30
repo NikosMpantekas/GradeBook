@@ -81,15 +81,19 @@ const NotificationForm = ({
               display: 'flex', 
               alignItems: 'center',
               p: 2,
-              bgcolor: formData.isImportant ? 'error.light' : 'grey.50',
+              bgcolor: formData.isImportant ? 'error.light' : 'background.default',
               borderRadius: 1,
-              border: formData.isImportant ? '1px solid' : 'none',
-              borderColor: 'error.main'
+              border: formData.isImportant ? '2px solid' : '1px solid',
+              borderColor: formData.isImportant ? 'error.main' : 'divider',
+              transition: 'all 0.3s ease',
+              boxShadow: formData.isImportant ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none'
             }}>
               <PriorityHighIcon 
                 sx={{ 
                   mr: 1, 
-                  color: formData.isImportant ? 'error.main' : 'action.active' 
+                  color: formData.isImportant ? 'error.main' : 'action.active',
+                  fontSize: formData.isImportant ? '1.5rem' : '1.25rem',
+                  transition: 'all 0.3s ease'
                 }} 
               />
               <Box sx={{ flexGrow: 1 }}>
@@ -101,17 +105,33 @@ const NotificationForm = ({
                       name="isImportant"
                       color="error"
                       disabled={disabled}
+                      size={formData.isImportant ? 'medium' : 'small'}
                     />
                   }
                   label={
-                    <Typography variant="body1" fontWeight={formData.isImportant ? 'bold' : 'normal'}>
+                    <Typography 
+                      variant="body1" 
+                      fontWeight={formData.isImportant ? 'bold' : 'normal'}
+                      color={formData.isImportant ? 'error.main' : 'text.primary'}
+                      sx={{ 
+                        transition: 'all 0.3s ease',
+                        fontSize: formData.isImportant ? '1.1rem' : '1rem'
+                      }}
+                    >
                       Mark as Important
                     </Typography>
                   }
                 />
-                <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+                <FormHelperText 
+                  sx={{ 
+                    ml: 0, 
+                    mt: 0.5,
+                    color: formData.isImportant ? 'error.dark' : 'text.secondary',
+                    fontWeight: formData.isImportant ? 'medium' : 'normal'
+                  }}
+                >
                   {formData.isImportant 
-                    ? 'This notification will be highlighted and prioritized for recipients' 
+                    ? '🔥 This notification will be highlighted with priority styling and may send additional alerts' 
                     : 'Important notifications receive special highlighting and may send additional alerts'}
                 </FormHelperText>
               </Box>

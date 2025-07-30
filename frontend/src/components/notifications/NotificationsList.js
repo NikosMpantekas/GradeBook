@@ -243,14 +243,31 @@ const NotificationsList = ({
               }
               sx={{
                 cursor: 'pointer',
-                bgcolor: safeNotification.isRead ? 'transparent' : 'action.hover',
+                bgcolor: safeNotification.isImportant 
+                  ? (safeNotification.isRead ? 'warning.light' : 'warning.light')
+                  : (safeNotification.isRead ? 'transparent' : 'action.hover'),
                 '&:hover': {
-                  bgcolor: 'action.selected',
+                  bgcolor: safeNotification.isImportant ? 'warning.main' : 'action.selected',
+                  transform: 'translateY(-1px)',
+                  boxShadow: safeNotification.isImportant ? '0 4px 12px rgba(255, 152, 0, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)'
                 },
                 borderRadius: 1,
                 mb: 1,
                 border: safeNotification.isImportant ? '2px solid' : '1px solid',
                 borderColor: safeNotification.isImportant ? 'warning.main' : 'divider',
+                transition: 'all 0.3s ease',
+                boxShadow: safeNotification.isImportant ? '0 2px 8px rgba(255, 152, 0, 0.2)' : 'none',
+                position: 'relative',
+                overflow: 'visible',
+                '&::before': safeNotification.isImportant ? {
+                  content: '"🔥"',
+                  position: 'absolute',
+                  top: -8,
+                  right: -8,
+                  fontSize: '1.2rem',
+                  zIndex: 1,
+                  animation: 'pulse 2s infinite'
+                } : {}
               }}
               onClick={() => handleNotificationClick(safeNotification._id)}
             >
@@ -283,10 +300,16 @@ const NotificationsList = ({
                     </Typography>
                     {safeNotification.isImportant && (
                       <Chip 
-                        label="Important" 
+                        label="🔥 IMPORTANT" 
                         size="small" 
                         color="warning"
-                        variant="outlined"
+                        variant="filled"
+                        sx={{
+                          fontWeight: 'bold',
+                          fontSize: '0.75rem',
+                          animation: 'pulse 2s infinite',
+                          boxShadow: '0 2px 4px rgba(255, 152, 0, 0.3)'
+                        }}
                       />
                     )}
                   </Box>

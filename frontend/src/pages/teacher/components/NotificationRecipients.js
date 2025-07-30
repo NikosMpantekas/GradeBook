@@ -378,38 +378,6 @@ const NotificationRecipients = ({
 
         <Divider sx={{ my: 2 }} />
 
-        {/* User Search */}
-        {filteredUsers.length > 0 && (
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              label="Search users"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              disabled={disabled || loadingUsers}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: searchTerm ? (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="clear search"
-                      onClick={handleClearSearch}
-                      edge="end"
-                      size="small"
-                    >
-                      <ClearIcon />
-                    </IconButton>
-                  </InputAdornment>
-                ) : null
-              }}
-            />
-          </Box>
-        )}
 
         {/* Selection Actions */}
         {filteredUsers.length > 0 && (
@@ -434,20 +402,20 @@ const NotificationRecipients = ({
           </Box>
         )}
 
-        {/* Recipients Selection */}
+        {/* Recipients Selection with Integrated Search */}
         <FormControl 
           fullWidth 
           error={!!error}
           disabled={disabled || loadingUsers}
         >
-          <InputLabel id="recipients-label">Recipients</InputLabel>
+          <InputLabel id="recipients-label">Search and Select Recipients</InputLabel>
           <Select
             labelId="recipients-label"
             id="recipients"
             multiple
             value={selectedRecipients}
             onChange={onRecipientsChange}
-            input={<OutlinedInput label="Recipients" />}
+            input={<OutlinedInput label="Search and Select Recipients" />}
             renderValue={(selected) => (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                 {selected.map((value) => {
@@ -458,6 +426,10 @@ const NotificationRecipients = ({
                       label={selectedUser ? `${selectedUser.name} (${selectedUser.role})` : value}
                       size="small"
                       color={selectedUser?.role === 'teacher' ? 'secondary' : 'primary'}
+                      onDelete={() => {
+                        const newSelected = selectedRecipients.filter(id => id !== value);
+                        onRecipientsChange({ target: { value: newSelected } });
+                      }}
                     />
                   );
                 })}
@@ -465,10 +437,58 @@ const NotificationRecipients = ({
             )}
             MenuProps={{
               PaperProps: {
-                style: { maxHeight: 300 },
+                style: { 
+                  maxHeight: 400,
+                  minWidth: 300
+                },
               },
+              // Add search functionality to the dropdown
+              MenuListProps: {
+                sx: {
+                  '& .MuiMenuItem-root': {
+                    whiteSpace: 'normal',
+                    wordWrap: 'break-word'
+                  }
+                }
+              }
             }}
           >
+            {/* Search Field at Top of Dropdown */}
+            <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search users by name or email..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: '1rem' }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={handleClearSearch}
+                        edge="end"
+                      >
+                        <ClearIcon sx={{ fontSize: '1rem' }} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null
+                }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'divider',
+                    },
+                  },
+                }}
+              />
+            </Box>
+            
             {loadingUsers ? (
               <MenuItem disabled>
                 <CircularProgress size={20} sx={{ mr: 1 }} />
@@ -492,6 +512,17 @@ const NotificationRecipients = ({
                   </Box>
                 </MenuItem>
               ))
+            ) : searchTerm ? (
+              <MenuItem disabled>
+                <Box sx={{ textAlign: 'center', py: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No users found matching "{searchTerm}"
+                  </Typography>
+                  <Button size="small" onClick={handleClearSearch} sx={{ mt: 1 }}>
+                    Clear Search
+                  </Button>
+                </Box>
+              </MenuItem>
             ) : selectedFilters.schoolBranch || selectedFilters.direction || selectedFilters.subject ? (
               <MenuItem disabled>
                 No users found with the selected filters
