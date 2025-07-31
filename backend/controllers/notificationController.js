@@ -198,65 +198,59 @@ const createNotification = asyncHandler(async (req, res) => {
     throw new Error(`Failed to create notification: ${error.message}`);
   }
 });
-
-// @desc    Get all notifications (admin/teacher)
+// @desc    Get notifications (auto scope by user role, with isRead, and pagination)
 // @route   GET /api/notifications
-// @access  Private/Admin Teacher
-const getAllNotifications = asyncHandler(async (req, res) => {
+// @access  Private
+const getNotifications = asyncHandler(async (req, res) => {
   try {
-    console.log('[NOTIFICATION] getAllNotifications endpoint called for user', req.user._id, `(${req.user.role})`);
-    
-    // Get limit from query params, default to 10
+    const user = req.user;
     const limit = req.query.limit ? parseInt(req.query.limit) : 10;
-    
-    // In single database architecture, filter by schoolId
-    const query = { schoolId: req.user.schoolId };
-    
-    // Apply role-based restrictions - allow students to see relevant notifications
-    if (req.user.role === 'student') {
-      // Students can only see notifications targeted to them
-      query.$or = [
-        { recipients: req.user._id }, // Directly to them
-        { targetRole: 'student' }, // To all students
-        { targetRole: 'all' } // To everyone
-      ];
-      
-      // If student has classes, add those
-      if (req.user.classes && req.user.classes.length > 0) {
-        query.$or.push({ classes: { $in: req.user.classes } });
-      }
-      
-      // If student has a school branch, add that
-      if (req.user.schoolBranch) {
-        query.$or.push({ schoolBranches: req.user.schoolBranch });
-      }
+    let query = {};
+
+    // Superadmin with no schoolId: see all notifications
+    if (user.role === 'superadmin' && !user.schoolId) {
+      // no filters, see all notifications
+      console.log('[NOTIFICATION] Superadmin (global): all notifications');
+    } else {
+      // Filter notifications to current school
+      query.schoolId = user.schoolId;
     }
-    else if (req.user.role === 'teacher') {
-      // Teachers can only see notifications they sent or that are targeted to them
+
+    if (user.role === 'superadmin' && !user.schoolId) {
+      // already global above, nothing needed
+    } else if (user.role === 'admin') {
+      // Admin: see everything for their school, already filtered by schoolId
+    } else if (user.role === 'teacher') {
       query.$or = [
-        { sender: req.user._id }, // Notifications they sent
-        { recipients: req.user._id }, // Directly to them
-        { targetRole: req.user.role }, // To their role
+        { sender: user._id },
+        { recipients: user._id },
+        { targetRole: 'teacher' },
       ];
-      
-      // If teacher has schools, add those
-      if (req.user.schools && req.user.schools.length > 0) {
-        query.$or.push({ schools: { $in: req.user.schools } });
-      }
-      
-      // If teacher has directions, add those
-      if (req.user.directions && req.user.directions.length > 0) {
-        query.$or.push({ directions: { $in: req.user.directions } });
-      }
-      
-      // If teacher has subjects, add those
-      if (req.user.subjects && req.user.subjects.length > 0) {
-        query.$or.push({ subjects: { $in: req.user.subjects } });
-      }
+      if (user.schools?.length) query.$or.push({ schools: { $in: user.schools } });
+      if (user.directions?.length) query.$or.push({ directions: { $in: user.directions } });
+      if (user.subjects?.length) query.$or.push({ subjects: { $in: user.subjects } });
+    } else if (user.role === 'student') {
+      query.$or = [
+        { recipients: user._id },
+        { targetRole: 'student' },
+        { targetRole: 'all' },
+      ];
+      if (user.classes?.length) query.$or.push({ classes: { $in: user.classes } });
+      if (user.schoolBranch) query.$or.push({ schoolBranches: user.schoolBranch });
+    } else {
+      // Generic user: see relevant to self
+      query.$or = [
+        { recipients: user._id },
+        { targetRole: user.role }
+      ];
+      if (user.school) query.$or.push({ schools: user.school });
+      if (user.schools?.length) query.$or.push({ schools: { $in: user.schools } });
+      if (user.direction) query.$or.push({ directions: user.direction });
+      if (user.directions?.length) query.$or.push({ directions: { $in: user.directions } });
+      if (user.subjects?.length) query.$or.push({ subjects: { $in: user.subjects } });
     }
-    
-    // Find notifications with appropriate filters
-    console.log('Notification query:', JSON.stringify(query));
+
+    // Fetch notifications
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -264,22 +258,22 @@ const getAllNotifications = asyncHandler(async (req, res) => {
       .populate('recipients', 'name')
       .populate('schoolId', 'name')
       .populate('classes', 'name');
-    
-    console.log(`Found ${notifications.length} notifications`);
-    
-    // Compute isRead for each notification for the current user (same as getMyNotifications and getSentNotifications)
+
+    // Add computed isRead
     const notificationsWithReadStatus = notifications.map(notification => {
-      const notificationObj = notification.toObject();
-      // Check if current user has read this notification by checking readBy array
-      const readEntry = notification.readBy?.find(entry => 
-        entry.userId && entry.userId.toString() === req.user._id.toString()
-      );
-      notificationObj.isRead = !!readEntry;
-      return notificationObj;
+      const obj = notification.toObject();
+      const userId = user._id.toString();
+      // readBy could be [{userId: ..., date: ...}] or [{ user: ... }]
+      obj.isRead = Array.isArray(notification.readBy) &&
+        notification.readBy.some(r =>
+          (r.userId && r.userId.toString() === userId) ||
+          (r.user && r.user.toString() === userId)
+        );
+      return obj;
     });
-    
-    console.log(`Returning ${notificationsWithReadStatus.length} notifications with read status for user ${req.user._id}`);
-    res.status(200).json(notificationsWithReadStatus);
+
+    return res.status(200).json(notificationsWithReadStatus);
+
   } catch (error) {
     console.error('Error fetching notifications:', error.message);
     res.status(500);
@@ -287,96 +281,6 @@ const getAllNotifications = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get notifications for current user
-// @route   GET /api/notifications/me
-// @access  Private
-const getMyNotifications = asyncHandler(async (req, res) => {
-  try {
-    const user = req.user;
-    
-    console.log(`Getting notifications for user ${user.name} (${user._id}) with role: ${user.role}`);
-    
-    // In single database architecture, use direct querying with schoolId filter
-    console.log(`Fetching notifications for user in school with ID: ${user.schoolId}`);
-    
-    // Build a query to find relevant notifications
-    const query = {
-      schoolId: user.schoolId, // Multi-tenancy filter
-      $or: [
-        { recipients: user._id }, // Directly to this user
-        { targetRole: user.role } // To user's role
-      ]
-    };
-    
-    // Add school criteria if the user has a school or schools
-    if (user.school) {
-      query.$or.push({ schools: user.school });
-    }
-    if (user.schools && user.schools.length > 0) {
-      query.$or.push({ schools: { $in: user.schools } });
-    }
-    
-    // Add direction criteria if the user has a direction or directions
-    if (user.direction) {
-      query.$or.push({ directions: user.direction });
-    }
-    if (user.directions && user.directions.length > 0) {
-      query.$or.push({ directions: { $in: user.directions } });
-    }
-    
-    // Add subject criteria if the user has subjects
-    if (user.subjects && user.subjects.length > 0) {
-      query.$or.push({ subjects: { $in: user.subjects } });
-    }
-    
-    console.log('Notification query:', JSON.stringify(query));
-    
-    // Find the notifications with populated references
-    const notifications = await Notification.find(query)
-      .sort({ createdAt: -1 })
-      .populate('sender', 'name')
-      .populate('schoolId', 'name')
-      .populate('classes', 'name');
-    
-    console.log(`Found ${notifications.length} notifications for user`);
-    
-    // Add computed isRead field based on readBy array for current user
-    const notificationsWithReadStatus = notifications.map(notification => {
-      const notificationObj = notification.toObject();
-      const isReadByCurrentUser = notification.readBy.some(r => r.user.toString() === user._id.toString());
-      notificationObj.isRead = isReadByCurrentUser;
-      return notificationObj;
-    });
-    
-    // Special handling for superadmin users - they see all notifications
-    // unless they belong to a specific school
-    if (user.role === 'superadmin' && !user.schoolId) {
-      console.log('Superadmin user - fetching all notifications');
-      
-      const allNotifications = await Notification.find({})
-        .sort({ createdAt: -1 })
-        .populate('sender', 'name')
-        .populate('schoolId', 'name')
-        .populate('classes', 'name');
-      
-      // Add computed isRead field for superadmin notifications too
-      const allNotificationsWithReadStatus = allNotifications.map(notification => {
-        const notificationObj = notification.toObject();
-        const isReadByCurrentUser = notification.readBy.some(r => r.user.toString() === user._id.toString());
-        notificationObj.isRead = isReadByCurrentUser;
-        return notificationObj;
-      });
-      
-      console.log(`Found ${allNotificationsWithReadStatus.length} total notifications for superadmin`);
-      return res.status(200).json(allNotificationsWithReadStatus);
-    }
-    
-    return res.status(200).json(notificationsWithReadStatus);
-  } catch (error) {
-    console.error('Unexpected error in getMyNotifications:', error.message);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-});
 
 // @desc    Get sent notifications
 // @route   GET /api/notifications/sent
