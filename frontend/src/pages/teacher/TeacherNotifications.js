@@ -25,6 +25,9 @@ import {
   CircularProgress,
   FormControlLabel,
   Switch,
+  Card,
+  CardContent,
+  Pagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -409,175 +412,178 @@ const TeacherNotifications = () => {
     }
     
     return (
-      <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
-        <TableContainer>
-          <Table stickyHeader aria-label="notifications table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Type</TableCell>
-                <TableCell>Recipient</TableCell>
-                <TableCell>Title</TableCell>
-                <TableCell>Message</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredNotifications && filteredNotifications.length > 0 ? (
-                filteredNotifications
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((notification) => (
-                    <TableRow hover key={notification._id || 'no-id-' + Math.random()}>
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label={notification.notificationType === 'received' ? 'Received' : 'Sent'}
-                          color={notification.notificationType === 'received' ? 'info' : 'primary'}
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {getRecipientDisplayText(notification)}
-                      </TableCell>
-                      <TableCell>{notification.title || 'No title'}</TableCell>
-                      <TableCell>
-                        {notification.message 
-                          ? (notification.message.length > 50
-                             ? `${notification.message.substring(0, 50)}...`
-                             : notification.message)
-                          : 'No message'}
-                      </TableCell>
-                      <TableCell>
+      <Box sx={{ width: '100%' }}>
+        {filteredNotifications && filteredNotifications.length > 0 ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {filteredNotifications
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((notification) => (
+                <Card key={notification._id || 'no-id-' + Math.random()} sx={{ mb: 2 }}>
+                  <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                    {/* Header with type and date */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Chip
+                        size="small"
+                        label={notification.notificationType === 'received' ? 'Received' : 'Sent'}
+                        color={notification.notificationType === 'received' ? 'info' : 'primary'}
+                        variant="outlined"
+                        sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                      />
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                         {notification.createdAt 
                           ? format(new Date(notification.createdAt), 'MMM dd, yyyy')
                           : 'Unknown date'}
-                      </TableCell>
-                      <TableCell>
+                      </Typography>
+                    </Box>
+
+                    {/* Title */}
+                    <Typography variant="h6" sx={{ 
+                      fontWeight: 'bold', 
+                      mb: 1,
+                      fontSize: { xs: '1rem', sm: '1.25rem' },
+                      lineHeight: 1.2
+                    }}>
+                      {notification.title || 'No title'}
+                    </Typography>
+
+                    {/* Message */}
+                    <Typography variant="body2" color="text.secondary" sx={{ 
+                      mb: 2,
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      lineHeight: 1.4
+                    }}>
+                      {notification.message || 'No message'}
+                    </Typography>
+
+                    {/* Recipient and Status */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                        To: {getRecipientDisplayText(notification)}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <Chip
                           size="small"
                           label={notification.isRead ? 'Read' : 'Unread'}
                           color={notification.isRead ? 'success' : 'warning'}
+                          sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                         />
                         {notification.isImportant && (
                           <Chip 
                             label="Important" 
                             color="error" 
                             size="small"
-                            sx={{ ml: 1 }}
+                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                           />
                         )}
-                      </TableCell>
-                      <TableCell align="center">
-                        {/* Always show View action */}
-                        <IconButton
-                          color="primary"
-                          onClick={() => handleViewNotification(notification._id)}
-                          size="small"
-                          title="View notification"
-                        >
-                          <VisibilityIcon />
-                        </IconButton>
-                        
-                        {/* For RECEIVED notifications: only show Mark as Read */}
-                        {notification.notificationType === 'received' ? (
-                          !notification.isRead && (
-                            <IconButton
-                              color="success"
-                              onClick={() => handleMarkAsRead(notification._id)}
-                              size="small"
-                              title="Mark as read"
-                            >
-                              <MarkReadIcon />
-                            </IconButton>
-                          )
-                        ) : (
-                          /* For SENT notifications: check if created by current teacher */
-                          <>
-                            {/* Only show edit/delete if notification was created by current teacher */}
-                            {(user?.role === 'admin' || 
-                              (notification.sender && notification.sender._id === user?._id) ||
-                              (notification.createdBy && notification.createdBy._id === user?._id)) && (
-                              <>
-                                <IconButton
-                                  color="primary"
-                                  onClick={() => handleEditClick(notification)}
-                                  size="small"
-                                  title="Edit notification"
-                                >
-                                  <EditIcon />
-                                </IconButton>
-                                <IconButton
-                                  color="error"
-                                  onClick={() => handleDeleteClick(notification)}
-                                  size="small"
-                                  title="Delete notification"
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
-                              </>
-                            )}
-                            {/* Mark as read is available for all sent notifications if unread */}
-                            {!notification.isRead && (
+                      </Box>
+                    </Box>
+
+                    {/* Actions */}
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                      <IconButton
+                        color="primary"
+                        onClick={() => handleViewNotification(notification._id)}
+                        size="small"
+                        title="View notification"
+                        sx={{ p: { xs: 0.5, sm: 1 } }}
+                      >
+                        <VisibilityIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                      </IconButton>
+                      
+                      {/* For RECEIVED notifications: only show Mark as Read */}
+                      {notification.notificationType === 'received' ? (
+                        !notification.isRead && (
+                          <IconButton
+                            color="success"
+                            onClick={() => handleMarkAsRead(notification._id)}
+                            size="small"
+                            title="Mark as read"
+                            sx={{ p: { xs: 0.5, sm: 1 } }}
+                          >
+                            <MarkReadIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                          </IconButton>
+                        )
+                      ) : (
+                        /* For SENT notifications: check if created by current teacher */
+                        <>
+                          {/* Only show edit/delete if notification was created by current teacher */}
+                          {(user?.role === 'admin' || 
+                            (notification.sender && notification.sender._id === user?._id) ||
+                            (notification.senderName && notification.senderName === user?.name)) && (
+                            <>
                               <IconButton
-                                color="success"
-                                onClick={() => handleMarkAsRead(notification._id)}
+                                color="primary"
+                                onClick={() => handleEditClick(notification)}
                                 size="small"
-                                title="Mark as read"
+                                title="Edit notification"
+                                sx={{ p: { xs: 0.5, sm: 1 } }}
                               >
-                                <MarkReadIcon />
+                                <EditIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                               </IconButton>
-                            )}
-                          </>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} align="center">
-                    <Box py={2}>
-                      <Typography variant="subtitle1" color="text.secondary">
-                        {isError 
-                          ? 'Error loading notifications. Please try again.' 
-                          : 'No notifications found.'}
-                      </Typography>
-                      {isError && (
-                        <Button 
-                          variant="contained" 
-                          sx={{ mt: 2 }} 
-                          onClick={() => dispatch(getSentNotifications())}
-                        >
-                          Retry
-                        </Button>
-                      )}
-                      {!isError && !isLoading && (
-                        <Button 
-                          variant="contained" 
-                          sx={{ mt: 2 }} 
-                          startIcon={<AddIcon />}
-                          onClick={handleAddNotification}
-                        >
-                          Create Your First Notification
-                        </Button>
+                              <IconButton
+                                color="error"
+                                onClick={() => handleDeleteClick(notification)}
+                                size="small"
+                                title="Delete notification"
+                                sx={{ p: { xs: 0.5, sm: 1 } }}
+                              >
+                                <DeleteIcon sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                              </IconButton>
+                            </>
+                          )}
+                        </>
                       )}
                     </Box>
-                  </TableCell>
-                </TableRow>
+                  </CardContent>
+                </Card>
+              ))}
+          </Box>
+        ) : (
+          <Card sx={{ p: { xs: 3, sm: 4 } }}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
+                No notifications found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                {isError ? 'Failed to load notifications' : 'No notifications match your current filters'}
+              </Typography>
+              {isError && (
+                <Button 
+                  variant="outlined" 
+                  onClick={handleRetryDataLoad}
+                  sx={{ mt: 2 }}
+                >
+                  Retry
+                </Button>
               )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={filteredNotifications ? filteredNotifications.length : 0}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </Paper>
+              {!isError && !isLoading && (
+                <Button 
+                  variant="contained" 
+                  sx={{ mt: 2 }} 
+                  startIcon={<AddIcon />}
+                  onClick={handleAddNotification}
+                >
+                  Create Your First Notification
+                </Button>
+              )}
+            </Box>
+          </Card>
+        )}
+        
+        {/* Pagination */}
+        {filteredNotifications && filteredNotifications.length > 0 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <Pagination
+              count={Math.ceil(filteredNotifications.length / rowsPerPage)}
+              page={page + 1}
+              onChange={(event, value) => handleChangePage(event, value - 1)}
+              size="small"
+              showFirstButton
+              showLastButton
+            />
+          </Box>
+        )}
+      </Box>
     );
   };
 

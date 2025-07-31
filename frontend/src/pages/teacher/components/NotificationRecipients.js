@@ -231,39 +231,41 @@ const NotificationRecipients = ({
   };
 
   return (
-    <Card sx={{ mb: 3 }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <FilterListIcon sx={{ mr: 1, color: 'primary.main' }} />
-          <Typography variant="h6" component="h2">
+    <Card sx={{ mb: { xs: 2, sm: 3 } }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1.5, sm: 2 } }}>
+          <FilterListIcon sx={{ mr: { xs: 0.5, sm: 1 }, color: 'primary.main', fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+          <Typography variant="h6" component="h2" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
             Select Recipients
           </Typography>
         </Box>
 
         {filterError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: { xs: 1.5, sm: 2 } }}>
             {filterError}
           </Alert>
         )}
 
         {/* Role Selection */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-            <GroupIcon sx={{ mr: 1, fontSize: '1.1rem' }} />
+        <Box sx={{ mb: { xs: 2, sm: 3 } }}>
+          <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+            <GroupIcon sx={{ mr: { xs: 0.5, sm: 1 }, fontSize: { xs: '1rem', sm: '1.1rem' } }} />
             User Type
           </Typography>
           <FormControl component="fieldset">
             <RadioGroup
               row
+              sx={{ flexDirection: { xs: 'column', sm: 'row' } }}
               value={selectedFilters.userRole}
               onChange={(e) => handleFilterChange('userRole', e.target.value)}
             >
               <FormControlLabel 
                 value="student" 
                 control={<Radio />} 
+                sx={{ '& .MuiFormControlLabel-label': { fontSize: { xs: '0.875rem', sm: '1rem' } } }}
                 label={
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <PersonIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+                    <PersonIcon sx={{ mr: { xs: 0.25, sm: 0.5 }, fontSize: { xs: '0.9rem', sm: '1rem' } }} />
                     Students
                   </Box>
                 }
@@ -274,9 +276,10 @@ const NotificationRecipients = ({
                   <FormControlLabel 
                     value="teacher" 
                     control={<Radio />} 
+                    sx={{ '& .MuiFormControlLabel-label': { fontSize: { xs: '0.875rem', sm: '1rem' } } }}
                     label={
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <SupervisorAccountIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+                        <SupervisorAccountIcon sx={{ mr: { xs: 0.25, sm: 0.5 }, fontSize: { xs: '0.9rem', sm: '1rem' } }} />
                         Teachers
                       </Box>
                     }
@@ -284,9 +287,10 @@ const NotificationRecipients = ({
                   <FormControlLabel 
                     value="all" 
                     control={<Radio />} 
+                    sx={{ '& .MuiFormControlLabel-label': { fontSize: { xs: '0.875rem', sm: '1rem' } } }}
                     label={
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <GroupIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+                        <GroupIcon sx={{ mr: { xs: 0.25, sm: 0.5 }, fontSize: { xs: '0.9rem', sm: '1rem' } }} />
                         All Users
                       </Box>
                     }
@@ -298,15 +302,23 @@ const NotificationRecipients = ({
         </Box>
 
         {/* Cascading Filters */}
-        <Box sx={{ display: 'grid', grid: 'auto / 1fr 1fr 1fr', gap: 2, mb: 3 }}>
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, 
+          gap: { xs: 1.5, sm: 2 }, 
+          mb: { xs: 2, sm: 3 } 
+        }}>
           {/* School Branch Filter */}
-          <FormControl fullWidth disabled={loadingFilters}>
+          <FormControl fullWidth disabled={loadingFilters} sx={{ 
+            '& .MuiInputLabel-root': { fontSize: { xs: '0.875rem', sm: '1rem' } },
+            '& .MuiSelect-select': { fontSize: { xs: '0.875rem', sm: '1rem' } }
+          }}>
             <InputLabel>School Branch</InputLabel>
             <Select
               value={selectedFilters.schoolBranch}
               onChange={(e) => handleFilterChange('schoolBranch', e.target.value)}
               label="School Branch"
-              startAdornment={<SchoolIcon sx={{ mr: 1, color: 'action.active' }} />}
+              startAdornment={<SchoolIcon sx={{ mr: { xs: 0.5, sm: 1 }, color: 'action.active', fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />}
             >
               <MenuItem value="">
                 <em>All Branches</em>
@@ -320,7 +332,10 @@ const NotificationRecipients = ({
           </FormControl>
 
           {/* Direction Filter */}
-          <FormControl fullWidth disabled={loadingFilters}>
+          <FormControl fullWidth disabled={loadingFilters} sx={{ 
+            '& .MuiInputLabel-root': { fontSize: { xs: '0.875rem', sm: '1rem' } },
+            '& .MuiSelect-select': { fontSize: { xs: '0.875rem', sm: '1rem' } }
+          }}>
             <InputLabel>Direction</InputLabel>
             <Select
               value={selectedFilters.direction}
@@ -339,7 +354,10 @@ const NotificationRecipients = ({
           </FormControl>
 
           {/* Subject Filter */}
-          <FormControl fullWidth disabled={loadingFilters}>
+          <FormControl fullWidth disabled={loadingFilters} sx={{ 
+            '& .MuiInputLabel-root': { fontSize: { xs: '0.875rem', sm: '1rem' } },
+            '& .MuiSelect-select': { fontSize: { xs: '0.875rem', sm: '1rem' } }
+          }}>
             <InputLabel>Subject</InputLabel>
             <Select
               value={selectedFilters.subject}
