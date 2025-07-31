@@ -28,16 +28,16 @@ const NotificationForm = ({
   disabled
 }) => {
   return (
-    <Card sx={{ mb: { xs: 2, sm: 3 } }}>
-      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 3 } }}>
-          <MessageIcon sx={{ mr: { xs: 0.5, sm: 1 }, color: 'primary.main', fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-          <Typography variant="h6" component="h2" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
+    <Card>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <MessageIcon sx={{ mr: 1, color: 'primary.main' }} />
+          <Typography variant="h6" component="h2">
             Notification Details
           </Typography>
         </Box>
 
-        <Grid container spacing={{ xs: 2, sm: 3 }}>
+        <Grid container spacing={3}>
           {/* Title Field */}
           <Grid item xs={12}>
             <TextField
@@ -50,13 +50,8 @@ const NotificationForm = ({
               error={!!errors.title}
               helperText={errors.title || 'Enter a clear, descriptive title for your notification'}
               disabled={disabled}
-              sx={{ 
-                '& .MuiInputLabel-root': { fontSize: { xs: '0.875rem', sm: '1rem' } },
-                '& .MuiInputBase-input': { fontSize: { xs: '0.875rem', sm: '1rem' } },
-                '& .MuiFormHelperText-root': { fontSize: { xs: '0.75rem', sm: '0.875rem' } }
-              }}
               InputProps={{
-                startAdornment: <TitleIcon sx={{ mr: { xs: 0.5, sm: 1 }, color: 'action.active', fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                startAdornment: <TitleIcon sx={{ mr: 1, color: 'action.active' }} />
               }}
               placeholder="e.g., Important Class Update, Assignment Reminder..."
             />
@@ -68,7 +63,7 @@ const NotificationForm = ({
               fullWidth
               required
               multiline
-              rows={{ xs: 3, sm: 4 }}
+              rows={4}
               name="message"
               label="Notification Message"
               value={formData.message}
@@ -76,11 +71,6 @@ const NotificationForm = ({
               error={!!errors.message}
               helperText={errors.message || 'Write your notification message. Be clear and concise.'}
               disabled={disabled}
-              sx={{ 
-                '& .MuiInputLabel-root': { fontSize: { xs: '0.875rem', sm: '1rem' } },
-                '& .MuiInputBase-input': { fontSize: { xs: '0.875rem', sm: '1rem' } },
-                '& .MuiFormHelperText-root': { fontSize: { xs: '0.75rem', sm: '0.875rem' } }
-              }}
               placeholder="Enter your notification message here..."
             />
           </Grid>
@@ -90,7 +80,7 @@ const NotificationForm = ({
             <Box sx={{ 
               display: 'flex', 
               alignItems: 'center',
-              p: { xs: 1.5, sm: 2 },
+              p: 2,
               bgcolor: formData.isImportant ? 'error.light' : 'background.default',
               borderRadius: 1,
               border: formData.isImportant ? '2px solid' : '1px solid',
@@ -100,9 +90,9 @@ const NotificationForm = ({
             }}>
               <PriorityHighIcon 
                 sx={{ 
-                  mr: { xs: 0.5, sm: 1 }, 
+                  mr: 1, 
                   color: formData.isImportant ? 'error.main' : 'action.active',
-                  fontSize: formData.isImportant ? { xs: '1.2rem', sm: '1.5rem' } : { xs: '1rem', sm: '1.25rem' },
+                  fontSize: formData.isImportant ? '1.5rem' : '1.25rem',
                   transition: 'all 0.3s ease'
                 }} 
               />
@@ -113,22 +103,36 @@ const NotificationForm = ({
                       checked={formData.isImportant}
                       onChange={onChange}
                       name="isImportant"
+                      color="error"
                       disabled={disabled}
+                      size={formData.isImportant ? 'medium' : 'small'}
                     />
                   }
-                  label="Mark as Important"
-                  sx={{ 
-                    '& .MuiFormControlLabel-label': { 
-                      fontSize: { xs: '0.875rem', sm: '1rem' } 
-                    } 
-                  }}
+                  label={
+                    <Typography 
+                      variant="body1" 
+                      fontWeight={formData.isImportant ? 'bold' : 'normal'}
+                      color={formData.isImportant ? 'error.main' : 'text.primary'}
+                      sx={{ 
+                        transition: 'all 0.3s ease',
+                        fontSize: formData.isImportant ? '1.1rem' : '1rem'
+                      }}
+                    >
+                      Mark as Important
+                    </Typography>
+                  }
                 />
-                <FormHelperText sx={{ 
-                  color: formData.isImportant ? 'error.main' : 'text.secondary',
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  mt: 0.5 
-                }}>
-                  Important notifications receive special highlighting and may send additional alerts
+                <FormHelperText 
+                  sx={{ 
+                    ml: 0, 
+                    mt: 0.5,
+                    color: formData.isImportant ? 'error.dark' : 'text.secondary',
+                    fontWeight: formData.isImportant ? 'medium' : 'normal'
+                  }}
+                >
+                  {formData.isImportant 
+                    ? '🔥 This notification will be highlighted with priority styling and may send additional alerts' 
+                    : 'Important notifications receive special highlighting and may send additional alerts'}
                 </FormHelperText>
               </Box>
             </Box>
