@@ -227,22 +227,22 @@ const CreateNotification = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 2, sm: 3 } }}>
       {/* Header */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ mb: { xs: 2, sm: 3 } }}>
         <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
               {user?.role === 'admin' ? (
-                <AdminPanelSettingsIcon sx={{ mr: 2, color: 'primary.main', fontSize: '2rem' }} />
+                <AdminPanelSettingsIcon sx={{ mr: { xs: 1, sm: 2 }, color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }} />
               ) : (
-                <SchoolIcon sx={{ mr: 2, color: 'primary.main', fontSize: '2rem' }} />
+                <SchoolIcon sx={{ mr: { xs: 1, sm: 2 }, color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }} />
               )}
               <Box>
-                <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 0 }}>
+                <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 0, fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                   Create Notification
                 </Typography>
-                <Typography variant="subtitle1" color="text.secondary">
+                <Typography variant="subtitle1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                   {user?.role === 'admin' ? 
                     'Send notifications to students and teachers in your school' : 
                     'Send notifications to students in your assigned classes'
@@ -254,7 +254,7 @@ const CreateNotification = () => {
               variant="outlined"
               startIcon={<ArrowBackIcon />}
               onClick={handleBack}
-              sx={{ minWidth: 120 }}
+              sx={{ minWidth: { xs: '100%', sm: 120 }, width: { xs: '100%', sm: 'auto' } }}
             >
               Back
             </Button>
@@ -263,7 +263,7 @@ const CreateNotification = () => {
       </Card>
 
       <form onSubmit={handleSubmit}>
-        <Box sx={{ display: 'grid', gap: 3 }}>
+        <Box sx={{ display: 'grid', gap: { xs: 2, sm: 3 } }}>
           {/* Notification Form */}
           <NotificationForm
             formData={formData}
@@ -284,19 +284,20 @@ const CreateNotification = () => {
           {/* Submit Actions */}
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   {formData.recipients.length === 0 ? 
                     'Select recipients to send the notification' : 
                     `Ready to send to ${formData.recipients.length} recipient${formData.recipients.length !== 1 ? 's' : ''}`
                   }
                 </Typography>
                 
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, width: { xs: '100%', sm: 'auto' }, flexDirection: { xs: 'column', sm: 'row' } }}>
                   <Button
                     variant="outlined"
                     onClick={handleBack}
                     disabled={isSubmitting}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     Cancel
                   </Button>
@@ -305,7 +306,7 @@ const CreateNotification = () => {
                     variant="contained"
                     startIcon={isSubmitting ? <CircularProgress size={20} /> : <SaveIcon />}
                     disabled={isSubmitting || formData.recipients.length === 0}
-                    sx={{ minWidth: 140 }}
+                    sx={{ minWidth: { xs: '100%', sm: 140 }, width: { xs: '100%', sm: 'auto' } }}
                   >
                     {isSubmitting ? 'Sending...' : 'Send Notification'}
                   </Button>

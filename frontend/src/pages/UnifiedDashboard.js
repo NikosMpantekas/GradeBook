@@ -289,7 +289,7 @@ const UnifiedDashboard = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
           <CircularProgress />
         </Box>
@@ -299,26 +299,26 @@ const UnifiedDashboard = () => {
 
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
         <Alert severity="error">{error}</Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
       {/* Header Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
+      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+        <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           <DashboardIcon sx={{ mr: 2, verticalAlign: 'middle' }} />
           Dashboard
         </Typography>
-        <Typography variant="h6" color="text.secondary" gutterBottom>
+        <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
           {getWelcomeMessage()}
         </Typography>
       </Box>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, sm: 3 }}>
         {/* User Info Card */}
         <Grid item xs={12} md={4}>
           <Card>
@@ -360,9 +360,9 @@ const UnifiedDashboard = () => {
         {/* Quick Actions */}
         <Grid item xs={12} md={8}>
           <Card>
-            <CardHeader title="Quick Actions" />
+            <CardHeader title="Quick Actions" sx={{ pb: { xs: 1, sm: 2 } }} />
             <CardContent>
-              <Grid container spacing={2}>
+              <Grid container spacing={{ xs: 1, sm: 2 }}>
                 {getQuickActions().map((action, index) => (
                   <Grid item xs={12} sm={6} key={index}>
                     <Button
@@ -370,7 +370,11 @@ const UnifiedDashboard = () => {
                       fullWidth
                       startIcon={action.icon}
                       onClick={() => navigate(action.path)}
-                      sx={{ py: 1.5 }}
+                      sx={{ 
+                        py: { xs: 1, sm: 1.5 },
+                        fontSize: { xs: '0.875rem', sm: '1rem' },
+                        minHeight: { xs: '40px', sm: '48px' }
+                      }}
                     >
                       {action.label}
                     </Button>
@@ -386,24 +390,31 @@ const UnifiedDashboard = () => {
           <Card>
             <CardHeader 
               title="Recent Notifications" 
+              sx={{ pb: { xs: 1, sm: 2 } }}
               action={
-                <Button size="small" onClick={() => navigate('/app/notifications')}>
+                <Button 
+                  size="small" 
+                  onClick={() => navigate('/app/notifications')}
+                  sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                >
                   View All
                 </Button>
               }
             />
-            <CardContent>
+            <CardContent sx={{ pt: { xs: 1, sm: 2 } }}>
               {dashboardData.notifications.length > 0 ? (
                 <List>
                   {dashboardData.notifications.map((notification, index) => (
                     <React.Fragment key={notification._id}>
-                      <ListItem>
+                      <ListItem sx={{ px: { xs: 1, sm: 2 } }}>
                         <ListItemIcon>
                           <NotificationsIcon />
                         </ListItemIcon>
                         <ListItemText
                           primary={notification.title}
+                          primaryTypographyProps={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                           secondary={new Date(notification.createdAt).toLocaleDateString()}
+                          secondaryTypographyProps={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                         />
                       </ListItem>
                       {index < dashboardData.notifications.length - 1 && <Divider />}
@@ -425,16 +436,17 @@ const UnifiedDashboard = () => {
             {/* Student Subjects */}
             <Grid item xs={12} md={6}>
               <Card>
-                <CardHeader title="My Subjects" />
-                <CardContent>
+                <CardHeader title="My Subjects" sx={{ pb: { xs: 1, sm: 2 } }} />
+                <CardContent sx={{ pt: { xs: 1, sm: 2 } }}>
                   {dashboardData.subjects.length > 0 ? (
-                    <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                    <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} flexWrap="wrap" gap={{ xs: 0.5, sm: 1 }}>
                       {dashboardData.subjects.map((subject) => (
                         <Chip
                           key={subject._id}
                           label={subject.name}
                           icon={<SubjectIcon />}
                           variant="outlined"
+                          sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                         />
                       ))}
                     </Stack>
@@ -452,24 +464,31 @@ const UnifiedDashboard = () => {
               <Card>
                 <CardHeader 
                   title="Recent Grades" 
+                  sx={{ pb: { xs: 1, sm: 2 } }}
                   action={
-                    <Button size="small" onClick={() => navigate('/app/grades')}>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/app/grades')}
+                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    >
                       View All
                     </Button>
                   }
                 />
-                <CardContent>
+                <CardContent sx={{ pt: { xs: 1, sm: 2 } }}>
                   {dashboardData.grades.length > 0 ? (
                     <List>
                       {dashboardData.grades.map((grade, index) => (
                         <React.Fragment key={grade._id}>
-                          <ListItem>
+                          <ListItem sx={{ px: { xs: 1, sm: 2 } }}>
                             <ListItemIcon>
                               <GradeIcon />
                             </ListItemIcon>
                             <ListItemText
                               primary={`${grade.subject?.name} - ${grade.value}/10`}
+                              primaryTypographyProps={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                               secondary={`${grade.category} - ${new Date(grade.createdAt).toLocaleDateString()}`}
+                              secondaryTypographyProps={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                             />
                           </ListItem>
                           {index < dashboardData.grades.length - 1 && <Divider />}
@@ -492,16 +511,17 @@ const UnifiedDashboard = () => {
             {/* Teacher Subjects */}
             <Grid item xs={12} md={6}>
               <Card>
-                <CardHeader title="Teaching Subjects" />
-                <CardContent>
+                <CardHeader title="Teaching Subjects" sx={{ pb: { xs: 1, sm: 2 } }} />
+                <CardContent sx={{ pt: { xs: 1, sm: 2 } }}>
                   {dashboardData.subjects.length > 0 ? (
-                    <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                    <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} flexWrap="wrap" gap={{ xs: 0.5, sm: 1 }}>
                       {dashboardData.subjects.map((subject) => (
                         <Chip
                           key={subject._id}
                           label={subject.name}
                           icon={<SubjectIcon />}
                           variant="outlined"
+                          sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                         />
                       ))}
                     </Stack>
@@ -523,25 +543,32 @@ const UnifiedDashboard = () => {
               <Card>
                 <CardHeader 
                   title="User Overview" 
+                  sx={{ pb: { xs: 1, sm: 2 } }}
                   action={
-                    <Button size="small" onClick={() => navigate('/app/admin/users')}>
+                    <Button 
+                      size="small" 
+                      onClick={() => navigate('/app/admin/users')}
+                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    >
                       Manage Users
                     </Button>
                   }
                 />
-                <CardContent>
+                <CardContent sx={{ pt: { xs: 1, sm: 2 } }}>
                   {dashboardData.users.length > 0 ? (
                     <List>
                       {dashboardData.users.map((user, index) => (
                         <React.Fragment key={user._id}>
-                          <ListItem>
+                          <ListItem sx={{ px: { xs: 1, sm: 2 } }}>
                             <ListItemIcon>
                               {user.role === 'student' ? <FaceIcon /> : 
                                user.role === 'teacher' ? <SupervisorAccountIcon /> : <AdminIcon />}
                             </ListItemIcon>
                             <ListItemText
                               primary={user.name}
+                              primaryTypographyProps={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                               secondary={`${user.role} - ${user.email}`}
+                              secondaryTypographyProps={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                             />
                           </ListItem>
                           {index < dashboardData.users.length - 1 && <Divider />}
@@ -564,24 +591,31 @@ const UnifiedDashboard = () => {
           <Card>
             <CardHeader 
               title="Upcoming Classes" 
+              sx={{ pb: { xs: 1, sm: 2 } }}
               action={
-                <Button size="small" onClick={() => navigate('/app/schedule')}>
+                <Button 
+                  size="small" 
+                  onClick={() => navigate('/app/schedule')}
+                  sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                >
                   View Schedule
                 </Button>
               }
             />
-            <CardContent>
+            <CardContent sx={{ pt: { xs: 1, sm: 2 } }}>
               {dashboardData.upcomingClasses.length > 0 ? (
                 <List>
                   {dashboardData.upcomingClasses.map((classItem, index) => (
                     <React.Fragment key={index}>
-                      <ListItem>
+                      <ListItem sx={{ px: { xs: 1, sm: 2 } }}>
                         <ListItemIcon>
                           <ScheduleIcon />
                         </ListItemIcon>
                         <ListItemText
                           primary={classItem.subject}
+                          primaryTypographyProps={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                           secondary={`${classItem.startTime} - ${classItem.endTime} | ${classItem.day}`}
+                          secondaryTypographyProps={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                         />
                       </ListItem>
                       {index < dashboardData.upcomingClasses.length - 1 && <Divider />}

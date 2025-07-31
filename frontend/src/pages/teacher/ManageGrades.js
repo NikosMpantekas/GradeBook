@@ -317,19 +317,19 @@ const ManageGrades = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ my: 4 }}>
-      <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+    <Container maxWidth="lg" sx={{ my: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 4 }, borderRadius: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, mb: { xs: 1, sm: 2 } }}>
           {user?.role === 'admin' ? (
-            <AdminPanelSettingsIcon color="primary" sx={{ fontSize: 40 }} />
+            <AdminPanelSettingsIcon color="primary" sx={{ fontSize: { xs: 32, sm: 40 } }} />
           ) : (
-            <BookIcon color="primary" sx={{ fontSize: 40 }} />
+            <BookIcon color="primary" sx={{ fontSize: { xs: 32, sm: 40 } }} />
           )}
           <Box>
-            <Typography variant="h4" component="h1" gutterBottom>
+            <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
               Manage Grades
             </Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               {user?.role === 'admin' 
                 ? 'View, filter, edit, and delete all grades in your school'
                 : 'View, filter, edit, and delete grades for your assigned classes'
@@ -340,7 +340,7 @@ const ManageGrades = () => {
 
         {/* Filter Chips Display */}
         {(filters.schoolBranch || filters.direction || filters.subject || filters.student) && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 0.5, sm: 1 }, mt: { xs: 1, sm: 2 } }}>
             {filters.schoolBranch && (
               <Chip
                 icon={<SchoolIcon />}
@@ -348,6 +348,7 @@ const ManageGrades = () => {
                 onDelete={() => handleFilterChange('schoolBranch', '')}
                 color="primary"
                 variant="outlined"
+                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
               />
             )}
             {filters.direction && (
@@ -357,6 +358,7 @@ const ManageGrades = () => {
                 onDelete={() => handleFilterChange('direction', '')}
                 color="secondary"
                 variant="outlined"
+                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
               />
             )}
             {filters.subject && (
@@ -366,6 +368,7 @@ const ManageGrades = () => {
                 onDelete={() => handleFilterChange('subject', '')}
                 color="info"
                 variant="outlined"
+                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
               />
             )}
             {filters.student && (
@@ -375,6 +378,7 @@ const ManageGrades = () => {
                 onDelete={() => handleFilterChange('student', '')}
                 color="success"
                 variant="outlined"
+                sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
               />
             )}
           </Box>
@@ -382,12 +386,12 @@ const ManageGrades = () => {
       </Paper>
       
       {/* Filter Section */}
-      <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
-        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 4 }, borderRadius: 2 }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
           <SchoolIcon /> Class-Based Filters
         </Typography>
         
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           {/* School Branch Filter */}
           <Grid item xs={12} md={6} lg={3}>
             <ClassBasedFilter

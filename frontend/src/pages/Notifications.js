@@ -205,15 +205,17 @@ const Notifications = () => {
   }
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', p: 2 }}>
-      <Paper elevation={3} sx={{ p: 3 }}>
+    <Box sx={{ maxWidth: 800, mx: 'auto', p: { xs: 1, sm: 2 } }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 } }}>
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          mb: 2 
+          mb: { xs: 1, sm: 2 },
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1, sm: 0 }
         }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
             Notifications
           </Typography>
           
@@ -221,6 +223,7 @@ const Notifications = () => {
             variant="outlined"
             size="small"
             startIcon={<RefreshIcon />}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
             onClick={() => {
               console.log('Manually refreshing notifications');
               handleRefresh();

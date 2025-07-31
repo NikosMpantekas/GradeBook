@@ -582,15 +582,16 @@ const TeacherNotifications = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
+    <Box sx={{ flexGrow: 1, px: { xs: 2, sm: 3 } }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
+        <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           {user?.role === 'admin' ? 'Manage Notifications' : 'Received Notifications'}
         </Typography>
         {(user?.role === 'admin' || user?.canSendNotifications !== false) && (
           <Button 
             variant="contained" 
             startIcon={<AddIcon />}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
             onClick={handleAddNotification}
           >
             Create Notification
@@ -598,14 +599,15 @@ const TeacherNotifications = () => {
         )}
       </Box>
 
-      <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+      <Paper sx={{ p: { xs: 1, sm: 2 }, mb: { xs: 2, sm: 3 }, borderRadius: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 1, sm: 2 } }}>
           <TextField
             fullWidth
             variant="outlined"
             placeholder="Search notifications..."
             value={searchTerm}
             onChange={handleSearchChange}
+            sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -623,7 +625,8 @@ const TeacherNotifications = () => {
               onChange={handleSenderFilterChange}
               variant="outlined"
               sx={{
-                minWidth: 200,
+                minWidth: { xs: '100%', md: 200 },
+                fontSize: { xs: '0.875rem', sm: '1rem' },
                 '& .MuiSelect-select': {
                   color: 'text.primary', 
                 },
