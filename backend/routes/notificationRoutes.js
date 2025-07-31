@@ -4,8 +4,7 @@ const mongoose = require('mongoose');
 const Notification = require('../models/notificationModel');
 const {
   createNotification,
-  getAllNotifications,
-  getMyNotifications,
+  getNotifications,
   getSentNotifications,
   markNotificationRead,
   getNotificationById,
@@ -22,7 +21,6 @@ const { protect, admin, teacher, canSendNotifications } = require('../middleware
 // Protected routes - all authenticated users can access their own notifications
 // VAPID endpoint before /:id route to prevent conflicts
 router.get('/vapid', protect, getVapidPublicKey);
-router.get('/me', protect, getMyNotifications);
 router.get('/sent', protect, canSendNotifications, getSentNotifications);
 router.get('/:id', protect, getNotificationById);
 router.put('/:id/read', protect, markNotificationRead);
@@ -88,6 +86,6 @@ router.delete('/subscription', protect, async (req, res) => {
 });
 
 // Get all notifications - all authenticated users can view
-router.get('/', protect, getAllNotifications);
+router.get('/', protect, getNotifications);
 
 module.exports = router;
