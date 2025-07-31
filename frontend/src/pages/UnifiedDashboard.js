@@ -181,9 +181,17 @@ const UnifiedDashboard = () => {
       console.log('Schedule data:', scheduleResponse.data);
       console.log('Role-specific data count:', roleData.length);
 
-      // Process schedule data
-      const upcomingClasses = scheduleResponse.data && scheduleResponse.data.schedule
-        ? Object.values(scheduleResponse.data.schedule).flat().slice(0, 3)
+      // Process schedule data (robust to both possible API shapes)
+      const weekDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      let scheduleObj = null;
+      if (scheduleResponse.data && scheduleResponse.data.schedule) {
+        scheduleObj = scheduleResponse.data.schedule;
+      } else if (scheduleResponse.data && scheduleResponse.data.success && typeof scheduleResponse.data === 'object') {
+        // If top-level keys are weekdays, extract them
+        scheduleObj = Object.fromEntries(Object.entries(scheduleResponse.data).filter(([k]) => weekDays.includes(k)));
+      }
+      const upcomingClasses = scheduleObj
+        ? Object.values(scheduleObj).flat().slice(0, 3)
         : [];
 
       let processedData = {
