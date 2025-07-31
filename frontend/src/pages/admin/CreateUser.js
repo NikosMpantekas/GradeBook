@@ -1107,160 +1107,51 @@ const CreateUser = (props) => {
                       </Typography>
                       
                       <Grid container spacing={3}>
-                        {/* Parent Name */}
-                        <Grid item xs={12} md={6}>
+                        {/* Full Name * - EXACT MATCH */}
+                        <Grid item xs={12}>
                           <TextField
                             fullWidth
-                            label="Parent Name"
+                            label="Full Name *"
                             name="parentName"
                             value={formData.parentName || ''}
                             onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
-                            required={formData.createParentAccount}
                             error={formData.createParentAccount && !formData.parentName}
-                            helperText={formData.createParentAccount && !formData.parentName ? 'Parent name is required' : 'Full name of the parent/guardian'}
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <PersonIcon color="action" />
-                                </InputAdornment>
-                              ),
-                            }}
+                            helperText={formData.createParentAccount && !formData.parentName ? 'Parent name is required' : 'Enter the user\'s full name'}
+                            required
                           />
                         </Grid>
                         
-                        {/* Parent Login Email - AUTO-FILLED */}
-                        <Grid item xs={12} md={6}>
+                        {/* Login Email * - EXACT MATCH with auto-fill */}
+                        <Grid item xs={12}>
                           <TextField
                             fullWidth
-                            label="Parent Login Email"
-                            name="parentEmail"
+                            variant="outlined"
                             type="email"
+                            label="Login Email"
+                            name="parentEmail"
                             value={formData.parentEmail || (formData.email ? `parent.${formData.email}` : '')}
                             onChange={(e) => setFormData({ ...formData, parentEmail: e.target.value })}
-                            required={formData.createParentAccount}
                             error={formData.createParentAccount && !formData.parentEmail}
-                            helperText={formData.createParentAccount && !formData.parentEmail ? 'Parent login email is required' : 'Email address for parent login (auto-filled based on student email)'}
+                            helperText={formData.createParentAccount && !formData.parentEmail ? 'Parent login email is required' : 'Email is auto-generated but can be edited if needed'}
                             InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <EmailIcon color="action" />
-                                </InputAdornment>
-                              ),
-                            }}
-                          />
-                        </Grid>
-                        
-                        {/* Password Generation Section - EXACT COPY OF MAIN PANEL */}
-                        <Grid item xs={12}>
-                          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
-                            🔐 Password & Security
-                          </Typography>
-                          
-                          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  checked={formData.generateParentPassword || false}
-                                  onChange={(e) => {
-                                    const isChecked = e.target.checked;
-                                    if (isChecked) {
-                                      // Generate password when enabled
-                                      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%';
-                                      let password = '';
-                                      for (let i = 0; i < 10; i++) {
-                                        password += chars.charAt(Math.floor(Math.random() * chars.length));
-                                      }
-                                      setFormData({ 
-                                        ...formData, 
-                                        generateParentPassword: true,
-                                        parentPassword: password,
-                                        parentGeneratedPassword: password
-                                      });
-                                    } else {
-                                      setFormData({ 
-                                        ...formData, 
-                                        generateParentPassword: false,
-                                        parentPassword: '',
-                                        parentGeneratedPassword: ''
-                                      });
-                                    }
-                                  }}
-                                  color="primary"
-                                />
-                              }
-                              label="Generate random password for parent"
-                            />
-                            
-                            {formData.generateParentPassword && (
-                              <Tooltip title="Generate new random password">
-                                <IconButton
-                                  onClick={() => {
-                                    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%';
-                                    let password = '';
-                                    for (let i = 0; i < 10; i++) {
-                                      password += chars.charAt(Math.floor(Math.random() * chars.length));
-                                    }
-                                    setFormData({ 
-                                      ...formData, 
-                                      parentPassword: password,
-                                      parentGeneratedPassword: password
-                                    });
-                                  }}
-                                  color="primary"
-                                >
-                                  <RefreshIcon />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </Box>
-                          
-                          <TextField
-                            fullWidth
-                            label={formData.generateParentPassword ? "Generated Password" : "Parent Password"}
-                            name="parentPassword"
-                            type={formData.generateParentPassword ? "text" : "password"}
-                            value={formData.parentPassword || ''}
-                            onChange={(e) => setFormData({ ...formData, parentPassword: e.target.value })}
-                            required={formData.createParentAccount}
-                            error={formData.createParentAccount && !formData.parentPassword}
-                            helperText={
-                              formData.generateParentPassword 
-                                ? 'Auto-generated secure password - parent will be required to change on first login'
-                                : (formData.createParentAccount && !formData.parentPassword ? 'Parent password is required' : 'Password for parent account')
-                            }
-                            disabled={formData.generateParentPassword}
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <LockIcon color="action" />
-                                </InputAdornment>
-                              ),
-                              endAdornment: formData.generateParentPassword && formData.parentPassword && (
+                              endAdornment: (
                                 <InputAdornment position="end">
-                                  <Tooltip title="Copy password">
-                                    <IconButton
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(formData.parentPassword);
-                                        toast.success('Password copied to clipboard!');
-                                      }}
-                                    >
-                                      <ContentCopyIcon />
-                                    </IconButton>
+                                  <Tooltip title="Email is suggested based on student email but can be edited">
+                                    <Chip 
+                                      size="small" 
+                                      color="primary" 
+                                      label="Editable" 
+                                      sx={{ fontSize: '0.7rem' }}
+                                    />
                                   </Tooltip>
                                 </InputAdornment>
                               ),
                             }}
-                            sx={{ mb: 2 }}
+                            required
                           />
                         </Grid>
                         
-                        {/* Contact Information - MATCHING MAIN PANEL */}
-                        <Grid item xs={12}>
-                          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
-                            📱 Contact Information
-                          </Typography>
-                        </Grid>
-                        
+                        {/* Mobile Phone - EXACT MATCH */}
                         <Grid item xs={12} md={6}>
                           <TextField
                             fullWidth
@@ -1268,17 +1159,15 @@ const CreateUser = (props) => {
                             name="parentMobilePhone"
                             value={formData.parentMobilePhone || ''}
                             onChange={(e) => setFormData({ ...formData, parentMobilePhone: e.target.value })}
-                            helperText="Mobile phone number for parent"
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <PhoneIcon color="action" />
-                                </InputAdornment>
-                              ),
+                            helperText="Optional"
+                            inputProps={{
+                              maxLength: 20,
+                              pattern: '[\d\s\-+()]+'
                             }}
                           />
                         </Grid>
                         
+                        {/* Personal Email - EXACT MATCH */}
                         <Grid item xs={12} md={6}>
                           <TextField
                             fullWidth
@@ -1287,46 +1176,177 @@ const CreateUser = (props) => {
                             type="email"
                             value={formData.parentPersonalEmail || ''}
                             onChange={(e) => setFormData({ ...formData, parentPersonalEmail: e.target.value })}
-                            helperText="Alternative personal email address"
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <AlternateEmailIcon color="action" />
-                                </InputAdornment>
-                              ),
+                            helperText="Optional"
+                            inputProps={{
+                              autoComplete: 'email',
+                              inputMode: 'email'
                             }}
                           />
                         </Grid>
                         
-                        {/* Email Credentials Section - MATCHING MAIN PANEL */}
-                        <Grid item xs={12}>
-                          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
-                            📧 Email Credentials
-                          </Typography>
-                          
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                checked={formData.emailParentCredentials || false}
-                                onChange={(e) => setFormData({ ...formData, emailParentCredentials: e.target.checked })}
-                                color="primary"
-                              />
-                            }
-                            label="Email login credentials to parent"
+                        {/* Password * - EXACT MATCH */}
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Password *"
+                            name="parentPassword"
+                            type={formData.showParentPassword ? 'text' : 'password'}
+                            value={formData.parentPassword || ''}
+                            onChange={(e) => setFormData({ ...formData, parentPassword: e.target.value })}
+                            error={formData.createParentAccount && !formData.parentPassword}
+                            helperText={formData.createParentAccount && !formData.parentPassword ? 'Password is required' : 'Password must be at least 6 characters'}
+                            InputProps={{
+                              endAdornment: (
+                                <InputAdornment position="end">
+                                  <IconButton
+                                    onClick={() => setFormData({ ...formData, showParentPassword: !formData.showParentPassword })}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    edge="end"
+                                  >
+                                    {formData.showParentPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                  </IconButton>
+                                </InputAdornment>
+                              )
+                            }}
+                            required
                           />
-                          <FormHelperText sx={{ mb: 2 }}>Send the parent's login credentials to their email address</FormHelperText>
-                          
-                          {formData.emailParentCredentials && (
-                            <Alert severity="info" sx={{ mt: 2 }}>
-                              <Typography variant="body2">
-                                📧 <strong>Parent credentials will be sent to:</strong><br/>
-                                • Login Email: <strong>{formData.parentEmail || 'Not specified'}</strong><br/>
-                                • Personal Email: <strong>{formData.parentPersonalEmail || 'Not specified'}</strong><br/>
-                                <br/>
-                                🔐 The parent will be required to change their password on first login for security.
-                              </Typography>
-                            </Alert>
-                          )}
+                        </Grid>
+                        
+                        {/* Confirm Password * - EXACT MATCH */}
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            label="Confirm Password *"
+                            name="parentConfirmPassword"
+                            type={formData.showParentConfirmPassword ? 'text' : 'password'}
+                            value={formData.parentConfirmPassword || ''}
+                            onChange={(e) => setFormData({ ...formData, parentConfirmPassword: e.target.value })}
+                            error={formData.createParentAccount && (formData.parentPassword !== formData.parentConfirmPassword)}
+                            helperText={formData.createParentAccount && (formData.parentPassword !== formData.parentConfirmPassword) ? 'Passwords do not match' : 'Re-enter the password to confirm'}
+                            InputProps={{
+                              endAdornment: (
+                                <InputAdornment position="end">
+                                  <IconButton
+                                    onClick={() => setFormData({ ...formData, showParentConfirmPassword: !formData.showParentConfirmPassword })}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    edge="end"
+                                  >
+                                    {formData.showParentConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                  </IconButton>
+                                </InputAdornment>
+                              )
+                            }}
+                            required
+                          />
+                        </Grid>
+                        
+                        {/* Password Generation - EXACT MATCH */}
+                        <Grid item xs={12}>
+                          <Paper elevation={1} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
+                              Password Generation
+                            </Typography>
+                            
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <Button
+                                  variant="contained"
+                                  startIcon={<RefreshIcon />}
+                                  onClick={() => {
+                                    const words = [
+                                      'Apple', 'Beach', 'Cloud', 'Dance', 'Eagle', 'Flame', 'Grace', 'Happy',
+                                      'Island', 'Jungle', 'Knight', 'Light', 'Magic', 'Night', 'Ocean', 'Peace',
+                                      'Quick', 'River', 'Smile', 'Trust', 'Unity', 'Voice', 'Water', 'Youth'
+                                    ];
+                                    const word = words[Math.floor(Math.random() * words.length)];
+                                    const numbers = Math.floor(1000 + Math.random() * 9000);
+                                    const symbols = ['!', '@', '#', '$', '%'];
+                                    const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+                                    const newPassword = `${word}${numbers}${symbol}`;
+                                    
+                                    setFormData({ 
+                                      ...formData, 
+                                      parentPassword: newPassword,
+                                      parentConfirmPassword: newPassword,
+                                      parentPasswordGenerated: true,
+                                      parentGeneratedPassword: newPassword
+                                    });
+                                  }}
+                                  sx={{ minWidth: 'auto' }}
+                                >
+                                  Generate Easy Password
+                                </Button>
+                                
+                                {formData.parentPasswordGenerated && (
+                                  <Button
+                                    variant="outlined"
+                                    startIcon={<ContentCopyIcon />}
+                                    onClick={async () => {
+                                      try {
+                                        await navigator.clipboard.writeText(formData.parentGeneratedPassword);
+                                        // You can add toast notification here if needed
+                                      } catch (error) {
+                                        console.error('Failed to copy password');
+                                      }
+                                    }}
+                                    size="small"
+                                  >
+                                    Copy Password
+                                  </Button>
+                                )}
+                              </Box>
+                              
+                              {formData.parentPasswordGenerated && (
+                                <Box>
+                                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                                    Generated Password Options:
+                                  </Typography>
+                                  
+                                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <FormControlLabel
+                                      control={
+                                        <Switch
+                                          checked={formData.showParentCredentials || false}
+                                          onChange={(e) => setFormData({ ...formData, showParentCredentials: e.target.checked })}
+                                          color="primary"
+                                        />
+                                      }
+                                      label="Show Credentials to Admin"
+                                    />
+                                    
+                                    <FormControlLabel
+                                      control={
+                                        <Switch
+                                          checked={formData.parentEmailCredentials || false}
+                                          onChange={(e) => setFormData({ ...formData, parentEmailCredentials: e.target.checked })}
+                                          color="primary"
+                                        />
+                                      }
+                                      label="Email Credentials to User"
+                                    />
+                                  </Box>
+                                  
+                                  {formData.showParentCredentials && (
+                                    <Alert severity="info" sx={{ mt: 2 }}>
+                                      <Typography variant="body2">
+                                        <strong>Parent Login Credentials:</strong><br/>
+                                        Email: {formData.parentEmail || (formData.email ? `parent.${formData.email}` : '')}<br/>
+                                        Password: {formData.parentGeneratedPassword}
+                                      </Typography>
+                                    </Alert>
+                                  )}
+                                  
+                                  {formData.parentEmailCredentials && (
+                                    <Alert severity="success" sx={{ mt: 2 }}>
+                                      <Typography variant="body2">
+                                        📧 Parent will receive login credentials via email after account creation.
+                                      </Typography>
+                                    </Alert>
+                                  )}
+                                </Box>
+                              )}
+                            </Box>
+                          </Paper>
                         </Grid>
                       </Grid>
                     </Box>
