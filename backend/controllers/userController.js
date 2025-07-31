@@ -642,286 +642,7 @@ const getUsers = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Create new user by admin
-// @route   POST /api/users/admin/create
-// @access  Private/Admin
-const createUserByAdmin = asyncHandler(async (req, res) => {
-  console.log('Admin create user endpoint called');
-  
-  try {
-    const { 
-      name, 
-      email, 
-      password, 
-      role, 
-      school, 
-      direction, 
-      subjects,
-      mobilePhone,
-      personalEmail,
-      emailCredentials,
-      generatedPassword
-    } = req.body;
-    
-    // Debug email credentials
-    console.log('Email credentials debug:', {
-      emailCredentials,
-      generatedPassword: generatedPassword ? '[PRESENT]' : '[MISSING]',
-      personalEmail,
-      hasEmailCredentials: !!emailCredentials,
-      hasGeneratedPassword: !!generatedPassword
-    });
 
-    // Validate required fields
-    if (!name || !email || !password || !role) {
-      res.status(400);
-      throw new Error('Please provide name, email, password and role');
-    }
-
-    // Check if admin is in the same school
-    if (req.user.role !== 'superadmin' && !req.user.schoolId) {
-      res.status(401);
-      throw new Error('Not authorized - no school context');
-    }
-
-    // Use admin's school if no school is provided in request
-    // Add validation to ensure targetSchool is a valid ObjectId
-    let targetSchool;
-    
-    // Detailed logging for debugging
-    console.log('School from request:', school);
-    console.log('Admin schoolId:', req.user.schoolId);
-    
-    // First try to get a valid school from the request
-    if (school && mongoose.Types.ObjectId.isValid(school)) {
-      targetSchool = school;
-      console.log('Using school from request as targetSchool');
-    } 
-    // Otherwise use admin's school if it's valid
-    else if (req.user.schoolId && mongoose.Types.ObjectId.isValid(req.user.schoolId)) {
-      targetSchool = req.user.schoolId;
-      console.log('Using admin schoolId as targetSchool');
-    } 
-    // Fallback to error if we don't have a valid school
-    else {
-      console.log('No valid school ID found in request or admin context');
-      res.status(400);
-      throw new Error('School is required. Please provide a valid school ID or ensure admin has valid school context.');
-    }
-    
-    console.log('Final targetSchool:', targetSchool);
-
-    // Check if user exists
-    const userExists = await User.findOne({ 
-      email, 
-      schoolId: role === 'student' ? targetSchool : { $exists: true } 
-    });
-
-    if (userExists) {
-      res.status(400);
-      throw new Error('User with this email already exists');
-    }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create user data object
-    const userData = {
-      name,
-      email,
-      password: hashedPassword,
-      role,
-      mobilePhone: mobilePhone || '',
-      personalEmail: personalEmail || '',
-      active: true,
-      requirePasswordChange: true, // Force password change on first login
-      isFirstLogin: true
-    };
-
-    // Set school differently based on role
-    if (role === 'student') {
-      // Students have a single school
-      userData.schoolId = targetSchool;
-      
-      // Optional: Set class if provided
-      if (req.body.class) {
-        userData.class = req.body.class;
-      }
-    } else if (role === 'teacher') {
-      // ALWAYS assign the validated targetSchool as the schoolId
-      // This ensures schoolId is always a valid ObjectId which is required
-      userData.schoolId = targetSchool;
-      
-      // For detailed logging to track the issue
-      console.log('Creating teacher user with targetSchool:', targetSchool);
-      console.log('targetSchool type:', typeof targetSchool);
-      console.log('targetSchool valid ObjectId:', mongoose.Types.ObjectId.isValid(targetSchool));
-      
-      // ALWAYS initialize schools array with the validated targetSchool
-      // This ensures we always have at least one valid school
-      userData.schools = [targetSchool];
-      
-      // Log request schools for debugging
-      if (req.body.schools) {
-        console.log('Request schools value:', JSON.stringify(req.body.schools));
-        console.log('req.body.schools type:', typeof req.body.schools);
-        console.log('Is array:', Array.isArray(req.body.schools));
-      }
-      
-      // Handle schools from request - with extra validation and error handling
-      try {
-        if (req.body.schools && Array.isArray(req.body.schools)) {
-          // CRITICAL: Create a fresh array with only valid ObjectId schools
-          const validSchools = [];
-          
-          // Check each item carefully
-          for (const school of req.body.schools) {
-            // Skip empty or invalid values
-            if (!school) {
-              console.log('Skipping empty school value');
-              continue;
-            }
-            
-            // Handle string values
-            if (typeof school === 'string' && mongoose.Types.ObjectId.isValid(school)) {
-              console.log(`Adding valid school ID: ${school}`);
-              validSchools.push(school);
-            } else {
-              console.log(`Skipping invalid school value: ${school}`, typeof school);
-            }
-          }
-          
-          // Only use the collected schools if we found valid ones
-          if (validSchools.length > 0) {
-            console.log(`Found ${validSchools.length} valid schools in request`);
-            userData.schools = validSchools;
-          } else {
-            console.log('No valid schools in request, using admin school as fallback');
-          }
-        } else {
-          console.log('No schools array in request, using admin school as fallback');
-        }
-      } catch (error) {
-        console.error('Error processing schools array:', error);
-        // Keep using the default admin's school on error
-      }
-      
-      // Optional: Set classes if provided with validation
-      if (req.body.classes) {
-        try {
-          if (Array.isArray(req.body.classes)) {
-            const validClasses = req.body.classes.filter(cls => 
-              cls && typeof cls === 'string' && mongoose.Types.ObjectId.isValid(cls)
-            );
-            
-            if (validClasses.length > 0) {
-              userData.classes = validClasses;
-              console.log(`Added ${validClasses.length} valid classes to teacher`);
-            }
-          }
-        } catch (error) {
-          console.error('Error processing classes array:', error);
-        }
-      }
-      
-      // Final log of what will be used
-      console.log(`Teacher user final data: schoolId=${userData.schoolId}, schools=`, JSON.stringify(userData.schools));
-    } else if (role === 'secretary') {
-      // Always use the targetSchool (admin's school) as the base schoolId
-      // This ensures schoolId is always a valid ObjectId
-      userData.schoolId = targetSchool;
-      
-      // Initialize schools with admin's school as a safe default
-      userData.schools = [targetSchool];
-      
-      // Only add schools from the request if they exist and are valid
-      if (req.body.schools && Array.isArray(req.body.schools) && req.body.schools.length > 0) {
-        try {
-          // Only add valid school IDs, ignore any invalid ones
-          const validSchools = req.body.schools.filter(school => 
-            school && typeof school === 'string' && mongoose.Types.ObjectId.isValid(school)
-          );
-          
-          // Only replace the default if we have valid schools
-          if (validSchools.length > 0) {
-            userData.schools = validSchools;
-          }
-        } catch (error) {
-          console.error('Error processing secretary schools array:', error);
-          // Keep the default admin's school on error
-        }
-      }
-      
-      console.log(`Secretary user: Using schoolId=${userData.schoolId} and schools=`, userData.schools);
-      
-      // Set secretary permissions if provided
-      if (req.body.secretaryPermissions) {
-        userData.secretaryPermissions = req.body.secretaryPermissions;
-      }
-    } else if (role === 'admin') {
-      // Admins are tied to a school
-      userData.schoolId = targetSchool;
-      
-      // Set admin permissions if provided
-      if (req.body.adminPermissions) {
-        userData.adminPermissions = req.body.adminPermissions;
-      }
-    }
-
-    console.log('Creating user with data:', { ...userData, password: '[HIDDEN]' });
-
-    // Create user
-    const user = await User.create(userData);
-
-    if (user) {
-      let responseMessage = 'User created successfully';
-      
-      // Handle email credentials if requested
-      if (emailCredentials && generatedPassword) {
-        console.log('Attempting to send credentials email...');
-        try {
-          await sendCredentialsEmail({
-            name: user.name,
-            email: personalEmail || user.email,
-            loginEmail: user.email,
-            password: generatedPassword,
-            role: user.role
-          });
-          console.log('✅ Credentials email sent successfully');
-          responseMessage += ' and credentials sent via email';
-        } catch (emailError) {
-          console.error('❌ Failed to send credentials email:', emailError.message);
-          console.error('Email error details:', emailError);
-          responseMessage += ' but failed to send email credentials';
-        }
-      } else {
-        console.log('Email credentials not requested or missing data:', {
-          emailCredentials,
-          hasGeneratedPassword: !!generatedPassword
-        });
-      }
-      
-      res.status(201).json({
-        _id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        schoolId: user.schoolId,
-        requirePasswordChange: user.requirePasswordChange,
-        isFirstLogin: user.isFirstLogin,
-        message: responseMessage
-      });
-    } else {
-      res.status(400);
-      throw new Error('Invalid user data');
-    }
-  } catch (error) {
-    console.error('Error creating user:', error.message);
-    res.status(400);
-    throw new Error('Failed to create user: ' + error.message);
-  }
-});
 
 // @desc    Get users by role (admin, teacher, student, etc.)
 // @route   GET /api/users/role/:role
@@ -1811,6 +1532,170 @@ const unlinkParentFromStudents = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Create user by admin (for admin panel user creation)
+// @route   POST /api/users/admin/create
+// @access  Private/Admin
+const createUserByAdmin = asyncHandler(async (req, res) => {
+  const {
+    name,
+    email,
+    password,
+    role,
+    mobilePhone,
+    personalEmail,
+    emailCredentials,
+    generatedPassword,
+    createParentAccount,
+    parentName,
+    parentEmail,
+    parentEmailCredentials
+  } = req.body;
+
+  console.log('CREATE_USER_BY_ADMIN', `Creating ${role} account for ${name} (${email})`);
+
+  if (!name || !email || !password || !role) {
+    console.log('CREATE_USER_BY_ADMIN', 'Validation failed: Missing required fields');
+    res.status(400);
+    throw new Error('Please provide name, email, password, and role');
+  }
+
+  // Check if user already exists
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    console.log('CREATE_USER_BY_ADMIN', `User already exists with email: ${email}`);
+    res.status(400);
+    throw new Error('User already exists with this email');
+  }
+
+  try {
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user data
+    const userData = {
+      name,
+      email,
+      password: hashedPassword,
+      role,
+      schoolId: req.user.schoolId,
+      mobilePhone: mobilePhone || '',
+      personalEmail: personalEmail || '',
+      requirePasswordChange: !!generatedPassword,
+      isFirstLogin: !!generatedPassword
+    };
+
+    console.log('CREATE_USER_BY_ADMIN', 'Creating user with data:', {
+      ...userData,
+      password: '[HIDDEN]'
+    });
+
+    // Create the user
+    const user = await User.create(userData);
+    console.log('CREATE_USER_BY_ADMIN', `User created successfully with ID: ${user._id}`);
+
+    // Send credentials email if requested
+    if (emailCredentials && generatedPassword) {
+      try {
+        await sendCredentialsEmail({
+          name: user.name,
+          email: user.email,
+          loginEmail: user.email,
+          password: generatedPassword,
+          role: user.role
+        });
+        console.log('CREATE_USER_BY_ADMIN', `Credentials email sent to ${user.email}`);
+      } catch (emailError) {
+        console.error('CREATE_USER_BY_ADMIN', `Failed to send credentials email:`, emailError.message);
+      }
+    }
+
+    // Create parent account if requested and user is a student
+    let parentAccount = null;
+    if (createParentAccount && role === 'student' && parentName && parentEmail) {
+      try {
+        console.log('CREATE_USER_BY_ADMIN', `Creating parent account for student ${user._id}`);
+        
+        // Use the same generated password for parent
+        const parentPassword = generatedPassword || 'TempPass123!';
+        const hashedParentPassword = await bcrypt.hash(parentPassword, 10);
+        
+        // Create parent account data
+        const parentData = {
+          name: parentName,
+          email: parentEmail,
+          password: hashedParentPassword,
+          role: 'parent',
+          schoolId: req.user.schoolId,
+          linkedStudentIds: [user._id],
+          requirePasswordChange: true,
+          isFirstLogin: true
+        };
+        
+        parentAccount = await User.create(parentData);
+        
+        // Update student with parent link
+        await User.findByIdAndUpdate(user._id, {
+          $push: { parentIds: parentAccount._id }
+        });
+        
+        console.log('CREATE_USER_BY_ADMIN', `Parent account created with ID: ${parentAccount._id}`);
+        
+        // Send parent credentials email if requested
+        if (parentEmailCredentials) {
+          try {
+            await sendCredentialsEmail({
+              name: parentAccount.name,
+              email: parentAccount.email,
+              loginEmail: parentAccount.email,
+              password: parentPassword,
+              role: 'parent',
+              studentName: user.name
+            });
+            console.log('CREATE_USER_BY_ADMIN', `Parent credentials email sent to ${parentAccount.email}`);
+          } catch (emailError) {
+            console.error('CREATE_USER_BY_ADMIN', `Failed to send parent credentials email:`, emailError.message);
+          }
+        }
+        
+      } catch (parentError) {
+        console.error('CREATE_USER_BY_ADMIN', `Failed to create parent account:`, parentError.message);
+        // Don't fail the main user creation if parent creation fails
+      }
+    }
+
+    // Prepare response
+    const response = {
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        schoolId: user.schoolId,
+        mobilePhone: user.mobilePhone,
+        personalEmail: user.personalEmail
+      }
+    };
+    
+    if (parentAccount) {
+      response.parentAccount = {
+        _id: parentAccount._id,
+        name: parentAccount.name,
+        email: parentAccount.email,
+        role: parentAccount.role
+      };
+    }
+
+    console.log('CREATE_USER_BY_ADMIN', `User creation completed successfully`);
+    res.status(201).json(response);
+    
+  } catch (error) {
+    console.error('CREATE_USER_BY_ADMIN', `Error creating user:`, error.message);
+    res.status(500);
+    throw new Error(`Failed to create user: ${error.message}`);
+  }
+});
+
 // Export functions
 module.exports = {
   registerUser,
@@ -1820,6 +1705,7 @@ module.exports = {
   updateProfile,
   getUsers,
   getUserById,
+  createUserByAdmin,
   updateUser,
   deleteUser,
   changePassword,

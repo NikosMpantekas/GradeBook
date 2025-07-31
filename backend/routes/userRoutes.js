@@ -8,6 +8,7 @@ const {
   updateProfile,
   getUsers,
   getUserById,
+  createUserByAdmin,
   updateUser,
   deleteUser,
   changePassword,
@@ -32,7 +33,7 @@ router.post('/change-password', protect, changePassword);
 
 // Admin routes for user management
 router.get('/', protect, admin, getUsers);
-// router.post('/admin/create', protect, admin, createUserByAdmin); // DISABLED - function not implemented
+router.post('/admin/create', protect, admin, createUserByAdmin);
 router.get('/:id', protect, getUserById);
 router.put('/:id', protect, canManageUsers, updateUser);
 router.delete('/:id', protect, admin, deleteUser);
