@@ -78,23 +78,12 @@ const createNotification = async (notificationData, token) => {
   }
 };
 
-// Get all notifications (admin only)
-const getAllNotifications = async (token) => {
-  const config = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
 
-  const response = await axiosInstance.get(API_NOTIFICATIONS, config);
-
-  return response.data;
-};
 
 // Get my notifications
 const getMyNotifications = async (token) => {
   try {
-    const endpoint = `${API_NOTIFICATIONS}/me`;
+    const endpoint = API_NOTIFICATIONS;
     console.log('Fetching my notifications from:', endpoint);
     const config = {
       headers: {
@@ -253,7 +242,6 @@ const getVapidPublicKey = async () => {
 
 const notificationService = {
   createNotification,
-  getAllNotifications,
   getMyNotifications,
   getSentNotifications,
   getNotification,
