@@ -182,8 +182,9 @@ const UnifiedDashboard = () => {
       console.log('Role-specific data count:', roleData.length);
 
       // Process schedule data
-      const upcomingClasses = scheduleResponse.data ? 
-        Object.values(scheduleResponse.data).flat().slice(0, 3) : [];
+      const upcomingClasses = scheduleResponse.data && scheduleResponse.data.schedule
+        ? Object.values(scheduleResponse.data.schedule).flat().slice(0, 3)
+        : [];
 
       let processedData = {
         userInfo: profileResponse.data,
