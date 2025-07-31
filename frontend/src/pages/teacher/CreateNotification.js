@@ -227,9 +227,19 @@ const CreateNotification = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 2, sm: 3 } }}>
+    <Container
+      maxWidth="lg"
+      disableGutters
+      sx={{
+        py: { xs: 2, sm: 3 },
+        px: { xs: 0, sm: 2 },
+        width: '100vw',
+        maxWidth: { xs: '100vw', sm: '900px', md: '1200px' },
+        margin: '0 auto',
+      }}
+    >
       {/* Header */}
-      <Card sx={{ mb: { xs: 2, sm: 3 } }}>
+      <Card sx={{ mb: { xs: 2, sm: 3 }, width: '100%' }}>
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
@@ -263,7 +273,7 @@ const CreateNotification = () => {
       </Card>
 
       <form onSubmit={handleSubmit}>
-        <Box sx={{ display: 'grid', gap: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: 'grid', gap: { xs: 2, sm: 3 }, width: '100%' }}>
           {/* Notification Form */}
           <NotificationForm
             formData={formData}
@@ -282,7 +292,7 @@ const CreateNotification = () => {
           />
 
           {/* Submit Actions */}
-          <Card>
+          <Card sx={{ width: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>

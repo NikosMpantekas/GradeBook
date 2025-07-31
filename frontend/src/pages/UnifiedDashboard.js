@@ -306,7 +306,18 @@ const UnifiedDashboard = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
+    <Container
+      maxWidth="lg"
+      disableGutters
+      sx={{
+        mt: 2,
+        mb: 2,
+        px: { xs: 0, sm: 3 },
+        width: '100vw',
+        maxWidth: { xs: '100vw', sm: '900px', md: '1200px' },
+        margin: '0 auto',
+      }}
+    >
       {/* Header Section */}
       <Box sx={{ mb: { xs: 2, sm: 4 } }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>

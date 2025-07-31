@@ -472,8 +472,18 @@ const Dashboard = () => {
   }
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      {/* Error warning banner */}
+    <Container
+      maxWidth="lg"
+      disableGutters
+      sx={{
+        px: { xs: 0, sm: 2 },
+        width: '100vw',
+        maxWidth: { xs: '100vw', sm: '900px', md: '1200px' },
+        margin: '0 auto',
+      }}
+    >
+      <Box sx={{ flexGrow: 1, width: '100%', maxWidth: '100vw', px: { xs: 1, sm: 0 } }}>
+        {/* Error warning banner */}
       {showErrorWarning && (
         <Paper 
           elevation={0} 
@@ -787,6 +797,7 @@ const Dashboard = () => {
         )}
       </Grid>
     </Box>
+    </Container>
   );
 };
 

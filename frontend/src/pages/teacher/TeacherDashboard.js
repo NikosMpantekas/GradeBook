@@ -232,9 +232,18 @@ const TeacherDashboard = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
+    <Container 
+      maxWidth="lg"
+      sx={{
+        py: 3,
+        px: { xs: 0, sm: 2 },
+        width: '100vw',
+        maxWidth: { xs: '100vw', sm: '900px', md: '1200px' },
+        margin: '0 auto',
+      }}
+    >
       <Fade in={true} timeout={800}>
-        <Box>
+        <Box sx={{ width: '100%', maxWidth: '100vw', px: { xs: 1, sm: 0 } }}>
           {/* Welcome Panel - Always shown */}
           <WelcomePanel user={user} />
           
