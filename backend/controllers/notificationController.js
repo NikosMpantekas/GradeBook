@@ -75,27 +75,84 @@ const createNotification = asyncHandler(async (req, res) => {
     const newNotification = await Notification.create(notificationData);
     console.log(`NOTIFICATION_CREATE', 'Notification created with ID: ${newNotification._id}`);
 
-    // Find all potential recipients based on the new class-based system
+    // CRITICAL SECURITY: Validate sender permissions before determining recipients
+    console.log(`[SECURITY] Validating sender permissions for ${req.user.role} creating notification with targetRole: ${targetRole}`);
+    
+    // SECURITY CHECK: Validate sender can target the specified role
+    if (targetRole && targetRole !== 'all') {
+      if (req.user.role === 'teacher' && targetRole === 'admin') {
+        console.error(`[SECURITY] Teacher ${req.user._id} attempted to send notification to admin role - BLOCKED`);
+        res.status(403);
+        throw new Error('Teachers cannot send notifications to administrators');
+      }
+      if (req.user.role === 'student') {
+        console.error(`[SECURITY] Student ${req.user._id} attempted to create notification - BLOCKED`);
+        res.status(403);
+        throw new Error('Students cannot create notifications');
+      }
+    }
+
+    // Find all potential recipients with STRICT role-based filtering
     let potentialRecipients = [];
     
     if (sendToAll) {
-      console.log('NOTIFICATION_CREATE', 'Notification set to send to all users in school');
-      // Get all users in the school
+      console.log('[SECURITY] Processing sendToAll notification with role restrictions');
+      // SECURITY: Only admins can send to all users - teachers limited to students only
+      let allowedRoles;
+      if (req.user.role === 'admin') {
+        allowedRoles = ['student', 'teacher', 'admin'];
+      } else if (req.user.role === 'teacher') {
+        allowedRoles = ['student']; // Teachers can only mass-notify students
+        console.log('[SECURITY] Teacher sendToAll restricted to students only');
+      } else {
+        console.error(`[SECURITY] Unauthorized role ${req.user.role} attempted sendToAll - BLOCKED`);
+        res.status(403);
+        throw new Error('Unauthorized to send notifications to all users');
+      }
+      
       const allUsers = await User.find({ 
         schoolId: req.user.schoolId,
-        role: { $in: ['student', 'teacher', 'admin'] }
-      }).select('_id');
+        role: { $in: allowedRoles }
+      }).select('_id role');
       potentialRecipients = allUsers.map(user => user._id);
+      console.log(`[SECURITY] SendToAll filtered to ${potentialRecipients.length} users with roles: ${allowedRoles.join(', ')}`);
     } else {
-      // Get direct recipients if specified
+      // Get direct recipients if specified with STRICT role validation
       if (recipients && recipients.length > 0) {
-        console.log('NOTIFICATION_CREATE', `Adding ${recipients.length} direct recipients`);
-        potentialRecipients = [...potentialRecipients, ...recipients];
+        console.log(`[SECURITY] Validating ${recipients.length} direct recipients for sender role: ${req.user.role}`);
+        
+        // SECURITY: Validate each recipient against sender permissions
+        const recipientUsers = await User.find({
+          _id: { $in: recipients },
+          schoolId: req.user.schoolId
+        }).select('_id role name');
+        
+        const validatedRecipients = [];
+        for (const recipient of recipientUsers) {
+          // SECURITY CHECK: Teachers cannot send directly to admins
+          if (req.user.role === 'teacher' && recipient.role === 'admin') {
+            console.error(`[SECURITY] Teacher ${req.user._id} attempted to send notification directly to admin ${recipient._id} (${recipient.name}) - BLOCKED`);
+            res.status(403);
+            throw new Error(`Teachers cannot send notifications directly to administrators (${recipient.name})`);
+          }
+          // SECURITY CHECK: Students cannot send notifications at all
+          if (req.user.role === 'student') {
+            console.error(`[SECURITY] Student ${req.user._id} attempted to send notification - BLOCKED`);
+            res.status(403);
+            throw new Error('Students cannot send notifications');
+          }
+          
+          validatedRecipients.push(recipient._id);
+          console.log(`[SECURITY] Recipient ${recipient._id} (${recipient.role}) validated for sender ${req.user.role}`);
+        }
+        
+        potentialRecipients = [...potentialRecipients, ...validatedRecipients];
+        console.log(`[SECURITY] Added ${validatedRecipients.length} validated direct recipients`);
       }
 
-      // Get recipients based on classes
+      // Get recipients based on classes with STRICT role validation
       if (classes && classes.length > 0) {
-        console.log('NOTIFICATION_CREATE', `Finding recipients from ${classes.length} classes`);
+        console.log(`[SECURITY] Finding recipients from ${classes.length} classes for sender role: ${req.user.role}`);
         const Class = mongoose.model('Class');
         const classData = await Class.find({ 
           _id: { $in: classes },
@@ -103,36 +160,87 @@ const createNotification = asyncHandler(async (req, res) => {
         }).populate('students teachers');
         
         classData.forEach(cls => {
-          if (cls.students) {
+          // SECURITY: Always include students if they exist (unless specifically excluded)
+          if (cls.students && (targetRole === 'student' || targetRole === 'all' || !targetRole)) {
             potentialRecipients = [...potentialRecipients, ...cls.students.map(s => s._id)];
+            console.log(`[SECURITY] Added ${cls.students.length} students from class ${cls.name || cls._id}`);
           }
-          if (cls.teachers && (targetRole === 'teacher' || targetRole === 'all')) {
-            potentialRecipients = [...potentialRecipients, ...cls.teachers.map(t => t._id)];
+          
+          // SECURITY: Teachers can only be included if sender is admin or targeting teachers/all
+          if (cls.teachers && cls.teachers.length > 0) {
+            if (req.user.role === 'admin' && (targetRole === 'teacher' || targetRole === 'all')) {
+              potentialRecipients = [...potentialRecipients, ...cls.teachers.map(t => t._id)];
+              console.log(`[SECURITY] Admin added ${cls.teachers.length} teachers from class ${cls.name || cls._id}`);
+            } else if (req.user.role === 'teacher' && (targetRole === 'teacher' || targetRole === 'all')) {
+              // SECURITY: Teachers can notify other teachers in same class
+              potentialRecipients = [...potentialRecipients, ...cls.teachers.map(t => t._id)];
+              console.log(`[SECURITY] Teacher added ${cls.teachers.length} fellow teachers from class ${cls.name || cls._id}`);
+            } else {
+              console.log(`[SECURITY] Teachers excluded from class ${cls.name || cls._id} - sender: ${req.user.role}, targetRole: ${targetRole}`);
+            }
           }
         });
       }
 
-      // Get recipients based on school branches
+      // Get recipients based on school branches with STRICT role validation
       if (schoolBranches && schoolBranches.length > 0) {
-        console.log('NOTIFICATION_CREATE', `Finding recipients from ${schoolBranches.length} school branches`);
+        console.log(`[SECURITY] Finding recipients from ${schoolBranches.length} school branches for sender role: ${req.user.role}`);
+        
+        // SECURITY: Determine allowed roles based on sender permissions
+        let allowedRoles = [];
+        if (req.user.role === 'admin') {
+          if (targetRole === 'all') {
+            allowedRoles = ['student', 'teacher', 'admin'];
+          } else {
+            allowedRoles = [targetRole];
+          }
+        } else if (req.user.role === 'teacher') {
+          // Teachers can only target students or other teachers (not admins)
+          if (targetRole === 'admin') {
+            console.error(`[SECURITY] Teacher ${req.user._id} attempted to target admin role via school branches - BLOCKED`);
+            res.status(403);
+            throw new Error('Teachers cannot send notifications to administrators');
+          }
+          allowedRoles = targetRole === 'all' ? ['student', 'teacher'] : [targetRole];
+        } else {
+          console.error(`[SECURITY] Unauthorized role ${req.user.role} attempted school branch notification - BLOCKED`);
+          res.status(403);
+          throw new Error('Unauthorized to send notifications via school branches');
+        }
+        
         const usersInBranches = await User.find({
           schoolId: req.user.schoolId,
           schoolBranch: { $in: schoolBranches },
-          ...(targetRole && targetRole !== 'all' ? { role: targetRole } : {})
-        }).select('_id');
+          role: { $in: allowedRoles }
+        }).select('_id role');
         
         potentialRecipients = [...potentialRecipients, ...usersInBranches.map(u => u._id)];
+        console.log(`[SECURITY] Added ${usersInBranches.length} users from school branches with roles: ${allowedRoles.join(', ')}`);
       }
 
-      // Get recipients based on role only
+      // Get recipients based on target role only with STRICT validation
       if (targetRole && targetRole !== 'all' && (!classes || classes.length === 0) && (!schoolBranches || schoolBranches.length === 0)) {
-        console.log('NOTIFICATION_CREATE', `Finding recipients with role: ${targetRole}`);
+        console.log(`[SECURITY] Finding recipients with target role: ${targetRole} for sender: ${req.user.role}`);
+        
+        // SECURITY: Validate sender can target this role
+        if (req.user.role === 'teacher' && targetRole === 'admin') {
+          console.error(`[SECURITY] Teacher ${req.user._id} attempted to target admin role - BLOCKED`);
+          res.status(403);
+          throw new Error('Teachers cannot send notifications to administrators');
+        }
+        if (req.user.role === 'student') {
+          console.error(`[SECURITY] Student ${req.user._id} attempted to create notification - BLOCKED`);
+          res.status(403);
+          throw new Error('Students cannot create notifications');
+        }
+        
         const usersWithRole = await User.find({
           schoolId: req.user.schoolId,
           role: targetRole
-        }).select('_id');
+        }).select('_id role');
         
         potentialRecipients = [...potentialRecipients, ...usersWithRole.map(u => u._id)];
+        console.log(`[SECURITY] Added ${usersWithRole.length} users with target role: ${targetRole}`);
       }
     }
 
@@ -212,47 +320,81 @@ const getAllNotifications = asyncHandler(async (req, res) => {
     // In single database architecture, filter by schoolId
     const query = { schoolId: req.user.schoolId };
     
-    // Apply role-based restrictions - allow students to see relevant notifications
+    // CRITICAL SECURITY: Apply STRICT role-based restrictions to prevent cross-role data leakage
+    console.log(`[SECURITY] Applying strict role filtering for ${req.user.role} user ${req.user._id}`);
+    
     if (req.user.role === 'student') {
-      // Students can only see notifications targeted to them
-      query.$or = [
-        { recipients: req.user._id }, // Directly to them
-        { targetRole: 'student' }, // To all students
-        { targetRole: 'all' } // To everyone
+      // STUDENTS: Can ONLY see notifications specifically intended for them - NO cross-role visibility
+      query.$and = [
+        {
+          $or: [
+            { recipients: req.user._id }, // Directly addressed to this student
+            {
+              $and: [
+                { targetRole: { $in: ['student', 'all'] } }, // Only student/all roles
+                {
+                  $or: [
+                    { classes: { $in: req.user.classes || [] } }, // Their classes only
+                    { schoolBranches: req.user.schoolBranch }, // Their branch only
+                    { sendToAll: true } // School-wide announcements
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        // SECURITY: Exclude any notifications with teacher-only or admin-only roles
+        { targetRole: { $nin: ['teacher', 'admin'] } },
+        // SECURITY: Exclude notifications sent by teachers to other teachers
+        {
+          $or: [
+            { senderRole: { $ne: 'teacher' } },
+            { targetRole: { $in: ['student', 'all'] } }
+          ]
+        }
       ];
-      
-      // If student has classes, add those
-      if (req.user.classes && req.user.classes.length > 0) {
-        query.$or.push({ classes: { $in: req.user.classes } });
-      }
-      
-      // If student has a school branch, add that
-      if (req.user.schoolBranch) {
-        query.$or.push({ schoolBranches: req.user.schoolBranch });
-      }
     }
     else if (req.user.role === 'teacher') {
-      // Teachers can only see notifications they sent or that are targeted to them
-      query.$or = [
-        { sender: req.user._id }, // Notifications they sent
-        { recipients: req.user._id }, // Directly to them
-        { targetRole: req.user.role }, // To their role
+      // TEACHERS: Can see notifications they sent OR that are specifically targeted to them
+      query.$and = [
+        {
+          $or: [
+            { sender: req.user._id }, // Notifications they created
+            { recipients: req.user._id }, // Directly addressed to this teacher
+            {
+              $and: [
+                { targetRole: { $in: ['teacher', 'all'] } }, // Only teacher/all roles
+                {
+                  $or: [
+                    { classes: { $in: req.user.classes || [] } }, // Classes they teach
+                    { schoolBranches: req.user.schoolBranch }, // Their branch
+                    { sendToAll: true } // School-wide announcements
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        // SECURITY: Exclude student-only notifications they didn't create
+        {
+          $or: [
+            { sender: req.user._id }, // They created it
+            { targetRole: { $nin: ['student'] } }, // Not student-only
+            { targetRole: { $in: ['teacher', 'all'] } } // Teacher-allowed roles
+          ]
+        }
       ];
-      
-      // If teacher has schools, add those
-      if (req.user.schools && req.user.schools.length > 0) {
-        query.$or.push({ schools: { $in: req.user.schools } });
-      }
-      
-      // If teacher has directions, add those
-      if (req.user.directions && req.user.directions.length > 0) {
-        query.$or.push({ directions: { $in: req.user.directions } });
-      }
-      
-      // If teacher has subjects, add those
-      if (req.user.subjects && req.user.subjects.length > 0) {
-        query.$or.push({ subjects: { $in: req.user.subjects } });
-      }
+    }
+    else if (req.user.role === 'admin') {
+      // ADMINS: Can see all notifications in their school (no additional restrictions)
+      // query already has schoolId filter which is sufficient for admins
+      console.log('[SECURITY] Admin user - full school access granted');
+    }
+    else {
+      // SECURITY: Unknown role - deny access
+      console.error(`[SECURITY] Unknown user role: ${req.user.role} - denying access`);
+      res.status(403);
+      throw new Error('Access denied - invalid user role');
     }
     
     // Find notifications with appropriate filters
