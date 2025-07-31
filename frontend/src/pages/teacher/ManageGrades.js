@@ -317,16 +317,7 @@ const ManageGrades = () => {
   };
 
   return (
-    <Container
-      maxWidth="lg"
-      disableGutters
-      sx={{
-        py: { xs: 2, sm: 3 },
-        px: { xs: 0, sm: 2 },
-        width: '100vw',
-        maxWidth: { xs: '100vw', sm: '900px', md: '1200px' },
-        margin: '0 auto',
-      }} maxWidth="lg" sx={{ my: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}>
+    <Container maxWidth="lg" sx={{ my: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}>
       <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 4 }, borderRadius: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, mb: { xs: 1, sm: 2 } }}>
           {user?.role === 'admin' ? (

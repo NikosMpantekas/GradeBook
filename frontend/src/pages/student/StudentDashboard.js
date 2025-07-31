@@ -261,19 +261,9 @@ const StudentDashboard = () => {
   }
 
   return (
-    <Container
-      maxWidth="lg"
-      disableGutters
-      sx={{
-        py: 3,
-        px: { xs: 0, sm: 2 },
-        width: '100vw',
-        maxWidth: { xs: '100vw', sm: '900px', md: '1200px' },
-        margin: '0 auto',
-      }}
-    >
+    <Container maxWidth="lg" sx={{ py: 3 }}>
       <Fade in={true} timeout={800}>
-        <Box sx={{ width: '100%', maxWidth: '100vw', px: { xs: 1, sm: 0 } }}>
+        <Box>
           {/* Welcome Panel - Always shown */}
           <WelcomePanel user={user} />
           

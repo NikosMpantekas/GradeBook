@@ -409,9 +409,9 @@ const TeacherNotifications = () => {
     }
     
     return (
-      <Paper elevation={3} sx={{ width: '100%', overflowX: 'auto', borderRadius: 2 }}>
-        <TableContainer sx={{ width: '100%', minWidth: { xs: 600, sm: '100%' }, overflowX: 'auto' }}>
-          <Table stickyHeader aria-label="notifications table" sx={{ minWidth: 600 }}>
+      <Paper elevation={3} sx={{ width: '100%', overflow: 'hidden', borderRadius: 2 }}>
+        <TableContainer>
+          <Table stickyHeader aria-label="notifications table">
             <TableHead>
               <TableRow>
                 <TableCell>Type</TableCell>
@@ -582,21 +582,11 @@ const TeacherNotifications = () => {
   };
 
   return (
-    <Container
-      maxWidth="lg"
-      disableGutters
-      sx={{
-        px: { xs: 0, sm: 2 },
-        width: '100vw',
-        maxWidth: { xs: '100vw', sm: '900px', md: '1200px' },
-        margin: '0 auto',
-      }}
-    >
-      <Box sx={{ flexGrow: 1, px: { xs: 1, sm: 3 } }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-            {user?.role === 'admin' ? 'Manage Notifications' : 'Received Notifications'}
-          </Typography>
+    <Box sx={{ flexGrow: 1, px: { xs: 2, sm: 3 } }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
+        <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+          {user?.role === 'admin' ? 'Manage Notifications' : 'Received Notifications'}
+        </Typography>
         {(user?.role === 'admin' || user?.canSendNotifications !== false) && (
           <Button 
             variant="contained" 
@@ -766,7 +756,6 @@ const TeacherNotifications = () => {
         </DialogActions>
       </Dialog>
     </Box>
-    </Container>
   );
 };
 
