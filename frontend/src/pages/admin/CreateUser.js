@@ -534,6 +534,30 @@ const CreateUser = (props) => {
         userData.generatedPassword = generatedPassword;
       }
       
+      // Add parent account creation data if enabled
+      if (formData.createParentAccount && formData.role === 'student') {
+        userData.createParentAccount = true;
+        userData.parentName = formData.parentName || '';
+        userData.parentEmail = formData.parentEmail || (formData.email ? `parent.${formData.email}` : '');
+        userData.parentPassword = formData.parentPassword || '';
+        userData.parentMobilePhone = formData.parentMobilePhone || '';
+        userData.parentPersonalEmail = formData.parentPersonalEmail || '';
+        userData.parentEmailCredentials = formData.parentEmailCredentials || false;
+        
+        // Include parent generated password if available
+        if (formData.parentGeneratedPassword) {
+          userData.parentGeneratedPassword = formData.parentGeneratedPassword;
+        }
+        
+        console.log('Parent account data added to submission:', {
+          createParentAccount: userData.createParentAccount,
+          parentName: userData.parentName,
+          parentEmail: userData.parentEmail,
+          parentEmailCredentials: userData.parentEmailCredentials,
+          hasParentPassword: !!userData.parentPassword
+        });
+      }
+      
       console.log('Submitting user data:', {
         ...userData,
         generatedPassword: userData.generatedPassword ? '[HIDDEN]' : undefined
