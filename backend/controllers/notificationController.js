@@ -605,7 +605,8 @@ const createPushSubscription = asyncHandler(async (req, res) => {
 
 module.exports = {
   createNotification,
-  getNotifications,
+  getAllNotifications,
+  getMyNotifications,
   getSentNotifications,
   markNotificationRead,
   getNotificationById,
