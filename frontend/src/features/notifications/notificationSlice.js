@@ -30,24 +30,7 @@ export const createNotification = createAsyncThunk(
   }
 );
 
-// Get all notifications (admin only)
-export const getAllNotifications = createAsyncThunk(
-  'notifications/getAll',
-  async (_, thunkAPI) => {
-    try {
-      const token = thunkAPI.getState().auth.user.token;
-      return await notificationService.getAllNotifications(token);
-    } catch (error) {
-      const message =
-        (error.response &&
-          error.response.data &&
-          error.response.data.message) ||
-        error.message ||
-        error.toString();
-      return thunkAPI.rejectWithValue(message);
-    }
-  }
-);
+
 
 // Get my notifications
 export const getMyNotifications = createAsyncThunk(
@@ -232,19 +215,7 @@ export const notificationSlice = createSlice({
         state.isError = true;
         state.message = action.payload;
       })
-      .addCase(getAllNotifications.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(getAllNotifications.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.isSuccess = true;
-        state.notifications = action.payload;
-      })
-      .addCase(getAllNotifications.rejected, (state, action) => {
-        state.isLoading = false;
-        state.isError = true;
-        state.message = action.payload;
-      })
+
       .addCase(getMyNotifications.pending, (state) => {
         state.isLoading = true;
       })

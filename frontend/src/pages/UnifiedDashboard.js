@@ -134,7 +134,7 @@ const UnifiedDashboard = () => {
       console.log('Fetching dashboard data for role:', user?.role);
       
       const notificationsEndpoint = user?.role === 'student'
-        ? `${API_URL}/api/notifications/me?limit=5`
+        ? `${API_URL}/api/notifications?limit=5`
         : `${API_URL}/api/notifications?limit=5`;
 
       // Common data for all roles

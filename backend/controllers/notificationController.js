@@ -73,7 +73,7 @@ const createNotification = asyncHandler(async (req, res) => {
     });
 
     const newNotification = await Notification.create(notificationData);
-    console.log(`NOTIFICATION_CREATE', 'Notification created with ID: ${newNotification._id}`);
+    console.log('NOTIFICATION_CREATE', 'Notification created with ID:', newNotification._id);
 
     // CRITICAL SECURITY: Validate sender permissions before determining recipients
     console.log(`[SECURITY] Validating sender permissions for ${req.user.role} creating notification with targetRole: ${targetRole}`);
@@ -307,18 +307,19 @@ const createNotification = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get all notifications (admin/teacher)
+// @desc    Get all notifications for current user (unified endpoint)
 // @route   GET /api/notifications
-// @access  Private/Admin Teacher
+// @access  Private
 const getAllNotifications = asyncHandler(async (req, res) => {
   try {
-    console.log('[NOTIFICATION] getAllNotifications endpoint called for user', req.user._id, `(${req.user.role})`);
+    const user = req.user;
+    console.log('[NOTIFICATION] getAllNotifications endpoint called for user', user._id, `(${user.role})`);
     
     // Get limit from query params, default to 10
     const limit = req.query.limit ? parseInt(req.query.limit) : 10;
     
-    // In single database architecture, filter by schoolId
-    const query = { schoolId: req.user.schoolId };
+    // Base query with schoolId filter for multi-tenancy
+    const query = { schoolId: user.schoolId };
     
     // CRITICAL SECURITY: Apply STRICT role-based restrictions to prevent cross-role data leakage
     console.log(`[SECURITY] Applying strict role filtering for ${req.user.role} user ${req.user._id}`);
@@ -397,8 +398,9 @@ const getAllNotifications = asyncHandler(async (req, res) => {
       throw new Error('Access denied - invalid user role');
     }
     
-    // Find notifications with appropriate filters
     console.log('Notification query:', JSON.stringify(query));
+    
+    // Find notifications with appropriate filters
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -409,18 +411,18 @@ const getAllNotifications = asyncHandler(async (req, res) => {
     
     console.log(`Found ${notifications.length} notifications`);
     
-    // Compute isRead for each notification for the current user (same as getMyNotifications and getSentNotifications)
+    // Compute isRead for each notification for the current user
     const notificationsWithReadStatus = notifications.map(notification => {
       const notificationObj = notification.toObject();
       // Check if current user has read this notification by checking readBy array
       const readEntry = notification.readBy?.find(entry => 
-        entry.userId && entry.userId.toString() === req.user._id.toString()
+        entry.userId && entry.userId.toString() === user._id.toString()
       );
       notificationObj.isRead = !!readEntry;
       return notificationObj;
     });
     
-    console.log(`Returning ${notificationsWithReadStatus.length} notifications with read status for user ${req.user._id}`);
+    console.log(`Returning ${notificationsWithReadStatus.length} notifications with read status for user ${user._id}`);
     res.status(200).json(notificationsWithReadStatus);
   } catch (error) {
     console.error('Error fetching notifications:', error.message);
@@ -429,96 +431,7 @@ const getAllNotifications = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get notifications for current user
-// @route   GET /api/notifications/me
-// @access  Private
-const getMyNotifications = asyncHandler(async (req, res) => {
-  try {
-    const user = req.user;
-    
-    console.log(`Getting notifications for user ${user.name} (${user._id}) with role: ${user.role}`);
-    
-    // In single database architecture, use direct querying with schoolId filter
-    console.log(`Fetching notifications for user in school with ID: ${user.schoolId}`);
-    
-    // Build a query to find relevant notifications
-    const query = {
-      schoolId: user.schoolId, // Multi-tenancy filter
-      $or: [
-        { recipients: user._id }, // Directly to this user
-        { targetRole: user.role } // To user's role
-      ]
-    };
-    
-    // Add school criteria if the user has a school or schools
-    if (user.school) {
-      query.$or.push({ schools: user.school });
-    }
-    if (user.schools && user.schools.length > 0) {
-      query.$or.push({ schools: { $in: user.schools } });
-    }
-    
-    // Add direction criteria if the user has a direction or directions
-    if (user.direction) {
-      query.$or.push({ directions: user.direction });
-    }
-    if (user.directions && user.directions.length > 0) {
-      query.$or.push({ directions: { $in: user.directions } });
-    }
-    
-    // Add subject criteria if the user has subjects
-    if (user.subjects && user.subjects.length > 0) {
-      query.$or.push({ subjects: { $in: user.subjects } });
-    }
-    
-    console.log('Notification query:', JSON.stringify(query));
-    
-    // Find the notifications with populated references
-    const notifications = await Notification.find(query)
-      .sort({ createdAt: -1 })
-      .populate('sender', 'name')
-      .populate('schoolId', 'name')
-      .populate('classes', 'name');
-    
-    console.log(`Found ${notifications.length} notifications for user`);
-    
-    // Add computed isRead field based on readBy array for current user
-    const notificationsWithReadStatus = notifications.map(notification => {
-      const notificationObj = notification.toObject();
-      const isReadByCurrentUser = notification.readBy.some(r => r.user.toString() === user._id.toString());
-      notificationObj.isRead = isReadByCurrentUser;
-      return notificationObj;
-    });
-    
-    // Special handling for superadmin users - they see all notifications
-    // unless they belong to a specific school
-    if (user.role === 'superadmin' && !user.schoolId) {
-      console.log('Superadmin user - fetching all notifications');
-      
-      const allNotifications = await Notification.find({})
-        .sort({ createdAt: -1 })
-        .populate('sender', 'name')
-        .populate('schoolId', 'name')
-        .populate('classes', 'name');
-      
-      // Add computed isRead field for superadmin notifications too
-      const allNotificationsWithReadStatus = allNotifications.map(notification => {
-        const notificationObj = notification.toObject();
-        const isReadByCurrentUser = notification.readBy.some(r => r.user.toString() === user._id.toString());
-        notificationObj.isRead = isReadByCurrentUser;
-        return notificationObj;
-      });
-      
-      console.log(`Found ${allNotificationsWithReadStatus.length} total notifications for superadmin`);
-      return res.status(200).json(allNotificationsWithReadStatus);
-    }
-    
-    return res.status(200).json(notificationsWithReadStatus);
-  } catch (error) {
-    console.error('Unexpected error in getMyNotifications:', error.message);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-});
+
 
 // @desc    Get sent notifications
 // @route   GET /api/notifications/sent
@@ -844,7 +757,6 @@ const createPushSubscription = asyncHandler(async (req, res) => {
 module.exports = {
   createNotification,
   getAllNotifications,
-  getMyNotifications,
   getSentNotifications,
   markNotificationRead,
   getNotificationById,

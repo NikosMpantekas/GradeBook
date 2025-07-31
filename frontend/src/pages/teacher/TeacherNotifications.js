@@ -38,7 +38,6 @@ import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import {
   getSentNotifications,
-  getAllNotifications,
   getMyNotifications,
   deleteNotification,
   markNotificationAsRead,
@@ -100,11 +99,10 @@ const TeacherNotifications = () => {
   useEffect(() => {
     console.log('TeacherNotifications component mounted - loading notifications');
     
-    // For admins, use different approach to get all notifications including teacher ones
+    // For admins, use the unified endpoint which now handles role-based filtering
     if (user && user.role === 'admin') {
-      console.log('Admin user detected - loading ALL notifications');
-      // Use the admin-specific getAllNotifications endpoint instead
-      dispatch(getAllNotifications())
+      console.log('Admin user detected - loading notifications via unified endpoint');
+      dispatch(getMyNotifications())
         .unwrap()
         .then(data => {
           console.log(`Admin: Successfully fetched ${data?.length || 0} notifications`);
@@ -290,7 +288,7 @@ const TeacherNotifications = () => {
           );
           
           if (user && user.role === 'admin') {
-            dispatch(getAllNotifications());
+            dispatch(getMyNotifications());
           } else {
             dispatch(getSentNotifications());
           }
@@ -318,7 +316,7 @@ const TeacherNotifications = () => {
           );
           
           if (user && user.role === 'admin') {
-            dispatch(getAllNotifications());
+            dispatch(getMyNotifications());
           } else {
             dispatch(getSentNotifications());
           }
@@ -359,7 +357,7 @@ const TeacherNotifications = () => {
           // Re-fetch both received and sent notifications for teachers
           fetchTeacherNotifications();
         } else if (user?.role === 'admin') {
-          dispatch(getAllNotifications());
+          dispatch(getMyNotifications());
         } else {
           dispatch(getMyNotifications());
         }

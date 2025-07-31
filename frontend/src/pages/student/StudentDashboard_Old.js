@@ -95,7 +95,7 @@ const StudentDashboard = () => {
 
         // Get received notifications
         axios
-          .get(`${API_URL}/api/notifications/me?limit=5`, config)
+          .get(`${API_URL}/api/notifications?limit=5`, config)
           .then((response) => {
             console.log(
               "STUDENT DASHBOARD - Notifications response:",
