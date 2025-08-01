@@ -11,6 +11,7 @@ import {
   Box,
   Typography,
   Avatar,
+  Drawer,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -22,7 +23,7 @@ import {
 } from '@mui/icons-material';
 import { logout } from '../features/auth/authSlice';
 
-const ParentSidebar = () => {
+const ParentSidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -67,7 +68,8 @@ const ParentSidebar = () => {
     return location.pathname.startsWith(path);
   };
 
-  return (
+  // Create the drawer content (matches generic Sidebar pattern)
+  const drawer = (
     <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* User Profile Section */}
       <Box sx={{ p: 2, textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
@@ -185,6 +187,54 @@ const ParentSidebar = () => {
           </ListItemButton>
         </ListItem>
       </List>
+    </Box>
+  );
+
+  return (
+    <Box
+      component="nav"
+      sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+      aria-label="parent navigation sidebar"
+    >
+      {/* Mobile drawer */}
+      <Drawer
+        container={window.document.body}
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile
+        }}
+        sx={{
+          display: { xs: 'block', sm: 'none' },
+          '& .MuiDrawer-paper': { 
+            boxSizing: 'border-box', 
+            width: drawerWidth,
+            borderRight: '1px solid rgba(0, 0, 0, 0.12)' 
+          },
+        }}
+      >
+        {drawer}
+      </Drawer>
+      
+      {/* Desktop drawer */}
+      <Drawer
+        variant="permanent"
+        open={true}
+        sx={{
+          display: { xs: 'none', sm: 'block' },
+          '& .MuiDrawer-paper': { 
+            boxSizing: 'border-box', 
+            width: drawerWidth,
+            borderRight: '1px solid rgba(0, 0, 0, 0.12)' 
+          },
+        }}
+        PaperProps={{
+          elevation: 1, // Add subtle shadow for better visual separation
+        }}
+      >
+        {drawer}
+      </Drawer>
     </Box>
   );
 };

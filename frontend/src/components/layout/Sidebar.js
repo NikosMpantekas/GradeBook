@@ -41,15 +41,23 @@ import {
   Support as SupportIcon,
   Info as InfoIcon,
   Settings as SettingsIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { logout } from '../../features/auth/authSlice';
 import { useFeatureToggles } from '../../context/FeatureToggleContext';
 
 const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = false }) => {
   console.log('Sidebar rendering with props:', { drawerWidth, mobileOpen, permanent });
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
   
   // Enhanced sidebar state management with corrected route detection
   const isSuperAdmin = user && user.role === 'superadmin';
@@ -234,6 +242,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/admin',
         roles: ['admin'],
         section: 'admin',
+        description: 'Start your day with a clear overview of your school'
       },
       
       // 2. Manage Users (Admin)
@@ -644,6 +653,57 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
             </ListItemButton>
           </ListItem>
         ))}
+      </List>
+
+      <Divider />
+
+      {/* Profile and Logout - Matches ParentSidebar */}
+      <List sx={{ py: 1 }}>
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={() => {
+              // Navigate to role-specific profile page
+              const profilePath = user?.role === 'superadmin' ? '/superadmin/profile' : 
+                                 user?.role === 'admin' ? '/app/admin/profile' :
+                                 user?.role === 'teacher' ? '/app/teacher/profile' :
+                                 user?.role === 'student' ? '/app/student/profile' :
+                                 '/app/profile';
+              navigate(profilePath);
+            }}
+            sx={{
+              mx: 1,
+              borderRadius: 2,
+              '&:hover': {
+                backgroundColor: 'action.hover',
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <PersonIcon />
+            </ListItemIcon>
+            <ListItemText primary="Profile" />
+          </ListItemButton>
+        </ListItem>
+        
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={handleLogout}
+            sx={{
+              mx: 1,
+              borderRadius: 2,
+              color: 'error.main',
+              '&:hover': {
+                backgroundColor: 'error.light',
+                color: 'error.dark',
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40, color: 'inherit' }}>
+              <LogoutIcon />
+            </ListItemIcon>
+            <ListItemText primary="Logout" />
+          </ListItemButton>
+        </ListItem>
       </List>
     </Box>
   );

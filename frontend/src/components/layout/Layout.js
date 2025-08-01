@@ -75,59 +75,11 @@ const Layout = () => {
         handleDrawerToggle={handleDrawerToggle} 
       />
       {user?.role === 'parent' ? (
-        <Box
-          component="nav"
-          sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-        >
-          <Box
-            sx={{
-              display: { xs: 'block', sm: 'none' },
-              '& .MuiDrawer-paper': {
-                boxSizing: 'border-box',
-                width: drawerWidth,
-              },
-            }}
-          >
-            <Drawer
-              variant="temporary"
-              open={mobileOpen}
-              onClose={handleDrawerToggle}
-              ModalProps={{
-                keepMounted: true,
-              }}
-              sx={{
-                '& .MuiDrawer-paper': {
-                  boxSizing: 'border-box',
-                  width: drawerWidth,
-                },
-              }}
-            >
-              <ParentSidebar />
-            </Drawer>
-          </Box>
-          <Box
-            sx={{
-              display: { xs: 'none', sm: 'block' },
-              '& .MuiDrawer-paper': {
-                boxSizing: 'border-box',
-                width: drawerWidth,
-              },
-            }}
-          >
-            <Drawer
-              variant="permanent"
-              sx={{
-                '& .MuiDrawer-paper': {
-                  boxSizing: 'border-box',
-                  width: drawerWidth,
-                },
-              }}
-              open
-            >
-              <ParentSidebar />
-            </Drawer>
-          </Box>
-        </Box>
+        <ParentSidebar 
+          drawerWidth={drawerWidth} 
+          mobileOpen={mobileOpen}
+          handleDrawerToggle={handleDrawerToggle}
+        />
       ) : (
         <Sidebar 
           drawerWidth={drawerWidth} 
