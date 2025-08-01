@@ -2,7 +2,7 @@
  * Application configuration
  */
 
-// App version (NOTIFICATION SYSTEM COMPLETELY REMOVED)
+// App version 
 export const appConfig = {
   name: 'GradeBook',
   version: '1.6.1.92',

@@ -1615,9 +1615,11 @@ const createUserByAdmin = asyncHandler(async (req, res) => {
       try {
         console.log('CREATE_USER_BY_ADMIN', `Creating parent account for student ${user._id}`);
         
-        // Use the same generated password for parent
-        const parentPassword = generatedPassword || 'TempPass123!';
+        // Use the actual parent password from the request body
+        const parentPassword = req.body.parentPassword || req.body.parentGeneratedPassword || 'TempPass123!';
         const hashedParentPassword = await bcrypt.hash(parentPassword, 10);
+        
+        console.log('CREATE_USER_BY_ADMIN', `Using parent password from request body (length: ${parentPassword.length})`);
         
         // Create parent account data
         const parentData = {
