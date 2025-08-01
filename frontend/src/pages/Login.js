@@ -81,6 +81,9 @@ const Login = () => {
         case 'student':
           redirectPath = '/app/student';
           break;
+        case 'parent':
+          redirectPath = '/app/parent';
+          break;
         default:
           console.error('Unknown user role:', user?.role);
           redirectPath = '/app/dashboard'; // Fallback
