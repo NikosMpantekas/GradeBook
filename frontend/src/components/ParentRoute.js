@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import Layout from './layout/Layout';
 
 const ParentRoute = ({ children }) => {
   const { user } = useSelector((state) => state.auth);
@@ -31,11 +30,7 @@ const ParentRoute = ({ children }) => {
 
   console.log('ParentRoute: Parent access granted for:', user.name);
 
-  return (
-    <Layout>
-      {children}
-    </Layout>
-  );
+  return children;
 };
 
 export default ParentRoute;

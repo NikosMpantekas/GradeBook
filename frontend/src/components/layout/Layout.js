@@ -5,7 +5,6 @@ import { useSelector } from 'react-redux';
 
 import Header from './Header';
 import Sidebar from './Sidebar';
-import ParentSidebar from '../ParentSidebar';
 import Footer from './Footer';
 
 const Layout = () => {
@@ -74,19 +73,11 @@ const Layout = () => {
         drawerWidth={drawerWidth} 
         handleDrawerToggle={handleDrawerToggle} 
       />
-      {user?.role === 'parent' ? (
-        <ParentSidebar 
-          drawerWidth={drawerWidth} 
-          mobileOpen={mobileOpen}
-          handleDrawerToggle={handleDrawerToggle}
-        />
-      ) : (
-        <Sidebar 
-          drawerWidth={drawerWidth} 
-          mobileOpen={mobileOpen}
-          handleDrawerToggle={handleDrawerToggle}
-        />
-      )}
+      <Sidebar 
+        drawerWidth={drawerWidth} 
+        mobileOpen={mobileOpen}
+        handleDrawerToggle={handleDrawerToggle}
+      />
       <Box
         component="main"
         sx={{

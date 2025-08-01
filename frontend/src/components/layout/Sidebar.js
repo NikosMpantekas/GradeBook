@@ -97,6 +97,50 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     const menuItems = [
       // STUDENT MENU ITEMS (FOCUSED - ONLY GRADES AND NOTIFICATIONS)
       
+      // PARENT MENU ITEMS
+      
+      // 1. Parent Dashboard
+      {
+        text: 'Dashboard',
+        icon: <DashboardIcon />,
+        path: '/app/parent',
+        roles: ['parent'],
+        section: 'parent',
+        description: 'Overview of student progress'
+      },
+      
+      // 2. Student Grades (Parent)
+      {
+        text: 'Student Grades',
+        icon: <GradesIcon />,
+        path: '/app/parent/grades',
+        roles: ['parent'],
+        section: 'parent',
+        description: 'View student grades and performance'
+      },
+      
+      // 3. Notifications (Parent)
+      {
+        text: 'Notifications',
+        icon: <NotificationsIcon />,
+        path: '/app/parent/notifications',
+        roles: ['parent'],
+        section: 'parent',
+        description: 'School communications and updates'
+      },
+      
+      // 4. Contact Support (Parent)
+      {
+        text: 'Contact Support',
+        icon: <ContactSupportIcon />,
+        path: '/app/parent/contact',
+        roles: ['parent'],
+        section: 'parent',
+        description: 'Get help and support'
+      },
+      
+      // STUDENT MENU ITEMS (FOCUSED - ONLY GRADES AND NOTIFICATIONS)
+      
       // 1. Student Dashboard
       {
         text: 'Dashboard',
@@ -104,6 +148,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/student',
         roles: ['student'],
         section: 'student',
+        description: 'Your academic overview and daily updates'
       },
       
       // 2. View My Grades (Student)
@@ -114,6 +159,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableGrades'),
+        description: 'View your academic performance and grades'
       },
       
       // 3. View My Notifications (Student)
@@ -124,6 +170,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
+        description: 'School announcements and messages'
       },
       
       // 4. View My Schedule (Student)
@@ -134,6 +181,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableSchedule'),
+        description: 'Your daily class schedule'
       },
       
       // 5. Contact (Student)
@@ -144,6 +192,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableContact'),
+        description: 'Contact school administration for support'
       },
       
       // TEACHER MENU ITEMS
@@ -155,6 +204,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/teacher',
         roles: ['teacher'],
         section: 'teacher',
+        description: 'Your teaching overview and daily activities'
       },
       
       // STEP 4: TEACHER FUNCTIONS (REFINED - REMOVED MANAGEMENT FUNCTIONS PER USER REQUEST)
@@ -169,6 +219,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableGrades'),
+        description: 'Create and assign grades to students'
       },
       
       // 7. Manage Grades (Teacher)
@@ -179,6 +230,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableGrades'),
+        description: 'View and edit existing student grades'
       },
       
       // 8. Grades Overview (Teacher)
@@ -189,6 +241,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableGrades'),
+        description: 'Statistical overview of student performance'
       },
       
       // 9. Add Notifications (Teacher)
@@ -199,6 +252,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
+        description: 'Send announcements to students and parents'
       },
       
       // 10. Received Notifications (Teacher)
@@ -209,6 +263,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
+        description: 'View messages and announcements received from administration'
       },
       
       // NOTE: Removed Manage School Branches per user request
@@ -221,6 +276,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableSchedule'),
+        description: 'View your teaching schedule and class timetable'
       },
       
       // 13. Contact (Teacher)
@@ -231,6 +287,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableContact'),
+        description: 'Contact school administration for support'
       },
       
       // ADMIN MENU ITEMS - REFACTORED (only working features)
@@ -253,6 +310,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableUserManagement'),
+        description: 'Create and manage student, teacher, and admin accounts'
       },
       
       // 3. Manage Classes (Admin)
@@ -263,9 +321,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableClasses'),
+        description: 'Create and organize class schedules'
       },
-      
-
       
       // 6. Add Grades (Admin) - RESTORED
       {
@@ -275,6 +332,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableGrades'),
+        description: 'Create and assign grades to students'
       },
       
       // 7. Manage Grades (Admin) - RESTORED
@@ -285,6 +343,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableGrades'),
+        description: 'View and edit existing student grades'
       },
       
       // 8. Grades Overview (Admin) - RESTORED
@@ -295,6 +354,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableGrades'),
+        description: 'Statistical overview of student performance'
       },
       
       // 9. Add Notifications (Admin) - RESTORED
@@ -305,6 +365,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
+        description: 'Send announcements to students and parents'
       },
       
       // 10. Manage Notifications (Admin) - RESTORED
@@ -315,6 +376,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
+        description: 'View and manage all school notifications and announcements'
       },
       
       // 11. Manage School Branches (Admin) - RESTORED
@@ -325,6 +387,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableSchoolSettings'),
+        description: 'Manage school locations and branch settings'
       },
       
       // 12. Schedule (Admin) - KEPT
@@ -335,6 +398,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableSchedule'),
+        description: 'View and manage school-wide class schedules'
       },
       
       // 13. Contact (Admin)
@@ -345,6 +409,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         roles: ['admin'],
         section: 'admin',
         checkPermission: () => isFeatureEnabled('enableContact'),
+        description: 'Handle support requests and messages'
       },
       
       // SUPERADMIN MENU ITEMS
@@ -356,6 +421,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/superadmin/dashboard',
         roles: ['superadmin'],
         section: 'superadmin',
+        description: 'Overview of all schools and system-wide statistics'
       },
       
       // 2. School Permissions (SuperAdmin)
@@ -365,6 +431,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/superadmin/school-permissions',
         roles: ['superadmin'],
         section: 'superadmin',
+        description: 'Configure feature permissions for all schools'
       },
       
       // 3. Contact Messages (SuperAdmin)
@@ -374,6 +441,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/superadmin/contact',
         roles: ['superadmin'],
         section: 'superadmin',
+        description: 'Handle support requests from all schools'
       },
       
       // 4. Patch Notes (SuperAdmin)
@@ -383,6 +451,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/superadmin/patch-notes',
         roles: ['superadmin'],
         section: 'superadmin',
+        description: 'Create and manage system update announcements'
       },
       
       // 5. Notifications (SuperAdmin)
@@ -392,6 +461,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/superadmin/notifications',
         roles: ['superadmin'],
         section: 'superadmin',
+        description: 'Send global notifications to all schools'
       },
       
       // 6. System Migration (SuperAdmin)
@@ -401,6 +471,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/superadmin/migration',
         roles: ['superadmin'],
         section: 'superadmin',
+        description: 'Perform database updates and system migrations'
       },
       
       // 6. Global Analytics (SuperAdmin)
@@ -410,6 +481,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/superadmin/analytics',
         roles: ['superadmin'],
         section: 'superadmin',
+        description: 'View system-wide usage statistics and analytics'
       },
       
       // 7. System Logs (SuperAdmin)
@@ -419,6 +491,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         path: '/app/superadmin/logs',
         roles: ['superadmin'],
         section: 'superadmin',
+        description: 'Monitor system performance and error logs'
       },
     ];
 
@@ -645,9 +718,17 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
               </ListItemIcon>
               <ListItemText
                 primary={item.text}
+                secondary={item.description}
                 primaryTypographyProps={{
                   fontSize: '0.875rem',
                   fontWeight: 'medium'
+                }}
+                secondaryTypographyProps={{
+                  variant: 'caption',
+                  sx: {
+                    color: isPathSelected(item.path) ? 'rgba(255,255,255,0.7)' : 'text.secondary',
+                    fontSize: '0.7rem',
+                  },
                 }}
               />
             </ListItemButton>
@@ -663,10 +744,11 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
           <ListItemButton
             onClick={() => {
               // Navigate to role-specific profile page
-              const profilePath = user?.role === 'superadmin' ? '/superadmin/profile' : 
-                                 user?.role === 'admin' ? '/app/admin/profile' :
-                                 user?.role === 'teacher' ? '/app/teacher/profile' :
-                                 user?.role === 'student' ? '/app/student/profile' :
+              const profilePath = user?.role === 'superadmin' ? '/app/profile' : 
+                                 user?.role === 'admin' ? '/app/profile' :
+                                 user?.role === 'teacher' ? '/app/profile' :
+                                 user?.role === 'student' ? '/app/profile' :
+                                 user?.role === 'parent' ? '/app/profile' :
                                  '/app/profile';
               navigate(profilePath);
             }}
