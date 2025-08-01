@@ -564,6 +564,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       routeBasedSection = 'teacher';
     } else if (location.pathname.includes('/student/') || location.pathname === '/app/student') {
       routeBasedSection = 'student';
+    } else if (location.pathname.includes('/parent/') || location.pathname === '/app/parent') {
+      routeBasedSection = 'parent';
     }
     
     // Determine final section with improved logic
@@ -581,6 +583,8 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       finalSection = 'admin';
     } else if (user?.role === 'teacher') {
       finalSection = 'teacher';
+    } else if (user?.role === 'parent') {
+      finalSection = 'parent';
     } else {
       finalSection = 'student';
     }
