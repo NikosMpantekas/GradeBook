@@ -10,7 +10,8 @@ import {
   ListItemButton, 
   ListItemIcon, 
   ListItemText,
-  Typography
+  Typography,
+  Avatar
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -572,89 +573,78 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     return false;
   };
 
-  // Create the drawer content
+  // Create the drawer content - Matches ParentSidebar visual design
   const drawer = (
-    <Box sx={{ 
-      height: '100%', 
-      display: 'flex', 
-      flexDirection: 'column',
-      overflow: 'hidden' // Prevent the container from scrolling
-    }}>
-      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-          {isSuperAdminRoute ? 'Super Admin' : 'GradeBook'}
+    <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* User Profile Section - Matches ParentSidebar styling */}
+      <Box sx={{ p: 2, textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}>
+        <Avatar
+          sx={{
+            width: 60,
+            height: 60,
+            mx: 'auto',
+            mb: 1,
+            bgcolor: 'primary.main',
+            fontSize: '1.5rem'
+          }}
+        >
+          {user?.name?.charAt(0)?.toUpperCase() || (isSuperAdminRoute ? 'S' : 'G')}
+        </Avatar>
+        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+          {user?.name || (isSuperAdminRoute ? 'Super Admin' : 'User')}
         </Typography>
-        {user && (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-            {user.name} ({user.role.charAt(0).toUpperCase() + user.role.slice(1)})
-          </Typography>
-        )}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          {isSuperAdminRoute ? 'Super Admin Account' : `${user?.role?.charAt(0)?.toUpperCase() || ''}${user?.role?.slice(1) || ''} Account`}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {user?.email}
+        </Typography>
       </Box>
-      <Divider sx={{ flexShrink: 0 }} />
-      <Box sx={{ 
-        flex: 1, 
-        overflow: 'auto', // Enable scrolling for the menu items
-        '&::-webkit-scrollbar': {
-          width: '8px',
-        },
-        '&::-webkit-scrollbar-track': {
-          background: 'rgba(0,0,0,0.1)',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          background: 'rgba(0,0,0,0.3)',
-          borderRadius: '4px',
-        },
-        '&::-webkit-scrollbar-thumb:hover': {
-          background: 'rgba(0,0,0,0.5)',
-        },
-      }}>
-        <List sx={{ py: 1 }}>
-          {getMenuItems().map((item) => (
-            <ListItem key={item.text} disablePadding>
-              <ListItemButton 
-                onClick={() => handleNavigate(item.path)}
-                selected={isPathSelected(item.path)}
-                sx={{
-                  minHeight: 48, // Ensure consistent height for zoom responsiveness
-                  px: 2,
-                  py: 1,
-                  borderRadius: 1,
-                  mx: 1,
-                  '&.Mui-selected': {
-                    backgroundColor: '#1976d2', // Strong blue background
-                    color: 'white',
-                    borderLeft: '4px solid #fff',
-                    fontWeight: 'bold',
-                    '& .MuiListItemIcon-root': {
-                      color: 'white'
-                    },
-                    '& .MuiListItemText-primary': {
-                      fontWeight: 'bold'
-                    }
-                  },
-                  '&.Mui-selected:hover': {
-                    backgroundColor: '#1565c0', // Darker blue on hover
-                    color: 'white'
-                  },
+
+      {/* Navigation Menu - Matches ParentSidebar styling */}
+      <List sx={{ flexGrow: 1, py: 1 }}>
+        {getMenuItems().map((item) => (
+          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+            <ListItemButton
+              onClick={() => handleNavigate(item.path)}
+              selected={isPathSelected(item.path)}
+              sx={{
+                mx: 1,
+                borderRadius: 2,
+                '&.Mui-selected': {
+                  backgroundColor: 'primary.main',
+                  color: 'white',
                   '&:hover': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.1)', // Light blue hover for non-selected
-                    borderRadius: 1
-                  }
+                    backgroundColor: 'primary.dark',
+                  },
+                  '& .MuiListItemIcon-root': {
+                    color: 'white',
+                  },
+                },
+                '&:hover': {
+                  backgroundColor: 'action.hover',
+                },
+              }}
+            >
+              <ListItemIcon
+                sx={{
+                  minWidth: 40,
+                  color: isPathSelected(item.path) ? 'white' : 'text.secondary',
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                <ListItemText 
-                  primary={item.text} 
-                  primaryTypographyProps={{
-                    fontSize: '0.875rem',
-                    fontWeight: 'medium'
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      </Box>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText
+                primary={item.text}
+                primaryTypographyProps={{
+                  fontSize: '0.875rem',
+                  fontWeight: 'medium'
+                }}
+              />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
     </Box>
   );
 
