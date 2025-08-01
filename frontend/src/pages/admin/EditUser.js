@@ -1104,6 +1104,79 @@ const EditUser = () => {
               </Grid>
             )}
             
+            {/* Parent Account Management Section */}
+            {formData.role === 'student' && (
+              <Grid item xs={12}>
+                <Paper elevation={1} sx={{ p: 2, mt: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
+                    👨‍👩‍👧‍👦 Parent Account Management
+                  </Typography>
+                  
+                  {/* Existing Parent Accounts Display */}
+                  {userData && userData.parentIds && userData.parentIds.length > 0 ? (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Current parent accounts linked to this student:
+                      </Typography>
+                      {userData.parentIds.map((parent, index) => (
+                        <Alert key={index} severity="info" sx={{ mb: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box>
+                              <Typography variant="body2">
+                                <strong>{parent.name || 'Parent Name'}</strong> - {parent.email || 'parent@school.com'}
+                              </Typography>
+                              {parent.mobilePhone && (
+                                <Typography variant="caption" color="text.secondary">
+                                  📱 {parent.mobilePhone}
+                                </Typography>
+                              )}
+                            </Box>
+                            <Button
+                              size="small"
+                              color="error"
+                              onClick={() => {
+                                // TODO: Implement unlink parent functionality
+                                toast.info('Unlink parent functionality coming soon');
+                              }}
+                            >
+                              Unlink
+                            </Button>
+                          </Box>
+                        </Alert>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      No parent accounts are currently linked to this student.
+                    </Alert>
+                  )}
+                  
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => {
+                      // TODO: Implement add parent functionality  
+                      toast.info('Add parent functionality coming soon - will redirect to ManageParents or open modal');
+                    }}
+                    sx={{ mr: 2 }}
+                  >
+                    Add Parent Account
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={() => {
+                      // TODO: Navigate to ManageParents filtered for this student
+                      navigate(`/app/admin/parents?studentId=${id}`);
+                    }}
+                  >
+                    Manage All Parents
+                  </Button>
+                </Paper>
+              </Grid>
+            )}
+            
             <Grid item xs={12}>
               <FormControlLabel
                 control={

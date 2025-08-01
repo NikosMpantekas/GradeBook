@@ -1153,10 +1153,14 @@ const CreateUser = (props) => {
                             type="email"
                             label="Login Email"
                             name="parentEmail"
-                            value={formData.parentEmail || (formData.email ? `parent.${formData.email}` : '')}
+                            value={formData.parentEmail || (
+                              formData.parentName && adminSchoolInfo.domain 
+                                ? `${formData.parentName.toLowerCase().replace(/\s+/g, '.')}@${adminSchoolInfo.domain}`
+                                : ''
+                            )}
                             onChange={(e) => setFormData({ ...formData, parentEmail: e.target.value })}
                             error={formData.createParentAccount && !formData.parentEmail}
-                            helperText={formData.createParentAccount && !formData.parentEmail ? 'Parent login email is required' : 'Email is auto-generated but can be edited if needed'}
+                            helperText={formData.createParentAccount && !formData.parentEmail ? 'Parent login email is required' : 'Email is auto-generated from parent name but can be edited if needed'}
                             InputProps={{
                               endAdornment: (
                                 <InputAdornment position="end">
