@@ -660,6 +660,49 @@ function App() {
 
           </Route>
 
+          {/* Parent Routes - Using PrivateRoute + Layout + ParentRoute pattern */}
+          <Route element={
+            <PrivateRoute>
+              <Layout />
+            </PrivateRoute>
+          }>
+            <Route path="/app/parent" element={
+              <ParentRoute>
+                <ParentDashboard />
+              </ParentRoute>
+            } />
+            <Route path="/app/parent/dashboard" element={
+              <ParentRoute>
+                <ParentDashboard />
+              </ParentRoute>
+            } />
+            <Route path="/app/parent/grades" element={
+              <ParentRoute>
+                <StudentGrades />
+              </ParentRoute>
+            } />
+            <Route path="/app/parent/notifications" element={
+              <ParentRoute>
+                <Notifications />
+              </ParentRoute>
+            } />
+            <Route path="/app/parent/notifications/:id" element={
+              <ParentRoute>
+                <NotificationDetail />
+              </ParentRoute>
+            } />
+            <Route path="/app/parent/contact" element={
+              <ParentRoute>
+                <UserContactMessages />
+              </ParentRoute>
+            } />
+            <Route path="/app/parent/profile" element={
+              <ParentRoute>
+                <Profile />
+              </ParentRoute>
+            } />
+          </Route>
+
           {/* SuperAdmin Routes - Using PrivateRoute + Layout + SuperAdminRoute pattern */}
           <Route element={
             <PrivateRoute>
