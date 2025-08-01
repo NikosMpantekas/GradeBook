@@ -37,10 +37,28 @@ const ParentDashboard = () => {
   const { user, token } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    fetchStudentsData();
-  }, []);
+    // Only fetch data when token is available
+    if (token && user) {
+      console.log('[ParentDashboard] Token available, fetching students data...');
+      fetchStudentsData();
+    } else {
+      console.log('[ParentDashboard] Token or user not available yet:', { hasToken: !!token, hasUser: !!user });
+      setLoading(false);
+      setError('Authentication required. Please refresh the page.');
+    }
+  }, [token, user]); // Add token and user as dependencies
 
   const fetchStudentsData = async () => {
+    // Add token validation before making request
+    if (!token) {
+      console.error('[ParentDashboard] No token available for API request');
+      setError('Authentication token missing. Please login again.');
+      setLoading(false);
+      return;
+    }
+
+    console.log('[ParentDashboard] Making API request with token length:', token.length);
+    
     try {
       const response = await fetch(`${API_URL}/api/users/parent/students-data`, {
         method: 'GET',
