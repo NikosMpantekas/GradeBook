@@ -683,8 +683,32 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         </Typography>
       </Box>
 
-      {/* Navigation Menu - Matches ParentSidebar styling */}
-      <List sx={{ flexGrow: 1, py: 1 }}>
+      {/* Navigation Menu - Scrollable for Desktop */}
+      <List sx={{ 
+        flexGrow: 1, 
+        py: 1,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        maxHeight: 'calc(100vh - 200px)', // Account for header and profile section
+        '&::-webkit-scrollbar': {
+          width: '6px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'transparent',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: '#888',
+          borderRadius: '3px',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          background: '#555',
+        },
+        // Only apply scrolling for desktop, not mobile
+        '@media (max-width: 768px)': {
+          overflowY: 'visible',
+          maxHeight: 'none'
+        }
+      }}>
         {getMenuItems().map((item) => (
           <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
             <ListItemButton

@@ -89,9 +89,40 @@ const Layout = () => {
           flexDirection: 'column',
           minHeight: '100vh',
           overflowX: 'hidden', // Prevent horizontal scrolling
+          overflowY: 'auto', // Enable vertical scrolling for desktop
+          // Enhanced responsive design for desktop
+          '@media (min-width: 769px)': {
+            maxWidth: '100%',
+            height: '100vh', // Full viewport height
+            overflow: 'auto', // Enable scrolling when content overflows
+          }
         }}
       >
-        <Container sx={{ mt: 8, mb: 2, flexGrow: 1 }}>
+        <Container 
+          maxWidth={false}
+          sx={{ 
+            mt: 8, 
+            mb: 2, 
+            flexGrow: 1,
+            // Enhanced container for better responsive design
+            '@media (min-width: 769px)': {
+              maxWidth: '95%', // Use most of the screen width
+              width: '100%',
+              padding: '0 24px',
+              margin: '64px auto 16px auto', // Center content
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 'calc(100vh - 120px)', // Account for header and footer
+            },
+            // Ensure content stays centered and responsive
+            '& > *': {
+              '@media (min-width: 769px)': {
+                maxWidth: '100%',
+                width: '100%'
+              }
+            }
+          }}
+        >
           <Outlet />
         </Container>
         <Footer />
