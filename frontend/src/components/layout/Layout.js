@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Box, Container } from '@mui/material';
+import { Box, Container, Drawer } from '@mui/material';
 import { useSelector } from 'react-redux';
 
 import Header from './Header';
 import Sidebar from './Sidebar';
+import ParentSidebar from '../ParentSidebar';
 import Footer from './Footer';
 
 const Layout = () => {
@@ -73,11 +74,67 @@ const Layout = () => {
         drawerWidth={drawerWidth} 
         handleDrawerToggle={handleDrawerToggle} 
       />
-      <Sidebar 
-        drawerWidth={drawerWidth} 
-        mobileOpen={mobileOpen}
-        handleDrawerToggle={handleDrawerToggle}
-      />
+      {user?.role === 'parent' ? (
+        <Box
+          component="nav"
+          sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        >
+          <Box
+            sx={{
+              display: { xs: 'block', sm: 'none' },
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: drawerWidth,
+              },
+            }}
+          >
+            <Drawer
+              variant="temporary"
+              open={mobileOpen}
+              onClose={handleDrawerToggle}
+              ModalProps={{
+                keepMounted: true,
+              }}
+              sx={{
+                '& .MuiDrawer-paper': {
+                  boxSizing: 'border-box',
+                  width: drawerWidth,
+                },
+              }}
+            >
+              <ParentSidebar />
+            </Drawer>
+          </Box>
+          <Box
+            sx={{
+              display: { xs: 'none', sm: 'block' },
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: drawerWidth,
+              },
+            }}
+          >
+            <Drawer
+              variant="permanent"
+              sx={{
+                '& .MuiDrawer-paper': {
+                  boxSizing: 'border-box',
+                  width: drawerWidth,
+                },
+              }}
+              open
+            >
+              <ParentSidebar />
+            </Drawer>
+          </Box>
+        </Box>
+      ) : (
+        <Sidebar 
+          drawerWidth={drawerWidth} 
+          mobileOpen={mobileOpen}
+          handleDrawerToggle={handleDrawerToggle}
+        />
+      )}
       <Box
         component="main"
         sx={{
