@@ -415,6 +415,7 @@ function App() {
             <Route path="/app/admin" element={<AdminDashboard />} />
             <Route path="/app/teacher" element={<TeacherDashboard />} />
             <Route path="/app/student" element={<StudentDashboard />} />
+            <Route path="/app/parent" element={<ParentDashboard />} />
             
             <Route path="/app/profile" element={<Profile />} />
             {/* General notifications route */}
@@ -425,6 +426,7 @@ function App() {
             <Route path="/app/admin/contact" element={<ContactMessages />} />
             <Route path="/app/teacher/contact" element={<ContactMessages />} />
             <Route path="/app/student/contact" element={<ContactMessages />} />
+            <Route path="/app/parent/contact" element={<ContactMessages />} />
             {/* Legacy contact routes */}
             <Route path="/app/contact-messages" element={<ContactMessages />} />
             <Route path="/app/contact-support" element={<ContactMessages />} />
@@ -444,6 +446,12 @@ function App() {
             <Route path="/app/student/notifications" element={<Notifications />} />
             <Route path="/app/student/notifications/:id" element={<NotificationDetail />} />
             <Route path="/app/student/schedule" element={<Schedule />} />
+            
+            {/* Parent-specific routes */}
+            <Route path="/app/parent/grades" element={<StudentGrades />} />
+            <Route path="/app/parent/grades/:id" element={<GradeDetail />} />
+            <Route path="/app/parent/notifications" element={<Notifications />} />
+            <Route path="/app/parent/notifications/:id" element={<NotificationDetail />} />
             
             {/* STEP 2: DUPLICATE ALL ADMIN FUNCTIONS FOR STUDENT ROLE */}
             <Route path="/app/student/users" element={
