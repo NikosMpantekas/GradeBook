@@ -98,26 +98,14 @@ const Layout = () => {
         <Box
           sx={{
             flexGrow: 1,
+            mt: { xs: 7, sm: 8 }, // Account for header height
             p: { xs: 1, sm: 2, md: 3 },
-            pt: { xs: 8, sm: 9 }, // Account for header height
-            pb: { xs: 2, sm: 3 },
             display: 'flex',
             flexDirection: 'column',
             width: '100%',
-            maxWidth: '100%',
           }}
         >
-          <Container 
-            maxWidth="lg"
-            sx={{ 
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              px: { xs: 1, sm: 2, md: 3 },
-            }}
-          >
-            <Outlet />
-          </Container>
+          <Outlet />
         </Box>
         
         {/* Footer - positioned outside main content */}

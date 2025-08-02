@@ -201,7 +201,7 @@ const ContactMessages = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 } }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
       <Box sx={{ mb: { xs: 2, sm: 4 } }}>
         <Grid container spacing={2} alignItems="center" justifyContent="space-between">
           <Grid item xs={12} sm>
@@ -349,7 +349,7 @@ const ContactMessages = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Box>
   );
 };
 

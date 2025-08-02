@@ -199,7 +199,7 @@ const ContactMessages = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 } }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
       <Paper 
         elevation={3} 
         sx={{ 
@@ -330,7 +330,7 @@ const ContactMessages = () => {
         open={contactOpen} 
         onClose={handleCloseContact} 
       />
-    </Container>
+    </Box>
   );
 };
 

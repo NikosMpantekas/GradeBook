@@ -198,7 +198,7 @@ const UserContactMessages = () => {
   }, [loading, messages, user.token]);
   
   return (
-    <Container maxWidth="lg" sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 }, py: { xs: 2, sm: 3 } }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
         <Button
           variant="outlined"
@@ -364,7 +364,7 @@ const UserContactMessages = () => {
           ))}
         </Grid>
       )}
-    </Container>
+    </Box>
   );
 };
 

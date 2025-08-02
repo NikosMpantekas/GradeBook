@@ -231,7 +231,7 @@ const CreateNotification = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 3 } }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
       {/* Header */}
       <Card sx={{ mb: { xs: 2, sm: 3 } }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -371,7 +371,7 @@ const CreateNotification = () => {
           </Card>
         </Box>
       </form>
-    </Container>
+    </Box>
   );
 };
 
