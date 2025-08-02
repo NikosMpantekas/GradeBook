@@ -35,7 +35,7 @@ const Footer = () => {
       <Typography variant="body2" color="text.secondary">
         {'© '}
         {new Date().getFullYear()}
-        {' GradeBook - Progressive Web App \n Created by Nikos Mpantekas'}
+        {' GradeBook - Progressive Web App \n Created by the GradeBook Team'}
       </Typography>
       <Typography variant="body2" color="text.secondary">
         {'Version: '}{version} {/* Use the state variable instead of directly using APP_VERSION */}
