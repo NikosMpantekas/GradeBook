@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Box, Container, Drawer } from '@mui/material';
+import { Box, Container, Drawer, useTheme, useMediaQuery } from '@mui/material';
 import { useSelector } from 'react-redux';
 
 import Header from './Header';
@@ -9,6 +9,9 @@ import Footer from './Footer';
 
 const Layout = () => {
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
   // Retrieve previous mobileOpen state from localStorage to prevent it from resetting on navigation
   const [mobileOpen, setMobileOpen] = useState(() => {
     const savedState = localStorage.getItem('sidebarOpen');
@@ -82,7 +85,7 @@ const Layout = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 1.5, sm: 3 }, 
+          p: { xs: 1, sm: 2, md: 3 }, 
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
           display: 'flex',
@@ -101,14 +104,14 @@ const Layout = () => {
         <Container 
           maxWidth={false}
           sx={{ 
-            mt: 8, 
+            mt: { xs: 7, sm: 8 }, 
             mb: 2, 
             flexGrow: 1,
+            px: { xs: 1, sm: 2, md: 3 },
             // Enhanced container for better responsive design
             '@media (min-width: 769px)': {
               maxWidth: '95%', // Use most of the screen width
               width: '100%',
-              padding: '0 24px',
               margin: '64px auto 16px auto', // Center content
               display: 'flex',
               flexDirection: 'column',

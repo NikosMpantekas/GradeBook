@@ -31,7 +31,11 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Card,
+  CardContent,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,7 +44,12 @@ import {
   Search as SearchIcon,
   FilterList as FilterIcon,
   Refresh as RefreshIcon,
-  Visibility as ViewIcon
+  Visibility as ViewIcon,
+  Person as PersonIcon,
+  Email as EmailIcon,
+  School as SchoolIcon,
+  Book as BookIcon,
+  Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -54,6 +63,8 @@ import ErrorState from '../../components/common/ErrorState';
 const ManageUsers = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user: currentUser } = useSelector((state) => state.auth);
   
   const { users, isLoading, isSuccess, isError, message } = useSelector(state => state.users);
@@ -311,180 +322,200 @@ const ManageUsers = () => {
     return name.charAt(0).toUpperCase();
   };
 
-  // Always show a basic structure even while loading to prevent blank screen
-  // This prevents the white screen flash when navigating to this page
-  if (isLoading || !dataLoaded.current) {
-    return (
-      <Box sx={{ flexGrow: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-            Manage Users
-          </Typography>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={handleAddUser}
-            disabled={true}
-          >
-            Add User
-          </Button>
-        </Box>
-
-        <Paper elevation={3} sx={{ p: 5, borderRadius: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', minHeight: 300 }}>
-          <CircularProgress size={60} />
-          <Typography variant="h6" sx={{ mt: 3 }}>
+  // Mobile card layout for users
+  const renderMobileContent = () => {
+    if (isLoading || !dataLoaded.current) {
+      return (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+          <CircularProgress />
+          <Typography variant="body1" sx={{ ml: 2 }}>
             Loading users...
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Please wait while we retrieve user data
-          </Typography>
-        </Paper>
-      </Box>
-    );
-  }
-
-  // Handle error state
-  if (isError) {
-    return (
-      <Box sx={{ flexGrow: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-            Manage Users
-          </Typography>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={handleAddUser}
-          >
-            Add User
-          </Button>
         </Box>
-        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-          <Typography variant="h6" color="error" align="center" sx={{ mb: 2 }}>
+      );
+    }
+
+    if (isError) {
+      return (
+        <Box py={4} textAlign="center">
+          <Typography variant="subtitle1" color="error">
             Error loading users
           </Typography>
-          <Typography variant="body1" align="center" sx={{ mb: 3 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             {message || "An unknown error occurred"}
-          </Typography>
-          <Box display="flex" justifyContent="center">
-            <Button 
-              variant="contained" 
-              onClick={() => dispatch(getUsers())}
-              startIcon={<RefreshIcon />}
-            >
-              Try Again
-            </Button>
-          </Box>
-        </Paper>
-      </Box>
-    );
-  }
-
-  // Empty state - simple version without complex checks that might cause crashes
-  if (!users || !Array.isArray(users) || users.length === 0) {
-    return (
-      <Box sx={{ flexGrow: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-            Manage Users
           </Typography>
           <Button 
             variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={handleAddUser}
+            onClick={() => dispatch(getUsers())}
+            startIcon={<RefreshIcon />}
+            sx={{ mt: 2 }}
           >
-            Add User
+            Try Again
           </Button>
         </Box>
-        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-          <Typography variant="h6" align="center" sx={{ py: 4 }}>
+      );
+    }
+
+    if (!users || !Array.isArray(users) || users.length === 0) {
+      return (
+        <Box py={4} textAlign="center">
+          <Typography variant="subtitle1" color="text.secondary">
             No users found. Click "Add User" to create one.
           </Typography>
-        </Paper>
+        </Box>
+      );
+    }
+
+    return (
+      <Box sx={{ px: { xs: 1, sm: 2 } }}>
+        {filteredUsers
+          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((user) => (
+            <Card
+              key={user._id}
+              sx={{
+                mb: 2,
+                '&:hover': {
+                  boxShadow: 2,
+                  transform: 'translateY(-1px)',
+                  transition: 'all 0.2s ease'
+                }
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                  <Avatar sx={{ 
+                    bgcolor: getRoleColor(user.role),
+                    width: 50,
+                    height: 50,
+                    flexShrink: 0
+                  }}>
+                    {getAvatarLetter(user.name)}
+                  </Avatar>
+                  
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography 
+                        variant="h6" 
+                        sx={{ 
+                          fontWeight: 'bold',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {user.name}
+                      </Typography>
+                      <Chip
+                        label={user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                        color={getRoleColor(user.role)}
+                        size="small"
+                      />
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <EmailIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {user.email}
+                      </Typography>
+                    </Box>
+                    
+                    {/* School and Direction information */}
+                    {(user.schools?.length > 0 || user.school) && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <SchoolIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                        <Typography variant="body2" color="text.secondary">
+                          {user.schools && user.schools.length > 0 ? (
+                            user.schools.map((school, idx) => (
+                              <span key={idx}>
+                                {school.name || school}
+                                {idx < user.schools.length - 1 && ', '}
+                              </span>
+                            ))
+                          ) : Array.isArray(user.school) ? (
+                            user.school.map((school, idx) => (
+                              <span key={idx}>
+                                {school.name || school}
+                                {idx < user.school.length - 1 && ', '}
+                              </span>
+                            ))
+                          ) : (
+                            user.school?.name || user.school
+                          )}
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    {/* Subjects information */}
+                    {user.subjects && user.subjects.length > 0 && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <BookIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {user.subjects.slice(0, 2).map((subject, idx) => (
+                            <Chip
+                              key={idx}
+                              label={subject.name || subject}
+                              size="small"
+                              variant="outlined"
+                            />
+                          ))}
+                          {user.subjects.length > 2 && (
+                            <Chip
+                              label={`+${user.subjects.length - 2} more`}
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                        </Box>
+                      </Box>
+                    )}
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <ScheduleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                      <Typography variant="caption" color="text.secondary">
+                        Created: {user.createdAt ? format(new Date(user.createdAt), 'PP') : 'Unknown'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+                
+                {/* Action buttons */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
+                  <IconButton
+                    color="primary"
+                    size="small"
+                    onClick={() => handleEditUser(user._id)}
+                    disabled={currentUser?.role === 'secretary' && (user._id === currentUser?._id || user.role === 'secretary' || user.role === 'admin')}
+                    title={currentUser?.role === 'secretary' && user._id === currentUser?._id ? 'You cannot edit your own account' : 
+                           currentUser?.role === 'secretary' && user.role === 'secretary' ? 'You cannot edit other secretary accounts' : 
+                           currentUser?.role === 'secretary' && user.role === 'admin' ? 'You cannot edit admin accounts' : ''}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    color="error"
+                    size="small"
+                    onClick={() => handleDeleteClick(user)}
+                    disabled={user.role === 'admin' || 
+                              (currentUser?.role === 'secretary' && (user._id === currentUser?._id || user.role === 'secretary' || user.role === 'admin'))}
+                    title={user.role === 'admin' ? 'Admin accounts cannot be deleted' : 
+                           currentUser?.role === 'secretary' && user._id === currentUser?._id ? 'You cannot delete your own account' : 
+                           currentUser?.role === 'secretary' && user.role === 'secretary' ? 'You cannot delete other secretary accounts' : 
+                           currentUser?.role === 'secretary' && user.role === 'admin' ? 'You cannot delete admin accounts' : ''}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              </CardContent>
+            </Card>
+          ))}
       </Box>
     );
-  }
+  };
 
-  return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-          Manage Users
-        </Typography>
-        <Button 
-          variant="contained" 
-          startIcon={<AddIcon />}
-          onClick={() => handleAddUser(currentUser?.role === 'secretary')}
-          title={currentUser?.role === 'secretary' ? 'You cannot create secretary accounts' : ''}
-        >
-          Add User
-        </Button>
-      </Box>
-
-      {/* Filters */}
-      <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Search by name or email"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="role-filter-label">Filter by Role</InputLabel>
-              <Select
-                labelId="role-filter-label"
-                id="role-filter"
-                value={roleFilter}
-                onChange={handleRoleFilterChange}
-                label="Filter by Role"
-              >
-                <MenuItem value="">
-                  <em>All Roles</em>
-                </MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="teacher">Teacher</MenuItem>
-                <MenuItem value="student">Student</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="school-filter-label">Filter by School</InputLabel>
-              <Select
-                labelId="school-filter-label"
-                id="school-filter"
-                value={schoolFilter}
-                onChange={handleSchoolFilterChange}
-                label="Filter by School"
-                disabled={schoolsLoading || !schools || schools.length === 0}
-              >
-                <MenuItem value="">
-                  <em>All Schools</em>
-                </MenuItem>
-                {Array.isArray(schools) && schools.map((school) => (
-                  <MenuItem key={school._id} value={school._id}>
-                    {school.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* User Table */}
+  // Desktop table layout
+  const renderDesktopContent = () => {
+    return (
       <Paper elevation={3} sx={{ mt: 3, borderRadius: 2 }}>
         <TableContainer>
           <Table>
@@ -672,6 +703,184 @@ const ManageUsers = () => {
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </Paper>
+    );
+  };
+
+  // Always show a basic structure even while loading to prevent blank screen
+  // This prevents the white screen flash when navigating to this page
+  if (isLoading || !dataLoaded.current) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Manage Users
+          </Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleAddUser}
+            disabled={true}
+          >
+            Add User
+          </Button>
+        </Box>
+
+        <Paper elevation={3} sx={{ p: 5, borderRadius: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', minHeight: 300 }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ mt: 3 }}>
+            Loading users...
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Please wait while we retrieve user data
+          </Typography>
+        </Paper>
+      </Box>
+    );
+  }
+
+  // Handle error state
+  if (isError) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Manage Users
+          </Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleAddUser}
+          >
+            Add User
+          </Button>
+        </Box>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="h6" color="error" align="center" sx={{ mb: 2 }}>
+            Error loading users
+          </Typography>
+          <Typography variant="body1" align="center" sx={{ mb: 3 }}>
+            {message || "An unknown error occurred"}
+          </Typography>
+          <Box display="flex" justifyContent="center">
+            <Button 
+              variant="contained" 
+              onClick={() => dispatch(getUsers())}
+              startIcon={<RefreshIcon />}
+            >
+              Try Again
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
+
+  // Empty state - simple version without complex checks that might cause crashes
+  if (!users || !Array.isArray(users) || users.length === 0) {
+    return (
+      <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Manage Users
+          </Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleAddUser}
+          >
+            Add User
+          </Button>
+        </Box>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="h6" align="center" sx={{ py: 4 }}>
+            No users found. Click "Add User" to create one.
+          </Typography>
+        </Paper>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ flexGrow: 1 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+          Manage Users
+        </Typography>
+        <Button 
+          variant="contained" 
+          startIcon={<AddIcon />}
+          onClick={() => handleAddUser(currentUser?.role === 'secretary')}
+          title={currentUser?.role === 'secretary' ? 'You cannot create secretary accounts' : ''}
+        >
+          Add User
+        </Button>
+      </Box>
+
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search by name or email"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel id="role-filter-label">Filter by Role</InputLabel>
+              <Select
+                labelId="role-filter-label"
+                id="role-filter"
+                value={roleFilter}
+                onChange={handleRoleFilterChange}
+                label="Filter by Role"
+              >
+                <MenuItem value="">
+                  <em>All Roles</em>
+                </MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+                <MenuItem value="teacher">Teacher</MenuItem>
+                <MenuItem value="student">Student</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel id="school-filter-label">Filter by School</InputLabel>
+              <Select
+                labelId="school-filter-label"
+                id="school-filter"
+                value={schoolFilter}
+                onChange={handleSchoolFilterChange}
+                label="Filter by School"
+                disabled={schoolsLoading || !schools || schools.length === 0}
+              >
+                <MenuItem value="">
+                  <em>All Schools</em>
+                </MenuItem>
+                {Array.isArray(schools) && schools.map((school) => (
+                  <MenuItem key={school._id} value={school._id}>
+                    {school.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* User Table/Cards */}
+      {isMobile ? renderMobileContent() : renderDesktopContent()}
 
       {/* Delete Confirmation Dialog */}
       <Dialog

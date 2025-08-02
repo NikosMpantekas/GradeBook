@@ -25,6 +25,18 @@ import {
   CircularProgress,
   FormControlLabel,
   Switch,
+  Card,
+  CardContent,
+  Grid,
+  useTheme,
+  useMediaQuery,
+  Avatar,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  ListItemSecondaryAction,
+  Divider
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -33,6 +45,9 @@ import {
   Visibility as VisibilityIcon,
   MarkEmailRead as MarkReadIcon,
   Edit as EditIcon,
+  Notifications as NotificationsIcon,
+  Person as PersonIcon,
+  Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -48,6 +63,8 @@ import {
 const TeacherNotifications = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const { user } = useSelector((state) => state.auth);
   const { notifications, isLoading, isSuccess, isError, message } = useSelector(
@@ -396,7 +413,237 @@ const TeacherNotifications = () => {
     return 'Filtered group';
   };
 
-  const renderContent = () => {
+  // Mobile card layout for notifications
+  const renderMobileContent = () => {
+    if (isLoading && (!filteredNotifications || filteredNotifications.length === 0)) {
+      return (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+          <CircularProgress />
+          <Typography variant="body1" sx={{ ml: 2 }}>
+            Loading notifications...
+          </Typography>
+        </Box>
+      );
+    }
+
+    if (!filteredNotifications || filteredNotifications.length === 0) {
+      return (
+        <Box py={4} textAlign="center">
+          <Typography variant="subtitle1" color="text.secondary">
+            {isError 
+              ? 'Error loading notifications. Please try again.' 
+              : 'No notifications found.'}
+          </Typography>
+          {isError && (
+            <Button 
+              variant="contained" 
+              sx={{ mt: 2 }} 
+              onClick={() => dispatch(getSentNotifications())}
+            >
+              Retry
+            </Button>
+          )}
+          {!isError && !isLoading && (
+            <Button 
+              variant="contained" 
+              sx={{ mt: 2 }} 
+              startIcon={<AddIcon />}
+              onClick={handleAddNotification}
+            >
+              Create Your First Notification
+            </Button>
+          )}
+        </Box>
+      );
+    }
+
+    return (
+      <Box sx={{ px: { xs: 1, sm: 2 } }}>
+        {filteredNotifications
+          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((notification) => (
+            <Card
+              key={notification._id || 'no-id-' + Math.random()}
+              sx={{
+                mb: 2,
+                cursor: 'pointer',
+                '&:hover': {
+                  boxShadow: 2,
+                  transform: 'translateY(-1px)',
+                  transition: 'all 0.2s ease'
+                }
+              }}
+              onClick={() => handleViewNotification(notification._id)}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                  <Avatar sx={{ 
+                    bgcolor: notification.notificationType === 'received' ? 'info.main' : 'primary.main',
+                    width: 40,
+                    height: 40,
+                    flexShrink: 0
+                  }}>
+                    <NotificationsIcon />
+                  </Avatar>
+                  
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Chip
+                        size="small"
+                        label={notification.notificationType === 'received' ? 'Received' : 'Sent'}
+                        color={notification.notificationType === 'received' ? 'info' : 'primary'}
+                        variant="outlined"
+                        sx={{ mr: 1 }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {notification.createdAt 
+                          ? format(new Date(notification.createdAt), 'MMM dd, yyyy')
+                          : 'Unknown date'}
+                      </Typography>
+                    </Box>
+                    
+                    <Typography 
+                      variant="subtitle1" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        mb: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {notification.title || 'No title'}
+                    </Typography>
+                    
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mb: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        lineHeight: 1.4
+                      }}
+                    >
+                      {notification.message 
+                        ? (notification.message.length > 100
+                           ? `${notification.message.substring(0, 100)}...`
+                           : notification.message)
+                        : 'No message'}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <PersonIcon sx={{ fontSize: 16 }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {getRecipientDisplayText(notification)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <Chip
+                          size="small"
+                          label={notification.isRead ? 'Read' : 'Unread'}
+                          color={notification.isRead ? 'success' : 'warning'}
+                        />
+                        {notification.isImportant && (
+                          <Chip 
+                            label="Important" 
+                            color="error" 
+                            size="small"
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                  </Box>
+                </Box>
+                
+                {/* Action buttons */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
+                  <IconButton
+                    color="primary"
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewNotification(notification._id);
+                    }}
+                    title="View notification"
+                  >
+                    <VisibilityIcon />
+                  </IconButton>
+                  
+                  {notification.notificationType === 'received' ? (
+                    !notification.isRead && (
+                      <IconButton
+                        color="success"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsRead(notification._id);
+                        }}
+                        title="Mark as read"
+                      >
+                        <MarkReadIcon />
+                      </IconButton>
+                    )
+                  ) : (
+                    <>
+                      {(user?.role === 'admin' || 
+                        (notification.sender && notification.sender._id === user?._id) ||
+                        (notification.createdBy && notification.createdBy._id === user?._id)) && (
+                        <>
+                          <IconButton
+                            color="primary"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditClick(notification);
+                            }}
+                            title="Edit notification"
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            color="error"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(notification);
+                            }}
+                            title="Delete notification"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </>
+                      )}
+                      {!notification.isRead && (
+                        <IconButton
+                          color="success"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkAsRead(notification._id);
+                          }}
+                          title="Mark as read"
+                        >
+                          <MarkReadIcon />
+                        </IconButton>
+                      )}
+                    </>
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          ))}
+      </Box>
+    );
+  };
+
+  // Desktop table layout
+  const renderDesktopContent = () => {
     if (isLoading && (!filteredNotifications || filteredNotifications.length === 0)) {
       return (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
@@ -671,7 +918,7 @@ const TeacherNotifications = () => {
         </Box>
       </Paper>
 
-      {renderContent()}
+      {isMobile ? renderMobileContent() : renderDesktopContent()}
 
       {/* Delete Confirmation Dialog */}
       <Dialog

@@ -5,7 +5,7 @@
 // App version 
 export const appConfig = {
   name: 'GradeBook',
-  version: '1.6.1.94',
+  version: '1.6.1.95',
   author: 'GradeBook Team'
 };
 

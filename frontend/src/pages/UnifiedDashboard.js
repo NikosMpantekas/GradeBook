@@ -25,7 +25,9 @@ import {
   Select,
   MenuItem,
   TextField,
-  ListItemButton
+  ListItemButton,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -73,6 +75,8 @@ const UnifiedDashboard = () => {
   const { user } = useSelector((state) => state.auth);
   const token = user?.token; // Token is INSIDE user object, not separate field
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Debug logging
   console.log('UNIFIED DASHBOARD - Component mounted');
@@ -289,7 +293,7 @@ const UnifiedDashboard = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 1, sm: 2, md: 3 } }}>
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
           <CircularProgress />
         </Box>
@@ -299,21 +303,27 @@ const UnifiedDashboard = () => {
 
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
+      <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 1, sm: 2, md: 3 } }}>
         <Alert severity="error">{error}</Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
+    <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 1, sm: 2, md: 3 } }}>
       {/* Header Section */}
       <Box sx={{ mb: { xs: 2, sm: 4 } }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+        <Typography variant="h4" component="h1" gutterBottom sx={{ 
+          fontSize: { xs: '1.5rem', sm: '2.125rem' },
+          textAlign: { xs: 'center', sm: 'left' }
+        }}>
           <DashboardIcon sx={{ mr: 2, verticalAlign: 'middle' }} />
           Dashboard
         </Typography>
-        <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+        <Typography variant="h6" color="text.secondary" gutterBottom sx={{ 
+          fontSize: { xs: '1rem', sm: '1.25rem' },
+          textAlign: { xs: 'center', sm: 'left' }
+        }}>
           {getWelcomeMessage()}
         </Typography>
       </Box>
@@ -330,6 +340,12 @@ const UnifiedDashboard = () => {
               }
               title="Profile Information"
               subheader={`${user?.role?.charAt(0).toUpperCase()}${user?.role?.slice(1)} Account`}
+              sx={{ 
+                textAlign: { xs: 'center', sm: 'left' },
+                '& .MuiCardHeader-content': {
+                  textAlign: { xs: 'center', sm: 'left' }
+                }
+              }}
             />
             <CardContent>
               <Typography variant="body1" gutterBottom>
@@ -349,7 +365,7 @@ const UnifiedDashboard = () => {
                 </Typography>
               )}
             </CardContent>
-            <CardActions>
+            <CardActions sx={{ justifyContent: { xs: 'center', sm: 'flex-start' } }}>
               <Button size="small" onClick={() => navigate('/app/profile')}>
                 View Full Profile
               </Button>
@@ -360,7 +376,10 @@ const UnifiedDashboard = () => {
         {/* Quick Actions */}
         <Grid item xs={12} md={8}>
           <Card>
-            <CardHeader title="Quick Actions" sx={{ pb: { xs: 1, sm: 2 } }} />
+            <CardHeader title="Quick Actions" sx={{ 
+              pb: { xs: 1, sm: 2 },
+              textAlign: { xs: 'center', sm: 'left' }
+            }} />
             <CardContent>
               <Grid container spacing={{ xs: 1, sm: 2 }}>
                 {getQuickActions().map((action, index) => (

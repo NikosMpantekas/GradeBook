@@ -40,6 +40,9 @@ import {
   Skeleton,
   Snackbar,
   Tooltip,
+  useTheme,
+  useMediaQuery,
+  Avatar
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,6 +51,10 @@ import {
   Schedule as ScheduleIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
+  School as SchoolIcon,
+  Group as GroupIcon,
+  Person as PersonIcon,
+  Book as BookIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { useSelector, useDispatch } from 'react-redux';
@@ -59,6 +66,8 @@ import { getUsers } from '../../features/users/userSlice';
 const ManageClasses = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useSelector((state) => state.auth);
   const { classes: reduxClasses, isLoading, isError, message } = useSelector(
     (state) => state.classes
@@ -125,6 +134,242 @@ const ManageClasses = () => {
         student.email?.toLowerCase().includes(studentFilter.toLowerCase())
       );
   }, [users, studentFilter]);
+
+  // Mobile card layout for classes
+  const renderMobileContent = () => {
+    if (isLoading) {
+      return (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+          <CircularProgress />
+          <Typography variant="body1" sx={{ ml: 2 }}>
+            Loading classes...
+          </Typography>
+        </Box>
+      );
+    }
+
+    if (!filteredClasses || filteredClasses.length === 0) {
+      return (
+        <Box py={4} textAlign="center">
+          <Typography variant="subtitle1" color="text.secondary">
+            No classes found.
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Box sx={{ px: { xs: 1, sm: 2 } }}>
+        {filteredClasses.map((classItem) => (
+          <Card
+            key={classItem._id}
+            sx={{
+              mb: 2,
+              '&:hover': {
+                boxShadow: 2,
+                transform: 'translateY(-1px)',
+                transition: 'all 0.2s ease'
+              }
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <Avatar sx={{ 
+                  bgcolor: 'primary.main',
+                  width: 50,
+                  height: 50,
+                  flexShrink: 0
+                }}>
+                  <BookIcon />
+                </Avatar>
+                
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        fontWeight: 'bold',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {classItem.subject || classItem.subjectName}
+                    </Typography>
+                    <Chip
+                      label={classItem.direction || classItem.directionName}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <SchoolIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {schools?.find((s) => s._id === classItem.schoolBranch || s._id === classItem.schoolId)?.name || 'N/A'}
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <GroupIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {classItem.students?.length || 0} students
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <PersonIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {classItem.teachers?.length || 0} teachers
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ScheduleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {classItem.schedule && classItem.schedule.length > 0 ? 'Has schedule' : 'No schedule'}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+              
+              {/* Action buttons */}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
+                {classItem.schedule && classItem.schedule.length > 0 && (
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => {
+                      handleEdit(classItem);
+                      setTabValue(2); // Go directly to schedule tab
+                    }}
+                    title="View Schedule"
+                  >
+                    <ScheduleIcon />
+                  </IconButton>
+                )}
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={() => {
+                    handleEdit(classItem);
+                    setTabValue(0); // Go to basic info tab
+                  }}
+                  title="Edit Class"
+                >
+                  <EditIcon />
+                </IconButton>
+                <IconButton
+                  onClick={() => handleDelete(classItem._id)}
+                  color="error"
+                  size="small"
+                  title="Delete Class"
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+    );
+  };
+
+  // Desktop table layout
+  const renderDesktopContent = () => {
+    return (
+      <TableContainer component={Paper} elevation={1}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Subject</TableCell>
+              <TableCell>Direction</TableCell>
+              <TableCell>School</TableCell>
+              <TableCell>Students</TableCell>
+              <TableCell>Teachers</TableCell>
+              <TableCell>Schedule</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center">
+                    <CircularProgress />
+                    <Typography variant="body2" sx={{ ml: 2 }}>
+                    Loading classes...
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : filteredClasses && filteredClasses.length > 0 ? (
+                filteredClasses.map((classItem) => (
+                  <TableRow key={classItem._id}>
+                    <TableCell>{classItem.subject || classItem.subjectName}</TableCell>
+                    <TableCell>{classItem.direction || classItem.directionName}</TableCell>
+                    <TableCell>
+                      {schools?.find((s) => s._id === classItem.schoolBranch || s._id === classItem.schoolId)?.name || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {classItem.students?.length || 0} students
+                    </TableCell>
+                    <TableCell>
+                      {classItem.teachers?.length || 0} teachers
+                    </TableCell>
+                    <TableCell>
+                      {classItem.schedule && classItem.schedule.length > 0 ? (
+                        <Tooltip title="View Schedule">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => {
+                              handleEdit(classItem);
+                              setTabValue(2); // Go directly to schedule tab
+                            }}
+                          >
+                            <ScheduleIcon />
+                          </IconButton>
+                        </Tooltip>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">No schedule</Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Edit Class">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => {
+                            handleEdit(classItem);
+                            setTabValue(0); // Go to basic info tab
+                          }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete Class">
+                        <IconButton
+                          onClick={() => handleDelete(classItem._id)}
+                          color="error"
+                          size="small"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} align="center">
+                    No classes found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+    );
+  };
 
   // Filter classes when searchTerm or classes changes
   useEffect(() => {
@@ -624,96 +869,7 @@ const confirmDelete = async () => {
     </Box>
     
     {/* Classes table */}
-    <TableContainer component={Paper} elevation={1}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Subject</TableCell>
-            <TableCell>Direction</TableCell>
-            <TableCell>School</TableCell>
-            <TableCell>Students</TableCell>
-            <TableCell>Teachers</TableCell>
-            <TableCell>Schedule</TableCell>
-            <TableCell align="right">Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  <CircularProgress />
-                  <Typography variant="body2" sx={{ ml: 2 }}>
-                  Loading classes...
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : filteredClasses && filteredClasses.length > 0 ? (
-              filteredClasses.map((classItem) => (
-                <TableRow key={classItem._id}>
-                  <TableCell>{classItem.subject || classItem.subjectName}</TableCell>
-                  <TableCell>{classItem.direction || classItem.directionName}</TableCell>
-                  <TableCell>
-                    {schools?.find((s) => s._id === classItem.schoolBranch || s._id === classItem.schoolId)?.name || 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    {classItem.students?.length || 0} students
-                  </TableCell>
-                  <TableCell>
-                    {classItem.teachers?.length || 0} teachers
-                  </TableCell>
-                  <TableCell>
-                    {classItem.schedule && classItem.schedule.length > 0 ? (
-                      <Tooltip title="View Schedule">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => {
-                            handleEdit(classItem);
-                            setTabValue(2); // Go directly to schedule tab
-                          }}
-                        >
-                          <ScheduleIcon />
-                        </IconButton>
-                      </Tooltip>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">No schedule</Typography>
-                    )}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Tooltip title="Edit Class">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => {
-                          handleEdit(classItem);
-                          setTabValue(0); // Go to basic info tab
-                        }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete Class">
-                      <IconButton
-                        onClick={() => handleDelete(classItem._id)}
-                        color="error"
-                        size="small"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No classes found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+    {isMobile ? renderMobileContent() : renderDesktopContent()}
       
       {/* Delete confirmation dialog */}
       <Dialog open={open} onClose={handleClose}>

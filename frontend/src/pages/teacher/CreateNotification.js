@@ -14,7 +14,9 @@ import {
   Container,
   Card,
   CardContent,
-  Divider
+  Divider,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { 
   Save as SaveIcon,
@@ -38,6 +40,8 @@ import NotificationService from './components/NotificationService';
 const CreateNotification = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Redux state
   const { user } = useSelector((state) => state.auth);
@@ -227,22 +231,52 @@ const CreateNotification = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 2, sm: 3 } }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 3 } }}>
       {/* Header */}
       <Card sx={{ mb: { xs: 2, sm: 3 } }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            mb: { xs: 2, sm: 3 }, 
+            flexDirection: { xs: 'column', sm: 'row' }, 
+            gap: { xs: 2, sm: 0 } 
+          }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              width: { xs: '100%', sm: 'auto' },
+              flexDirection: { xs: 'column', sm: 'row' },
+              textAlign: { xs: 'center', sm: 'left' }
+            }}>
               {user?.role === 'admin' ? (
-                <AdminPanelSettingsIcon sx={{ mr: { xs: 1, sm: 2 }, color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }} />
+                <AdminPanelSettingsIcon sx={{ 
+                  mr: { xs: 0, sm: 2 }, 
+                  mb: { xs: 1, sm: 0 },
+                  color: 'primary.main', 
+                  fontSize: { xs: '2rem', sm: '2.5rem' } 
+                }} />
               ) : (
-                <SchoolIcon sx={{ mr: { xs: 1, sm: 2 }, color: 'primary.main', fontSize: { xs: '1.5rem', sm: '2rem' } }} />
+                <SchoolIcon sx={{ 
+                  mr: { xs: 0, sm: 2 }, 
+                  mb: { xs: 1, sm: 0 },
+                  color: 'primary.main', 
+                  fontSize: { xs: '2rem', sm: '2.5rem' } 
+                }} />
               )}
               <Box>
-                <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 0, fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+                <Typography variant="h4" component="h1" gutterBottom sx={{ 
+                  mb: 0, 
+                  fontSize: { xs: '1.5rem', sm: '2.125rem' },
+                  textAlign: { xs: 'center', sm: 'left' }
+                }}>
                   Create Notification
                 </Typography>
-                <Typography variant="subtitle1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                <Typography variant="subtitle1" color="text.secondary" sx={{ 
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  textAlign: { xs: 'center', sm: 'left' }
+                }}>
                   {user?.role === 'admin' ? 
                     'Send notifications to students and teachers in your school' : 
                     'Send notifications to students in your assigned classes'
@@ -254,7 +288,11 @@ const CreateNotification = () => {
               variant="outlined"
               startIcon={<ArrowBackIcon />}
               onClick={handleBack}
-              sx={{ minWidth: { xs: '100%', sm: 120 }, width: { xs: '100%', sm: 'auto' } }}
+              sx={{ 
+                minWidth: { xs: '100%', sm: 120 }, 
+                width: { xs: '100%', sm: 'auto' },
+                mt: { xs: 2, sm: 0 }
+              }}
             >
               Back
             </Button>
@@ -283,16 +321,30 @@ const CreateNotification = () => {
 
           {/* Submit Actions */}
           <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                flexDirection: { xs: 'column', sm: 'row' }, 
+                gap: { xs: 2, sm: 0 } 
+              }}>
+                <Typography variant="body2" color="text.secondary" sx={{ 
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  textAlign: { xs: 'center', sm: 'left' }
+                }}>
                   {formData.recipients.length === 0 ? 
                     'Select recipients to send the notification' : 
                     `Ready to send to ${formData.recipients.length} recipient${formData.recipients.length !== 1 ? 's' : ''}`
                   }
                 </Typography>
                 
-                <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, width: { xs: '100%', sm: 'auto' }, flexDirection: { xs: 'column', sm: 'row' } }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: { xs: 1, sm: 2 }, 
+                  width: { xs: '100%', sm: 'auto' }, 
+                  flexDirection: { xs: 'column', sm: 'row' } 
+                }}>
                   <Button
                     variant="outlined"
                     onClick={handleBack}
@@ -306,7 +358,10 @@ const CreateNotification = () => {
                     variant="contained"
                     startIcon={isSubmitting ? <CircularProgress size={20} /> : <SaveIcon />}
                     disabled={isSubmitting || formData.recipients.length === 0}
-                    sx={{ minWidth: { xs: '100%', sm: 140 }, width: { xs: '100%', sm: 'auto' } }}
+                    sx={{ 
+                      minWidth: { xs: '100%', sm: 140 }, 
+                      width: { xs: '100%', sm: 'auto' } 
+                    }}
                   >
                     {isSubmitting ? 'Sending...' : 'Send Notification'}
                   </Button>
