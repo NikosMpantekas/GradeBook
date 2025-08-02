@@ -606,11 +606,11 @@ const UnifiedDashboard = () => {
         )}
 
         {/* Upcoming Classes */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={6} lg={6}>
           <Card>
             <CardHeader 
               title="Upcoming Classes" 
-              sx={{ pb: { xs: 1, sm: 3 } }}
+              sx={{ pb: { xs: 1, sm: 2 } }}
               action={
                 <Button 
                   size="small" 
