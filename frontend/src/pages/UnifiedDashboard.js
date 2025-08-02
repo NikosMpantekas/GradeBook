@@ -610,7 +610,7 @@ const UnifiedDashboard = () => {
           <Card>
             <CardHeader 
               title="Upcoming Classes" 
-              sx={{ pb: { xs: 1, sm: 2 } }}
+              sx={{ pb: { xs: 1, sm: 3 } }}
               action={
                 <Button 
                   size="small" 
