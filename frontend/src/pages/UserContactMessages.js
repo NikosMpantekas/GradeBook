@@ -198,17 +198,21 @@ const UserContactMessages = () => {
   }, [loading, messages, user.token]);
   
   return (
-    <Container maxWidth="lg" sx={{ mt: 3, mb: 5 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+    <Container maxWidth="lg" sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 }, py: { xs: 2, sm: 3 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
           onClick={handleBack}
-          sx={{ mr: 2 }}
+          sx={{ 
+            mr: { xs: 0, sm: 2 },
+            width: { xs: '100%', sm: 'auto' },
+            fontSize: { xs: '0.875rem', sm: '1rem' }
+          }}
         >
           Back
         </Button>
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
+        <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold', fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
           My Messages & Bug Reports
         </Typography>
       </Box>
@@ -226,7 +230,7 @@ const UserContactMessages = () => {
           You haven't sent any messages or bug reports yet.
         </Alert>
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           {messages.map((message) => (
             <Grid item xs={12} key={message._id}>
               <Paper
@@ -242,7 +246,7 @@ const UserContactMessages = () => {
                 {/* Message Header */}
                 <Box
                   sx={{
-                    p: 2,
+                    p: { xs: 1.5, sm: 2 },
                     bgcolor: message.isBugReport 
                       ? 'error.main' 
                       : 'primary.main',
@@ -250,13 +254,15 @@ const UserContactMessages = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: { xs: 1, sm: 0 }
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     {message.isBugReport ? (
-                      <BugReportIcon sx={{ mr: 1 }} />
+                      <BugReportIcon sx={{ mr: 1, fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
                     ) : (
-                      <MessageIcon sx={{ mr: 1 }} />
+                      <MessageIcon sx={{ mr: 1, fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
                     )}
                     <Typography variant="h6" sx={{ fontWeight: 'medium', fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
                       {message.subject || 'No Subject'}
@@ -279,20 +285,21 @@ const UserContactMessages = () => {
                         message.status === 'in-progress' ? 'warning.dark' :
                         message.status === 'replied' ? 'success.dark' :
                         'default.main',
-                      '& .MuiChip-icon': { color: 'white' }
+                      '& .MuiChip-icon': { color: 'white' },
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
                     }}
                   />
                 </Box>
                 
                 {/* Message Content */}
-                <Box sx={{ p: 3 }}>
+                <Box sx={{ p: { xs: 2, sm: 3 } }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                       Sent on {formatDate(message.createdAt)}
                     </Typography>
                   </Box>
                   
-                  <Typography paragraph sx={{ whiteSpace: 'pre-wrap', mb: 3 }}>
+                  <Typography paragraph sx={{ whiteSpace: 'pre-wrap', mb: 3, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                     {message.message}
                   </Typography>
                   
@@ -303,7 +310,7 @@ const UserContactMessages = () => {
                       
                       <Box 
                         sx={{ 
-                          p: 3, 
+                          p: { xs: 2, sm: 3 }, 
                           bgcolor: 'rgba(33, 150, 243, 0.05)', 
                           borderRadius: 2,
                           border: '1px solid rgba(33, 150, 243, 0.2)',
@@ -322,15 +329,15 @@ const UserContactMessages = () => {
                           }
                         }}
                       >
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                          <Avatar sx={{ bgcolor: 'primary.main', mr: 2, width: 32, height: 32 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
+                          <Avatar sx={{ bgcolor: 'primary.main', mr: { xs: 0, sm: 2 }, width: 32, height: 32 }}>
                             <PersonIcon sx={{ fontSize: '1rem' }} />
                           </Avatar>
-                          <Box>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                               Administrator Reply
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                               {message.adminReplyDate ? formatDate(message.adminReplyDate) : 'Unknown date'}
                             </Typography>
                           </Box>
@@ -340,9 +347,9 @@ const UserContactMessages = () => {
                           paragraph 
                           sx={{ 
                             whiteSpace: 'pre-wrap',
-                            ml: 6, // Align with admin name
+                            ml: { xs: 0, sm: 6 }, // Align with admin name on desktop
                             p: 0,
-                            fontSize: '0.95rem'
+                            fontSize: { xs: '0.875rem', sm: '0.95rem' }
                           }}
                         >
                           {/* FALLBACK TEXT: If adminReply is missing, show default message */}

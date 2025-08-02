@@ -103,7 +103,6 @@ const Layout = () => {
             pb: { xs: 2, sm: 3 },
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center', // Center content horizontally
             width: '100%',
             maxWidth: '100%',
           }}
@@ -114,7 +113,6 @@ const Layout = () => {
               width: '100%',
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
               px: { xs: 1, sm: 2, md: 3 },
             }}
           >

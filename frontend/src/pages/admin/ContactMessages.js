@@ -201,22 +201,26 @@ const ContactMessages = () => {
   }
 
   return (
-    <Container>
-      <Box sx={{ mb: 4 }}>
+    <Container maxWidth="lg" sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 } }}>
+      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
         <Grid container spacing={2} alignItems="center" justifyContent="space-between">
-          <Grid item>
-            <Typography variant="h5" component="h1" fontWeight="bold">
+          <Grid item xs={12} sm>
+            <Typography variant="h5" component="h1" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
               Contact Messages
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               View and respond to user feedback and support requests
             </Typography>
           </Grid>
-          <Grid item>
+          <Grid item xs={12} sm="auto">
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
               onClick={fetchMessages}
+              sx={{ 
+                width: { xs: '100%', sm: 'auto' },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }}
             >
               Refresh
             </Button>
@@ -225,16 +229,16 @@ const ContactMessages = () => {
       </Box>
 
       {messages.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6" color="text.secondary">
+        <Paper sx={{ p: { xs: 2, sm: 4 }, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             No contact messages yet
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             When users send messages, they will appear here
           </Typography>
         </Paper>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={{ xs: 1, sm: 2 }}>
           {messages.map((message) => (
             <Grid item xs={12} key={message._id}>
               <Card 
@@ -244,23 +248,23 @@ const ContactMessages = () => {
                   bgcolor: message.read ? 'transparent' : 'rgba(244, 67, 54, 0.05)'
                 }}
               >
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Typography variant="h6">{message.subject}</Typography>
+                <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 2 } }}>
+                      <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>{message.subject}</Typography>
                       <Chip 
                         label={message.status} 
                         size="small" 
                         color={getStatusColor(message.status)}
-                        sx={{ ml: 2 }}
+                        sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                       />
                     </Box>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                       {message.createdAt ? format(new Date(message.createdAt), 'PPpp') : 'Date unknown'}
                     </Typography>
                   </Box>
                   
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                     From: <strong>{message.userName}</strong> ({message.userRole}) - {message.userEmail}
                   </Typography>
                   
@@ -269,21 +273,26 @@ const ContactMessages = () => {
                     sx={{ 
                       whiteSpace: 'pre-wrap',
                       bgcolor: 'background.paper', 
-                      p: 2, 
+                      p: { xs: 1, sm: 2 }, 
                       borderRadius: 1,
                       border: '1px solid',
-                      borderColor: 'divider'
+                      borderColor: 'divider',
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
                     }}
                   >
                     {message.message}
                   </Typography>
                 </CardContent>
                 
-                <CardActions sx={{ justifyContent: 'flex-end', p: 2, pt: 0 }}>
+                <CardActions sx={{ justifyContent: 'flex-end', p: { xs: 1, sm: 2 }, pt: 0, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
                   <Button
                     size="small"
                     startIcon={<MarkReadIcon />}
                     onClick={() => handleToggleRead(message._id, message.read)}
+                    sx={{ 
+                      width: { xs: '100%', sm: 'auto' },
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }}
                   >
                     Mark as {message.read ? 'Unread' : 'Read'}
                   </Button>
@@ -294,6 +303,10 @@ const ContactMessages = () => {
                     startIcon={<ReplyIcon />}
                     onClick={() => handleOpenReply(message)}
                     disabled={message.status === 'replied'}
+                    sx={{ 
+                      width: { xs: '100%', sm: 'auto' },
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }}
                   >
                     Reply
                   </Button>

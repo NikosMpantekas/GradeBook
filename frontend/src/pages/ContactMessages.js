@@ -199,19 +199,19 @@ const ContactMessages = () => {
   };
 
   return (
-    <Container component="main" maxWidth="md">
+    <Container maxWidth="lg" sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 } }}>
       <Paper 
         elevation={3} 
         sx={{ 
-          p: 4, 
+          p: { xs: 2, sm: 3, md: 4 }, 
           display: 'flex', 
           flexDirection: 'column', 
           borderRadius: 2,
-          mt: 3,
-          mb: 3
+          mt: { xs: 2, sm: 3 },
+          mb: { xs: 2, sm: 3 }
         }}
       >
-        <Typography component="h1" variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
+        <Typography component="h1" variant="h5" sx={{ mb: { xs: 2, sm: 3 }, fontWeight: 'bold', fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
           Support & Announcements
         </Typography>
         
@@ -221,6 +221,12 @@ const ContactMessages = () => {
           onChange={handleTabChange} 
           aria-label="support tabs"
           variant="fullWidth"
+          sx={{ 
+            '& .MuiTab-root': {
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              minHeight: { xs: '48px', sm: '56px' }
+            }
+          }}
         >
           <Tab 
             label="My Messages" 
@@ -251,12 +257,16 @@ const ContactMessages = () => {
         
         {/* My Messages Tab */}
         <TabPanel value={tabValue} index={0}>
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: { xs: 2, sm: 3 } }}>
             <Button
               variant="contained"
               color="primary"
               startIcon={<EmailIcon />}
               onClick={handleOpenContact}
+              sx={{ 
+                width: { xs: '100%', sm: 'auto' },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }}
             >
               Contact Support
             </Button>
