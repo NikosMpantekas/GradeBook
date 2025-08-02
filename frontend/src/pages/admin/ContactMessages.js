@@ -24,6 +24,8 @@ import {
   DialogContentText,
   DialogActions,
   TextField,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   MarkEmailRead as MarkReadIcon,
@@ -43,6 +45,8 @@ const ContactMessages = () => {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
   const { user } = useSelector((state) => state.auth);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Check if user has proper permission (admin or superadmin)
   useEffect(() => {
@@ -318,32 +322,60 @@ const ContactMessages = () => {
       )}
 
       {/* Reply Dialog */}
-      <Dialog open={replyOpen} onClose={handleCloseReply} fullWidth maxWidth="md">
-        <DialogTitle>
+      <Dialog 
+        open={replyOpen} 
+        onClose={handleCloseReply} 
+        fullWidth 
+        maxWidth="md"
+        sx={{
+          '& .MuiDialog-paper': {
+            width: { xs: '95%', sm: '80%', md: '60%' },
+            maxWidth: '600px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
           Reply to: {selectedMessage?.subject}
         </DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
+          <DialogContentText sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             You are replying to <strong>{selectedMessage?.userName}</strong> ({selectedMessage?.userEmail})
           </DialogContentText>
           <TextField
             autoFocus
             multiline
-            rows={10}
+            rows={isMobile ? 6 : 10}
             fullWidth
             variant="outlined"
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             placeholder="Type your reply here..."
+            sx={{
+              '& .MuiInputBase-input': {
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }
+            }}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseReply}>Cancel</Button>
+        <DialogActions sx={{ p: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
+          <Button 
+            onClick={handleCloseReply}
+            sx={{ 
+              width: { xs: '100%', sm: 'auto' },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={handleSendReply} 
             variant="contained" 
             color="primary"
             disabled={!replyText}
+            sx={{ 
+              width: { xs: '100%', sm: 'auto' },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}
           >
             Mark as Replied
           </Button>

@@ -17,7 +17,9 @@ import {
   Alert,
   Grid,
   Divider,
-  Button
+  Button,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -45,6 +47,8 @@ import { useFeatureToggles } from '../../context/FeatureToggleContext';
  */
 export const WelcomePanel = ({ user }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -80,24 +84,30 @@ export const WelcomePanel = ({ user }) => {
       }}
     >
       <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 2, md: 0 } }}>
           <Box>
-            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
+            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
               {getGreeting()}, {user?.name || 'User'}! 👋
             </Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9, mb: 1 }}>
+            <Typography variant="h6" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
               Welcome to your {getRoleDisplayName(user?.role)} Dashboard
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 2,
+              flexDirection: { xs: 'column', md: 'row' },
+              textAlign: { xs: 'center', md: 'left' }
+            }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <CalendarIcon sx={{ fontSize: '1.2rem' }} />
-                <Typography variant="body1">
+                <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                   {format(currentTime, 'EEEE, MMMM do, yyyy')}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <TimeIcon sx={{ fontSize: '1.2rem' }} />
-                <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '1.1rem' }}>
+                <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
                   {format(currentTime, 'HH:mm:ss')}
                 </Typography>
               </Box>
@@ -105,10 +115,10 @@ export const WelcomePanel = ({ user }) => {
           </Box>
           <Avatar 
             sx={{ 
-              width: 80, 
-              height: 80, 
+              width: { xs: 60, sm: 80 }, 
+              height: { xs: 60, sm: 80 },
               bgcolor: 'rgba(255,255,255,0.2)',
-              fontSize: '2rem'
+              fontSize: { xs: '1.5rem', sm: '2rem' }
             }}
           >
             {user?.name?.charAt(0)?.toUpperCase() || 'U'}

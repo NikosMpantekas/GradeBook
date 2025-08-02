@@ -128,47 +128,6 @@ const Header = ({ drawerWidth, handleDrawerToggle }) => {
                 </Badge>
               </IconButton>
             </Tooltip>
-            
-            <Tooltip title="Account">
-              <IconButton
-                size="large"
-                aria-label="account of current user"
-                aria-controls="menu-appbar"
-                aria-haspopup="true"
-                onClick={handleMenu}
-                color="inherit"
-              >
-                {user.avatar ? (
-                  <Avatar src={user.avatar} alt={user.name} />
-                ) : (
-                  <AccountCircle />
-                )}
-              </IconButton>
-            </Tooltip>
-            
-            <Menu
-              id="menu-appbar"
-              anchorEl={anchorEl}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              open={Boolean(anchorEl)}
-              onClose={handleClose}
-            >
-              <MenuItem onClick={handleProfileClick}>
-                Profile
-              </MenuItem>
-              <MenuItem onClick={onLogout}>
-                <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
-                Logout
-              </MenuItem>
-            </Menu>
           </Box>
         )}
       </Toolbar>
