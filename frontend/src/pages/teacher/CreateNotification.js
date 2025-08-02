@@ -16,14 +16,17 @@ import {
   CardContent,
   Divider,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { 
   Save as SaveIcon,
   ArrowBack as ArrowBackIcon,
   Notifications as NotificationsIcon,
   AdminPanelSettings as AdminPanelSettingsIcon,
-  School as SchoolIcon
+  School as SchoolIcon,
+  Send as SendIcon
 } from '@mui/icons-material';
 
 // Import our custom components
@@ -56,6 +59,7 @@ const CreateNotification = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alertState, setAlertState] = useState({ open: false, message: '', severity: 'info' });
   
   // Refs to track component state
   const hasSubmitted = useRef(false);
@@ -230,147 +234,104 @@ const CreateNotification = () => {
     return <ErrorState message={message || "Failed to load notification data"} />;
   }
 
+  // Handle alert close
+  const handleAlertClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setAlertState({ ...alertState, open: false });
+  };
+
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 3 } }}>
-      {/* Header */}
-      <Card sx={{ mb: { xs: 2, sm: 3 } }}>
+    <Container maxWidth="lg" sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 } }}>
+      <Card sx={{ mb: { xs: 2, sm: 4 } }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
           <Box sx={{ 
             display: 'flex', 
             alignItems: 'center', 
-            justifyContent: 'space-between', 
-            mb: { xs: 2, sm: 3 }, 
-            flexDirection: { xs: 'column', sm: 'row' }, 
-            gap: { xs: 2, sm: 0 } 
+            gap: { xs: 1, sm: 2 }, 
+            mb: { xs: 2, sm: 3 },
+            flexDirection: { xs: 'column', sm: 'row' },
+            textAlign: { xs: 'center', sm: 'left' }
           }}>
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              width: { xs: '100%', sm: 'auto' },
-              flexDirection: { xs: 'column', sm: 'row' },
-              textAlign: { xs: 'center', sm: 'left' }
-            }}>
-              {user?.role === 'admin' ? (
-                <AdminPanelSettingsIcon sx={{ 
-                  mr: { xs: 0, sm: 2 }, 
-                  mb: { xs: 1, sm: 0 },
-                  color: 'primary.main', 
-                  fontSize: { xs: '2rem', sm: '2.5rem' } 
-                }} />
-              ) : (
-                <SchoolIcon sx={{ 
-                  mr: { xs: 0, sm: 2 }, 
-                  mb: { xs: 1, sm: 0 },
-                  color: 'primary.main', 
-                  fontSize: { xs: '2rem', sm: '2.5rem' } 
-                }} />
-              )}
-              <Box>
-                <Typography variant="h4" component="h1" gutterBottom sx={{ 
-                  mb: 0, 
-                  fontSize: { xs: '1.5rem', sm: '2.125rem' },
-                  textAlign: { xs: 'center', sm: 'left' }
-                }}>
-                  Create Notification
-                </Typography>
-                <Typography variant="subtitle1" color="text.secondary" sx={{ 
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                  textAlign: { xs: 'center', sm: 'left' }
-                }}>
-                  {user?.role === 'admin' ? 
-                    'Send notifications to students and teachers in your school' : 
-                    'Send notifications to students in your assigned classes'
-                  }
-                </Typography>
-              </Box>
-            </Box>
-            <Button
-              variant="outlined"
-              startIcon={<ArrowBackIcon />}
-              onClick={handleBack}
+            <NotificationsIcon 
+              color="primary" 
               sx={{ 
-                minWidth: { xs: '100%', sm: 120 }, 
-                width: { xs: '100%', sm: 'auto' },
-                mt: { xs: 2, sm: 0 }
-              }}
-            >
-              Back
-            </Button>
+                fontSize: { xs: 32, sm: 40 },
+                mb: { xs: 1, sm: 0 }
+              }} 
+            />
+            <Box>
+              <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+                Create Notification
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                Send a new notification to students, teachers, or parents
+              </Typography>
+            </Box>
           </Box>
+          
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate(-1)}
+            sx={{ 
+              mb: { xs: 2, sm: 3 },
+              minWidth: { xs: '100%', sm: 'auto' },
+              width: { xs: '100%', sm: 'auto' }
+            }}
+          >
+            Back
+          </Button>
         </CardContent>
       </Card>
 
-      <form onSubmit={handleSubmit}>
-        <Box sx={{ display: 'grid', gap: { xs: 2, sm: 3 } }}>
-          {/* Notification Form */}
-          <NotificationForm
-            formData={formData}
-            onChange={handleInputChange}
-            errors={formErrors}
-            disabled={isSubmitting}
-          />
+      <NotificationForm 
+        onSubmit={handleSubmit}
+        loading={isSubmitting}
+        user={user}
+      />
 
-          {/* Recipients Selection */}
-          <NotificationRecipients
-            selectedRecipients={formData.recipients}
-            onRecipientsChange={handleRecipientsChange}
-            error={formErrors.recipients}
-            disabled={isSubmitting}
-            currentUserRole={user?.role || 'admin'}
-          />
+      <Card sx={{ mt: { xs: 2, sm: 4 } }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: { xs: 1, sm: 2 },
+            flexDirection: { xs: 'column', sm: 'row' },
+            textAlign: { xs: 'center', sm: 'left' }
+          }}>
+            <SendIcon 
+              color="primary" 
+              sx={{ 
+                fontSize: { xs: 24, sm: 28 },
+                mb: { xs: 1, sm: 0 }
+              }} 
+            />
+            <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+              Ready to Send
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+            Review your notification details above and click "Send Notification" when ready.
+          </Typography>
+        </CardContent>
+      </Card>
 
-          {/* Submit Actions */}
-          <Card>
-            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                flexDirection: { xs: 'column', sm: 'row' }, 
-                gap: { xs: 2, sm: 0 } 
-              }}>
-                <Typography variant="body2" color="text.secondary" sx={{ 
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  textAlign: { xs: 'center', sm: 'left' }
-                }}>
-                  {formData.recipients.length === 0 ? 
-                    'Select recipients to send the notification' : 
-                    `Ready to send to ${formData.recipients.length} recipient${formData.recipients.length !== 1 ? 's' : ''}`
-                  }
-                </Typography>
-                
-                <Box sx={{ 
-                  display: 'flex', 
-                  gap: { xs: 1, sm: 2 }, 
-                  width: { xs: '100%', sm: 'auto' }, 
-                  flexDirection: { xs: 'column', sm: 'row' } 
-                }}>
-                  <Button
-                    variant="outlined"
-                    onClick={handleBack}
-                    disabled={isSubmitting}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    startIcon={isSubmitting ? <CircularProgress size={20} /> : <SaveIcon />}
-                    disabled={isSubmitting || formData.recipients.length === 0}
-                    sx={{ 
-                      minWidth: { xs: '100%', sm: 140 }, 
-                      width: { xs: '100%', sm: 'auto' } 
-                    }}
-                  >
-                    {isSubmitting ? 'Sending...' : 'Send Notification'}
-                  </Button>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-      </form>
+      <Snackbar
+        open={alertState.open}
+        autoHideDuration={6000}
+        onClose={handleAlertClose}
+      >
+        <Alert 
+          onClose={handleAlertClose} 
+          severity={alertState.severity} 
+          elevation={6} 
+          variant="filled"
+        >
+          {alertState.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

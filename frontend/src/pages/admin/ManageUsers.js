@@ -801,8 +801,8 @@ const ManageUsers = () => {
   }
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
           Manage Users
         </Typography>
@@ -811,6 +811,7 @@ const ManageUsers = () => {
           startIcon={<AddIcon />}
           onClick={() => handleAddUser(currentUser?.role === 'secretary')}
           title={currentUser?.role === 'secretary' ? 'You cannot create secretary accounts' : ''}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
           Add User
         </Button>

@@ -85,7 +85,6 @@ const Layout = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 1, sm: 2, md: 3 }, 
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
           display: 'flex',
@@ -93,41 +92,37 @@ const Layout = () => {
           minHeight: '100vh',
           overflowX: 'hidden', // Prevent horizontal scrolling
           overflowY: 'auto', // Enable vertical scrolling for desktop
-          // Enhanced responsive design for desktop
-          '@media (min-width: 769px)': {
-            maxWidth: '100%',
-            height: '100vh', // Full viewport height
-            overflow: 'auto', // Enable scrolling when content overflows
-          }
         }}
       >
-        <Container 
-          maxWidth={false}
-          sx={{ 
-            mt: { xs: 7, sm: 8 }, 
-            mb: 2, 
+        {/* Main content area */}
+        <Box
+          sx={{
             flexGrow: 1,
-            px: { xs: 1, sm: 2, md: 3 },
-            // Enhanced container for better responsive design
-            '@media (min-width: 769px)': {
-              maxWidth: '95%', // Use most of the screen width
-              width: '100%',
-              margin: '64px auto 16px auto', // Center content
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: 'calc(100vh - 120px)', // Account for header and footer
-            },
-            // Ensure content stays centered and responsive
-            '& > *': {
-              '@media (min-width: 769px)': {
-                maxWidth: '100%',
-                width: '100%'
-              }
-            }
+            p: { xs: 1, sm: 2, md: 3 },
+            pt: { xs: 8, sm: 9 }, // Account for header height
+            pb: { xs: 2, sm: 3 },
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center', // Center content horizontally
+            width: '100%',
+            maxWidth: '100%',
           }}
         >
-          <Outlet />
-        </Container>
+          <Container 
+            maxWidth="lg"
+            sx={{ 
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              px: { xs: 1, sm: 2, md: 3 },
+            }}
+          >
+            <Outlet />
+          </Container>
+        </Box>
+        
+        {/* Footer - positioned outside main content */}
         <Footer />
       </Box>
     </Box>

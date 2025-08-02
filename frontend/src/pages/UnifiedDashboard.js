@@ -310,9 +310,9 @@ const UnifiedDashboard = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 2, mb: 2, px: { xs: 1, sm: 2, md: 3 } }}>
+    <Container maxWidth="lg" sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 } }}>
       {/* Header Section */}
-      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+      <Box sx={{ mb: { xs: 2, sm: 4 }, width: '100%' }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ 
           fontSize: { xs: '1.5rem', sm: '2.125rem' },
           textAlign: { xs: 'center', sm: 'left' }
@@ -328,7 +328,7 @@ const UnifiedDashboard = () => {
         </Typography>
       </Box>
 
-      <Grid container spacing={{ xs: 2, sm: 3 }}>
+      <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ width: '100%' }}>
         {/* User Info Card */}
         <Grid item xs={12} md={4}>
           <Card>

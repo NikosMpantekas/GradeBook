@@ -829,7 +829,7 @@ const TeacherNotifications = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, px: { xs: 2, sm: 3 } }}>
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 2, sm: 3 }, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
           {user?.role === 'admin' ? 'Manage Notifications' : 'Received Notifications'}

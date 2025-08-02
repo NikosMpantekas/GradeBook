@@ -838,71 +838,72 @@ const confirmDelete = async () => {
   }
   
   return (
-  <Box sx={{ p: 3 }}>
-    <Typography variant="h4" component="h1" gutterBottom>
-      Manage Classes
-    </Typography>
-    <Typography variant="body1" color="text.secondary" paragraph>
-      Create, edit, and manage class groups for your school.
-    </Typography>
-    
-    <Divider sx={{ my: 2 }} />
-    
-    {/* Search and add controls */}
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-      <TextField
-        label="Search Classes"
-        variant="outlined"
-        size="small"
-        value={searchTerm}
-        onChange={handleSearchChange}
-        sx={{ width: '300px' }}
-      />
-      <Button
-        variant="contained"
-        color="primary"
-        startIcon={<AddIcon />}
-        onClick={handleAdd}
-      >
-        Add Class
-      </Button>
-    </Box>
-    
-    {/* Classes table */}
-    {isMobile ? renderMobileContent() : renderDesktopContent()}
+    <Box sx={{ width: '100%', maxWidth: '100%' }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Manage Classes
+      </Typography>
+      <Typography variant="body1" color="text.secondary" paragraph>
+        Create, edit, and manage class groups for your school.
+      </Typography>
       
-      {/* Delete confirmation dialog */}
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete this class? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={confirmDelete} color="error" autoFocus>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <Divider sx={{ my: 2 }} />
       
-      {/* Add/Edit form dialog */}
-      <Dialog open={formOpen} onClose={handleFormClose} maxWidth="md" fullWidth>
-        <form onSubmit={handleFormSubmit}>
-          <DialogTitle>{formMode === 'add' ? 'Add New Class' : 'Edit Class'}</DialogTitle>
+      {/* Search and add controls */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
+        <TextField
+          label="Search Classes"
+          variant="outlined"
+          size="small"
+          value={searchTerm}
+          onChange={handleSearchChange}
+          sx={{ width: { xs: '100%', sm: '300px' } }}
+        />
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={handleAdd}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
+        >
+          Add Class
+        </Button>
+      </Box>
+      
+      {/* Classes table */}
+      {isMobile ? renderMobileContent() : renderDesktopContent()}
+        
+        {/* Delete confirmation dialog */}
+        <Dialog open={open} onClose={handleClose}>
+          <DialogTitle>Confirm Deletion</DialogTitle>
           <DialogContent>
-            <Box sx={{ width: '100%', mt: 2 }}>
-              <Tabs
-                value={tabValue}
-                onChange={(e, newValue) => setTabValue(newValue)}
-                aria-label="class form tabs"
-                variant="fullWidth"
-              >
-                <Tab label="Basic Info" />
-                <Tab label="Students & Teachers" />
-                <Tab label="Schedule" />
-              </Tabs>
+            <DialogContentText>
+              Are you sure you want to delete this class? This action cannot be undone.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleClose}>Cancel</Button>
+            <Button onClick={confirmDelete} color="error" autoFocus>
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Add/Edit form dialog */}
+        <Dialog open={formOpen} onClose={handleFormClose} maxWidth="md" fullWidth>
+          <form onSubmit={handleFormSubmit}>
+            <DialogTitle>{formMode === 'add' ? 'Add New Class' : 'Edit Class'}</DialogTitle>
+            <DialogContent>
+              <Box sx={{ width: '100%', mt: 2 }}>
+                <Tabs
+                  value={tabValue}
+                  onChange={(e, newValue) => setTabValue(newValue)}
+                  aria-label="class form tabs"
+                  variant="fullWidth"
+                >
+                  <Tab label="Basic Info" />
+                  <Tab label="Students & Teachers" />
+                  <Tab label="Schedule" />
+                </Tabs>
               
               {/* Basic Info Tab */}
               {tabValue === 0 && (
