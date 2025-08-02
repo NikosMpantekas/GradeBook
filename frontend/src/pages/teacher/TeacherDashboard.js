@@ -254,7 +254,7 @@ const TeacherDashboard = () => {
             </Grid>
             
             {/* Upcoming Classes - Only if feature enabled */}
-            <Grid item xs={12} md={8}>
+            <Grid item xs={12}>
               <UpcomingClassesPanel 
                 classes={dashboardData.classes}
                 loading={panelLoading.classes}
