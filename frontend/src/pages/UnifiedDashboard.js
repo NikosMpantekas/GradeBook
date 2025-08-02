@@ -606,7 +606,7 @@ const UnifiedDashboard = () => {
         )}
 
         {/* Upcoming Classes */}
-        <Grid item xs={12}>
+        <Grid item sx={{ mb: { xs: 2, sm: 4 }, width: '100%' }}>
           <Card>
             <CardHeader 
               title="Upcoming Classes" 
