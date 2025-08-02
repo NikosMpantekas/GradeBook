@@ -96,40 +96,33 @@ export const WelcomePanel = ({ user }) => {
               display: 'flex', 
               alignItems: 'center', 
               gap: 2,
-              flexDirection: { xs: 'row', md: 'row' },
-              textAlign: { xs: 'left', md: 'left' }
+              flexDirection: { xs: 'column', md: 'row' },
+              textAlign: { xs: 'center', md: 'left' }
             }}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 2,
-                flexDirection: { xs: 'column', md: 'row' }
-              }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
-                  <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                    {format(currentTime, 'EEEE, MMMM do, yyyy')}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
-                  <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
-                    {format(currentTime, 'HH:mm:ss')}
-                  </Typography>
-                </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                  {format(currentTime, 'EEEE, MMMM do, yyyy')}
+                </Typography>
               </Box>
-              <Avatar 
-                sx={{ 
-                  width: { xs: 40, sm: 60, md: 80 }, 
-                  height: { xs: 40, sm: 60, md: 80 },
-                  bgcolor: 'rgba(255,255,255,0.2)',
-                  fontSize: { xs: '1rem', sm: '1.5rem', md: '2rem' }
-                }}
-              >
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </Avatar>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
+                  {format(currentTime, 'HH:mm:ss')}
+                </Typography>
+              </Box>
             </Box>
           </Box>
+          <Avatar 
+            sx={{ 
+              width: { xs: 60, sm: 80 }, 
+              height: { xs: 60, sm: 80 },
+              bgcolor: 'rgba(255,255,255,0.2)',
+              fontSize: { xs: '1.5rem', sm: '2rem' }
+            }}
+          >
+            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+          </Avatar>
         </Box>
       </CardContent>
     </Card>
