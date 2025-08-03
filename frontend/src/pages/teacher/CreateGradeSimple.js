@@ -177,8 +177,12 @@ const CreateGradeSimple = () => {
       
       const response = await axios.get(endpoint, config);
       
-      // Filter to only include students (no teachers) for grade creation
-      const studentsOnly = response.data.filter(user => user.role === 'student');
+      // For teacher endpoint, all returned data are already students (no filtering needed)
+      // For admin endpoint, we may need to filter, but teacher endpoint is student-only
+      const studentsOnly = user.role === 'admin' || user.role === 'superadmin' 
+        ? response.data.filter(user => user.role === 'student') // Admin endpoint may return mixed data
+        : response.data; // Teacher endpoint returns students only, no role field needed
+      
       setStudents(studentsOnly);
       
       console.log(`[CreateGrade] Loaded ${response.data.length} total users, filtered to ${studentsOnly.length} students for ${user.role}:`, studentsOnly);
