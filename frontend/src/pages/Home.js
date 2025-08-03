@@ -379,6 +379,9 @@ const Home = () => {
         anchor="left"
         open={drawerOpen}
         onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile
+        }}
         PaperProps={{
           sx: {
             width: 220,
@@ -544,7 +547,7 @@ const Home = () => {
         }}
       >
         <Typography variant="body2" sx={{ color: darkMode ? "grey.400" : "grey.700", transition: 'color 0.1s' }}>
-          © {new Date().getFullYear()} GradeBook Team. All Rights Reserved.
+          © {new Date().getFullYear()} GradeBook Team.
         </Typography>
       </Box>
     </Box>
