@@ -26,8 +26,6 @@ import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import EmailIcon from "@mui/icons-material/Email";
-import PhoneIcon from "@mui/icons-material/Phone";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 import SendIcon from "@mui/icons-material/Send";
 
 const Logo = () => {
@@ -40,6 +38,7 @@ const Logo = () => {
         minWidth: 0,
         "&:hover": {
           bgcolor: "transparent",
+          color: "#337ab7",
         },
       }}
     >
@@ -176,10 +175,16 @@ const Contact = () => {
 
   const contactInfo = [
     {
-      icon: <LocationOnIcon sx={{ fontSize: 40, color: colors.icon }} />,
-      title: "Διεύθυνση",
-      value: "Αθήνα, Ελλάδα",
-      description: "Βρείτε μας στην καρδιά της Αθήνας",
+      icon: <EmailIcon sx={{ fontSize: 40, color: colors.icon }} />,
+      title: "Email",
+      value: "info@gradebook.pro",
+      description: "Για οποιαδήποτε απορία ή αίτηση συνεργασίας στείλτε μας email.",
+    },
+    {
+      icon: <img src="https://cdn.jsdelivr.net/gh/edent/SuperTinyIcons/images/svg/discord.svg" alt="Discord" style={{ width: 40, height: 40, color: colors.icon, verticalAlign: 'middle' }} />,
+      title: "Discord",
+      value: "To be Discord link..",
+      description: "Συζητήστε μαζί μας ή με άλλους χρήστες στο Discord server μας.",
     },
   ];
 

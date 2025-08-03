@@ -37,6 +37,7 @@ const Logo = () => {
         minWidth: 0,
         "&:hover": {
           bgcolor: "transparent",
+          color: "#337ab7",
         },
       }}
     >
