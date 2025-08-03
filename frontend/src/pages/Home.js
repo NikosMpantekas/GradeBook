@@ -47,8 +47,7 @@ const features = [
   {
     icon: (
       <CheckCircleIcon
-        color="primary"
-        sx={{ fontSize: 32 }}
+        sx={{ fontSize: 32, color: "#337ab7" }}
         aria-hidden="true"
       />
     ),
@@ -57,14 +56,14 @@ const features = [
   },
   {
     icon: (
-      <GradeIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />
+      <GradeIcon sx={{ fontSize: 32, color: "#337ab7" }} aria-hidden="true" />
     ),
     title: "Βαθμολογίες",
     desc: "Άμεση διαχείριση και ανάλυση βαθμών.",
   },
   {
     icon: (
-      <ForumIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />
+      <ForumIcon sx={{ fontSize: 32, color: "#337ab7" }} aria-hidden="true" />
     ),
     title: "Επικοινωνία",
     desc: "Γρήγορη ενημέρωση γονέων & μαθητών.",
@@ -72,8 +71,7 @@ const features = [
   {
     icon: (
       <AssessmentIcon
-        color="primary"
-        sx={{ fontSize: 32 }}
+        sx={{ fontSize: 32, color: "#337ab7" }}
         aria-hidden="true"
       />
     ),
@@ -503,7 +501,7 @@ const Home = () => {
                         },
                       }}
                     >
-                      {React.cloneElement(feature.icon, { color: colors.icon })}
+                      {React.cloneElement(feature.icon, { sx: { fontSize: 32, color: colors.icon } })}
                       <Box>
                         <Typography
                           variant="subtitle1"

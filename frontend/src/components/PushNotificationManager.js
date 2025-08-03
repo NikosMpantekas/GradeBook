@@ -292,6 +292,11 @@ const PushNotificationManager = () => {
     return null;
   }
 
+  // Don't render on home page
+  if (window.location.pathname === '/home' || window.location.pathname === '/') {
+    return null;
+  }
+
   return (
     <>
       {/* Notification toggle button */}
