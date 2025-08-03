@@ -308,7 +308,7 @@ const StudentStats = () => {
                 {selectedStudentData?.name}
               </Typography>
               <Typography variant="subtitle1" color="text.secondary">
-                Period: {periods.find(p => p.value === selectedPeriod)?.label}
+                Date Range: {startDate ? startDate.toLocaleDateString() : 'N/A'} - {endDate ? endDate.toLocaleDateString() : 'N/A'}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Generated on: {new Date().toLocaleDateString()}
