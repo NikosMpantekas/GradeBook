@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -41,6 +42,7 @@ import axios from 'axios';
 import { API_URL } from '../../config/appConfig';
 
 const StudentStats = () => {
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -137,32 +139,27 @@ const StudentStats = () => {
     window.print();
   };
 
-  // Handle PDF save (basic implementation)
+  // Navigate to dedicated print page
+  const handlePrintPage = () => {
+    navigate('/student-stats/print', {
+      state: {
+        selectedStudent,
+        selectedStudentData,
+        startDate: startDate?.toISOString(),
+        endDate: endDate?.toISOString()
+      }
+    });
+  };
+
   const handleSavePDF = () => {
-    // This is a basic implementation - you might want to use a library like jsPDF
-    // For now, we'll use the browser's print to PDF functionality
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Student Grade Analysis - ${gradesData?.student?.name}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .grade-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            .grade-table th, .grade-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            .grade-table th { background-color: #f2f2f2; }
-            .subject-section { margin: 20px 0; }
-            @media print { .no-print { display: none; } }
-          </style>
-        </head>
-        <body>
-          ${document.querySelector('#printable-content').innerHTML}
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+    navigate('/student-stats/print', {
+      state: {
+        selectedStudent,
+        selectedStudentData,
+        startDate: startDate?.toISOString(),
+        endDate: endDate?.toISOString()
+      }
+    });
   };
 
   const roleInfo = getRoleInfo();
@@ -313,6 +310,28 @@ const StudentStats = () => {
               <Typography variant="body2" color="text.secondary">
                 Generated on: {new Date().toLocaleDateString()}
               </Typography>
+              
+              {/* Print/PDF Buttons */}
+              <Box display="flex" justifyContent="center" gap={2} mt={3} className="no-print">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<PrintIcon />}
+                  onClick={handlePrintPage}
+                  sx={{ minWidth: 120 }}
+                >
+                  Print Report
+                </Button>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<PdfIcon />}
+                  onClick={handleSavePDF}
+                  sx={{ minWidth: 120 }}
+                >
+                  Save as PDF
+                </Button>
+              </Box>
             </Box>
           </Paper>
 

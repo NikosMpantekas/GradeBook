@@ -45,6 +45,7 @@ import ContactMessages from './pages/ContactMessages';
 import Calendar from './pages/Calendar';
 import Schedule from './pages/common/Schedule';
 import StudentStats from './pages/common/StudentStats';
+import StudentStatsPrint from './pages/common/StudentStatsPrint';
 import PrintGradePage from './pages/print/PrintGradePage';
 
 // Teacher Pages
@@ -677,6 +678,16 @@ function App() {
                 <Schedule />
               </AdminRoute>
             } />
+            <Route path="/app/admin/student-stats" element={
+              <AdminRoute>
+                <StudentStats />
+              </AdminRoute>
+            } />
+            <Route path="/app/teacher/student-stats" element={
+              <TeacherRoute>
+                <StudentStats />
+              </TeacherRoute>
+            } />
 
           </Route>
 
@@ -778,6 +789,9 @@ function App() {
           
           {/* Print Grade Page - Standalone route without layout */}
           <Route path="/print-grades" element={<PrintGradePage />} />
+          
+          {/* Student Stats Print Page - Standalone route without layout */}
+          <Route path="/student-stats/print" element={<StudentStatsPrint />} />
           
           {/* 404 Page */}
           <Route path="*" element={<NotFound />} />
