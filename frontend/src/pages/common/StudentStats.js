@@ -1,102 +1,111 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
   Box,
-  TextField,
-  InputAdornment,
+  Paper,
+  Button,
   CircularProgress,
   Alert,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  ListItemButton,
-  Avatar,
-  Divider,
-  Paper
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  Card,
+  CardContent,
+  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Divider
 } from '@mui/material';
 import {
-  Search as SearchIcon,
-  Person as PersonIcon,
+  Print as PrintIcon,
+  PictureAsPdf as PdfIcon,
+  Analytics as AnalyticsIcon,
   School as SchoolIcon,
   AdminPanelSettings as AdminIcon
 } from '@mui/icons-material';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useSelector } from 'react-redux';
-import { getStudentStats } from '../../api/studentStatsAPI';
-import StudentGradeDetails from './StudentGradeDetails';
-
-// Simple debounce function implementation
-const debounce = (func, wait) => {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-};
+import axios from 'axios';
+import { API_URL } from '../../config/appConfig';
 
 const StudentStats = () => {
   const { user } = useSelector((state) => state.auth);
   const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedPeriod, setSelectedPeriod] = useState('');
+  const [gradesData, setGradesData] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [studentsLoading, setStudentsLoading] = useState(true);
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce((searchValue) => {
-      fetchStudents(searchValue);
-    }, 500),
-    []
-  );
+  // Period options
+  const periods = [
+    { value: 'current_month', label: 'Current Month' },
+    { value: 'last_month', label: 'Last Month' },
+    { value: 'current_semester', label: 'Current Semester' },
+    { value: 'last_semester', label: 'Last Semester' },
+    { value: 'current_year', label: 'Current Academic Year' },
+    { value: 'all_time', label: 'All Time' }
+  ];
 
   useEffect(() => {
     fetchStudents();
   }, []);
 
-  // Fetch students list
-  const fetchStudents = async (search = '') => {
-    try {
-      setLoading(true);
-      setError('');
+  useEffect(() => {
+    if (selectedStudent && selectedPeriod) {
+      fetchGradesData();
+    }
+  }, [selectedStudent, selectedPeriod]);
 
-      console.log('[StudentStats] Fetching students with search:', search);
-      const data = await getStudentStats(search);
-      
-      console.log('[StudentStats] Received students data:', data);
-      setStudents(data.students || []);
+  // Fetch students list
+  const fetchStudents = async () => {
+    try {
+      setStudentsLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/users/students`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setStudents(response.data || []);
     } catch (error) {
-      console.error('[StudentStats] Error fetching students:', error);
-      setError(error.message || 'Failed to load students');
+      console.error('Error fetching students:', error);
+      setError('Failed to load students');
       setStudents([]);
     } finally {
-      setLoading(false);
+      setStudentsLoading(false);
     }
   };
 
-  // Handle search input change
-  const handleSearchChange = (event) => {
-    const value = event.target.value;
-    setSearchTerm(value);
-    debouncedSearch(value);
-  };
-
-  // Handle student selection
-  const handleStudentSelect = (student) => {
-    setSelectedStudent(student);
-    setDetailsOpen(true);
-  };
-
-  // Handle close details dialog
-  const handleCloseDetails = () => {
-    setDetailsOpen(false);
-    setSelectedStudent(null);
+  // Fetch grades data for selected student and period
+  const fetchGradesData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.get(`${API_URL}/api/grades/student-period-analysis`, {
+        params: {
+          studentId: selectedStudent,
+          period: selectedPeriod
+        },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setGradesData(response.data);
+    } catch (error) {
+      console.error('Error fetching grades data:', error);
+      setError('Failed to load grades data');
+      setGradesData(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Get role-specific header info
@@ -104,115 +113,358 @@ const StudentStats = () => {
     if (user?.role === 'admin') {
       return {
         icon: <AdminIcon fontSize="large" />,
-        title: 'Admin Student Statistics',
-        description: 'View detailed statistics and progress for all students'
+        title: 'Admin Student Analysis',
+        description: 'Detailed grade analysis and class comparison'
       };
     } else {
       return {
         icon: <SchoolIcon fontSize="large" />,
-        title: 'Teacher Student Statistics',
-        description: 'View detailed statistics and progress for your students'
+        title: 'Student Grade Analysis',
+        description: 'Detailed grade analysis and class comparison'
       };
     }
   };
 
+  // Prepare chart data for subjects with multiple grades
+  const prepareChartData = (subjectGrades) => {
+    return subjectGrades.map((grade, index) => ({
+      index: index + 1,
+      grade: grade.value,
+      date: new Date(grade.date).toLocaleDateString(),
+      timestamp: new Date(grade.date).getTime()
+    })).sort((a, b) => a.timestamp - b.timestamp);
+  };
+
+  // Handle print functionality
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Handle PDF save (basic implementation)
+  const handleSavePDF = () => {
+    // This is a basic implementation - you might want to use a library like jsPDF
+    // For now, we'll use the browser's print to PDF functionality
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Student Grade Analysis - ${gradesData?.student?.name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .grade-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            .grade-table th, .grade-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            .grade-table th { background-color: #f2f2f2; }
+            .subject-section { margin: 20px 0; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          ${document.querySelector('#printable-content').innerHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   const roleInfo = getRoleInfo();
+  const selectedStudentData = students.find(s => s._id === selectedStudent);
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
-      <Box display="flex" alignItems="center" mb={4}>
-        <Avatar sx={{ bgcolor: 'primary.main', mr: 2, width: 56, height: 56 }}>
-          {roleInfo.icon}
-        </Avatar>
-        <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
-            {roleInfo.title}
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            {roleInfo.description}
-          </Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={4} className="no-print">
+        <Box display="flex" alignItems="center">
+          <Box sx={{ 
+            bgcolor: 'primary.main', 
+            color: 'white',
+            borderRadius: '50%',
+            width: 56, 
+            height: 56,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mr: 2
+          }}>
+            {roleInfo.icon}
+          </Box>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              {roleInfo.title}
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary">
+              {roleInfo.description}
+            </Typography>
+          </Box>
         </Box>
+        
+        {/* Print/PDF buttons */}
+        {gradesData && (
+          <Box display="flex" gap={2}>
+            <Button
+              variant="outlined"
+              startIcon={<PrintIcon />}
+              onClick={handlePrint}
+            >
+              Print
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<PdfIcon />}
+              onClick={handleSavePDF}
+            >
+              Save as PDF
+            </Button>
+          </Box>
+        )}
       </Box>
 
-      {/* Search */}
-      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-        <TextField
-          fullWidth
-          placeholder="Search students by name or email..."
-          variant="outlined"
-          value={searchTerm}
-          onChange={handleSearchChange}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-            endAdornment: loading && (
-              <InputAdornment position="end">
-                <CircularProgress size={24} />
-              </InputAdornment>
-            )
-          }}
-        />
+      {/* Selection Controls */}
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }} className="no-print">
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth>
+              <InputLabel>Select Student</InputLabel>
+              <Select
+                value={selectedStudent}
+                onChange={(e) => setSelectedStudent(e.target.value)}
+                label="Select Student"
+                disabled={studentsLoading}
+              >
+                {students.map((student) => (
+                  <MenuItem key={student._id} value={student._id}>
+                    {student.name} ({student.email})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth>
+              <InputLabel>Select Period</InputLabel>
+              <Select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                label="Select Period"
+                disabled={!selectedStudent}
+              >
+                {periods.map((period) => (
+                  <MenuItem key={period.value} value={period.value}>
+                    {period.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
       </Paper>
 
       {/* Error display */}
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3 }} className="no-print">
           {error}
         </Alert>
       )}
 
       {/* Loading state */}
-      {loading && !searchTerm && (
-        <Box display="flex" justifyContent="center" my={4}>
+      {loading && (
+        <Box display="flex" justifyContent="center" my={4} className="no-print">
           <CircularProgress />
         </Box>
       )}
 
-      {/* Student List */}
-      {!loading && students.length === 0 ? (
-        <Box textAlign="center" py={4}>
-          <Typography variant="h6" color="text.secondary">
-            No students found
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Try adjusting your search or check if students are assigned to your classes
-          </Typography>
-        </Box>
-      ) : (
-        <Paper elevation={3}>
-          <List sx={{ bgcolor: 'background.paper' }}>
-            {students.map((item, index) => (
-              <React.Fragment key={item.student._id}>
-                <ListItem disablePadding>
-                  <ListItemButton onClick={() => handleStudentSelect(item)}>
-                    <ListItemAvatar>
-                      <Avatar>
-                        <PersonIcon />
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={item.student.name}
-                      secondary={item.student.email || 'No email'}
-                    />
-                  </ListItemButton>
-                </ListItem>
-                {index < students.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
-          </List>
-        </Paper>
+      {/* Grades Analysis Content */}
+      {gradesData && (
+        <div id="printable-content">
+          {/* Report Header */}
+          <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+            <Box className="header" textAlign="center" mb={3}>
+              <Typography variant="h3" component="h1" gutterBottom>
+                Student Grade Analysis Report
+              </Typography>
+              <Typography variant="h5" color="primary" gutterBottom>
+                {selectedStudentData?.name}
+              </Typography>
+              <Typography variant="subtitle1" color="text.secondary">
+                Period: {periods.find(p => p.value === selectedPeriod)?.label}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Generated on: {new Date().toLocaleDateString()}
+              </Typography>
+            </Box>
+          </Paper>
+
+          {/* Subject-wise Grades */}
+          {gradesData.subjectAnalysis && Object.keys(gradesData.subjectAnalysis).length > 0 ? (
+            Object.entries(gradesData.subjectAnalysis).map(([subjectName, subjectData]) => (
+              <Paper key={subjectName} elevation={2} sx={{ p: 3, mb: 3 }} className="subject-section">
+                <Typography variant="h5" gutterBottom>
+                  📚 {subjectName}
+                </Typography>
+                
+                {/* Summary Cards */}
+                <Grid container spacing={2} mb={3}>
+                  <Grid item xs={12} sm={3}>
+                    <Card>
+                      <CardContent sx={{ textAlign: 'center' }}>
+                        <Typography variant="h6" color="primary">
+                          {subjectData.studentAverage?.toFixed(1) || 'N/A'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Student Average
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <Card>
+                      <CardContent sx={{ textAlign: 'center' }}>
+                        <Typography variant="h6" color="secondary">
+                          {subjectData.classAverage?.toFixed(1) || 'N/A'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Class Average
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <Card>
+                      <CardContent sx={{ textAlign: 'center' }}>
+                        <Typography variant="h6">
+                          {subjectData.grades?.length || 0}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Total Grades
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <Card>
+                      <CardContent sx={{ textAlign: 'center' }}>
+                        <Chip 
+                          label={subjectData.studentAverage >= subjectData.classAverage ? 'Above Average' : 'Below Average'}
+                          color={subjectData.studentAverage >= subjectData.classAverage ? 'success' : 'warning'}
+                          size="small"
+                        />
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+
+                {/* Progress Graph for multiple grades */}
+                {subjectData.grades && subjectData.grades.length > 1 && (
+                  <Box mb={3}>
+                    <Typography variant="h6" gutterBottom>
+                      📈 Grade Progress Over Time
+                    </Typography>
+                    <Box sx={{ width: '100%', height: 300 }}>
+                      <ResponsiveContainer>
+                        <LineChart data={prepareChartData(subjectData.grades)}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis 
+                            domain={[0, 20]}
+                            tick={{ fontSize: 12 }}
+                          />
+                          <Tooltip 
+                            formatter={(value) => [value, 'Grade']}
+                            labelFormatter={(label) => `Date: ${label}`}
+                          />
+                          <Legend />
+                          <Line 
+                            type="monotone" 
+                            dataKey="grade" 
+                            stroke="#1976d2" 
+                            strokeWidth={3}
+                            dot={{ fill: '#1976d2', strokeWidth: 2, r: 6 }}
+                            name="Grade"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Grades Table */}
+                <Typography variant="h6" gutterBottom>
+                  📋 All Grades
+                </Typography>
+                <TableContainer>
+                  <Table className="grade-table" size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell><strong>Date</strong></TableCell>
+                        <TableCell><strong>Grade</strong></TableCell>
+                        <TableCell><strong>Description</strong></TableCell>
+                        <TableCell><strong>Teacher</strong></TableCell>
+                        <TableCell><strong>vs Class Avg</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {subjectData.grades?.map((grade, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{new Date(grade.date).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={grade.value}
+                              size="small"
+                              color={grade.value >= subjectData.classAverage ? 'success' : grade.value >= subjectData.classAverage * 0.8 ? 'warning' : 'error'}
+                            />
+                          </TableCell>
+                          <TableCell>{grade.description || '-'}</TableCell>
+                          <TableCell>{grade.teacher?.name || 'Unknown'}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={grade.value >= subjectData.classAverage ? '↗️ Above' : '↘️ Below'}
+                              size="small"
+                              variant="outlined"
+                              color={grade.value >= subjectData.classAverage ? 'success' : 'warning'}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )) || (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center">
+                            No grades found for this period
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            ))
+          ) : (
+            <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="h6" color="text.secondary">
+                No grades found for the selected period
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Try selecting a different time period or check if grades have been recorded
+              </Typography>
+            </Paper>
+          )}
+        </div>
       )}
 
-      {/* Student Details Dialog */}
-      <StudentGradeDetails
-        open={detailsOpen}
-        onClose={handleCloseDetails}
-        student={selectedStudent}
-      />
+      {/* Selection prompt */}
+      {!selectedStudent || !selectedPeriod ? (
+        <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+          <AnalyticsIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            Select a student and time period to view grade analysis
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Choose from the dropdown menus above to generate a detailed grade report with class comparisons and progress charts
+          </Typography>
+        </Paper>
+      ) : null}
     </Container>
   );
 };
