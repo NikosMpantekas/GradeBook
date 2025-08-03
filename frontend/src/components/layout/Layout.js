@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Box, Container, Drawer, useTheme, useMediaQuery } from '@mui/material';
 import { useSelector } from 'react-redux';
@@ -23,9 +23,10 @@ const Layout = () => {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const isSwiping = useRef(false);
-  const swipeThreshold = 50; // Minimum distance to trigger swipe
-  const [drawerPosition, setDrawerPosition] = useState(0); // Track drawer position during swipe
+  const [drawerPosition, setDrawerPosition] = useState(0); // 0 = closed, 1 = fully open
   const touchStartTime = useRef(0);
+  const lastTouchX = useRef(0);
+  const animationFrameId = useRef(null);
 
   const { darkMode } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
@@ -43,95 +44,152 @@ const Layout = () => {
   }, [location.pathname, user, mobileOpen]);
 
   // Enhanced drawer toggle that also persists the state
-  const handleDrawerToggle = () => {
+  const handleDrawerToggle = useCallback(() => {
     const newState = !mobileOpen;
     setMobileOpen(newState);
-    setDrawerPosition(0); // Reset drawer position
+    setDrawerPosition(newState ? 1 : 0);
     // Persist the state in localStorage
     localStorage.setItem('sidebarOpen', newState.toString());
-  };
+  }, [mobileOpen]);
 
-  // Swipe handlers
-  const handleTouchStart = (e) => {
+  // Animate drawer to target position
+  const animateDrawer = useCallback((targetPosition) => {
+    const startPosition = drawerPosition;
+    const startTime = performance.now();
+    const duration = 300; // 300ms animation
+
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+      
+      const currentPosition = startPosition + (targetPosition - startPosition) * easeOutCubic;
+      setDrawerPosition(currentPosition);
+      
+      if (progress < 1) {
+        animationFrameId.current = requestAnimationFrame(animate);
+      } else {
+        setDrawerPosition(targetPosition);
+        if (targetPosition === 0) {
+          setMobileOpen(false);
+        } else if (targetPosition === 1) {
+          setMobileOpen(true);
+        }
+      }
+    };
+    
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+    }
+    animationFrameId.current = requestAnimationFrame(animate);
+  }, [drawerPosition, mobileOpen]);
+
+  // Touch event handlers
+  const handleTouchStart = useCallback((e) => {
     if (!isMobile) return;
     
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
+    const touch = e.touches[0];
+    touchStartX.current = touch.clientX;
+    touchStartY.current = touch.clientY;
+    lastTouchX.current = touch.clientX;
     touchStartTime.current = Date.now();
     isSwiping.current = false;
-    setDrawerPosition(0); // Reset position on new touch
-  };
+    
+    // Cancel any ongoing animation
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+    }
+  }, [isMobile]);
 
-  const handleTouchMove = (e) => {
+  const handleTouchMove = useCallback((e) => {
     if (!isMobile) return;
     
-    const touchX = e.touches[0].clientX;
-    const touchY = e.touches[0].clientY;
-    const deltaX = touchX - touchStartX.current;
-    const deltaY = Math.abs(touchY - touchStartY.current);
+    const touch = e.touches[0];
+    const currentX = touch.clientX;
+    const currentY = touch.clientY;
+    const deltaX = currentX - touchStartX.current;
+    const deltaY = Math.abs(currentY - touchStartY.current);
     const deltaTime = Date.now() - touchStartTime.current;
     
-    // Only consider it a swipe if it's more horizontal than vertical and started from left edge
-    if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 10 && touchStartX.current < 50) {
-      isSwiping.current = true;
-      e.preventDefault(); // Prevent scrolling during swipe
-      e.stopPropagation(); // Prevent other touch handlers
-      
-      // Calculate drawer position based on swipe
-      if (!mobileOpen) {
-        // Opening drawer - follow the swipe
-        const progress = Math.min(Math.max(deltaX / 200, 0), 1); // Normalize to 0-1
-        setDrawerPosition(progress);
-      }
-    } else if (mobileOpen && deltaX < 0 && Math.abs(deltaX) > 10) {
-      // Closing drawer - follow the swipe from right
+    // Determine if this is a horizontal swipe
+    const isHorizontalSwipe = Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 10;
+    const isRightSwipe = deltaX > 0;
+    const isLeftSwipe = deltaX < 0;
+    
+    // Handle right swipe to open sidebar
+    if (isHorizontalSwipe && isRightSwipe && !mobileOpen) {
       isSwiping.current = true;
       e.preventDefault();
       e.stopPropagation();
       
-      const progress = Math.min(Math.max(-deltaX / 200, 0), 1); // Normalize to 0-1
-      setDrawerPosition(1 - progress);
+      // Calculate progress based on swipe distance
+      const maxSwipeDistance = 200; // Distance needed for full open
+      const progress = Math.min(Math.max(deltaX / maxSwipeDistance, 0), 1);
+      setDrawerPosition(progress);
     }
-  };
+    // Handle left swipe to close sidebar
+    else if (isHorizontalSwipe && isLeftSwipe && mobileOpen) {
+      isSwiping.current = true;
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Calculate progress based on swipe distance
+      const maxSwipeDistance = 200; // Distance needed for full close
+      const progress = Math.max(1 - (Math.abs(deltaX) / maxSwipeDistance), 0);
+      setDrawerPosition(progress);
+    }
+    
+    lastTouchX.current = currentX;
+  }, [isMobile, mobileOpen]);
 
-  const handleTouchEnd = (e) => {
-    if (!isMobile) {
-      setDrawerPosition(0); // Reset position if not mobile
+  const handleTouchEnd = useCallback((e) => {
+    if (!isMobile || !isSwiping.current) {
       return;
     }
     
-    const touchX = e.changedTouches[0].clientX;
-    const deltaX = touchX - touchStartX.current;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX.current;
     const deltaTime = Date.now() - touchStartTime.current;
     
-    // Only handle if we were actually swiping
-    if (!isSwiping.current) {
-      setDrawerPosition(0); // Reset position if not swiping
-      return;
-    }
+    // Determine if swipe was far enough to complete the action
+    const threshold = 100; // Minimum distance to trigger action
+    const isRightSwipe = deltaX > 0;
+    const isLeftSwipe = deltaX < 0;
     
-    // Swipe from left edge to open sidebar
-    if (deltaX > swipeThreshold && touchStartX.current < 50 && !mobileOpen) {
-      handleDrawerToggle();
-    }
-    // Swipe from right to close sidebar
-    else if (deltaX < -swipeThreshold && mobileOpen) {
-      handleDrawerToggle();
+    if (isRightSwipe && !mobileOpen && deltaX > threshold) {
+      // Complete opening
+      animateDrawer(1);
+    } else if (isLeftSwipe && mobileOpen && Math.abs(deltaX) > threshold) {
+      // Complete closing
+      animateDrawer(0);
+    } else {
+      // Spring back to original position
+      animateDrawer(mobileOpen ? 1 : 0);
     }
     
     isSwiping.current = false;
-    setDrawerPosition(0); // Reset position after swipe
-  };
+  }, [isMobile, mobileOpen, animateDrawer]);
 
-  // Prevent native browser back gesture when swiping
-  const handleTouchCancel = (e) => {
+  const handleTouchCancel = useCallback((e) => {
     if (isSwiping.current) {
       e.preventDefault();
       e.stopPropagation();
     }
     isSwiping.current = false;
-    setDrawerPosition(0);
-  };
+    // Spring back to original position
+    animateDrawer(mobileOpen ? 1 : 0);
+  }, [mobileOpen, animateDrawer]);
+
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+    };
+  }, []);
 
   // Sidebar width for layout spacing
   const drawerWidth = 240;
@@ -194,24 +252,10 @@ const Layout = () => {
           overflowY: 'auto', // Enable vertical scrolling for desktop
           touchAction: 'pan-y', // Allow vertical scrolling, prevent horizontal
         }}
-        onTouchStart={(e) => {
-          // Only handle touches from the left edge for sidebar
-          if (e.touches[0].clientX < 50) {
-            handleTouchStart(e);
-          }
-        }}
-        onTouchMove={(e) => {
-          // Only handle touches from the left edge for sidebar
-          if (touchStartX.current < 50) {
-            handleTouchMove(e);
-          }
-        }}
-        onTouchEnd={(e) => {
-          // Only handle touches from the left edge for sidebar
-          if (touchStartX.current < 50) {
-            handleTouchEnd(e);
-          }
-        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
       >
         {/* Main content area */}
         <Box

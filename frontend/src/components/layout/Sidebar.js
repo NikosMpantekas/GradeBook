@@ -824,6 +824,25 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
       aria-label="navigation sidebar"
     >
+      {/* Mobile backdrop overlay */}
+      {drawerPosition > 0 && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            opacity: drawerPosition,
+            zIndex: 1199,
+            display: { xs: 'block', sm: 'none' },
+            transition: 'none',
+          }}
+          onClick={handleDrawerToggle}
+        />
+      )}
+      
       {/* Mobile drawer */}
       <Drawer
         container={window.document.body}
@@ -839,9 +858,14 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
             boxSizing: 'border-box', 
             width: drawerWidth,
             borderRight: '1px solid rgba(0, 0, 0, 0.12)',
-            transform: drawerPosition > 0 ? `translateX(${(drawerPosition - 1) * drawerWidth}px)` : (mobileOpen ? 'translateX(0)' : 'translateX(-100%)'),
-            transition: drawerPosition > 0 ? 'none' : 'transform 0.2s ease-out',
+            transform: `translateX(${(drawerPosition - 1) * drawerWidth}px)`,
+            transition: 'none', // Disable transition for real-time following
             willChange: 'transform',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            height: '100vh',
+            zIndex: 1200,
           },
         }}
       >
