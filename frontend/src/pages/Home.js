@@ -75,7 +75,7 @@ const getFeatures = (colors) => [
   {
     icon: (
       <CheckCircleIcon
-        color={colors.button}
+        color={colors.icon}
         sx={{ fontSize: 32 }}
         aria-hidden="true"
       />
@@ -85,14 +85,14 @@ const getFeatures = (colors) => [
   },
   {
     icon: (
-      <GradeIcon color={colors.button} sx={{ fontSize: 32 }} aria-hidden="true" />
+      <GradeIcon color={colors.icon} sx={{ fontSize: 32 }} aria-hidden="true" />
     ),
     title: "Βαθμολογίες",
     desc: "Άμεση διαχείριση και ανάλυση βαθμών.",
   },
   {
     icon: (
-      <ForumIcon color={colors.button} sx={{ fontSize: 32 }} aria-hidden="true" />
+      <ForumIcon color={colors.icon} sx={{ fontSize: 32 }} aria-hidden="true" />
     ),
     title: "Επικοινωνία",
     desc: "Γρήγορη ενημέρωση γονέων & μαθητών.",
@@ -100,7 +100,7 @@ const getFeatures = (colors) => [
   {
     icon: (
       <AssessmentIcon
-        color={colors.button}
+        color={colors.icon}
         sx={{ fontSize: 32 }}
         aria-hidden="true"
       />
