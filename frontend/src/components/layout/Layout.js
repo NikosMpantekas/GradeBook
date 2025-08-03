@@ -24,6 +24,7 @@ const Layout = () => {
   const touchStartY = useRef(0);
   const isSwiping = useRef(false);
   const swipeThreshold = 50; // Minimum distance to trigger swipe
+  const [drawerPosition, setDrawerPosition] = useState(0); // Track drawer position during swipe
 
   const { darkMode } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
@@ -44,6 +45,7 @@ const Layout = () => {
   const handleDrawerToggle = () => {
     const newState = !mobileOpen;
     setMobileOpen(newState);
+    setDrawerPosition(0); // Reset drawer position
     // Persist the state in localStorage
     localStorage.setItem('sidebarOpen', newState.toString());
   };
@@ -55,6 +57,7 @@ const Layout = () => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     isSwiping.current = false;
+    setDrawerPosition(0); // Reset position on new touch
   };
 
   const handleTouchMove = (e) => {
@@ -69,11 +72,27 @@ const Layout = () => {
     if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 10) {
       isSwiping.current = true;
       e.preventDefault(); // Prevent scrolling during swipe
+      
+      // Calculate drawer position based on swipe
+      if (touchStartX.current < 50) { // Swipe from left edge
+        if (!mobileOpen) {
+          // Opening drawer - follow the swipe
+          const progress = Math.min(Math.max(deltaX / 200, 0), 1); // Normalize to 0-1
+          setDrawerPosition(progress);
+        }
+      } else if (mobileOpen) {
+        // Closing drawer - follow the swipe
+        const progress = Math.min(Math.max(-deltaX / 200, 0), 1); // Normalize to 0-1
+        setDrawerPosition(1 - progress);
+      }
     }
   };
 
   const handleTouchEnd = (e) => {
-    if (!isMobile || !isSwiping.current) return;
+    if (!isMobile || !isSwiping.current) {
+      setDrawerPosition(0); // Reset position if not swiping
+      return;
+    }
     
     const touchX = e.changedTouches[0].clientX;
     const deltaX = touchX - touchStartX.current;
@@ -90,6 +109,7 @@ const Layout = () => {
     }
     
     isSwiping.current = false;
+    setDrawerPosition(0); // Reset position after swipe
   };
 
   // Sidebar width for layout spacing
@@ -135,6 +155,7 @@ const Layout = () => {
         drawerWidth={drawerWidth} 
         mobileOpen={mobileOpen}
         handleDrawerToggle={handleDrawerToggle}
+        drawerPosition={drawerPosition}
       />
       <Box
         component="main"

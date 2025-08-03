@@ -47,7 +47,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../../features/auth/authSlice';
 import { useFeatureToggles } from '../../context/FeatureToggleContext';
 
-const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = false }) => {
+const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = false, drawerPosition = 0 }) => {
   console.log('Sidebar rendering with props:', { drawerWidth, mobileOpen, permanent });
   const location = useLocation();
   const navigate = useNavigate();
@@ -838,7 +838,9 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
           '& .MuiDrawer-paper': { 
             boxSizing: 'border-box', 
             width: drawerWidth,
-            borderRight: '1px solid rgba(0, 0, 0, 0.12)' 
+            borderRight: '1px solid rgba(0, 0, 0, 0.12)',
+            transform: drawerPosition > 0 ? `translateX(${(drawerPosition - 1) * drawerWidth}px)` : 'translateX(-100%)',
+            transition: drawerPosition > 0 ? 'none' : 'transform 0.3s ease-in-out',
           },
         }}
       >

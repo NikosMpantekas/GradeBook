@@ -647,9 +647,9 @@ const UnifiedDashboard = () => {
                   sx={{ 
                     mt: 1,
                     backgroundColor: theme => `${theme.palette.primary.dark}20`,
-                    color: theme => theme.palette.primary.dark,
+                    color: theme => theme.palette.mode === 'dark' ? 'white' : 'black',
                     '& .MuiAlert-icon': {
-                      color: theme => theme.palette.primary.dark,
+                      color: theme => theme.palette.mode === 'dark' ? 'white' : 'black',
                     },
                     border: theme => `1px solid ${theme.palette.primary.dark}40`,
                   }}
