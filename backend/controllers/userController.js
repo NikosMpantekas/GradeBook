@@ -1420,10 +1420,10 @@ const getStudentsDataForParent = asyncHandler(async (req, res) => {
     const studentsData = await Promise.all(students.map(async (student) => {
       // Get recent grades for this student
       const recentGrades = await Grade.find({
-        studentId: student._id
+        student: student._id
       })
-      .populate('subjectId', 'name')
-      .populate('teacherId', 'name')
+      .populate('subject', 'name')
+      .populate('teacher', 'name')
       .sort({ createdAt: -1 })
       .limit(5); // Limit per student to avoid too much data
       
@@ -1451,8 +1451,8 @@ const getStudentsDataForParent = asyncHandler(async (req, res) => {
         recentGrades: recentGrades.map(grade => ({
           _id: grade._id,
           value: grade.value,
-          subject: grade.subjectId?.name || 'Unknown Subject',
-          teacher: grade.teacherId?.name || 'Unknown Teacher',
+          subject: grade.subject?.name || 'Unknown Subject',
+          teacher: grade.teacher?.name || 'Unknown Teacher',
           description: grade.description,
           createdAt: grade.createdAt
         })),
@@ -1471,11 +1471,11 @@ const getStudentsDataForParent = asyncHandler(async (req, res) => {
     const allStudentIds = students.map(s => s._id);
     
     const allRecentGrades = await Grade.find({
-      studentId: { $in: allStudentIds }
+      student: { $in: allStudentIds }
     })
-    .populate('studentId', 'name')
-    .populate('subjectId', 'name')
-    .populate('teacherId', 'name')
+    .populate('student', 'name')
+    .populate('subject', 'name')
+    .populate('teacher', 'name')
     .sort({ createdAt: -1 })
     .limit(10);
     
@@ -1495,9 +1495,9 @@ const getStudentsDataForParent = asyncHandler(async (req, res) => {
       combinedRecentGrades: allRecentGrades.map(grade => ({
         _id: grade._id,
         value: grade.value,
-        studentName: grade.studentId?.name || 'Unknown Student',
-        subject: grade.subjectId?.name || 'Unknown Subject',
-        teacher: grade.teacherId?.name || 'Unknown Teacher',
+        studentName: grade.student?.name || 'Unknown Student',
+        subject: grade.subject?.name || 'Unknown Subject',
+        teacher: grade.teacher?.name || 'Unknown Teacher',
         description: grade.description,
         createdAt: grade.createdAt
       })),
