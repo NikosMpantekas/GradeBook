@@ -507,7 +507,7 @@ const Home = () => {
                         },
                       }}
                     >
-                      {React.cloneElement(feature.icon, { color: colors.text })}
+                      {React.cloneElement(feature.icon, { color: colors.icon })}
                       <Box>
                         <Typography
                           variant="subtitle1"
