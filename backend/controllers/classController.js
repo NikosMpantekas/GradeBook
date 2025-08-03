@@ -100,35 +100,52 @@ const createClass = asyncHandler(async (req, res) => {
     console.log('Processed teachers:', processedTeachers);
   }
 
-  // Auto-create Subject document if it doesn't exist
+  // Handle Subject document - find existing or create new one
   console.log('Checking if Subject exists for:', classSubject);
   
   let subjectDoc = await Subject.findOne({
     name: classSubject,
     schoolId: req.user.schoolId
   });
-  
+
   if (!subjectDoc) {
-    console.log('Subject not found, creating new Subject document:', classSubject);
-    
     try {
       subjectDoc = await Subject.create({
         name: classSubject,
         description: `Auto-created subject for ${classSubject}`,
         schoolId: req.user.schoolId,
-        teachers: processedTeachers, // Link teachers to the subject
+        teachers: processedTeachers || [], // Link teachers to the subject
         directions: []
       });
       
       console.log('Successfully created Subject document:', subjectDoc._id);
     } catch (subjectError) {
       console.error('Error creating Subject document:', subjectError.message);
-      // Continue with class creation even if subject creation fails
+      // If subject creation fails due to race condition (another class created the same subject simultaneously)
+      if (subjectError.code === 11000) {
+        console.log('Duplicate subject detected (race condition), finding existing subject...');
+        subjectDoc = await Subject.findOne({
+          name: classSubject,
+          schoolId: req.user.schoolId
+        });
+        if (!subjectDoc) {
+          console.error('Could not find or create subject document after race condition');
+          res.status(500);
+          throw new Error('Error handling subject creation due to race condition');
+        }
+        console.log('Found existing Subject document after race condition:', subjectDoc._id);
+      } else {
+        console.error('Unexpected error creating subject:', subjectError);
+        res.status(500);
+        throw new Error('Error creating subject: ' + subjectError.message);
+      }
     }
   } else {
-    console.log('Subject already exists:', subjectDoc._id);
-    
-    // Update subject with new teachers if they're not already included
+    console.log('Found existing Subject document:', subjectDoc._id);
+  }
+  
+  // Update existing subject with any new teachers that aren't already included
+  if (subjectDoc && processedTeachers && processedTeachers.length > 0) {
     let subjectUpdated = false;
     for (const teacherId of processedTeachers) {
       if (!subjectDoc.teachers.includes(teacherId)) {
@@ -138,8 +155,13 @@ const createClass = asyncHandler(async (req, res) => {
     }
     
     if (subjectUpdated) {
-      await subjectDoc.save();
-      console.log('Updated Subject with new teachers');
+      try {
+        await subjectDoc.save();
+        console.log('Updated existing Subject with new teachers');
+      } catch (updateError) {
+        console.error('Error updating subject with new teachers:', updateError.message);
+        // Don't fail class creation if subject update fails
+      }
     }
   }
   
