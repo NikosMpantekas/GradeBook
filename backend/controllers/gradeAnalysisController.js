@@ -33,7 +33,7 @@ const getStudentPeriodAnalysis = asyncHandler(async (req, res) => {
     if (req.user.role === 'teacher') {
       // Check if teacher teaches this student (through classes)
       const sharedClasses = await Class.find({
-        teacher: req.user._id,
+        teachers: req.user._id,
         students: studentId,
         schoolId: req.user.schoolId
       });
