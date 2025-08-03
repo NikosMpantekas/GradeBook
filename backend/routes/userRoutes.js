@@ -40,16 +40,27 @@ router.post('/admin/create', protect, admin, createUserByAdmin);
 // Route to get students - must come before /:id to avoid conflict
 router.get('/students', protect, async (req, res) => {
   try {
+    console.log('[STUDENTS ENDPOINT] GET /api/users/students called by:', req.user?.name, req.user?.role);
     const User = require('../models/userModel');
-    const students = await User.find({
-      role: 'student',
-      schoolId: req.user.schoolId
-    }).select('name email _id').sort({ name: 1 });
     
+    // Role-based filtering
+    let query = { role: 'student', schoolId: req.user.schoolId };
+    
+    // Teachers can only see students in their classes (if needed later)
+    if (req.user.role === 'teacher') {
+      // For now, teachers can see all students in their school
+      // This can be enhanced later to filter by classes
+    }
+    
+    const students = await User.find(query)
+      .select('name email _id role')
+      .sort({ name: 1 });
+    
+    console.log(`[STUDENTS ENDPOINT] Found ${students.length} students for school:`, req.user.schoolId);
     res.status(200).json(students);
   } catch (error) {
-    console.error('Error fetching students:', error);
-    res.status(500).json({ message: 'Error fetching students' });
+    console.error('[STUDENTS ENDPOINT] Error fetching students:', error);
+    res.status(500).json({ message: 'Error fetching students', error: error.message });
   }
 });
 
