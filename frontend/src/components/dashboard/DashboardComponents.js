@@ -296,9 +296,18 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
             No recent notifications
           </Alert>
         ) : (
-          <List sx={{ py: 0 }}>
-            {notifications.slice(0, 5).map((notification, index) => (
-              <ListItem key={notification._id || index} sx={{ px: 0 }}>
+          <List sx={{ py: 0, position: 'relative' }} disablePadding>
+            {notifications.slice(0, 5).map((notification, index) => {
+              // Defensive rendering to prevent null access
+              const safeNotification = notification || {};
+              const uniqueKey = safeNotification._id || `notification-${index}-${Date.now()}`;
+              
+              return (
+                <ListItem 
+                  key={uniqueKey} 
+                  sx={{ px: 0 }}
+                  divider={index < notifications.slice(0, 5).length - 1}
+                >
                 <ListItemAvatar>
                   <Avatar sx={{ 
                     bgcolor: notification.isImportant ? 'warning.main' : 'primary.main',
@@ -316,24 +325,25 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
                   primary={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Typography variant="body2" sx={{ 
-                        fontWeight: notification.isRead ? 'normal' : 'bold',
+                        fontWeight: safeNotification.isRead ? 'normal' : 'bold',
                         flex: 1
                       }}>
-                        {notification.title}
+                        {safeNotification.title || 'No title'}
                       </Typography>
-                      {notification.isImportant && (
+                      {safeNotification.isImportant && (
                         <Chip label="Important" size="small" color="warning" variant="outlined" />
                       )}
                     </Box>
                   }
                   secondary={
                     <Typography variant="caption" color="text.secondary">
-                      {formatDate(notification.createdAt)}
+                      {formatDate(safeNotification.createdAt)}
                     </Typography>
                   }
                 />
               </ListItem>
-            ))}
+              );
+            })}
           </List>
         )}
       </CardContent>
@@ -415,45 +425,55 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
             No recent grades available
           </Alert>
         ) : (
-          <List sx={{ py: 0 }}>
-            {grades.slice(0, 5).map((grade, index) => (
-              <ListItem key={grade._id || index} sx={{ px: 0 }}>
-                <ListItemAvatar>
-                  <Avatar sx={{ 
-                    bgcolor: `${getGradeColor(grade.value)}.main`,
-                    width: 36,
-                    height: 36
-                  }}>
-                    <GradeIcon fontSize="small" />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                      {grade.subject?.name || grade.subjectName || 'Unknown Subject'}
-                      {userRole !== 'student' && grade.student && (
-                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                          - {grade.student.name}
-                        </Typography>
-                      )}
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography variant="caption" color="text.secondary">
-                      {formatDate(grade.createdAt)} • {grade.description || 'No description'}
-                    </Typography>
-                  }
-                />
-                <ListItemSecondaryAction>
-                  <Chip 
-                    label={grade.value} 
-                    color={getGradeColor(grade.value)}
-                    size="small"
-                    variant="filled"
+          <List sx={{ py: 0, position: 'relative' }} disablePadding>
+            {grades.slice(0, 5).map((grade, index) => {
+              // Defensive rendering to prevent null access
+              const safeGrade = grade || {};
+              const uniqueKey = safeGrade._id || `grade-${index}-${Date.now()}`;
+              
+              return (
+                <ListItem 
+                  key={uniqueKey} 
+                  sx={{ px: 0 }}
+                  divider={index < grades.slice(0, 5).length - 1}
+                >
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                      bgcolor: `${getGradeColor(safeGrade.value || 0)}.main`,
+                      width: 36,
+                      height: 36
+                    }}>
+                      <GradeIcon fontSize="small" />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                        {safeGrade.subject?.name || safeGrade.subjectName || 'Unknown Subject'}
+                        {userRole !== 'student' && safeGrade.student && (
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            - {safeGrade.student.name}
+                          </Typography>
+                        )}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="caption" color="text.secondary">
+                        {formatDate(safeGrade.createdAt)} • {safeGrade.description || 'No description'}
+                      </Typography>
+                    }
                   />
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))}
+                  <ListItemSecondaryAction>
+                    <Chip 
+                      label={safeGrade.value || 0} 
+                      color={getGradeColor(safeGrade.value || 0)}
+                      size="small"
+                      variant="filled"
+                    />
+                  </ListItemSecondaryAction>
+                </ListItem>
+              );
+            })}
           </List>
         )}
       </CardContent>
@@ -551,48 +571,58 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
             No upcoming classes scheduled
           </Alert>
         ) : (
-          <List sx={{ py: 0 }}>
-            {classes.slice(0, 5).map((classItem, index) => (
-              <ListItem key={classItem._id || index} sx={{ px: 0 }}>
-                <ListItemAvatar>
-                  <Avatar sx={{ 
-                    bgcolor: 'info.main',
-                    width: 36,
-                    height: 36
-                  }}>
-                    <ClassIcon fontSize="small" />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                      {classItem.subject || classItem.className || 'Unknown Subject'}
-                      {userRole === 'admin' && classItem.teacher && (
-                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                          - {classItem.teacher.name}
-                        </Typography>
-                      )}
-                    </Typography>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        {classItem.startTime && classItem.endTime ? (
-                          `${formatTime(classItem.startTime)} - ${formatTime(classItem.endTime)}`
-                        ) : (
-                          'Time not specified'
+          <List sx={{ py: 0, position: 'relative' }} disablePadding>
+            {classes.slice(0, 5).map((classItem, index) => {
+              // Defensive rendering to prevent null access
+              const safeClassItem = classItem || {};
+              const uniqueKey = safeClassItem._id || `class-${index}-${Date.now()}`;
+              
+              return (
+                <ListItem 
+                  key={uniqueKey} 
+                  sx={{ px: 0 }}
+                  divider={index < classes.slice(0, 5).length - 1}
+                >
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                      bgcolor: 'info.main',
+                      width: 36,
+                      height: 36
+                    }}>
+                      <ClassIcon fontSize="small" />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                        {safeClassItem.subject || safeClassItem.className || 'Unknown Subject'}
+                        {userRole === 'admin' && safeClassItem.teacher && (
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            - {safeClassItem.teacher.name}
+                          </Typography>
                         )}
                       </Typography>
-                      {classItem.room && (
-                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                          • Room {classItem.room}
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {safeClassItem.startTime && safeClassItem.endTime ? (
+                            `${formatTime(safeClassItem.startTime)} - ${formatTime(safeClassItem.endTime)}`
+                          ) : (
+                            'Time not specified'
+                          )}
                         </Typography>
-                      )}
-                    </Box>
-                  }
-                />
-              </ListItem>
-            ))}
+                        {safeClassItem.room && (
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            • Room {safeClassItem.room}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              );
+            })}
           </List>
         )}
       </CardContent>
