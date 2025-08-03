@@ -25,6 +25,7 @@ const Layout = () => {
   const isSwiping = useRef(false);
   const swipeThreshold = 50; // Minimum distance to trigger swipe
   const [drawerPosition, setDrawerPosition] = useState(0); // Track drawer position during swipe
+  const touchStartTime = useRef(0);
 
   const { darkMode } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
@@ -56,6 +57,7 @@ const Layout = () => {
     
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    touchStartTime.current = Date.now();
     isSwiping.current = false;
     setDrawerPosition(0); // Reset position on new touch
   };
@@ -67,41 +69,50 @@ const Layout = () => {
     const touchY = e.touches[0].clientY;
     const deltaX = touchX - touchStartX.current;
     const deltaY = Math.abs(touchY - touchStartY.current);
+    const deltaTime = Date.now() - touchStartTime.current;
     
-    // Only consider it a swipe if it's more horizontal than vertical
-    if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 10) {
+    // Only consider it a swipe if it's more horizontal than vertical and started from left edge
+    if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 10 && touchStartX.current < 50) {
       isSwiping.current = true;
       e.preventDefault(); // Prevent scrolling during swipe
+      e.stopPropagation(); // Prevent other touch handlers
       
       // Calculate drawer position based on swipe
-      if (touchStartX.current < 50) { // Swipe from left edge
-        if (!mobileOpen) {
-          // Opening drawer - follow the swipe
-          const progress = Math.min(Math.max(deltaX / 200, 0), 1); // Normalize to 0-1
-          setDrawerPosition(progress);
-        }
-      } else if (mobileOpen) {
-        // Closing drawer - follow the swipe
-        const progress = Math.min(Math.max(-deltaX / 200, 0), 1); // Normalize to 0-1
-        setDrawerPosition(1 - progress);
+      if (!mobileOpen) {
+        // Opening drawer - follow the swipe
+        const progress = Math.min(Math.max(deltaX / 200, 0), 1); // Normalize to 0-1
+        setDrawerPosition(progress);
       }
+    } else if (mobileOpen && deltaX < 0 && Math.abs(deltaX) > 10) {
+      // Closing drawer - follow the swipe from right
+      isSwiping.current = true;
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const progress = Math.min(Math.max(-deltaX / 200, 0), 1); // Normalize to 0-1
+      setDrawerPosition(1 - progress);
     }
   };
 
   const handleTouchEnd = (e) => {
-    if (!isMobile || !isSwiping.current) {
-      setDrawerPosition(0); // Reset position if not swiping
+    if (!isMobile) {
+      setDrawerPosition(0); // Reset position if not mobile
       return;
     }
     
     const touchX = e.changedTouches[0].clientX;
     const deltaX = touchX - touchStartX.current;
+    const deltaTime = Date.now() - touchStartTime.current;
+    
+    // Only handle if we were actually swiping
+    if (!isSwiping.current) {
+      setDrawerPosition(0); // Reset position if not swiping
+      return;
+    }
     
     // Swipe from left edge to open sidebar
-    if (deltaX > swipeThreshold && touchStartX.current < 50) {
-      if (!mobileOpen) {
-        handleDrawerToggle();
-      }
+    if (deltaX > swipeThreshold && touchStartX.current < 50 && !mobileOpen) {
+      handleDrawerToggle();
     }
     // Swipe from right to close sidebar
     else if (deltaX < -swipeThreshold && mobileOpen) {
@@ -110,6 +121,16 @@ const Layout = () => {
     
     isSwiping.current = false;
     setDrawerPosition(0); // Reset position after swipe
+  };
+
+  // Prevent native browser back gesture when swiping
+  const handleTouchCancel = (e) => {
+    if (isSwiping.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    isSwiping.current = false;
+    setDrawerPosition(0);
   };
 
   // Sidebar width for layout spacing
@@ -142,10 +163,13 @@ const Layout = () => {
 
   return (
     <Box 
-      sx={{ display: 'flex', minHeight: '100vh', bgcolor: darkMode ? 'background.default' : '#f5f5f5' }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      sx={{ 
+        display: 'flex', 
+        minHeight: '100vh', 
+        bgcolor: darkMode ? 'background.default' : '#f5f5f5',
+        touchAction: 'pan-y', // Allow vertical scrolling, prevent horizontal
+        WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+      }}
     >
       <Header 
         drawerWidth={drawerWidth} 
@@ -168,6 +192,25 @@ const Layout = () => {
           minHeight: '100vh',
           overflowX: 'hidden', // Prevent horizontal scrolling
           overflowY: 'auto', // Enable vertical scrolling for desktop
+          touchAction: 'pan-y', // Allow vertical scrolling, prevent horizontal
+        }}
+        onTouchStart={(e) => {
+          // Only handle touches from the left edge for sidebar
+          if (e.touches[0].clientX < 50) {
+            handleTouchStart(e);
+          }
+        }}
+        onTouchMove={(e) => {
+          // Only handle touches from the left edge for sidebar
+          if (touchStartX.current < 50) {
+            handleTouchMove(e);
+          }
+        }}
+        onTouchEnd={(e) => {
+          // Only handle touches from the left edge for sidebar
+          if (touchStartX.current < 50) {
+            handleTouchEnd(e);
+          }
         }}
       >
         {/* Main content area */}

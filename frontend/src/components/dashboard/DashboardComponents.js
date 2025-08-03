@@ -540,12 +540,12 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
             severity="info" 
             sx={{ 
               mt: 1,
-              backgroundColor: theme => `${theme.palette.primary.dark}20`,
+              backgroundColor: theme => `${theme.palette.primary.main}20`,
               color: theme => theme.palette.mode === 'dark' ? 'white' : 'black',
               '& .MuiAlert-icon': {
                 color: theme => theme.palette.mode === 'dark' ? 'white' : 'black',
               },
-              border: theme => `1px solid ${theme.palette.primary.dark}40`,
+              border: theme => `1px solid ${theme.palette.primary.main}40`,
             }}
           >
             No upcoming classes scheduled

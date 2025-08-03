@@ -839,8 +839,9 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
             boxSizing: 'border-box', 
             width: drawerWidth,
             borderRight: '1px solid rgba(0, 0, 0, 0.12)',
-            transform: drawerPosition > 0 ? `translateX(${(drawerPosition - 1) * drawerWidth}px)` : 'translateX(-100%)',
-            transition: drawerPosition > 0 ? 'none' : 'transform 0.3s ease-in-out',
+            transform: drawerPosition > 0 ? `translateX(${(drawerPosition - 1) * drawerWidth}px)` : (mobileOpen ? 'translateX(0)' : 'translateX(-100%)'),
+            transition: drawerPosition > 0 ? 'none' : 'transform 0.2s ease-out',
+            willChange: 'transform',
           },
         }}
       >
