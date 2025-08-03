@@ -7,8 +7,7 @@ import {
   Box,
   Typography,
   Alert,
-  CircularProgress,
-  Fade
+  CircularProgress
 } from '@mui/material';
 import {
   WelcomePanel,
@@ -223,61 +222,51 @@ const ParentDashboard = () => {
         <Grid container spacing={3}>
         {/* Welcome Panel */}
         <Grid item xs={12}>
-          <Fade in={!loading}>
-            <WelcomePanel 
-              user={user} 
-              userType="parent"
-              subtitle={`Managing your student${dashboardData.stats.studentsCount !== 1 ? 's' : ''}'s academic progress`}
-            />
-          </Fade>
+          <WelcomePanel 
+            user={user} 
+            userType="parent"
+            subtitle={`Managing your student${dashboardData.stats.studentsCount !== 1 ? 's' : ''}'s academic progress`}
+          />
         </Grid>
 
         {/* Profile Information Panel */}
         <Grid item xs={12} md={6}>
-          <Fade in={!loading}>
-            <ProfileInfoPanel user={user} userType="parent" />
-          </Fade>
+          <ProfileInfoPanel user={user} userType="parent" />
         </Grid>
 
         {/* Recent Notifications Panel - if notifications are enabled */}
         {isFeatureEnabled('enableNotifications') && (
           <Grid item xs={12} md={6}>
-            <Fade in={!panelLoading.notifications}>
-              <RecentNotificationsPanel 
-                notifications={dashboardData.notifications}
-                loading={panelLoading.notifications}
-                userType="parent"
-                onViewAll={() => navigate('/app/notifications')}
-              />
-            </Fade>
+            <RecentNotificationsPanel 
+              notifications={dashboardData.notifications}
+              loading={panelLoading.notifications}
+              userType="parent"
+              onViewAll={() => navigate('/app/notifications')}
+            />
           </Grid>
         )}
 
         {/* Recent Grades Panel - if grades are enabled */}
         {isFeatureEnabled('enableGrades') && (
           <Grid item xs={12} md={6}>
-            <Fade in={!panelLoading.grades}>
-              <RecentGradesPanel 
-                grades={dashboardData.grades}
-                loading={panelLoading.grades}
-                userType="parent"
-                onViewAll={() => navigate('/app/parent/grades')}
-              />
-            </Fade>
+            <RecentGradesPanel 
+              grades={dashboardData.grades}
+              loading={panelLoading.grades}
+              userType="parent"
+              onViewAll={() => navigate('/app/parent/grades')}
+            />
           </Grid>
         )}
 
         {/* Upcoming Classes Panel - if schedule is enabled */}
         {isFeatureEnabled('enableSchedule') && (
           <Grid item xs={12} md={6}>
-            <Fade in={!panelLoading.classes}>
-              <UpcomingClassesPanel 
-                classes={dashboardData.classes}
-                loading={panelLoading.classes}
-                userType="parent"
-                onViewAll={() => navigate('/app/schedule')}
-              />
-            </Fade>
+            <UpcomingClassesPanel 
+              classes={dashboardData.classes}
+              loading={panelLoading.classes}
+              userType="parent"
+              onViewAll={() => navigate('/app/schedule')}
+            />
           </Grid>
         )}
         </Grid>
