@@ -391,6 +391,23 @@ const getAllNotifications = asyncHandler(async (req, res) => {
       // query already has schoolId filter which is sufficient for admins
       console.log('[SECURITY] Admin user - full school access granted');
     }
+    else if (req.user.role === 'parent') {
+      // PARENTS: Can see notifications sent to them or their children
+      console.log('[SECURITY] Parent user - applying parent-specific filtering for user:', req.user._id);
+      
+      // Find parent's linked students
+      const parentUser = await User.findById(req.user._id).select('linkedStudentIds').lean();
+      const linkedStudentIds = parentUser?.linkedStudentIds || [];
+      
+      query.$or = [
+        // Notifications sent directly to parent
+        { recipients: req.user._id },
+        // Notifications sent to parent's linked students
+        ...(linkedStudentIds.length > 0 ? [{ recipients: { $in: linkedStudentIds } }] : [])
+      ];
+      
+      console.log(`[SECURITY] Parent ${req.user._id} can access notifications for ${linkedStudentIds.length} linked students`);
+    }
     else {
       // SECURITY: Unknown role - deny access
       console.error(`[SECURITY] Unknown user role: ${req.user.role} - denying access`);

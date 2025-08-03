@@ -18,6 +18,7 @@ import {
   UpcomingClassesPanel
 } from '../components/dashboard/DashboardComponents';
 import { useFeatureToggles } from '../context/FeatureToggleContext';
+import { DashboardErrorBoundary, safeEventHandler } from '../utils/dashboardErrorHandler';
 import axios from 'axios';
 import { API_URL } from '../config/appConfig';
 import { toast } from 'react-toastify';
@@ -217,8 +218,9 @@ const ParentDashboard = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Grid container spacing={3}>
+    <DashboardErrorBoundary>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Grid container spacing={3}>
         {/* Welcome Panel */}
         <Grid item xs={12}>
           <Fade in={!loading}>
@@ -278,8 +280,9 @@ const ParentDashboard = () => {
             </Fade>
           </Grid>
         )}
-      </Grid>
-    </Container>
+        </Grid>
+      </Container>
+    </DashboardErrorBoundary>
   );
 };
 
