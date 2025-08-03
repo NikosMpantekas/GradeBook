@@ -56,6 +56,7 @@ import RatingSubmission from './pages/student/RatingSubmission';
 
 // Parent Pages
 import ParentDashboard from './pages/ParentDashboard';
+import ParentGrades from './pages/parent/ParentGrades';
 
 // Teacher Pages
 import TeacherGrades from './pages/teacher/TeacherGrades';
@@ -448,7 +449,7 @@ function App() {
             <Route path="/app/student/schedule" element={<Schedule />} />
             
             {/* Parent-specific routes */}
-            <Route path="/app/parent/grades" element={<StudentGrades />} />
+            <Route path="/app/parent/grades" element={<ParentGrades />} />
             <Route path="/app/parent/grades/:id" element={<GradeDetail />} />
             <Route path="/app/parent/notifications" element={<Notifications />} />
             <Route path="/app/parent/notifications/:id" element={<NotificationDetail />} />
