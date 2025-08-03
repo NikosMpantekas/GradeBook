@@ -40,11 +40,17 @@ const ParentDashboard = () => {
     // Only fetch data when token is available
     if (token && user) {
       console.log('[ParentDashboard] Token available, fetching students data...');
+      setLoading(true); // Ensure loading state is set
+      setError(''); // Clear any previous errors
       fetchStudentsData();
-    } else {
-      console.log('[ParentDashboard] Token or user not available yet:', { hasToken: !!token, hasUser: !!user });
+    } else if (token === null && user === null) {
+      // Only show error if auth state has been checked and is definitively null
+      console.log('[ParentDashboard] Authentication failed - no token or user');
       setLoading(false);
       setError('Authentication required. Please refresh the page.');
+    } else {
+      // Auth state is still loading, keep waiting
+      console.log('[ParentDashboard] Waiting for auth state to load...', { hasToken: !!token, hasUser: !!user });
     }
   }, [token, user]); // Add token and user as dependencies
 

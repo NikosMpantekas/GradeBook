@@ -103,10 +103,11 @@ const ParentGrades = () => {
           {grade.description && (
             <Typography variant="body2" sx={{ 
               fontStyle: 'italic', 
-              bgcolor: 'grey.50', 
+              bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50',
+              color: theme.palette.mode === 'dark' ? 'grey.300' : 'text.secondary',
               p: 1, 
               borderRadius: 1,
-              border: `1px solid ${theme.palette.grey[200]}`
+              border: `1px solid ${theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[200]}`
             }}>
               {grade.description}
             </Typography>
