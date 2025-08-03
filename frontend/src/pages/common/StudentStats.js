@@ -62,14 +62,25 @@ const StudentStats = () => {
     }
   }, [selectedStudent, startDate, endDate]);
 
-  // Fetch students list
+  // Fetch students list - teachers only see their assigned students
   const fetchStudents = async () => {
     try {
       setStudentsLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/users/students`, {
+      
+      // For teachers, use teacher-specific endpoint to get only their students
+      // For admins, get all students
+      const endpoint = user?.role === 'teacher' 
+        ? `${API_URL}/api/users/teacher-students`  // Only students from teacher's classes
+        : `${API_URL}/api/users/students`;         // All students for admin
+      
+      console.log(`[StudentStats] Fetching students for ${user?.role}:`, endpoint);
+      
+      const response = await axios.get(endpoint, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      console.log(`[StudentStats] Received ${response.data?.length || 0} students for ${user?.role}`);
       setStudents(response.data || []);
     } catch (error) {
       console.error('Error fetching students:', error);

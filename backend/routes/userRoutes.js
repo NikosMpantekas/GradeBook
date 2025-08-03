@@ -37,20 +37,14 @@ router.post('/change-password', protect, changePassword);
 router.get('/', protect, admin, getUsers);
 router.post('/admin/create', protect, admin, createUserByAdmin);
 
-// Route to get students - must come before /:id to avoid conflict
-router.get('/students', protect, async (req, res) => {
+// Route to get students - ADMIN ONLY (all students in school)
+router.get('/students', protect, admin, async (req, res) => {
   try {
     console.log('[STUDENTS ENDPOINT] GET /api/users/students called by:', req.user?.name, req.user?.role);
     const User = require('../models/userModel');
     
-    // Role-based filtering
-    let query = { role: 'student', schoolId: req.user.schoolId };
-    
-    // Teachers can only see students in their classes (if needed later)
-    if (req.user.role === 'teacher') {
-      // For now, teachers can see all students in their school
-      // This can be enhanced later to filter by classes
-    }
+    // Admin can see all students in their school
+    const query = { role: 'student', schoolId: req.user.schoolId };
     
     const students = await User.find(query)
       .select('name email _id role')
@@ -61,6 +55,63 @@ router.get('/students', protect, async (req, res) => {
   } catch (error) {
     console.error('[STUDENTS ENDPOINT] Error fetching students:', error);
     res.status(500).json({ message: 'Error fetching students', error: error.message });
+  }
+});
+
+// Route to get teacher's students - TEACHER ONLY (students from their classes)
+router.get('/teacher-students', protect, async (req, res) => {
+  try {
+    console.log('[TEACHER-STUDENTS ENDPOINT] GET /api/users/teacher-students called by:', req.user?.name, req.user?.role);
+    
+    // Only teachers can access this endpoint
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ message: 'Access denied. Teachers only.' });
+    }
+
+    const User = require('../models/userModel');
+    const Class = require('../models/classModel');
+    
+    // Get classes where this teacher teaches
+    const teacherClasses = await Class.find({ 
+      teacher: req.user._id,
+      schoolId: req.user.schoolId 
+    }).select('students');
+    
+    console.log(`[TEACHER-STUDENTS] Found ${teacherClasses.length} classes for teacher:`, req.user.name);
+    
+    // Get unique student IDs from all teacher's classes
+    const studentIds = new Set();
+    teacherClasses.forEach(classObj => {
+      if (classObj.students && Array.isArray(classObj.students)) {
+        classObj.students.forEach(studentId => {
+          studentIds.add(studentId.toString());
+        });
+      }
+    });
+    
+    console.log(`[TEACHER-STUDENTS] Found ${studentIds.size} unique student IDs`);
+    
+    // If no students found, return empty array
+    if (studentIds.size === 0) {
+      console.log(`[TEACHER-STUDENTS] No students found for teacher ${req.user.name}`);
+      return res.status(200).json([]);
+    }
+    
+    // Get student details for the IDs
+    const students = await User.find({ 
+      _id: { $in: Array.from(studentIds) },
+      role: 'student',
+      schoolId: req.user.schoolId 
+    })
+    .select('name email _id role')
+    .sort({ name: 1 });
+    
+    console.log(`[TEACHER-STUDENTS] Returning ${students.length} students for teacher ${req.user.name}`);
+    res.status(200).json(students);
+    
+  } catch (error) {
+    console.error('[TEACHER-STUDENTS ENDPOINT] Error fetching teacher students:', error);
+    res.status(500).json({ message: 'Error fetching teacher students', error: error.message });
   }
 });
 

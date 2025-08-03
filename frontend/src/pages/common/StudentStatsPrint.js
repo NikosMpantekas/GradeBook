@@ -15,6 +15,7 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { API_URL } from '../../config/appConfig';
 
 const StudentStatsPrint = () => {
@@ -100,6 +101,16 @@ const StudentStatsPrint = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Prepare chart data for subjects with multiple grades
+  const prepareChartData = (subjectGrades) => {
+    return subjectGrades.map((grade, index) => ({
+      index: index + 1,
+      grade: grade.value,
+      date: new Date(grade.date).toLocaleDateString(),
+      timestamp: new Date(grade.date).getTime()
+    })).sort((a, b) => a.timestamp - b.timestamp);
   };
 
   const handlePrint = () => {
@@ -219,6 +230,44 @@ const StudentStatsPrint = () => {
                   </Typography>
                 </Box>
               </Box>
+
+              {/* Progress Graph for multiple grades */}
+              {subjectData.grades && subjectData.grades.length > 1 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 2, color: 'black' }}>
+                    📈 Grade Progress Over Time
+                  </Typography>
+                  <Box sx={{ width: '100%', height: 300, mb: 2 }}>
+                    <ResponsiveContainer>
+                      <LineChart data={prepareChartData(subjectData.grades)}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 12, fill: 'black' }}
+                        />
+                        <YAxis 
+                          domain={[0, 20]}
+                          tick={{ fontSize: 12, fill: 'black' }}
+                        />
+                        <Tooltip 
+                          formatter={(value) => [value, 'Grade']}
+                          labelFormatter={(label) => `Date: ${label}`}
+                          contentStyle={{ backgroundColor: '#f9f9f9', border: '1px solid #ddd' }}
+                        />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="grade" 
+                          stroke="#1976d2" 
+                          strokeWidth={3}
+                          dot={{ fill: '#1976d2', strokeWidth: 2, r: 6 }}
+                          name="Grade"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </Box>
+              )}
 
               {/* Grades Table */}
               <TableContainer sx={{ mb: 3 }}>
