@@ -432,6 +432,13 @@ app.use(
   require("./routes/gradeRoutes")
 ); // Grades API
 app.use(
+  "/api/grades",
+  protect,
+  setSchoolContext,
+  addFeatureFlags,
+  require("./routes/gradeAnalysisRoutes")
+); // Grade Analysis API
+app.use(
   "/api/classes",
   protect,
   setSchoolContext,
