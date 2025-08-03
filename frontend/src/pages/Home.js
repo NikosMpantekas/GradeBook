@@ -26,9 +26,8 @@ import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 
-const [darkMode, setDarkMode] = useState(true); // dark mode default
-// Color palette for dark and light mode
-const colors = darkMode
+// Color palette function for dark and light mode
+const getColors = (darkMode) => darkMode
   ? {
       background: "#181b20",
       appBar: "#23262b",
@@ -71,7 +70,8 @@ const Logo = () => {
   );
 };
 
-const features = [
+// Features function to accept colors parameter
+const getFeatures = (colors) => [
   {
     icon: (
       <CheckCircleIcon
@@ -307,6 +307,11 @@ const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(true); // dark mode default
+  
+  // Get dynamic colors and features based on dark mode
+  const colors = getColors(darkMode);
+  const features = getFeatures(colors);
 
   const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
   const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
