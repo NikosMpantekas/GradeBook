@@ -276,7 +276,12 @@ function App() {
   // Set up push notifications if user is logged in
   useEffect(() => {
     if (user) {
-      setupPushNotifications();
+      setupPushNotifications().catch((error) => {
+        // Handle push notification errors silently to avoid false authentication error messages
+        console.warn('Push notification setup failed (this is normal if user denied permission):', error.message);
+        // Don't propagate push notification errors to global error handler
+        // as they're not critical and shouldn't interfere with app functionality
+      });
     }
   }, [user]);
 

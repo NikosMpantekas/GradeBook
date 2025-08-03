@@ -24,7 +24,11 @@ import {
   TableHead,
   TableRow,
   Tabs,
-  Tab
+  Tab,
+  Container,
+  Stack,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
@@ -42,6 +46,11 @@ const ParentGrades = () => {
   const [error, setError] = useState('');
   const [selectedTab, setSelectedTab] = useState(0);
   const { user, token } = useSelector((state) => state.auth);
+  
+  // Mobile-responsive design hooks
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md')); // Mobile/tablet view
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm')); // Small mobile view
 
   useEffect(() => {
     // More robust token retrieval with debugging
@@ -154,91 +163,94 @@ const ParentGrades = () => {
   const studentNames = students.map(s => s.student.name).join(', ');
 
   return (
-    <Box p={3}>
-      {/* Header */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 60, height: 60 }}>
-            <GradeIcon fontSize="large" />
-          </Avatar>
-          <Box>
-            <Typography variant="h4" fontWeight="bold">
-              Students Grades
-            </Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9 }}>
-              Academic Performance for {studentNames}
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              {students.length} {students.length === 1 ? 'Student' : 'Students'} • {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </Typography>
-          </Box>
-        </Box>
-      </Paper>
-
-      {/* Navigation Tabs */}
-      <Paper elevation={1} sx={{ mb: 3 }}>
-        <Tabs value={selectedTab} onChange={handleTabChange} variant="fullWidth">
-          <Tab label="All Grades Combined" />
-          {students.map((studentData, index) => (
-            <Tab key={studentData.student._id} label={`${studentData.student.name}'s Grades`} />
+    <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 } }}>
+      <Typography variant={isSmallScreen ? "h5" : "h4"} gutterBottom fontWeight="bold" textAlign="center">
+        📚 My Students' Grades
+      </Typography>
+      
+      {/* Tab Navigation - Mobile Optimized */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs 
+          value={selectedTab} 
+          onChange={handleTabChange} 
+          aria-label="student grades tabs"
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons={isMobile ? "auto" : false}
+          sx={{
+            '& .MuiTabs-flexContainer': {
+              flexDirection: 'row'
+            }
+          }}
+        >
+          <Tab 
+            label={
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <SchoolIcon fontSize="small" />
+                <Box textAlign="left">
+                  <Typography variant="caption" display="block">
+                    All Students
+                  </Typography>
+                  <Typography variant="body2" fontWeight="bold">
+                    ({students?.length || 0} students)
+                  </Typography>
+                </Box>
+              </Stack>
+            } 
+            sx={{ minWidth: isMobile ? 120 : 160 }}
+          />
+          {students?.map((studentData, index) => (
+            <Tab 
+              key={studentData.student._id}
+              label={
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <PersonIcon fontSize="small" />
+                  <Box textAlign="left">
+                    <Typography variant="caption" display="block" noWrap>
+                      {isSmallScreen ? studentData.student.name.split(' ')[0] : studentData.student.name}
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      ({studentData.recentGrades?.length || 0} grades)
+                    </Typography>
+                  </Box>
+                </Stack>
+              } 
+              sx={{ minWidth: isMobile ? 100 : 140 }}
+            />
           ))}
         </Tabs>
-      </Paper>
+      </Box>
 
-      {/* Tab Content */}
       {selectedTab === 0 ? (
-        // Combined grades view
-        <Paper elevation={2} sx={{ p: 3 }}>
-          <Box display="flex" alignItems="center" gap={2} mb={3}>
-            <GradeIcon color="primary" />
-            <Typography variant="h5" fontWeight="bold">
-              All Recent Grades ({combinedRecentGrades?.length || 0})
-            </Typography>
-          </Box>
-          <Divider sx={{ mb: 3 }} />
+        // Combined grades view - Mobile Optimized
+        <Box>
+          <Paper sx={{ p: 2, mb: 2, bgcolor: 'primary.main', color: 'white' }}>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <GradeIcon />
+              <Box>
+                <Typography variant={isSmallScreen ? "h6" : "h5"} fontWeight="bold">
+                  All Recent Grades
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                  {combinedRecentGrades?.length || 0} total grades across all students
+                </Typography>
+              </Box>
+            </Stack>
+          </Paper>
 
           {combinedRecentGrades && combinedRecentGrades.length > 0 ? (
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Student</strong></TableCell>
-                    <TableCell><strong>Subject</strong></TableCell>
-                    <TableCell><strong>Grade</strong></TableCell>
-                    <TableCell><strong>Teacher</strong></TableCell>
-                    <TableCell><strong>Description</strong></TableCell>
-                    <TableCell><strong>Date</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {combinedRecentGrades.map((grade, index) => (
-                    <TableRow key={grade._id || index}>
-                      <TableCell>{grade.studentName}</TableCell>
-                      <TableCell>{grade.subject}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={grade.value} 
-                          color="primary" 
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{grade.teacher}</TableCell>
-                      <TableCell>{grade.description || 'No description'}</TableCell>
-                      <TableCell>{new Date(grade.createdAt).toLocaleDateString()}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Box>
+              {combinedRecentGrades.map((grade, index) => (
+                <GradeCard key={grade._id || index} grade={grade} showStudentName={true} />
+              ))}
+            </Box>
           ) : (
-            <Alert severity="info">No grades available for any of your students yet.</Alert>
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <Alert severity="info" sx={{ border: 'none', bgcolor: 'transparent' }}>
+                📚 No grades available for any of your students yet.
+              </Alert>
+            </Paper>
           )}
-        </Paper>
+        </Box>
       ) : (
         // Individual student grades view
         <Paper elevation={2} sx={{ p: 3 }}>
@@ -265,36 +277,11 @@ const ParentGrades = () => {
                 <Divider sx={{ mb: 3 }} />
 
                 {studentData.recentGrades && studentData.recentGrades.length > 0 ? (
-                  <TableContainer>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell><strong>Subject</strong></TableCell>
-                          <TableCell><strong>Grade</strong></TableCell>
-                          <TableCell><strong>Teacher</strong></TableCell>
-                          <TableCell><strong>Description</strong></TableCell>
-                          <TableCell><strong>Date</strong></TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {studentData.recentGrades.map((grade, index) => (
-                          <TableRow key={grade._id || index}>
-                            <TableCell>{grade.subject}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={grade.value} 
-                                color="primary" 
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>{grade.teacher}</TableCell>
-                            <TableCell>{grade.description || 'No description'}</TableCell>
-                            <TableCell>{new Date(grade.createdAt).toLocaleDateString()}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  <Box>
+                    {studentData.recentGrades.map((grade, index) => (
+                      <GradeCard key={grade._id || index} grade={grade} showStudentName={false} />
+                    ))}
+                  </Box>
                 ) : (
                   <Alert severity="info">No grades available for {studentData.student.name} yet.</Alert>
                 )}
@@ -303,7 +290,7 @@ const ParentGrades = () => {
           })()}
         </Paper>
       )}
-    </Box>
+    </Container>
   );
 };
 
