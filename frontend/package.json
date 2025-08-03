@@ -8,6 +8,7 @@
     "@mui/icons-material": "^5.14.3",
     "@mui/material": "^5.14.3",
     "@mui/x-date-pickers": "^6.20.2",
+    "@mui/x-date-pickers-pro": "^8.9.2",
     "@reduxjs/toolkit": "^1.9.5",
     "axios": "^1.6.0",
     "browser-image-compression": "^2.0.2",

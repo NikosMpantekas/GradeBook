@@ -8,17 +8,18 @@ const Class = require('../models/classModel');
 // @access  Private (Admin: all students, Teacher: only shared students)
 const getStudentPeriodAnalysis = asyncHandler(async (req, res) => {
   try {
-    const { studentId, period } = req.query;
+    const { studentId, startDate, endDate } = req.query;
     
     console.log(`[GradeAnalysis] Request from ${req.user.role}:`, { 
       studentId, 
-      period, 
+      startDate,
+      endDate, 
       requesterId: req.user._id 
     });
 
-    if (!studentId || !period) {
+    if (!studentId || !startDate || !endDate) {
       res.status(400);
-      throw new Error('Student ID and period are required');
+      throw new Error('Student ID, start date, and end date are required');
     }
 
     // Verify student exists and user has permission to view
@@ -43,55 +44,31 @@ const getStudentPeriodAnalysis = asyncHandler(async (req, res) => {
       }
     }
 
-    // Calculate date range based on period
-    const now = new Date();
-    let startDate, endDate = now;
-
-    switch (period) {
-      case 'current_month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'last_month':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case 'current_semester':
-        // Assuming September-January is first semester, February-June is second
-        const currentMonth = now.getMonth();
-        if (currentMonth >= 8 || currentMonth <= 0) { // Sept-Jan
-          startDate = new Date(now.getFullYear(), 8, 1); // September 1st
-        } else { // Feb-June
-          startDate = new Date(now.getFullYear(), 1, 1); // February 1st
-        }
-        break;
-      case 'last_semester':
-        const lastSemesterMonth = now.getMonth();
-        if (lastSemesterMonth >= 8 || lastSemesterMonth <= 0) { // Currently Sept-Jan, show Feb-June
-          startDate = new Date(now.getFullYear(), 1, 1);
-          endDate = new Date(now.getFullYear(), 6, 30);
-        } else { // Currently Feb-June, show last Sept-Jan
-          startDate = new Date(now.getFullYear() - 1, 8, 1);
-          endDate = new Date(now.getFullYear(), 0, 31);
-        }
-        break;
-      case 'current_year':
-        startDate = new Date(now.getFullYear(), 8, 1); // Academic year starts September
-        break;
-      case 'all_time':
-        startDate = new Date('2020-01-01'); // Far back date
-        break;
-      default:
-        res.status(400);
-        throw new Error('Invalid period specified');
+    // Parse date range from query parameters
+    const parsedStartDate = new Date(startDate);
+    const parsedEndDate = new Date(endDate);
+    
+    // Validate dates
+    if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+      res.status(400);
+      throw new Error('Invalid date format. Please use YYYY-MM-DD format');
     }
+    
+    if (parsedStartDate > parsedEndDate) {
+      res.status(400);
+      throw new Error('Start date cannot be after end date');
+    }
+    
+    // Ensure end date includes the full day (set to end of day)
+    parsedEndDate.setHours(23, 59, 59, 999);
 
-    console.log(`[GradeAnalysis] Date range:`, { startDate, endDate });
+    console.log(`[GradeAnalysis] Date range:`, { startDate: parsedStartDate, endDate: parsedEndDate });
 
     // Get all grades for student in the specified period
     const studentGrades = await Grade.find({
       student: studentId,
       schoolId: req.user.schoolId,
-      date: { $gte: startDate, $lte: endDate }
+      date: { $gte: parsedStartDate, $lte: parsedEndDate }
     })
     .populate('subject', 'name')
     .populate('teacher', 'name')
@@ -102,11 +79,10 @@ const getStudentPeriodAnalysis = asyncHandler(async (req, res) => {
     if (studentGrades.length === 0) {
       return res.status(200).json({
         student,
-        period,
-        dateRange: { startDate, endDate },
+        dateRange: { startDate: parsedStartDate, endDate: parsedEndDate },
         subjectAnalysis: {},
         totalGrades: 0,
-        message: 'No grades found for the selected period'
+        message: 'No grades found for the selected date range'
       });
     }
 
@@ -139,7 +115,7 @@ const getStudentPeriodAnalysis = asyncHandler(async (req, res) => {
         const classGrades = await Grade.find({
           subject: subjectId,
           schoolId: req.user.schoolId,
-          date: { $gte: startDate, $lte: endDate }
+          date: { $gte: parsedStartDate, $lte: parsedEndDate }
         });
         
         if (classGrades.length > 0) {
@@ -174,8 +150,7 @@ const getStudentPeriodAnalysis = asyncHandler(async (req, res) => {
         name: student.name,
         email: student.email
       },
-      period,
-      dateRange: { startDate, endDate },
+      dateRange: { startDate: parsedStartDate, endDate: parsedEndDate },
       subjectAnalysis,
       totalGrades: studentGrades.length,
       summary: {

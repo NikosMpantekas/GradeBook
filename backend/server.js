@@ -424,20 +424,21 @@ app.use(
   addFeatureFlags,
   require("./routes/studentRoutes")
 ); // Students API
-app.use(
-  "/api/grades",
-  protect,
-  setSchoolContext,
-  addFeatureFlags,
-  require("./routes/gradeRoutes")
-); // Grades API
+// Grade Analysis API - MUST come before general grade routes to avoid conflicts
 app.use(
   "/api/grades",
   protect,
   setSchoolContext,
   addFeatureFlags,
   require("./routes/gradeAnalysisRoutes")
-); // Grade Analysis API
+); // Grade Analysis API (specific routes first)
+app.use(
+  "/api/grades",
+  protect,
+  setSchoolContext,
+  addFeatureFlags,
+  require("./routes/gradeRoutes")
+); // Grades API (general routes second)
 app.use(
   "/api/classes",
   protect,

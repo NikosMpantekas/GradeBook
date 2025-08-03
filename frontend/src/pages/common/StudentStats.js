@@ -21,14 +21,19 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Divider
+  Divider,
+  TextField
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
   Print as PrintIcon,
   PictureAsPdf as PdfIcon,
   Analytics as AnalyticsIcon,
   School as SchoolIcon,
-  AdminPanelSettings as AdminIcon
+  AdminPanelSettings as AdminIcon,
+  CalendarToday as CalendarIcon
 } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useSelector } from 'react-redux';
@@ -39,31 +44,22 @@ const StudentStats = () => {
   const { user } = useSelector((state) => state.auth);
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
-  const [selectedPeriod, setSelectedPeriod] = useState('');
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
   const [gradesData, setGradesData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [studentsLoading, setStudentsLoading] = useState(true);
-
-  // Period options
-  const periods = [
-    { value: 'current_month', label: 'Current Month' },
-    { value: 'last_month', label: 'Last Month' },
-    { value: 'current_semester', label: 'Current Semester' },
-    { value: 'last_semester', label: 'Last Semester' },
-    { value: 'current_year', label: 'Current Academic Year' },
-    { value: 'all_time', label: 'All Time' }
-  ];
 
   useEffect(() => {
     fetchStudents();
   }, []);
 
   useEffect(() => {
-    if (selectedStudent && selectedPeriod) {
+    if (selectedStudent && startDate && endDate) {
       fetchGradesData();
     }
-  }, [selectedStudent, selectedPeriod]);
+  }, [selectedStudent, startDate, endDate]);
 
   // Fetch students list
   const fetchStudents = async () => {
@@ -83,7 +79,7 @@ const StudentStats = () => {
     }
   };
 
-  // Fetch grades data for selected student and period
+  // Fetch grades data for selected student and date range
   const fetchGradesData = async () => {
     try {
       setLoading(true);
@@ -93,7 +89,8 @@ const StudentStats = () => {
       const response = await axios.get(`${API_URL}/api/grades/student-period-analysis`, {
         params: {
           studentId: selectedStudent,
-          period: selectedPeriod
+          startDate: startDate ? startDate.toISOString().split('T')[0] : null,
+          endDate: endDate ? endDate.toISOString().split('T')[0] : null
         },
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -222,42 +219,66 @@ const StudentStats = () => {
 
       {/* Selection Controls */}
       <Paper elevation={2} sx={{ p: 3, mb: 3 }} className="no-print">
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Select Student</InputLabel>
-              <Select
-                value={selectedStudent}
-                onChange={(e) => setSelectedStudent(e.target.value)}
-                label="Select Student"
-                disabled={studentsLoading}
-              >
-                {students.map((student) => (
-                  <MenuItem key={student._id} value={student._id}>
-                    {student.name} ({student.email})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Select Period</InputLabel>
-              <Select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                label="Select Period"
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Select Student</InputLabel>
+                <Select
+                  value={selectedStudent}
+                  onChange={(e) => setSelectedStudent(e.target.value)}
+                  label="Select Student"
+                  disabled={studentsLoading}
+                >
+                  {students.map((student) => (
+                    <MenuItem key={student._id} value={student._id}>
+                      {student.name} ({student.email})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <DatePicker
+                label="Start Date"
+                value={startDate}
+                onChange={(newValue) => setStartDate(newValue)}
                 disabled={!selectedStudent}
-              >
-                {periods.map((period) => (
-                  <MenuItem key={period.value} value={period.value}>
-                    {period.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    fullWidth 
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: <CalendarIcon sx={{ mr: 1, color: 'action.active' }} />
+                    }}
+                  />
+                )}
+                maxDate={endDate || new Date()}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <DatePicker
+                label="End Date"
+                value={endDate}
+                onChange={(newValue) => setEndDate(newValue)}
+                disabled={!selectedStudent || !startDate}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    fullWidth 
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: <CalendarIcon sx={{ mr: 1, color: 'action.active' }} />
+                    }}
+                  />
+                )}
+                minDate={startDate}
+                maxDate={new Date()}
+              />
+            </Grid>
           </Grid>
-        </Grid>
+        </LocalizationProvider>
       </Paper>
 
       {/* Error display */}
@@ -454,14 +475,14 @@ const StudentStats = () => {
       )}
 
       {/* Selection prompt */}
-      {!selectedStudent || !selectedPeriod ? (
+      {!selectedStudent || !startDate || !endDate ? (
         <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
           <AnalyticsIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h6" color="text.secondary" gutterBottom>
-            Select a student and time period to view grade analysis
+            Select a student and date range to view grade analysis
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Choose from the dropdown menus above to generate a detailed grade report with class comparisons and progress charts
+            Choose a student and select start/end dates above to generate a detailed grade report with class comparisons and progress charts
           </Typography>
         </Paper>
       ) : null}
