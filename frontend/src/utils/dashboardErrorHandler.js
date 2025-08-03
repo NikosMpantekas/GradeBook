@@ -2,6 +2,7 @@
  * Dashboard Error Handler
  * Provides comprehensive error protection and null-safe DOM operations
  */
+import React from 'react';
 
 /**
  * Safe event handler wrapper to prevent null access errors
@@ -177,5 +178,4 @@ export class DashboardErrorBoundary extends React.Component {
   }
 }
 
-// React import for the error boundary
-import React from 'react';
+// React import is now at the top of the file
