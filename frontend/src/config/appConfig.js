@@ -16,12 +16,17 @@ let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 if (process.env.NODE_ENV === 'production') {
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
   
-  // Case 1: Render.com deployment - use same origin
-  if (currentHostname.includes('render.com')) {
+  // Case 1: GradeBook.pro production deployment - use backend subdomain
+  if (currentHostname === 'gradebook.pro') {
+    API_URL = 'https://backend.gradebook.pro';
+    console.log('[appConfig] GradeBook.pro production detected, using backend subdomain:', API_URL);
+  }
+  // Case 2: Render.com deployment - use same origin
+  else if (currentHostname.includes('render.com')) {
     API_URL = window.location.origin;
     console.log('[appConfig] Render.com detected, using same origin:', API_URL);
   }
-  // Case 2: Netlify deployment - enforce HTTPS for backend
+  // Case 3: Netlify deployment - enforce HTTPS for backend
   else if (currentHostname.includes('netlify.app') || currentHostname.includes('netlify.com')) {
     if (process.env.REACT_APP_API_URL) {
       API_URL = process.env.REACT_APP_API_URL;
