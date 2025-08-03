@@ -29,12 +29,11 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
-  Print as PrintIcon,
-  PictureAsPdf as PdfIcon,
   Analytics as AnalyticsIcon,
   School as SchoolIcon,
   AdminPanelSettings as AdminIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  Print as PrintIcon
 } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useSelector } from 'react-redux';
@@ -134,24 +133,13 @@ const StudentStats = () => {
     })).sort((a, b) => a.timestamp - b.timestamp);
   };
 
-  // Handle print functionality
-  const handlePrint = () => {
-    window.print();
-  };
-
   // Navigate to dedicated print page
-  const handlePrintPage = () => {
-    navigate('/student-stats/print', {
-      state: {
-        selectedStudent,
-        selectedStudentData,
-        startDate: startDate?.toISOString(),
-        endDate: endDate?.toISOString()
-      }
-    });
-  };
-
-  const handleSavePDF = () => {
+  const handlePrintReport = () => {
+    if (!selectedStudent || !startDate || !endDate) {
+      alert('Please select a student and date range first.');
+      return;
+    }
+    
     navigate('/student-stats/print', {
       state: {
         selectedStudent,
@@ -276,6 +264,21 @@ const StudentStats = () => {
             </Grid>
           </Grid>
         </LocalizationProvider>
+        
+        {/* Print Report Button */}
+        {selectedStudent && startDate && endDate && (
+          <Box display="flex" justifyContent="center" mt={2}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PrintIcon />}
+              onClick={handlePrintReport}
+              sx={{ minWidth: 140 }}
+            >
+              Print Report
+            </Button>
+          </Box>
+        )}
       </Paper>
 
       {/* Error display */}
@@ -310,28 +313,7 @@ const StudentStats = () => {
               <Typography variant="body2" color="text.secondary">
                 Generated on: {new Date().toLocaleDateString()}
               </Typography>
-              
-              {/* Print/PDF Buttons */}
-              <Box display="flex" justifyContent="center" gap={2} mt={3} className="no-print">
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<PrintIcon />}
-                  onClick={handlePrintPage}
-                  sx={{ minWidth: 120 }}
-                >
-                  Print Report
-                </Button>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  startIcon={<PdfIcon />}
-                  onClick={handleSavePDF}
-                  sx={{ minWidth: 120 }}
-                >
-                  Save as PDF
-                </Button>
-              </Box>
+
             </Box>
           </Paper>
 

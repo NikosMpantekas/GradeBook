@@ -38,7 +38,32 @@ const StudentStatsPrint = () => {
   const fetchGradeAnalysis = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      
+      // Try multiple token sources
+      let token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      
+      // If still no token, try getting from Redux store via user data
+      if (!token) {
+        const userData = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+        token = userData.token;
+      }
+      
+      console.log('[StudentStatsPrint] Token check:', {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        tokenPreview: token ? token.substring(0, 10) + '...' : 'null'
+      });
+      
+      if (!token) {
+        console.error('[StudentStatsPrint] No authentication token found');
+        navigate('/login');
+        return;
+      }
+      
+      console.log('[StudentStatsPrint] Making API request:', {
+        url: `${API_URL}/api/grades/student-period-analysis`,
+        params: { selectedStudent, startDate, endDate }
+      });
       
       const response = await fetch(
         `${API_URL}/api/grades/student-period-analysis?studentId=${selectedStudent}&startDate=${startDate}&endDate=${endDate}`,
@@ -51,14 +76,27 @@ const StudentStatsPrint = () => {
         }
       );
 
+      console.log('[StudentStatsPrint] API response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('[StudentStatsPrint] Received grade data:', data);
         setGradesData(data);
       } else {
-        console.error('Failed to fetch grade analysis');
+        const errorText = await response.text();
+        console.error('[StudentStatsPrint] API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        
+        if (response.status === 401) {
+          console.error('[StudentStatsPrint] Authentication failed, redirecting to login');
+          navigate('/login');
+        }
       }
     } catch (error) {
-      console.error('Error fetching grade analysis:', error);
+      console.error('[StudentStatsPrint] Error fetching grade analysis:', error);
     } finally {
       setLoading(false);
     }
