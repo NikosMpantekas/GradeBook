@@ -428,18 +428,52 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
+// In-memory blacklist for revoked refresh tokens (in production, use Redis)
+const revokedRefreshTokens = new Set();
+
+// Rate limiting map for refresh attempts
+const refreshAttempts = new Map();
+
 // @desc    Refresh access token using refresh token
 // @route   POST /api/users/refresh-token
 // @access  Public
 const refreshToken = asyncHandler(async (req, res) => {
   const { refreshToken: tokenFromRequest } = req.body;
+  const clientIP = req.ip || req.connection.remoteAddress;
   
   if (!tokenFromRequest) {
     res.status(400);
     throw new Error('Refresh token is required');
   }
   
+  // Rate limiting check
+  const now = Date.now();
+  const userKey = `${clientIP}:${tokenFromRequest.slice(-10)}`; // Use last 10 chars as identifier
+  const attempts = refreshAttempts.get(userKey) || { count: 0, resetTime: now + 15 * 60 * 1000 };
+  
+  if (now > attempts.resetTime) {
+    // Reset attempts after 15 minutes
+    attempts.count = 0;
+    attempts.resetTime = now + 15 * 60 * 1000;
+  }
+  
+  if (attempts.count >= 10) {
+    console.warn(`[SECURITY] Refresh token rate limit exceeded for IP: ${clientIP}`);
+    res.status(429);
+    throw new Error('Too many refresh attempts. Please try again later.');
+  }
+  
+  attempts.count += 1;
+  refreshAttempts.set(userKey, attempts);
+  
   try {
+    // Check if token is blacklisted (revoked)
+    if (revokedRefreshTokens.has(tokenFromRequest)) {
+      console.warn(`[SECURITY] Attempted use of revoked refresh token from IP: ${clientIP}`);
+      res.status(401);
+      throw new Error('Refresh token has been revoked');
+    }
+    
     // Verify the refresh token
     const decoded = jwt.verify(tokenFromRequest, process.env.JWT_SECRET);
     
@@ -457,19 +491,56 @@ const refreshToken = asyncHandler(async (req, res) => {
       throw new Error('User not found');
     }
     
-    // Generate a new access token
+    // SECURITY: Token Rotation - Generate both new access AND refresh tokens
     const newAccessToken = generateToken(user._id, decoded.schoolId);
+    const newRefreshToken = generateRefreshToken(user._id, decoded.schoolId);
     
-    // Return both tokens
+    // SECURITY: Blacklist the old refresh token (prevents replay attacks)
+    revokedRefreshTokens.add(tokenFromRequest);
+    
+    console.log(`[SECURITY] Token rotation successful for user ${user.name} (${user._id})`);
+    console.log(`[SECURITY] Old refresh token blacklisted, new tokens generated`);
+    
+    // Reset rate limiting on successful refresh
+    refreshAttempts.delete(userKey);
+    
+    // Return new tokens (BOTH access and refresh)
     res.json({
-      accessToken: newAccessToken,
-      refreshToken: tokenFromRequest // Return the same refresh token as it's still valid
+      token: newAccessToken,        // Frontend expects 'token' field
+      refreshToken: newRefreshToken, // New refresh token for next rotation
+      message: 'Tokens refreshed successfully'
     });
     
   } catch (error) {
+    console.error(`[SECURITY] Refresh token validation failed for IP ${clientIP}:`, error.message);
     res.status(401);
     throw new Error('Invalid refresh token - ' + error.message);
   }
+});
+
+// @desc    Logout user and revoke refresh token
+// @route   POST /api/users/logout
+// @access  Private
+const logoutUser = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+  const clientIP = req.ip || req.connection.remoteAddress;
+  
+  console.log(`[SECURITY] Logout request from user ${req.user.name} (${req.user._id}) from IP: ${clientIP}`);
+  
+  // If refresh token is provided, add it to blacklist
+  if (refreshToken) {
+    revokedRefreshTokens.add(refreshToken);
+    console.log(`[SECURITY] Refresh token revoked during logout for user ${req.user.name}`);
+    
+    // Clear any rate limiting attempts for this token
+    const userKey = `${clientIP}:${refreshToken.slice(-10)}`;
+    refreshAttempts.delete(userKey);
+  }
+  
+  res.json({
+    message: 'Logged out successfully',
+    revokedToken: !!refreshToken
+  });
 });
 
 // @desc    Get user data
@@ -1703,6 +1774,7 @@ module.exports = {
   registerUser,
   loginUser,
   refreshToken,
+  logoutUser,
   getMe,
   updateProfile,
   getUsers,

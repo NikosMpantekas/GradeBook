@@ -4,6 +4,7 @@ const {
   registerUser,
   loginUser,
   refreshToken,
+  logoutUser,
   getMe,
   updateProfile,
   getUsers,
@@ -23,7 +24,8 @@ const { protect, admin, canManageUsers } = require('../middleware/authMiddleware
 // Public routes
 router.post('/', registerUser);
 router.post('/login', loginUser);
-router.post('/refresh-token', refreshToken); 
+router.post('/refresh-token', refreshToken);
+router.post('/logout', protect, logoutUser); 
 
 // Protected routes - accessible to authenticated users
 router.get('/me', protect, getMe);

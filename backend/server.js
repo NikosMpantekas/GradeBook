@@ -40,11 +40,18 @@ connectDB()
 
 // Set up web push
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+    console.log('✅ VAPID keys configured successfully');
+  } catch (error) {
+    console.warn('⚠️  VAPID key configuration failed (push notifications disabled):', error.message);
+  }
+} else {
+  console.log('ℹ️  VAPID keys not configured - push notifications disabled');
 }
 
 const app = express();
