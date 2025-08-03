@@ -104,23 +104,26 @@ export class DashboardErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true };
+    // Update state so the next render will show the fallback UI
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('[DASHBOARD_ERROR_BOUNDARY] Caught error:', error);
-    console.error('[DASHBOARD_ERROR_BOUNDARY] Error info:', errorInfo);
+    // Safe logging with null checks
+    console.error('[DASHBOARD_ERROR_BOUNDARY] Caught error:', error || 'Unknown error');
+    console.error('[DASHBOARD_ERROR_BOUNDARY] Error info:', errorInfo || 'No error info');
     
     // Log specific scrollTop errors
-    if (error.message && error.message.includes('scrollTop')) {
+    if (error && error.message && error.message.includes('scrollTop')) {
       console.error('[DASHBOARD_ERROR_BOUNDARY] ScrollTop error detected!');
       console.error('[DASHBOARD_ERROR_BOUNDARY] Error message:', error.message);
-      console.error('[DASHBOARD_ERROR_BOUNDARY] Stack trace:', error.stack);
+      console.error('[DASHBOARD_ERROR_BOUNDARY] Stack trace:', error.stack || 'No stack trace');
     }
 
+    // Safely set state with null checks
     this.setState({
-      error,
-      errorInfo
+      error: error || new Error('Unknown error'),
+      errorInfo: errorInfo || { componentStack: 'No component stack available' }
     });
   }
 
@@ -153,7 +156,7 @@ export class DashboardErrorBoundary extends React.Component {
               maxHeight: '200px'
             }}>
               {this.state.error && this.state.error.toString()}
-              {this.state.errorInfo.componentStack}
+              {this.state.errorInfo && this.state.errorInfo.componentStack}
             </pre>
           </details>
           <button 
