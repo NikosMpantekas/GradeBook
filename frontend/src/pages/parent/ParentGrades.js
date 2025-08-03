@@ -52,6 +52,70 @@ const ParentGrades = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md')); // Mobile/tablet view
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm')); // Small mobile view
 
+  // Mobile-friendly grade card component
+  const GradeCard = ({ grade, showStudentName = false }) => (
+    <Card 
+      sx={{ 
+        mb: 2, 
+        border: `1px solid ${theme.palette.divider}`,
+        '&:hover': {
+          boxShadow: theme.shadows[4],
+          transform: 'translateY(-2px)',
+          transition: 'all 0.2s ease-in-out'
+        }
+      }}
+    >
+      <CardContent sx={{ pb: 2 }}>
+        <Stack spacing={2}>
+          {showStudentName && (
+            <Box display="flex" alignItems="center" gap={1}>
+              <PersonIcon color="primary" fontSize="small" />
+              <Typography variant="h6" color="primary" fontWeight="bold">
+                {grade.studentName}
+              </Typography>
+            </Box>
+          )}
+          
+          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap">
+            <Typography variant="h6" fontWeight="bold" sx={{ mb: { xs: 1, sm: 0 } }}>
+              {grade.subject}
+            </Typography>
+            <Chip 
+              label={`Grade: ${grade.value}`} 
+              color="primary" 
+              size={isSmallScreen ? "small" : "medium"}
+              sx={{ fontWeight: 'bold' }}
+            />
+          </Box>
+          
+          <Stack direction={isSmallScreen ? "column" : "row"} spacing={2}>
+            <Box display="flex" alignItems="center" gap={1} flex={1}>
+              <SubjectIcon fontSize="small" color="action" />
+              <Typography variant="body2" color="text.secondary">
+                Teacher: {grade.teacher}
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              {new Date(grade.createdAt).toLocaleDateString()}
+            </Typography>
+          </Stack>
+          
+          {grade.description && (
+            <Typography variant="body2" sx={{ 
+              fontStyle: 'italic', 
+              bgcolor: 'grey.50', 
+              p: 1, 
+              borderRadius: 1,
+              border: `1px solid ${theme.palette.grey[200]}`
+            }}>
+              {grade.description}
+            </Typography>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+
   useEffect(() => {
     // More robust token retrieval with debugging
     console.log('[ParentGrades] Redux auth state:', {
