@@ -824,25 +824,6 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
       aria-label="navigation sidebar"
     >
-      {/* Mobile backdrop overlay */}
-      {drawerPosition > 0 && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            opacity: drawerPosition,
-            zIndex: 1199,
-            display: { xs: 'block', sm: 'none' },
-            transition: 'none',
-          }}
-          onClick={handleDrawerToggle}
-        />
-      )}
-      
       {/* Mobile drawer */}
       <Drawer
         container={window.document.body}
