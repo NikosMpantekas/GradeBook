@@ -26,6 +26,33 @@ import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 
+  // Color palette for dark and light mode
+  const colors = darkMode
+    ? {
+        background: "#181b20",
+        appBar: "#23262b",
+        card: "#23262b",
+        text: "#fff",
+        subText: "grey.300",
+        footer: "#23262b",
+        border: "1px solid #23262b",
+        button: "#337ab7",
+        buttonHover: "#245a8d",
+        icon: "#337ab7",
+      }
+    : {
+        background: "#f5f6fa",
+        appBar: "#fff",
+        card: "#fff",
+        text: "#23262b",
+        subText: "grey.800",
+        footer: "#f5f6fa",
+        border: "1px solid #e0e0e0",
+        button: "#337ab7",
+        buttonHover: "#245a8d",
+        icon: "#337ab7",
+      };
+
 const Logo = () => {
   const theme = useTheme();
   return (
@@ -284,34 +311,6 @@ const Home = () => {
 
   const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
   const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
-
-  // Color palette for dark and light mode
-  const colors = darkMode
-    ? {
-        background: "#181b20",
-        appBar: "#23262b",
-        card: "#23262b",
-        text: "#fff",
-        subText: "grey.300",
-        footer: "#23262b",
-        border: "1px solid #23262b",
-        button: "#337ab7",
-        buttonHover: "#245a8d",
-        icon: "#337ab7",
-      }
-    : {
-        background: "#f5f6fa",
-        appBar: "#fff",
-        card: "#fff",
-        text: "#23262b",
-        subText: "grey.800",
-        footer: "#f5f6fa",
-        border: "1px solid #e0e0e0",
-        button: "#337ab7",
-        buttonHover: "#245a8d",
-        icon: "#337ab7",
-      };
-
   return (
     <Box
       sx={{
