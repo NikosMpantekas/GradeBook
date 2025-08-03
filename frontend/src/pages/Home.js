@@ -333,6 +333,7 @@ const Home = () => {
         overflow: "auto",
         transition: 'background-color 0.1s',
         overscrollBehavior: 'none',
+        overscrollColor: colors.icon,
         '&::-webkit-scrollbar': {
           width: '8px',
         },

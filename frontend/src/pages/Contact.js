@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Box,
   Container,
@@ -16,6 +16,7 @@ import {
   Stack,
   Snackbar,
   Alert,
+  CircularProgress,
 } from "@mui/material";
 import Brightness4Icon from "@mui/icons-material/Brightness4";
 import Brightness7Icon from "@mui/icons-material/Brightness7";
@@ -27,6 +28,78 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import EmailIcon from "@mui/icons-material/Email";
 import SendIcon from "@mui/icons-material/Send";
+import axios from "axios";
+import { API_URL } from "../config/appConfig";
+
+// Security utilities
+const SECURITY_CONFIG = {
+  MAX_NAME_LENGTH: 100,
+  MAX_EMAIL_LENGTH: 254,
+  MAX_SUBJECT_LENGTH: 200,
+  MAX_MESSAGE_LENGTH: 2000,
+  RATE_LIMIT_DURATION: 60000, // 1 minute
+  MAX_ATTEMPTS: 3,
+  ALLOWED_EMAIL_DOMAINS: ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com'], // Optional: restrict to common domains
+};
+
+// Input sanitization function
+const sanitizeInput = (input, maxLength = 100) => {
+  if (typeof input !== 'string') return '';
+  
+  // Remove null bytes and control characters
+  let sanitized = input.replace(/[\x00-\x1F\x7F]/g, '');
+  
+  // Remove HTML tags
+  sanitized = sanitized.replace(/<[^>]*>/g, '');
+  
+  // Remove script tags and javascript: URLs
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+  
+  // Trim whitespace
+  sanitized = sanitized.trim();
+  
+  // Limit length
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength);
+  }
+  
+  return sanitized;
+};
+
+// Email validation function
+const validateEmail = (email) => {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email) && email.length <= SECURITY_CONFIG.MAX_EMAIL_LENGTH;
+};
+
+// Rate limiting utility
+const useRateLimit = () => {
+  const attemptsRef = useRef([]);
+  
+  const isRateLimited = () => {
+    const now = Date.now();
+    // Remove old attempts
+    attemptsRef.current = attemptsRef.current.filter(
+      timestamp => now - timestamp < SECURITY_CONFIG.RATE_LIMIT_DURATION
+    );
+    
+    return attemptsRef.current.length >= SECURITY_CONFIG.MAX_ATTEMPTS;
+  };
+  
+  const recordAttempt = () => {
+    attemptsRef.current.push(Date.now());
+  };
+  
+  const getRemainingTime = () => {
+    if (attemptsRef.current.length === 0) return 0;
+    const oldestAttempt = Math.min(...attemptsRef.current);
+    const elapsed = Date.now() - oldestAttempt;
+    return Math.max(0, SECURITY_CONFIG.RATE_LIMIT_DURATION - elapsed);
+  };
+  
+  return { isRateLimited, recordAttempt, getRemainingTime };
+};
 
 const Logo = () => {
   return (
@@ -75,10 +148,20 @@ const Contact = () => {
     subject: "",
     message: "",
   });
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
+  });
+  
+  // Rate limiting
+  const { isRateLimited, recordAttempt, getRemainingTime } = useRateLimit();
+  
+  // CSRF token (in a real app, this would be generated server-side)
+  const [csrfToken] = useState(() => {
+    return Math.random().toString(36).substring(2) + Date.now().toString(36);
   });
 
   const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
@@ -110,62 +193,181 @@ const Contact = () => {
         icon: "#337ab7",
       };
 
+  // Input validation
+  const validateField = (name, value) => {
+    const errors = {};
+    
+    switch (name) {
+      case 'name':
+        if (!value.trim()) {
+          errors.name = 'Το όνομα είναι υποχρεωτικό';
+        } else if (value.length > SECURITY_CONFIG.MAX_NAME_LENGTH) {
+          errors.name = `Το όνομα δεν μπορεί να υπερβαίνει τους ${SECURITY_CONFIG.MAX_NAME_LENGTH} χαρακτήρες`;
+        } else if (!/^[a-zA-Zα-ωΑ-Ω\s]+$/.test(value.trim())) {
+          errors.name = 'Το όνομα πρέπει να περιέχει μόνο γράμματα';
+        }
+        break;
+        
+      case 'email':
+        if (!value.trim()) {
+          errors.email = 'Το email είναι υποχρεωτικό';
+        } else if (!validateEmail(value.trim())) {
+          errors.email = 'Παρακαλώ εισάγετε μια έγκυρη διεύθυνση email';
+        }
+        break;
+        
+      case 'subject':
+        if (!value.trim()) {
+          errors.subject = 'Το θέμα είναι υποχρεωτικό';
+        } else if (value.length > SECURITY_CONFIG.MAX_SUBJECT_LENGTH) {
+          errors.subject = `Το θέμα δεν μπορεί να υπερβαίνει τους ${SECURITY_CONFIG.MAX_SUBJECT_LENGTH} χαρακτήρες`;
+        }
+        break;
+        
+      case 'message':
+        if (!value.trim()) {
+          errors.message = 'Το μήνυμα είναι υποχρεωτικό';
+        } else if (value.length > SECURITY_CONFIG.MAX_MESSAGE_LENGTH) {
+          errors.message = `Το μήνυμα δεν μπορεί να υπερβαίνει τους ${SECURITY_CONFIG.MAX_MESSAGE_LENGTH} χαρακτήρες`;
+        }
+        break;
+        
+      default:
+        break;
+    }
+    
+    return errors;
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Sanitize input
+    const sanitizedValue = sanitizeInput(value, SECURITY_CONFIG[`MAX_${name.toUpperCase()}_LENGTH`]);
+    
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: sanitizedValue,
     }));
+    
+    // Clear error for this field
+    setFormErrors((prev) => ({
+      ...prev,
+      [name]: undefined,
+    }));
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    Object.keys(formData).forEach(field => {
+      const fieldErrors = validateField(field, formData[field]);
+      Object.assign(errors, fieldErrors);
+    });
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Security checks
+    if (isRateLimited()) {
+      const remainingTime = Math.ceil(getRemainingTime() / 1000);
+      setSnackbar({
+        open: true,
+        message: `Παρακαλώ περιμένετε ${remainingTime} δευτερόλεπτα πριν δοκιμάσετε ξανά.`,
+        severity: "error",
+      });
+      return;
+    }
+    
     // Validate form
-    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+    if (!validateForm()) {
       setSnackbar({
         open: true,
-        message: "Παρακαλώ συμπληρώστε όλα τα πεδία.",
+        message: "Παρακαλώ διορθώστε τα σφάλματα στη φόρμα.",
         severity: "error",
       });
       return;
     }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setSnackbar({
-        open: true,
-        message: "Παρακαλώ εισάγετε μια έγκυρη διεύθυνση email.",
-        severity: "error",
-      });
-      return;
-    }
-
+    
+    setIsSubmitting(true);
+    recordAttempt();
+    
     try {
-      // Here you would typically send the form data to your backend
-      // For now, we'll simulate a successful submission
-      console.log("Form submitted:", formData);
+      // Prepare secure payload
+      const securePayload = {
+        name: sanitizeInput(formData.name, SECURITY_CONFIG.MAX_NAME_LENGTH),
+        email: sanitizeInput(formData.email, SECURITY_CONFIG.MAX_EMAIL_LENGTH).toLowerCase(),
+        subject: sanitizeInput(formData.subject, SECURITY_CONFIG.MAX_SUBJECT_LENGTH),
+        message: sanitizeInput(formData.message, SECURITY_CONFIG.MAX_MESSAGE_LENGTH),
+        csrfToken: csrfToken,
+        timestamp: Date.now(),
+        userAgent: navigator.userAgent,
+        referrer: document.referrer,
+      };
       
-      setSnackbar({
-        open: true,
-        message: "Το μήνυμά σας στάλθηκε επιτυχώς! Θα επικοινωνήσουμε μαζί σας σύντομα.",
-        severity: "success",
-      });
+      // Additional security headers
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': csrfToken,
+        },
+        timeout: 10000, // 10 second timeout
+      };
       
-      // Reset form
-      setFormData({
-        name: "",
-        email: "",
-        subject: "",
-        message: "",
-      });
+      const response = await axios.post(`${API_URL}/api/contact/public`, securePayload, config);
+      
+      if (response.data.success) {
+        setSnackbar({
+          open: true,
+          message: "Το μήνυμά σας στάλθηκε επιτυχώς! Θα επικοινωνήσουμε μαζί σας σύντομα.",
+          severity: "success",
+        });
+        
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          subject: "",
+          message: "",
+        });
+        setFormErrors({});
+      } else {
+        throw new Error(response.data.message || 'Unknown error');
+      }
     } catch (error) {
+      console.error('Contact form submission error:', error);
+      
+      let errorMessage = "Προέκυψε σφάλμα κατά την αποστολή του μηνύματος. Παρακαλώ δοκιμάστε ξανά.";
+      
+      if (error.response) {
+        // Server responded with error
+        if (error.response.status === 429) {
+          errorMessage = "Πάρα πολλές προσπάθειες. Παρακαλώ περιμένετε λίγο πριν δοκιμάσετε ξανά.";
+        } else if (error.response.status === 400) {
+          errorMessage = error.response.data.message || "Μη έγκυρα δεδομένα.";
+        } else if (error.response.status === 403) {
+          errorMessage = "Πρόσβαση απορρίφθηκε.";
+        } else if (error.response.status >= 500) {
+          errorMessage = "Πρόβλημα με τον διακομιστή. Παρακαλώ δοκιμάστε ξανά αργότερα.";
+        }
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = "Η σύνδεση έληξε. Παρακαλώ ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.";
+      } else if (error.code === 'NETWORK_ERROR') {
+        errorMessage = "Πρόβλημα δικτύου. Παρακαλώ ελέγξτε τη σύνδεσή σας.";
+      }
+      
       setSnackbar({
         open: true,
-        message: "Προέκυψε σφάλμα κατά την αποστολή του μηνύματος. Παρακαλώ δοκιμάστε ξανά.",
+        message: errorMessage,
         severity: "error",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -199,6 +401,7 @@ const Contact = () => {
         overflow: "auto",
         transition: 'background-color 0.1s',
         overscrollBehavior: 'none',
+        overscrollColor: colors.icon,
         '&::-webkit-scrollbar': {
           width: '8px',
         },
@@ -380,6 +583,8 @@ const Contact = () => {
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
+                          error={!!formErrors.name}
+                          helperText={formErrors.name}
                           required
                           sx={{
                             "& .MuiOutlinedInput-root": {
@@ -411,6 +616,8 @@ const Contact = () => {
                           type="email"
                           value={formData.email}
                           onChange={handleInputChange}
+                          error={!!formErrors.email}
+                          helperText={formErrors.email}
                           required
                           sx={{
                             "& .MuiOutlinedInput-root": {
@@ -441,6 +648,8 @@ const Contact = () => {
                           name="subject"
                           value={formData.subject}
                           onChange={handleInputChange}
+                          error={!!formErrors.subject}
+                          helperText={formErrors.subject}
                           required
                           sx={{
                             "& .MuiOutlinedInput-root": {
@@ -473,6 +682,8 @@ const Contact = () => {
                           rows={6}
                           value={formData.message}
                           onChange={handleInputChange}
+                          error={!!formErrors.message}
+                          helperText={formErrors.message}
                           required
                           sx={{
                             "& .MuiOutlinedInput-root": {
@@ -501,7 +712,7 @@ const Contact = () => {
                           type="submit"
                           variant="contained"
                           size="large"
-                          endIcon={<SendIcon />}
+                          endIcon={isSubmitting ? <CircularProgress size={24} color="inherit" /> : <SendIcon />}
                           sx={{
                             bgcolor: colors.button,
                             color: "white",
@@ -517,8 +728,9 @@ const Contact = () => {
                               transform: "translateY(-2px)",
                             },
                           }}
+                          disabled={isSubmitting}
                         >
-                          Αποστολή Μηνύματος
+                          {isSubmitting ? "Αποστολή..." : "Αποστολή Μηνύματος"}
                         </Button>
                       </Grid>
                     </Grid>
