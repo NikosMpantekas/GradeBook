@@ -1386,11 +1386,27 @@ const getStudentsDataForParent = asyncHandler(async (req, res) => {
       throw new Error('Access denied. Parent role required.');
     }
     
+    // Debug parent user data
+    console.log('Parent user data:', {
+      id: req.user._id,
+      email: req.user.email,
+      role: req.user.role,
+      hasLinkedStudentIds: !!req.user.linkedStudentIds,
+      linkedStudentIdsCount: req.user.linkedStudentIds?.length || 0,
+      linkedStudentIds: req.user.linkedStudentIds
+    });
+    
     // Get all parent's linked students
     const students = await User.find({
       _id: { $in: req.user.linkedStudentIds },
       role: 'student'
     }).select('-password');
+    
+    console.log('Found linked students:', {
+      studentsCount: students.length,
+      studentIds: students.map(s => s._id),
+      studentNames: students.map(s => s.name)
+    });
     
     if (students.length === 0) {
       res.status(404);
