@@ -73,7 +73,7 @@ router.get('/teacher-students', protect, async (req, res) => {
     
     // Get classes where this teacher teaches
     const teacherClasses = await Class.find({ 
-      teacher: req.user._id,
+      teachers: req.user._id,
       schoolId: req.user.schoolId 
     }).select('students');
     
