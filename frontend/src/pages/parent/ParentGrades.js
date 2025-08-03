@@ -44,31 +44,65 @@ const ParentGrades = () => {
   const { user, token } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    if (token && user) {
+    // More robust token retrieval with debugging
+    console.log('[ParentGrades] Redux auth state:', {
+      hasUser: !!user,
+      hasToken: !!token,
+      userRole: user?.role,
+      userId: user?._id,
+      tokenLength: token?.length
+    });
+    
+    // Fallback token retrieval from localStorage/sessionStorage
+    let authToken = token;
+    if (!authToken && user) {
+      try {
+        const localUser = localStorage.getItem('user');
+        const sessionUser = sessionStorage.getItem('user');
+        const userData = localUser ? JSON.parse(localUser) : sessionUser ? JSON.parse(sessionUser) : null;
+        authToken = userData?.token;
+        console.log('[ParentGrades] Fallback token from storage:', {
+          hasLocalUser: !!localUser,
+          hasSessionUser: !!sessionUser,
+          hasFallbackToken: !!authToken,
+          fallbackTokenLength: authToken?.length
+        });
+      } catch (error) {
+        console.error('[ParentGrades] Error parsing stored user data:', error);
+      }
+    }
+    
+    if (authToken && user) {
       console.log('[ParentGrades] Token available, fetching students data...');
-      fetchStudentsData();
+      fetchStudentsData(authToken);
     } else {
-      console.log('[ParentGrades] Token or user not available yet:', { hasToken: !!token, hasUser: !!user });
+      console.log('[ParentGrades] Token or user not available:', { 
+        hasAuthToken: !!authToken, 
+        hasUser: !!user,
+        userRole: user?.role 
+      });
       setLoading(false);
       setError('Authentication required. Please refresh the page.');
     }
   }, [token, user]);
 
-  const fetchStudentsData = async () => {
-    if (!token) {
+  const fetchStudentsData = async (authToken) => {
+    const tokenToUse = authToken || token;
+    
+    if (!tokenToUse) {
       console.error('[ParentGrades] No token available for API request');
       setError('Authentication token missing. Please login again.');
       setLoading(false);
       return;
     }
 
-    console.log('[ParentGrades] Making API request with token length:', token.length);
+    console.log('[ParentGrades] Making API request with token length:', tokenToUse.length);
     
     try {
       const response = await fetch(`${API_URL}/api/users/parent/students-data`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${tokenToUse}`,
           'Content-Type': 'application/json'
         }
       });

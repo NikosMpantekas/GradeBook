@@ -368,6 +368,7 @@ function App() {
                 user.role === 'admin' ? '/app/admin' :
                 user.role === 'teacher' ? '/app/teacher' :
                 user.role === 'student' ? '/app/student' :
+                user.role === 'parent' ? '/app/parent' :
                 '/login';
               
               console.log(`ROOT REDIRECT: User role ${user.role} redirecting to ${redirectPath}`);
@@ -392,6 +393,7 @@ function App() {
                 user.role === 'admin' ? '/app/admin' :
                 user.role === 'teacher' ? '/app/teacher' :
                 user.role === 'student' ? '/app/student' :
+                user.role === 'parent' ? '/app/parent' :
                 '/login';
               
               console.log(`LEGACY REDIRECT: ${user.role} redirecting to ${redirectPath}`);
