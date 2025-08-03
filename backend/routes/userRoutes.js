@@ -36,6 +36,23 @@ router.post('/change-password', protect, changePassword);
 // Admin routes for user management
 router.get('/', protect, admin, getUsers);
 router.post('/admin/create', protect, admin, createUserByAdmin);
+
+// Route to get students - must come before /:id to avoid conflict
+router.get('/students', protect, async (req, res) => {
+  try {
+    const User = require('../models/userModel');
+    const students = await User.find({
+      role: 'student',
+      schoolId: req.user.schoolId
+    }).select('name email _id').sort({ name: 1 });
+    
+    res.status(200).json(students);
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    res.status(500).json({ message: 'Error fetching students' });
+  }
+});
+
 router.get('/:id', protect, getUserById);
 router.put('/:id', protect, canManageUsers, updateUser);
 router.delete('/:id', protect, admin, deleteUser);
