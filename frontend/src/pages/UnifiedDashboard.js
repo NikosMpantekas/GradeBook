@@ -642,9 +642,20 @@ const UnifiedDashboard = () => {
                   ))}
                 </List>
               ) : (
-                <Typography variant="body2" color="text.secondary">
+                <Alert 
+                  severity="info" 
+                  sx={{ 
+                    mt: 1,
+                    backgroundColor: theme => `${theme.palette.primary.dark}20`,
+                    color: theme => theme.palette.primary.dark,
+                    '& .MuiAlert-icon': {
+                      color: theme => theme.palette.primary.dark,
+                    },
+                    border: theme => `1px solid ${theme.palette.primary.dark}40`,
+                  }}
+                >
                   No upcoming classes
-                </Typography>
+                </Alert>
               )}
             </CardContent>
           </Card>

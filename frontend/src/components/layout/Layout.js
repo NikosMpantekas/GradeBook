@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Box, Container, Drawer, useTheme, useMediaQuery } from '@mui/material';
 import { useSelector } from 'react-redux';
@@ -18,6 +18,12 @@ const Layout = () => {
     // Always default to false for mobile, true for desktop
     return window.innerWidth < 600 ? false : (savedState ? savedState === 'true' : true);
   });
+
+  // Swipe functionality refs and state
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const isSwiping = useRef(false);
+  const swipeThreshold = 50; // Minimum distance to trigger swipe
 
   const { darkMode } = useSelector((state) => state.ui);
   const { user } = useSelector((state) => state.auth);
@@ -40,6 +46,50 @@ const Layout = () => {
     setMobileOpen(newState);
     // Persist the state in localStorage
     localStorage.setItem('sidebarOpen', newState.toString());
+  };
+
+  // Swipe handlers
+  const handleTouchStart = (e) => {
+    if (!isMobile) return;
+    
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isSwiping.current = false;
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isMobile) return;
+    
+    const touchX = e.touches[0].clientX;
+    const touchY = e.touches[0].clientY;
+    const deltaX = touchX - touchStartX.current;
+    const deltaY = Math.abs(touchY - touchStartY.current);
+    
+    // Only consider it a swipe if it's more horizontal than vertical
+    if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 10) {
+      isSwiping.current = true;
+      e.preventDefault(); // Prevent scrolling during swipe
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!isMobile || !isSwiping.current) return;
+    
+    const touchX = e.changedTouches[0].clientX;
+    const deltaX = touchX - touchStartX.current;
+    
+    // Swipe from left edge to open sidebar
+    if (deltaX > swipeThreshold && touchStartX.current < 50) {
+      if (!mobileOpen) {
+        handleDrawerToggle();
+      }
+    }
+    // Swipe from right to close sidebar
+    else if (deltaX < -swipeThreshold && mobileOpen) {
+      handleDrawerToggle();
+    }
+    
+    isSwiping.current = false;
   };
 
   // Sidebar width for layout spacing
@@ -71,7 +121,12 @@ const Layout = () => {
   }, [mobileOpen, location.pathname]);
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: darkMode ? 'background.default' : '#f5f5f5' }}>
+    <Box 
+      sx={{ display: 'flex', minHeight: '100vh', bgcolor: darkMode ? 'background.default' : '#f5f5f5' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <Header 
         drawerWidth={drawerWidth} 
         handleDrawerToggle={handleDrawerToggle} 

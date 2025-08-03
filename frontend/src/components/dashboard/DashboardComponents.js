@@ -467,6 +467,7 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
  */
 export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll, userRole }) => {
   const { isFeatureEnabled } = useFeatureToggles();
+  const theme = useTheme();
 
   // Check if classes/schedule feature is enabled
   if (!isFeatureEnabled('enableClasses') && !isFeatureEnabled('enableSchedule')) {
@@ -535,7 +536,18 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
       />
       <CardContent sx={{ pt: 0 }}>
         {classes.length === 0 ? (
-          <Alert severity="info" sx={{ mt: 1 }}>
+          <Alert 
+            severity="info" 
+            sx={{ 
+              mt: 1,
+              backgroundColor: theme => `${theme.palette.primary.dark}20`,
+              color: theme => theme.palette.primary.dark,
+              '& .MuiAlert-icon': {
+                color: theme => theme.palette.primary.dark,
+              },
+              border: theme => `1px solid ${theme.palette.primary.dark}40`,
+            }}
+          >
             No upcoming classes scheduled
           </Alert>
         ) : (
