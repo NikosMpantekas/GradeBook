@@ -32,18 +32,30 @@ import SendIcon from "@mui/icons-material/Send";
 
 const Logo = () => {
   return (
-    <Box
+    <Button
+      href="/home"
       sx={{
-        fontWeight: 100,
-        fontSize: { xs: 28, sm: 32, md: 34, lg: 36 },
-        color: "#337ab7",
-        letterSpacing: 1,
-        mr: 2,
-        fontFamily: "Roboto, Arial, sans-serif",
+        textTransform: "none",
+        p: 0,
+        minWidth: 0,
+        "&:hover": {
+          bgcolor: "transparent",
+        },
       }}
     >
-      GradeBook
-    </Box>
+      <Box
+        sx={{
+          fontWeight: 100,
+          fontSize: { xs: 28, sm: 32, md: 34, lg: 36 },
+          color: "#337ab7",
+          letterSpacing: 1,
+          mr: 2,
+          fontFamily: "Roboto, Arial, sans-serif",
+        }}
+      >
+        GradeBook
+      </Box>
+    </Button>
   );
 };
 
@@ -163,18 +175,6 @@ const Contact = () => {
   };
 
   const contactInfo = [
-    {
-      icon: <EmailIcon sx={{ fontSize: 40, color: colors.icon }} />,
-      title: "Email",
-      value: "info@gradebook.pro",
-      description: "Στείλτε μας email για οποιαδήποτε ερώτηση",
-    },
-    {
-      icon: <PhoneIcon sx={{ fontSize: 40, color: colors.icon }} />,
-      title: "Τηλέφωνο",
-      value: "+30 210 1234567",
-      description: "Επικοινωνήστε μαζί μας τηλεφωνικά",
-    },
     {
       icon: <LocationOnIcon sx={{ fontSize: 40, color: colors.icon }} />,
       title: "Διεύθυνση",

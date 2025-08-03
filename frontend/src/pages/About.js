@@ -29,18 +29,30 @@ import SupportIcon from "@mui/icons-material/Support";
 
 const Logo = () => {
   return (
-    <Box
+    <Button
+      href="/home"
       sx={{
-        fontWeight: 100,
-        fontSize: { xs: 28, sm: 32, md: 34, lg: 36 },
-        color: "#337ab7",
-        letterSpacing: 1,
-        mr: 2,
-        fontFamily: "Roboto, Arial, sans-serif",
+        textTransform: "none",
+        p: 0,
+        minWidth: 0,
+        "&:hover": {
+          bgcolor: "transparent",
+        },
       }}
     >
-      GradeBook
-    </Box>
+      <Box
+        sx={{
+          fontWeight: 100,
+          fontSize: { xs: 28, sm: 32, md: 34, lg: 36 },
+          color: "#337ab7",
+          letterSpacing: 1,
+          mr: 2,
+          fontFamily: "Roboto, Arial, sans-serif",
+        }}
+      >
+        GradeBook
+      </Box>
+    </Button>
   );
 };
 
