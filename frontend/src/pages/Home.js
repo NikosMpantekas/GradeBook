@@ -332,6 +332,20 @@ const Home = () => {
         flexDirection: "column",
         overflow: "auto",
         transition: 'background-color 0.1s',
+        overscrollBehavior: 'none',
+        '&::-webkit-scrollbar': {
+          width: '8px',
+        },
+        '&::-webkit-scrollbar-track': {
+          backgroundColor: colors.background,
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: colors.icon,
+          borderRadius: '4px',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          backgroundColor: colors.buttonHover,
+        },
       }}
     >
       <AppBar
