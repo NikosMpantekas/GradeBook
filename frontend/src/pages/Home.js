@@ -53,7 +53,7 @@ const getColors = (darkMode) => darkMode
       icon: "#337ab7",
     };
 const Logo = () => {
-
+  const theme = useTheme();
   return (
     <Box
       sx={{
@@ -71,11 +71,11 @@ const Logo = () => {
 };
 
 // Features function to accept colors parameter
-const getFeatures = () => [
+const getFeatures = (colors) => [
   {
     icon: (
       <CheckCircleIcon
-        color={getColors(darkMode).icon}
+        color={colors.icon}
         sx={{ fontSize: 32 }}
         aria-hidden="true"
       />
@@ -85,14 +85,14 @@ const getFeatures = () => [
   },
   {
     icon: (
-      <GradeIcon color={getColors(darkMode).icon} sx={{ fontSize: 32 }} aria-hidden="true" />
+      <GradeIcon color={colors.icon} sx={{ fontSize: 32 }} aria-hidden="true" />
     ),
     title: "Βαθμολογίες",
     desc: "Άμεση διαχείριση και ανάλυση βαθμών.",
   },
   {
     icon: (
-      <ForumIcon color={getColors(darkMode).icon} sx={{ fontSize: 32 }} aria-hidden="true" />
+      <ForumIcon color={colors.icon} sx={{ fontSize: 32 }} aria-hidden="true" />
     ),
     title: "Επικοινωνία",
     desc: "Γρήγορη ενημέρωση γονέων & μαθητών.",
@@ -100,7 +100,7 @@ const getFeatures = () => [
   {
     icon: (
       <AssessmentIcon
-        color={getColors(darkMode).icon}
+        color={colors.icon}
         sx={{ fontSize: 32 }}
         aria-hidden="true"
       />
