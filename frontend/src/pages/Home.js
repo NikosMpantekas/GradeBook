@@ -12,6 +12,7 @@ import {
   Toolbar,
   IconButton,
   Stack,
+  useTheme,
   useMediaQuery,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -25,20 +26,14 @@ import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 
-// Home page specific theme colors - independent of user's selected theme
-const HOME_THEME = {
-  primary: '#3b82f6', // Modern blue
-  secondary: '#f97316', // Orange accent
-  accent: '#10b981', // Emerald green for highlights
-};
-
 const Logo = () => {
+  const theme = useTheme();
   return (
     <Box
       sx={{
         fontWeight: 100,
         fontSize: { xs: 28, sm: 32, md: 34, lg: 36 },
-        color: HOME_THEME.primary,
+        color: "#337ab7",
         letterSpacing: 1,
         mr: 2,
         fontFamily: "Roboto, Arial, sans-serif",
@@ -104,7 +99,7 @@ const DashboardMockup = () => (
       mt: { xs: 4, md: 0 },
       borderRadius: 4,
       bgcolor: "#181b20",
-      boxShadow: `0 4px 24px 0 ${HOME_THEME.primary}20`,
+      boxShadow: "0 4px 24px 0 rgba(51,122,183,0.10)",
       display: "flex",
       alignItems: "stretch",
       justifyContent: "center",
@@ -180,7 +175,7 @@ const DashboardMockup = () => (
           sx={{
             width: 28,
             height: 28,
-            bgcolor: HOME_THEME.primary,
+            bgcolor: "#337ab7",
             borderRadius: "50%",
           }}
         />
@@ -246,7 +241,7 @@ const DashboardMockup = () => (
             height: 36,
             bgcolor: "#23262b",
             borderRadius: 2,
-            border: `1px solid ${HOME_THEME.primary}`,
+            border: "1px solid #337ab7",
           }}
         />
         <Box
@@ -255,7 +250,7 @@ const DashboardMockup = () => (
             height: 36,
             bgcolor: "#23262b",
             borderRadius: 2,
-            border: `1px solid ${HOME_THEME.primary}`,
+            border: "1px solid #337ab7",
           }}
         />
         <Box
@@ -264,7 +259,7 @@ const DashboardMockup = () => (
             height: 36,
             bgcolor: "#23262b",
             borderRadius: 2,
-            border: `1px solid ${HOME_THEME.primary}`,
+            border: "1px solid #337ab7",
           }}
         />
         <Box
@@ -273,7 +268,7 @@ const DashboardMockup = () => (
             height: 36,
             bgcolor: "#23262b",
             borderRadius: 2,
-            border: `1px solid ${HOME_THEME.primary}`,
+            border: "1px solid #337ab7",
           }}
         />
       </Box>
@@ -282,7 +277,8 @@ const DashboardMockup = () => (
 );
 
 const Home = () => {
-  const isMobile = useMediaQuery('(max-width:900px)');
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true); // dark mode default
 
@@ -299,9 +295,9 @@ const Home = () => {
         subText: "grey.300",
         footer: "#23262b",
         border: "1px solid #23262b",
-        button: HOME_THEME.primary,
-        buttonHover: '#2563eb', // Darker shade of primary
-        icon: HOME_THEME.primary,
+        button: "#337ab7",
+        buttonHover: "#245a8d",
+        icon: "#337ab7",
       }
     : {
         background: "#f5f6fa",
@@ -311,9 +307,9 @@ const Home = () => {
         subText: "grey.800",
         footer: "#f5f6fa",
         border: "1px solid #e0e0e0",
-        button: HOME_THEME.primary,
-        buttonHover: '#2563eb', // Darker shade of primary
-        icon: HOME_THEME.primary,
+        button: "#337ab7",
+        buttonHover: "#245a8d",
+        icon: "#337ab7",
       };
 
   return (
@@ -474,7 +470,7 @@ const Home = () => {
                     py: 1.7,
                     fontWeight: "bold",
                     fontSize: 18,
-                    boxShadow: `0 2px 8px 0 ${HOME_THEME.primary}20`,
+                    boxShadow: "0 2px 8px 0 rgba(51,122,183,0.10)",
                     textTransform: "none",
                     transition: "all 0.2s",
                     "&:hover": {
@@ -500,11 +496,11 @@ const Home = () => {
                         borderRadius: 4,
                     bgcolor: colors.card,
                     transition: 'background-color 0.1s, color 0.1s',
-                        boxShadow: `0 1px 6px 0 ${HOME_THEME.primary}10`,
+                        boxShadow: "0 1px 6px 0 rgba(51,122,183,0.04)",
                         mb: 1,
                         transition: "box-shadow 0.2s",
                         "&:hover": {
-                          boxShadow: `0 4px 16px 0 ${HOME_THEME.primary}20`,
+                          boxShadow: "0 4px 16px 0 rgba(51,122,183,0.10)",
                         },
                       }}
                     >

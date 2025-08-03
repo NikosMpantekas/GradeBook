@@ -228,26 +228,14 @@ function App() {
   const getThemeColors = () => {
     switch(themeColor) {
       case 'green':
-        return { 
-          primary: '#10b981', // Modern emerald green
-          secondary: '#f59e0b' // Amber accent
-        };
+        return { primary: '#2e7d32', secondary: '#f50057' };
       case 'purple':
-        return { 
-          primary: '#8b5cf6', // Modern violet purple
-          secondary: '#06b6d4' // Cyan accent
-        };
+        return { primary: '#9c27b0', secondary: '#ff9800' };
       case 'pink':
-        return { 
-          primary: '#ec4899', // Modern pink
-          secondary: '#3b82f6' // Blue accent
-        };
+        return { primary: '#e91e63', secondary: '#2196f3' };
       case 'blue':
       default:
-        return { 
-          primary: '#3b82f6', // Modern blue
-          secondary: '#f97316' // Orange accent
-        };
+        return { primary: '#1976d2', secondary: '#f50057' };
     }
   };
   
