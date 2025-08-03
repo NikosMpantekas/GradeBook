@@ -26,34 +26,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 
-// Color palette function for dark and light mode
-const getColors = (darkMode) => darkMode
-  ? {
-      background: "#181b20",
-      appBar: "#23262b",
-      card: "#23262b",
-      text: "#fff",
-      subText: "grey.300",
-      footer: "#23262b",
-      border: "1px solid #23262b",
-      button: "#337ab7",
-      buttonHover: "#245a8d",
-      icon: "#337ab7",
-    }
-  : {
-      background: "#f5f6fa",
-      appBar: "#fff",
-      card: "#fff",
-      text: "#23262b",
-      subText: "grey.800",
-      footer: "#f5f6fa",
-      border: "1px solid #e0e0e0",
-      button: "#337ab7",
-      buttonHover: "#245a8d",
-      icon: "#337ab7",
-    };
 const Logo = () => {
-  const theme = useTheme();
   return (
     <Box
       sx={{
@@ -70,12 +43,11 @@ const Logo = () => {
   );
 };
 
-// Features function to accept colors parameter
-const getFeatures = (colors) => [
+const features = [
   {
     icon: (
       <CheckCircleIcon
-        color={colors.icon}
+        color="primary"
         sx={{ fontSize: 32 }}
         aria-hidden="true"
       />
@@ -85,14 +57,14 @@ const getFeatures = (colors) => [
   },
   {
     icon: (
-      <GradeIcon color={colors.icon} sx={{ fontSize: 32 }} aria-hidden="true" />
+      <GradeIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />
     ),
     title: "Βαθμολογίες",
     desc: "Άμεση διαχείριση και ανάλυση βαθμών.",
   },
   {
     icon: (
-      <ForumIcon color={colors.icon} sx={{ fontSize: 32 }} aria-hidden="true" />
+      <ForumIcon color="primary" sx={{ fontSize: 32 }} aria-hidden="true" />
     ),
     title: "Επικοινωνία",
     desc: "Γρήγορη ενημέρωση γονέων & μαθητών.",
@@ -100,7 +72,7 @@ const getFeatures = (colors) => [
   {
     icon: (
       <AssessmentIcon
-        color={colors.icon}
+        color="primary"
         sx={{ fontSize: 32 }}
         aria-hidden="true"
       />
@@ -308,13 +280,37 @@ const Home = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true); // dark mode default
-  
-  // Get dynamic colors and features based on dark mode
-  const colors = getColors(darkMode);
-  const features = getFeatures(colors);
 
   const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
   const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
+
+  // Color palette for dark and light mode
+  const colors = darkMode
+    ? {
+        background: "#181b20",
+        appBar: "#23262b",
+        card: "#23262b",
+        text: "#fff",
+        subText: "grey.300",
+        footer: "#23262b",
+        border: "1px solid #23262b",
+        button: "#337ab7",
+        buttonHover: "#245a8d",
+        icon: "#337ab7",
+      }
+    : {
+        background: "#f5f6fa",
+        appBar: "#fff",
+        card: "#fff",
+        text: "#23262b",
+        subText: "grey.800",
+        footer: "#f5f6fa",
+        border: "1px solid #e0e0e0",
+        button: "#337ab7",
+        buttonHover: "#245a8d",
+        icon: "#337ab7",
+      };
+
   return (
     <Box
       sx={{
