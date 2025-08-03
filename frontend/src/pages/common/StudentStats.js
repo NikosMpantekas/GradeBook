@@ -180,26 +180,7 @@ const StudentStats = () => {
             </Typography>
           </Box>
         </Box>
-        
-        {/* Print/PDF buttons */}
-        {gradesData && (
-          <Box display="flex" gap={2}>
-            <Button
-              variant="outlined"
-              startIcon={<PrintIcon />}
-              onClick={handlePrint}
-            >
-              Print
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<PdfIcon />}
-              onClick={handleSavePDF}
-            >
-              Save as PDF
-            </Button>
-          </Box>
-        )}
+
       </Box>
 
       {/* Selection Controls */}
