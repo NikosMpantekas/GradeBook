@@ -488,7 +488,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       {
         text: 'System Logs',
         icon: <SupportIcon />,
-        path: '/app/superadmin/logs',
+        path: '/superadmin/system-logs',
         roles: ['superadmin'],
         section: 'superadmin',
         description: 'Monitor system performance and error logs'

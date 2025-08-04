@@ -324,19 +324,19 @@ const ManageUsers = () => {
 
   // Mobile card layout for users
   const renderMobileContent = () => {
-    if (isLoading || !dataLoaded.current) {
-      return (
+  if (isLoading || !dataLoaded.current) {
+    return (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
           <CircularProgress />
           <Typography variant="body1" sx={{ ml: 2 }}>
             Loading users...
           </Typography>
-        </Box>
-      );
-    }
+      </Box>
+    );
+  }
 
-    if (isError) {
-      return (
+  if (isError) {
+    return (
         <Box py={4} textAlign="center">
           <Typography variant="subtitle1" color="error">
             Error loading users
@@ -344,29 +344,29 @@ const ManageUsers = () => {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             {message || "An unknown error occurred"}
           </Typography>
-          <Button 
-            variant="contained" 
-            onClick={() => dispatch(getUsers())}
-            startIcon={<RefreshIcon />}
+            <Button 
+              variant="contained" 
+              onClick={() => dispatch(getUsers())}
+              startIcon={<RefreshIcon />}
             sx={{ mt: 2 }}
-          >
-            Try Again
-          </Button>
-        </Box>
-      );
-    }
+            >
+              Try Again
+            </Button>
+      </Box>
+    );
+  }
 
-    if (!users || !Array.isArray(users) || users.length === 0) {
-      return (
+  if (!users || !Array.isArray(users) || users.length === 0) {
+    return (
         <Box py={4} textAlign="center">
           <Typography variant="subtitle1" color="text.secondary">
             No users found. Click "Add User" to create one.
           </Typography>
-        </Box>
-      );
-    }
+      </Box>
+    );
+  }
 
-    return (
+  return (
       <Box sx={{ px: { xs: 1, sm: 2 } }}>
         {filteredUsers
           .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -417,9 +417,9 @@ const ManageUsers = () => {
                       <EmailIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                       <Typography variant="body2" color="text.secondary">
                         {user.email}
-                      </Typography>
-                    </Box>
-                    
+        </Typography>
+      </Box>
+
                     {/* School and Direction information */}
                     {(user.schools?.length > 0 || user.school) && (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -463,7 +463,7 @@ const ManageUsers = () => {
                             <Chip
                               label={`+${user.subjects.length - 2} more`}
                               size="small"
-                              variant="outlined"
+              variant="outlined"
                             />
                           )}
                         </Box>

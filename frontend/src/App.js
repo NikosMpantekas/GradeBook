@@ -92,6 +92,7 @@ import SchoolOwnerDetails from './pages/superadmin/SchoolOwnerDetails';
 import ManageSchoolFeatures from './pages/superadmin/ManageSchoolFeatures';
 import SuperAdminNotifications from './pages/superadmin/SuperAdminNotifications';
 import SchoolPermissionsManager from './components/superadmin/SchoolPermissionsManager';
+import SystemLogs from './pages/superadmin/SystemLogs';
 
 // Push notification service
 import { setupPushNotifications } from './services/pushNotificationService';
@@ -783,6 +784,11 @@ function App() {
             <Route path="/superadmin/migration" element={
               <SuperAdminRoute>
                 <SystemMaintenance />
+              </SuperAdminRoute>
+            } />
+            <Route path="/superadmin/system-logs" element={
+              <SuperAdminRoute>
+                <SystemLogs />
               </SuperAdminRoute>
             } />
           </Route>

@@ -437,41 +437,41 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
                   sx={{ px: 0 }}
                   divider={index < grades.slice(0, 5).length - 1}
                 >
-                  <ListItemAvatar>
-                    <Avatar sx={{ 
+                <ListItemAvatar>
+                  <Avatar sx={{ 
                       bgcolor: `${getGradeColor(safeGrade.value || 0)}.main`,
-                      width: 36,
-                      height: 36
-                    }}>
-                      <GradeIcon fontSize="small" />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                    width: 36,
+                    height: 36
+                  }}>
+                    <GradeIcon fontSize="small" />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
                         {safeGrade.subject?.name || safeGrade.subjectName || 'Unknown Subject'}
                         {userRole !== 'student' && safeGrade.student && (
-                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                             - {safeGrade.student.name}
-                          </Typography>
-                        )}
-                      </Typography>
-                    }
-                    secondary={
-                      <Typography variant="caption" color="text.secondary">
+                        </Typography>
+                      )}
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography variant="caption" color="text.secondary">
                         {formatDate(safeGrade.createdAt)} • {safeGrade.description || 'No description'}
-                      </Typography>
-                    }
-                  />
-                  <ListItemSecondaryAction>
-                    <Chip 
+                    </Typography>
+                  }
+                />
+                <ListItemSecondaryAction>
+                  <Chip 
                       label={safeGrade.value || 0} 
                       color={getGradeColor(safeGrade.value || 0)}
-                      size="small"
-                      variant="filled"
-                    />
-                  </ListItemSecondaryAction>
-                </ListItem>
+                    size="small"
+                    variant="filled"
+                  />
+                </ListItemSecondaryAction>
+              </ListItem>
               );
             })}
           </List>
@@ -583,44 +583,44 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
                   sx={{ px: 0 }}
                   divider={index < classes.slice(0, 5).length - 1}
                 >
-                  <ListItemAvatar>
-                    <Avatar sx={{ 
-                      bgcolor: 'info.main',
-                      width: 36,
-                      height: 36
-                    }}>
-                      <ClassIcon fontSize="small" />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                <ListItemAvatar>
+                  <Avatar sx={{ 
+                    bgcolor: 'info.main',
+                    width: 36,
+                    height: 36
+                  }}>
+                    <ClassIcon fontSize="small" />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
                         {safeClassItem.subject || safeClassItem.className || 'Unknown Subject'}
                         {userRole === 'admin' && safeClassItem.teacher && (
-                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                             - {safeClassItem.teacher.name}
-                          </Typography>
-                        )}
-                      </Typography>
-                    }
-                    secondary={
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
+                        </Typography>
+                      )}
+                    </Typography>
+                  }
+                  secondary={
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
                           {safeClassItem.startTime && safeClassItem.endTime ? (
                             `${formatTime(safeClassItem.startTime)} - ${formatTime(safeClassItem.endTime)}`
-                          ) : (
-                            'Time not specified'
-                          )}
-                        </Typography>
-                        {safeClassItem.room && (
-                          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                            • Room {safeClassItem.room}
-                          </Typography>
+                        ) : (
+                          'Time not specified'
                         )}
-                      </Box>
-                    }
-                  />
-                </ListItem>
+                      </Typography>
+                        {safeClassItem.room && (
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            • Room {safeClassItem.room}
+                        </Typography>
+                      )}
+                    </Box>
+                  }
+                />
+              </ListItem>
               );
             })}
           </List>

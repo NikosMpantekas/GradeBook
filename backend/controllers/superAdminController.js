@@ -5,6 +5,9 @@ const User = require('../models/userModel');
 const School = require('../models/schoolModel');
 const Notification = require('../models/notificationModel');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
+const path = require('path');
+const logger = require('../utils/logger');
 
 // @desc    Create a new school owner (admin)
 // @route   POST /api/superadmin/create-school-owner
@@ -627,6 +630,140 @@ const searchUsersForNotifications = asyncHandler(async (req, res) => {
 // The broken school function permission toggle system has been completely removed.
 // Features are now controlled by a new superadmin-only toggle system that will be implemented separately.
 
+// @desc    Get system logs for superadmin
+// @route   GET /api/superadmin/logs
+// @access  Private (SuperAdmin only)
+const getSystemLogs = asyncHandler(async (req, res) => {
+  const { lines = 100, level = 'all', category = 'all' } = req.query;
+  
+  try {
+    const logDir = path.resolve(process.cwd(), 'logs');
+    const logFiles = [];
+    
+    // Get available log files
+    if (fs.existsSync(logDir)) {
+      const files = fs.readdirSync(logDir);
+      files.forEach(file => {
+        if (file.endsWith('.log')) {
+          logFiles.push({
+            name: file,
+            path: path.join(logDir, file),
+            size: fs.statSync(path.join(logDir, file)).size
+          });
+        }
+      });
+    }
+    
+    // Read log content from files
+    const logs = [];
+    for (const file of logFiles) {
+      try {
+        const content = fs.readFileSync(file.path, 'utf8');
+        const lines = content.split('\n').filter(line => line.trim());
+        
+        // Parse and format log entries
+        const parsedLines = lines.map(line => {
+          try {
+            // Parse log format: [LEVEL] timestamp [CATEGORY]: message
+            const match = line.match(/^\[(\w+)\]\s+([^\s]+)\s+\[([^\]]+)\]:\s+(.+)$/);
+            if (match) {
+              return {
+                level: match[1],
+                timestamp: match[2],
+                category: match[3],
+                message: match[4],
+                source: file.name
+              };
+            }
+            return { raw: line, source: file.name };
+          } catch (err) {
+            return { raw: line, source: file.name };
+          }
+        });
+        
+        logs.push(...parsedLines);
+      } catch (err) {
+        logger.error('SUPERADMIN', `Failed to read log file: ${file.name}`, err);
+      }
+    }
+    
+    // Filter by level and category if specified
+    let filteredLogs = logs;
+    if (level !== 'all') {
+      filteredLogs = filteredLogs.filter(log => log.level === level.toUpperCase());
+    }
+    if (category !== 'all') {
+      filteredLogs = filteredLogs.filter(log => log.category === category);
+    }
+    
+    // Limit number of lines
+    const maxLines = Math.min(parseInt(lines) || 100, 1000); // Cap at 1000 lines
+    filteredLogs = filteredLogs.slice(-maxLines);
+    
+    res.json({
+      success: true,
+      data: {
+        logs: filteredLogs,
+        totalFiles: logFiles.length,
+        totalLines: logs.length,
+        filteredLines: filteredLogs.length,
+        availableLevels: ['DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'],
+        availableCategories: [...new Set(logs.map(log => log.category).filter(Boolean))]
+      }
+    });
+    
+  } catch (error) {
+    logger.error('SUPERADMIN', 'Failed to retrieve system logs', error);
+    res.status(500);
+    throw new Error('Failed to retrieve system logs');
+  }
+});
+
+// @desc    Get PM2 process status and logs
+// @route   GET /api/superadmin/pm2-status
+// @access  Private (SuperAdmin only)
+const getPM2Status = asyncHandler(async (req, res) => {
+  const { exec } = require('child_process');
+  const util = require('util');
+  const execAsync = util.promisify(exec);
+  
+  try {
+    // Get PM2 process list
+    const { stdout: pm2List } = await execAsync('pm2 list --json');
+    const processes = JSON.parse(pm2List);
+    
+    // Get PM2 logs for each process
+    const processesWithLogs = [];
+    for (const process of processes) {
+      try {
+        const { stdout: logs } = await execAsync(`pm2 logs ${process.name} --lines 50 --nostream`);
+        processesWithLogs.push({
+          ...process,
+          logs: logs.split('\n').filter(line => line.trim())
+        });
+      } catch (err) {
+        processesWithLogs.push({
+          ...process,
+          logs: [`Error reading logs: ${err.message}`]
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        processes: processesWithLogs,
+        timestamp: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    logger.error('SUPERADMIN', 'Failed to retrieve PM2 status', error);
+    res.status(500);
+    throw new Error('Failed to retrieve PM2 status');
+  }
+});
+
 module.exports = {
   createSchoolOwner,
   getSchoolOwners,
@@ -637,5 +774,7 @@ module.exports = {
   updateSchoolOwnerPermissions,
   sendSuperAdminNotification,
   getSchoolsForNotifications,
-  searchUsersForNotifications
+  searchUsersForNotifications,
+  getSystemLogs,
+  getPM2Status
 };
