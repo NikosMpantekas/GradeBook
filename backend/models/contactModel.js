@@ -4,14 +4,20 @@ const contactSchema = mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
       ref: 'User',
+      required: function() {
+        // Only required if not a public contact message
+        return !this.isPublicContact;
+      },
     },
     // Added for multi-tenancy - required field for all documents
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'School',
-      required: true,
+      required: function() {
+        // Only required if not a public contact message
+        return !this.isPublicContact;
+      },
       index: true, // Index for performance
     },
     subject: {
@@ -41,7 +47,10 @@ const contactSchema = mongoose.Schema(
     },
     userRole: {
       type: String,
-      required: true,
+      required: function() {
+        // Only required if not a public contact message
+        return !this.isPublicContact;
+      },
     },
     // Add fields for admin replies
     adminReply: {
@@ -59,7 +68,29 @@ const contactSchema = mongoose.Schema(
     isBugReport: {
       type: Boolean,
       default: false,
-    }
+    },
+    // Add field for public contact messages
+    isPublicContact: {
+      type: Boolean,
+      default: false,
+    },
+    // Additional security fields for public messages
+    clientIP: {
+      type: String,
+      default: '',
+    },
+    userAgent: {
+      type: String,
+      default: '',
+    },
+    referrer: {
+      type: String,
+      default: '',
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,
