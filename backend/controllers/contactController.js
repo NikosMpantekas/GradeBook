@@ -2,6 +2,74 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const Contact = require('../models/contactModel');
 const { enforceSchoolFilter } = require('../middleware/schoolIdMiddleware');
+const nodemailer = require('nodemailer');
+
+// Email service function for sending contact message replies
+const sendContactReplyEmail = async ({ name, email, subject, replyBody }) => {
+  // Create transporter for Brevo SMTP
+  const transporter = nodemailer.createTransporter({
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    port: process.env.SMTP_PORT || 587,
+    secure: false, // false for port 587
+    auth: {
+      user: process.env.SMTP_USER, // Your Brevo account email
+      pass: process.env.SMTP_PASS  // Your Brevo SMTP key
+    }
+  });
+
+  const emailTemplate = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+      <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #1976d2; margin: 0;">📚 GradeBook</h1>
+          <p style="color: #666; margin: 5px 0 0 0;">Your Educational Management System</p>
+        </div>
+        
+        <h2 style="color: #333; margin-bottom: 20px;">Response to Your Inquiry</h2>
+        
+        <p style="color: #555; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
+        
+        <p style="color: #555; line-height: 1.6;">
+          Thank you for contacting GradeBook. We have received your message and are responding to your inquiry.
+        </p>
+        
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1976d2;">
+          <h3 style="color: #1976d2; margin-top: 0;">📧 Your Original Message</h3>
+          <p style="margin: 10px 0;"><strong>Subject:</strong> ${subject}</p>
+        </div>
+        
+        <div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4caf50;">
+          <h3 style="color: #2e7d32; margin-top: 0;">💬 Our Response</h3>
+          <div style="color: #2e7d32; line-height: 1.6; white-space: pre-wrap;">${replyBody}</div>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL || 'https://gradebook.pro'}/contact" 
+             style="background-color: #1976d2; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+            📝 Contact Us Again
+          </a>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        
+        <p style="color: #888; font-size: 12px; text-align: center; margin: 0;">
+          This email was sent from GradeBook System. If you have any further questions, please don't hesitate to contact us again.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const mailOptions = {
+    from: `"${process.env.SMTP_FROM_NAME || 'GradeBook Support'}" <${process.env.SMTP_FROM_EMAIL || 'mail@gradebook.pro'}>`,
+    to: email,
+    subject: `Regarding your request: ${subject}`,
+    html: emailTemplate,
+    replyTo: process.env.SMTP_FROM_EMAIL || 'mail@gradebook.pro'
+  };
+
+  await transporter.sendMail(mailOptions);
+  console.log(`Contact reply email sent to ${email} for user ${name}`);
+};
 
 // @desc    Send a contact message to admin
 // @route   POST /api/contact
@@ -154,6 +222,22 @@ const updateContactMessage = asyncHandler(async (req, res) => {
         replyText: updateData.adminReply.substring(0, 30) + '...',
         replyDate: updateData.adminReplyDate
       });
+      
+      // Send email for public contact messages
+      if (existingMessage.isPublicContact && adminReply && adminReply.trim() !== '') {
+        try {
+          await sendContactReplyEmail({
+            name: existingMessage.userName,
+            email: existingMessage.userEmail,
+            subject: existingMessage.subject,
+            replyBody: adminReply
+          });
+          console.log(`Email sent to ${existingMessage.userEmail} for public contact message ${id}`);
+        } catch (emailError) {
+          console.error('Failed to send contact reply email:', emailError);
+          // Don't fail the entire request if email fails
+        }
+      }
     }
 
     // CRITICAL FIX: Use save instead of findByIdAndUpdate to ensure middleware runs
