@@ -7,7 +7,7 @@ const nodemailer = require('nodemailer');
 // Email service function for sending contact message replies
 const sendContactReplyEmail = async ({ name, email, subject, replyBody }) => {
   // Create transporter for Brevo SMTP
-  const transporter = nodemailer.createTransporter({
+  const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
     port: process.env.SMTP_PORT || 587,
     secure: false, // false for port 587
