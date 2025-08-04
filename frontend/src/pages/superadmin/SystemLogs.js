@@ -32,7 +32,7 @@ import {
   Error as ErrorIcon,
   Warning as WarningIcon,
   Info as InfoIcon,
-  Debug as DebugIcon,
+  BugReport as DebugIcon,
   CheckCircle as CheckCircleIcon,
   Storage as StorageIcon,
   Memory as MemoryIcon,
