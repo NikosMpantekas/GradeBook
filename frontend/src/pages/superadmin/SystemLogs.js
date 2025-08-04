@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -37,6 +37,9 @@ const SystemLogs = () => {
   const [availableCategories, setAvailableCategories] = useState([]);
   const [stats, setStats] = useState({});
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
+  const logsContainerRef = useRef(null);
 
   // Load logs
   const loadLogs = async () => {
@@ -74,6 +77,24 @@ const SystemLogs = () => {
       setLoading(false);
     }
   };
+
+  // Auto-scroll to bottom when new logs are added
+  useEffect(() => {
+    if (autoScroll && logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
+    }
+  }, [logs, autoScroll]);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      loadLogs();
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
 
   // Load data on component mount
   useEffect(() => {
@@ -114,6 +135,21 @@ const SystemLogs = () => {
         hour12: false
       });
     } catch (err) {
+      // Try to extract timestamp from raw log line
+      const timestampMatch = timestamp.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/);
+      if (timestampMatch) {
+        try {
+          const date = new Date(timestampMatch[1]);
+          return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          });
+        } catch (err2) {
+          return timestamp;
+        }
+      }
       return timestamp;
     }
   };
@@ -187,6 +223,24 @@ const SystemLogs = () => {
           >
             Refresh
           </Button>
+          
+          <Button
+            variant={autoRefresh ? "contained" : "outlined"}
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            size="small"
+            sx={{ ml: 1 }}
+          >
+            {autoRefresh ? 'Stop Auto' : 'Auto Refresh'}
+          </Button>
+          
+          <Button
+            variant={autoScroll ? "contained" : "outlined"}
+            onClick={() => setAutoScroll(!autoScroll)}
+            size="small"
+            sx={{ ml: 1 }}
+          >
+            {autoScroll ? 'Stop Scroll' : 'Auto Scroll'}
+          </Button>
         </Box>
 
         {/* Stats */}
@@ -228,22 +282,32 @@ const SystemLogs = () => {
         {logs.length === 0 ? (
           <Box sx={{ p: 3 }}>
             <Alert severity="info">
-              No logs found. Make sure log files exist in the backend logs directory.
+              {filters.level !== 'all' || filters.category !== 'all' 
+                ? 'No logs match your current filters. Try adjusting your filters and refresh.'
+                : 'No logs found. Make sure log files exist in the backend logs directory.'
+              }
             </Alert>
           </Box>
         ) : (
-          <Box sx={{ 
-            maxHeight: 600, 
-            overflow: 'auto',
-            bgcolor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f8f9fa',
-            fontFamily: 'monospace',
-            fontSize: '13px',
-            lineHeight: 1.5,
-            color: theme.palette.mode === 'dark' ? '#e0e0e0' : '#333'
-          }}>
+          <Box 
+            ref={logsContainerRef}
+            sx={{ 
+              maxHeight: 600, 
+              overflow: 'auto',
+              bgcolor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f8f9fa',
+              fontFamily: 'monospace',
+              fontSize: '13px',
+              lineHeight: 1.5,
+              color: theme.palette.mode === 'dark' ? '#e0e0e0' : '#333',
+              border: '1px solid',
+              borderColor: theme.palette.mode === 'dark' ? '#333' : '#e0e0e0',
+              borderRadius: '4px',
+              p: 1
+            }}
+          >
             {logs.map((log, index) => {
               const logText = log.message || log.raw || '';
-              const timestamp = formatTimestamp(log.timestamp);
+              const timestamp = formatTimestamp(log.timestamp || logText);
               const levelColor = getLevelColor(log.level);
               
               return (
