@@ -5,9 +5,13 @@ const {
   getContactMessages,
   updateContactMessage,
   getUserMessages,
-  markReplyAsRead
+  markReplyAsRead,
+  sendPublicContactMessage
 } = require('../controllers/contactController');
 const { protect, admin, superadmin, adminOrSecretary } = require('../middleware/authMiddleware');
+
+// Public contact message (no authentication required)
+router.post('/public', sendPublicContactMessage);
 
 // Send message - all authenticated users
 router.post('/', protect, sendContactMessage);

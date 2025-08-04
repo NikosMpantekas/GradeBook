@@ -43,7 +43,7 @@ const SECURITY_CONFIG = {
 };
 
 // Input sanitization function
-const sanitizeInput = (input, maxLength = 100) => {
+const sanitizeInput = (input, maxLength = 100, allowSpaces = false) => {
   if (typeof input !== 'string') return '';
   
   // Remove null bytes and control characters
@@ -56,8 +56,10 @@ const sanitizeInput = (input, maxLength = 100) => {
   sanitized = sanitized.replace(/javascript:/gi, '');
   sanitized = sanitized.replace(/on\w+\s*=/gi, '');
   
-  // Trim whitespace
-  sanitized = sanitized.trim();
+  // Only trim whitespace if spaces are not allowed
+  if (!allowSpaces) {
+    sanitized = sanitized.trim();
+  }
   
   // Limit length
   if (sanitized.length > maxLength) {
@@ -242,8 +244,9 @@ const Contact = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    // Sanitize input
-    const sanitizedValue = sanitizeInput(value, SECURITY_CONFIG[`MAX_${name.toUpperCase()}_LENGTH`]);
+    // Sanitize input - allow spaces for message field
+    const allowSpaces = name === 'message';
+    const sanitizedValue = sanitizeInput(value, SECURITY_CONFIG[`MAX_${name.toUpperCase()}_LENGTH`], allowSpaces);
     
     setFormData((prev) => ({
       ...prev,
@@ -302,7 +305,7 @@ const Contact = () => {
         name: sanitizeInput(formData.name, SECURITY_CONFIG.MAX_NAME_LENGTH),
         email: sanitizeInput(formData.email, SECURITY_CONFIG.MAX_EMAIL_LENGTH).toLowerCase(),
         subject: sanitizeInput(formData.subject, SECURITY_CONFIG.MAX_SUBJECT_LENGTH),
-        message: sanitizeInput(formData.message, SECURITY_CONFIG.MAX_MESSAGE_LENGTH),
+        message: sanitizeInput(formData.message, SECURITY_CONFIG.MAX_MESSAGE_LENGTH, true), // Allow spaces for message
         csrfToken: csrfToken,
         timestamp: Date.now(),
         userAgent: navigator.userAgent,
@@ -379,7 +382,21 @@ const Contact = () => {
     {
       icon: <EmailIcon sx={{ fontSize: 40, color: colors.icon }} />,
       title: "Email",
-      value: "info@gradebook.pro",
+      value: (
+        <a 
+          href="mailto:info@gradebook.pro" 
+          style={{ 
+            color: colors.icon, 
+            textDecoration: 'none',
+            fontWeight: 500,
+            transition: 'color 0.1s'
+          }}
+          onMouseEnter={(e) => e.target.style.color = colors.buttonHover}
+          onMouseLeave={(e) => e.target.style.color = colors.icon}
+        >
+          info@gradebook.pro
+        </a>
+      ),
       description: "Για οποιαδήποτε απορία ή αίτηση συνεργασίας στείλτε μας email.",
     },
     {

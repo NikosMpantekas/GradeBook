@@ -779,6 +779,11 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
                                  user?.role === 'parent' ? '/app/profile' :
                                  '/app/profile';
               navigate(profilePath);
+              // Close mobile drawer after navigation
+              if (window.innerWidth < 600 && mobileOpen && handleDrawerToggle) {
+                console.log('Closing sidebar for Profile navigation');
+                handleDrawerToggle();
+              }
             }}
             sx={{
               mx: 1,

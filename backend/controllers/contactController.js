@@ -80,8 +80,8 @@ const getContactMessages = asyncHandler(async (req, res) => {
   }
 
   try {
-    // UPDATED: Admins now only see their own messages like other account types
-    // Only superadmins can see all messages across schools
+    // Superadmins can see all messages including public ones
+    // Regular admins only see their own messages
     const filter = req.user.role === 'superadmin' 
       ? {} 
       : { user: req.user._id, schoolId: req.user.schoolId };
@@ -90,6 +90,15 @@ const getContactMessages = asyncHandler(async (req, res) => {
     const messages = await Contact.find(filter)
       .sort({ createdAt: -1 })
       .lean();
+    
+    // For superadmins, add a "Public" flag to public contact messages
+    if (req.user.role === 'superadmin') {
+      messages.forEach(message => {
+        if (message.isPublicContact) {
+          message.publicFlag = 'Public';
+        }
+      });
+    }
     
     res.status(200).json(messages);
   } catch (error) {
@@ -276,10 +285,210 @@ const markReplyAsRead = asyncHandler(async (req, res) => {
   }
 });
 
+// MongoDB injection protection utilities
+const sanitizeForMongoDB = (input) => {
+  if (typeof input !== 'string') return '';
+  
+  // Remove MongoDB operators that could be used for injection
+  const mongoOperators = [
+    '$where', '$ne', '$gt', '$lt', '$gte', '$lte', '$in', '$nin', '$exists', 
+    '$regex', '$text', '$search', '$or', '$and', '$not', '$nor', '$all', 
+    '$elemMatch', '$size', '$type', '$mod', '$expr', '$jsonSchema', '$geoWithin',
+    '$geoIntersects', '$near', '$nearSphere', '$maxDistance', '$minDistance'
+  ];
+  
+  let sanitized = input;
+  
+  // Remove MongoDB operators
+  mongoOperators.forEach(operator => {
+    const regex = new RegExp(operator.replace('$', '\\$'), 'gi');
+    sanitized = sanitized.replace(regex, '');
+  });
+  
+  // Remove null bytes and control characters
+  sanitized = sanitized.replace(/[\x00-\x1F\x7F]/g, '');
+  
+  // Remove HTML tags
+  sanitized = sanitized.replace(/<[^>]*>/g, '');
+  
+  // Remove script tags and javascript: URLs
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+  
+  // Trim whitespace
+  sanitized = sanitized.trim();
+  
+  return sanitized;
+};
+
+// Input validation with MongoDB injection protection
+const validateAndSanitizeInput = (data) => {
+  const errors = [];
+  const sanitized = {};
+  
+  // Validate and sanitize name
+  if (!data.name || typeof data.name !== 'string') {
+    errors.push('Name is required and must be a string');
+  } else {
+    const name = sanitizeForMongoDB(data.name);
+    if (name.length < 1 || name.length > 100) {
+      errors.push('Name must be between 1 and 100 characters');
+    } else if (!/^[a-zA-Zα-ωΑ-Ω\s]+$/.test(name)) {
+      errors.push('Name can only contain letters and spaces');
+    } else {
+      sanitized.name = name;
+    }
+  }
+  
+  // Validate and sanitize email
+  if (!data.email || typeof data.email !== 'string') {
+    errors.push('Email is required and must be a string');
+  } else {
+    const email = sanitizeForMongoDB(data.email.toLowerCase());
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email) || email.length > 254) {
+      errors.push('Please provide a valid email address');
+    } else {
+      sanitized.email = email;
+    }
+  }
+  
+  // Validate and sanitize subject
+  if (!data.subject || typeof data.subject !== 'string') {
+    errors.push('Subject is required and must be a string');
+  } else {
+    const subject = sanitizeForMongoDB(data.subject);
+    if (subject.length < 1 || subject.length > 200) {
+      errors.push('Subject must be between 1 and 200 characters');
+    } else {
+      sanitized.subject = subject;
+    }
+  }
+  
+  // Validate and sanitize message
+  if (!data.message || typeof data.message !== 'string') {
+    errors.push('Message is required and must be a string');
+  } else {
+    const message = sanitizeForMongoDB(data.message);
+    if (message.length < 1 || message.length > 2000) {
+      errors.push('Message must be between 1 and 2000 characters');
+    } else {
+      sanitized.message = message;
+    }
+  }
+  
+  return { errors, sanitized };
+};
+
+// Rate limiting for public contact messages
+const rateLimitMap = new Map();
+
+const checkRateLimit = (ip, email) => {
+  const key = `${ip}:${email}`;
+  const now = Date.now();
+  const windowMs = 60000; // 1 minute
+  const maxAttempts = 3;
+  
+  if (!rateLimitMap.has(key)) {
+    rateLimitMap.set(key, []);
+  }
+  
+  const attempts = rateLimitMap.get(key);
+  
+  // Remove old attempts
+  const validAttempts = attempts.filter(timestamp => now - timestamp < windowMs);
+  rateLimitMap.set(key, validAttempts);
+  
+  if (validAttempts.length >= maxAttempts) {
+    return false;
+  }
+  
+  validAttempts.push(now);
+  return true;
+};
+
+// @desc    Send a public contact message (no authentication required)
+// @route   POST /api/contact/public
+// @access  Public
+const sendPublicContactMessage = asyncHandler(async (req, res) => {
+  try {
+    // Rate limiting check
+    const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
+    const email = req.body.email;
+    
+    if (!checkRateLimit(clientIP, email)) {
+      res.status(429);
+      throw new Error('Too many attempts. Please wait before trying again.');
+    }
+    
+    // Validate and sanitize input
+    const { errors, sanitized } = validateAndSanitizeInput(req.body);
+    
+    if (errors.length > 0) {
+      res.status(400);
+      throw new Error(errors.join(', '));
+    }
+    
+    // Additional security checks
+    if (req.body.csrfToken && typeof req.body.csrfToken !== 'string') {
+      res.status(400);
+      throw new Error('Invalid CSRF token');
+    }
+    
+    // Create a new contact message with sanitized data
+    const contactMessage = await Contact.create({
+      userName: sanitized.name,
+      userEmail: sanitized.email,
+      subject: sanitized.subject,
+      message: sanitized.message,
+      status: 'new',
+      read: false,
+      isBugReport: false,
+      adminReply: '',
+      adminReplyDate: null,
+      replyRead: false,
+      isPublicContact: true,
+      // Additional security fields
+      clientIP: clientIP,
+      userAgent: req.headers['user-agent'] || '',
+      referrer: req.headers.referer || '',
+      timestamp: new Date(),
+    });
+    
+    if (!contactMessage) {
+      res.status(400);
+      throw new Error('Failed to save contact message');
+    }
+    
+    // Log for server-side debugging (sanitized)
+    console.log('Public contact message saved to database:', {
+      id: contactMessage._id,
+      from: {
+        name: sanitized.name,
+        email: sanitized.email
+      },
+      subject: sanitized.subject,
+      messageLength: sanitized.message.length,
+      timestamp: contactMessage.createdAt,
+      clientIP: clientIP
+    });
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Your message has been sent successfully. We will get back to you soon.'
+    });
+  } catch (error) {
+    console.error('Error saving public contact message:', error);
+    res.status(500);
+    throw new Error('Failed to save message: ' + error.message);
+  }
+});
+
 module.exports = {
   sendContactMessage,
   getContactMessages,
   updateContactMessage,
   getUserMessages,
-  markReplyAsRead
+  markReplyAsRead,
+  sendPublicContactMessage
 };
