@@ -634,7 +634,7 @@ const searchUsersForNotifications = asyncHandler(async (req, res) => {
 // @route   GET /api/superadmin/logs
 // @access  Private (SuperAdmin only)
 const getSystemLogs = asyncHandler(async (req, res) => {
-  const { lines = 100, level = 'all', category = 'all' } = req.query;
+  const { level = 'all', category = 'all' } = req.query;
   
   try {
     const logDir = path.resolve(process.cwd(), 'logs');
@@ -656,6 +656,9 @@ const getSystemLogs = asyncHandler(async (req, res) => {
     
     // Read log content from files
     const logs = [];
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    
     for (const file of logFiles) {
       try {
         const content = fs.readFileSync(file.path, 'utf8');
@@ -667,25 +670,55 @@ const getSystemLogs = asyncHandler(async (req, res) => {
             // Parse log format: [LEVEL] timestamp [CATEGORY]: message
             const match = line.match(/^\[(\w+)\]\s+([^\s]+)\s+\[([^\]]+)\]:\s+(.+)$/);
             if (match) {
+              const timestamp = new Date(match[2]);
+              
+              // Filter logs older than 1 day
+              if (timestamp < oneDayAgo) {
+                return null;
+              }
+              
               return {
                 level: match[1],
                 timestamp: match[2],
                 category: match[3],
                 message: match[4],
-                source: file.name
+                source: file.name,
+                parsedTimestamp: timestamp
               };
             }
-            return { raw: line, source: file.name };
+            
+            // For raw lines, try to extract timestamp if possible
+            const rawLine = { raw: line, source: file.name };
+            
+            // Try to find ISO timestamp in the line
+            const timestampMatch = line.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/);
+            if (timestampMatch) {
+              const timestamp = new Date(timestampMatch[1]);
+              if (timestamp < oneDayAgo) {
+                return null;
+              }
+              rawLine.timestamp = timestampMatch[1];
+              rawLine.parsedTimestamp = timestamp;
+            }
+            
+            return rawLine;
           } catch (err) {
             return { raw: line, source: file.name };
           }
-        });
+        }).filter(Boolean); // Remove null entries (filtered out by date)
         
         logs.push(...parsedLines);
       } catch (err) {
         logger.error('SUPERADMIN', `Failed to read log file: ${file.name}`, err);
       }
     }
+    
+    // Sort logs by timestamp (newest first)
+    logs.sort((a, b) => {
+      const timeA = a.parsedTimestamp || new Date(a.timestamp || 0);
+      const timeB = b.parsedTimestamp || new Date(b.timestamp || 0);
+      return timeB - timeA; // Newest first
+    });
     
     // Filter by level and category if specified
     let filteredLogs = logs;
@@ -695,10 +728,6 @@ const getSystemLogs = asyncHandler(async (req, res) => {
     if (category !== 'all') {
       filteredLogs = filteredLogs.filter(log => log.category === category);
     }
-    
-    // Limit number of lines
-    const maxLines = Math.min(parseInt(lines) || 100, 1000); // Cap at 1000 lines
-    filteredLogs = filteredLogs.slice(-maxLines);
     
     res.json({
       success: true,

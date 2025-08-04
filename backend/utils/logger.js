@@ -108,6 +108,63 @@ const formatEntryForOutput = (entry) => {
 };
 
 /**
+ * Clean up old backup log files (older than 30 days)
+ * @param {string} logDir - Log directory path
+ */
+const cleanupOldBackups = (logDir) => {
+  try {
+    if (fs.existsSync(logDir)) {
+      const files = fs.readdirSync(logDir);
+      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      
+      files.forEach(file => {
+        if (file.includes('.log.') && file.match(/\.log\.\d{4}-\d{2}-\d{2}$/)) {
+          const filePath = path.join(logDir, file);
+          const stats = fs.statSync(filePath);
+          
+          if (stats.mtime.getTime() < thirtyDaysAgo) {
+            fs.unlinkSync(filePath);
+            console.log(`Cleaned up old backup log: ${file}`);
+          }
+        }
+      });
+    }
+  } catch (err) {
+    console.error(`Failed to cleanup old backup logs: ${err.message}`);
+  }
+};
+
+/**
+ * Rotate log files based on age (7 days)
+ * @param {string} logPath - Path to log file
+ */
+const rotateLogFile = (logPath) => {
+  try {
+    if (fs.existsSync(logPath)) {
+      const stats = fs.statSync(logPath);
+      const fileAge = Date.now() - stats.mtime.getTime();
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+      
+      if (fileAge > sevenDaysInMs) {
+        // Create backup with timestamp
+        const backupPath = logPath + '.' + new Date().toISOString().split('T')[0];
+        fs.renameSync(logPath, backupPath);
+        
+        // Create new empty log file
+        fs.writeFileSync(logPath, '');
+        console.log(`Log file rotated: ${logPath} -> ${backupPath}`);
+        
+        // Clean up old backups
+        const logDir = path.dirname(logPath);
+        cleanupOldBackups(logDir);
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to rotate log file: ${err.message}`);
+  }
+};
+
+/**
  * Write log to file
  * @param {Object} entry - Log entry
  */
@@ -121,12 +178,13 @@ const writeToFile = (entry) => {
       entry.level >= LOG_LEVELS.ERROR ? config.errorLogFileName : config.logFileName
     );
     
+    // Rotate log file if needed
+    rotateLogFile(logPath);
+    
     const logString = formatEntryForOutput(entry) + '\n';
     
     // Append to log file
     fs.appendFileSync(logPath, logString);
-    
-    // TODO: Implement log rotation based on file size
   } catch (err) {
     console.error(`Failed to write to log file: ${err.message}`);
   }

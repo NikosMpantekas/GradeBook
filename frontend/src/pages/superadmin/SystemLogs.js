@@ -14,21 +14,17 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  TextField,
   Chip,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   IconButton,
-  Tooltip
+  Tooltip,
+  useTheme
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
-  ExpandMore as ExpandMoreIcon,
   Error as ErrorIcon,
   Warning as WarningIcon,
   Info as InfoIcon,
@@ -36,7 +32,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Storage as StorageIcon,
   Memory as MemoryIcon,
-  Speed as SpeedIcon
+  Speed as SpeedIcon,
+  ContentCopy as CopyIcon
 } from '@mui/icons-material';
 import { green, red, orange, blue, grey } from '@mui/material/colors';
 import axios from 'axios';
@@ -45,6 +42,7 @@ import { useSelector } from 'react-redux';
 
 const SystemLogs = () => {
   const { user, token } = useSelector((state) => state.auth);
+  const theme = useTheme();
   
   // State management
   const [loading, setLoading] = useState(false);
@@ -52,13 +50,13 @@ const SystemLogs = () => {
   const [logs, setLogs] = useState([]);
   const [pm2Status, setPm2Status] = useState(null);
   const [filters, setFilters] = useState({
-    lines: 100,
     level: 'all',
     category: 'all'
   });
   const [availableLevels, setAvailableLevels] = useState([]);
   const [availableCategories, setAvailableCategories] = useState([]);
   const [stats, setStats] = useState({});
+  const [copiedIndex, setCopiedIndex] = useState(null);
 
   // Load logs
   const loadLogs = async () => {
@@ -164,13 +162,33 @@ const SystemLogs = () => {
     }
   };
 
-  // Format timestamp
+  // Format timestamp for console display
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '';
     try {
-      return new Date(timestamp).toLocaleString();
+      const date = new Date(timestamp);
+      return date.toLocaleString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
     } catch (err) {
       return timestamp;
+    }
+  };
+
+  // Copy log line to clipboard
+  const copyToClipboard = async (text, index) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
     }
   };
 
@@ -223,15 +241,6 @@ const SystemLogs = () => {
               ))}
             </Select>
           </FormControl>
-
-          <TextField
-            label="Lines"
-            type="number"
-            value={filters.lines}
-            onChange={(e) => setFilters({ ...filters, lines: e.target.value })}
-            sx={{ width: 100 }}
-            inputProps={{ min: 10, max: 1000 }}
-          />
 
           <Button
             variant="outlined"
@@ -302,75 +311,133 @@ const SystemLogs = () => {
         </Paper>
       )}
 
-      {/* Logs Display */}
-      <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">
-            Application Logs
+      {/* Console-style Logs Display */}
+      <Paper sx={{ p: 0, overflow: 'hidden' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          p: 2,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50'
+        }}>
+          <Typography variant="h6" sx={{ fontFamily: 'monospace' }}>
+            Console Logs (Last 24 hours)
           </Typography>
           {loading && <CircularProgress size={20} />}
         </Box>
 
         {logs.length === 0 ? (
-          <Alert severity="info">
-            No logs found. Make sure log files exist in the backend logs directory.
-          </Alert>
+          <Box sx={{ p: 3 }}>
+            <Alert severity="info">
+              No logs found. Make sure log files exist in the backend logs directory.
+            </Alert>
+          </Box>
         ) : (
-          <List sx={{ maxHeight: 600, overflow: 'auto' }}>
-            {logs.map((log, index) => (
-              <ListItem key={index} sx={{ 
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                py: 1
-              }}>
-                <ListItemIcon>
-                  {getLevelIcon(log.level)}
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                      <Typography variant="body2" component="span">
-                        {log.message || log.raw}
-                      </Typography>
-                      {log.level && (
-                        <Chip 
-                          label={log.level} 
-                          size="small" 
-                          color={getLevelColor(log.level)}
-                          variant="outlined"
-                        />
-                      )}
-                      {log.category && (
-                        <Chip 
-                          label={log.category} 
-                          size="small" 
-                          color="default"
-                          variant="outlined"
-                        />
-                      )}
-                      {log.source && (
-                        <Chip 
-                          label={log.source} 
-                          size="small" 
-                          color="secondary"
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-                  }
-                  secondary={
-                    <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                      {log.timestamp && (
-                        <Typography variant="caption" color="text.secondary">
-                          {formatTimestamp(log.timestamp)}
-                        </Typography>
-                      )}
-                    </Box>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
+          <Box sx={{ 
+            maxHeight: 600, 
+            overflow: 'auto',
+            bgcolor: theme.palette.mode === 'dark' ? 'black' : '#f5f5f5',
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            lineHeight: 1.4
+          }}>
+            {logs.map((log, index) => {
+              const logText = log.message || log.raw || '';
+              const timestamp = formatTimestamp(log.timestamp);
+              const levelColor = getLevelColor(log.level);
+              
+              return (
+                <Box
+                  key={index}
+                  sx={{
+                    p: 1,
+                    borderBottom: '1px solid',
+                    borderColor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.200',
+                    '&:hover': {
+                      bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100'
+                    },
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1
+                  }}
+                >
+                  {/* Timestamp */}
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: theme.palette.mode === 'dark' ? 'grey.400' : 'grey.600',
+                      fontSize: '12px',
+                      minWidth: '140px',
+                      flexShrink: 0
+                    }}
+                  >
+                    {timestamp}
+                  </Typography>
+                  
+                  {/* Level indicator */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: '60px' }}>
+                    {getLevelIcon(log.level)}
+                    <Typography
+                      component="span"
+                      sx={{
+                        color: levelColor === 'error' ? red[500] :
+                               levelColor === 'warning' ? orange[500] :
+                               levelColor === 'info' ? blue[500] :
+                               levelColor === 'default' ? grey[500] : grey[400],
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase'
+                      }}
+                    >
+                      {log.level || 'INFO'}
+                    </Typography>
+                  </Box>
+                  
+                  {/* Category */}
+                  {log.category && (
+                    <Typography
+                      component="span"
+                      sx={{
+                        color: theme.palette.mode === 'dark' ? 'grey.300' : 'grey.700',
+                        fontSize: '12px',
+                        minWidth: '80px',
+                        flexShrink: 0
+                      }}
+                    >
+                      [{log.category}]
+                    </Typography>
+                  )}
+                  
+                  {/* Message */}
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: theme.palette.mode === 'dark' ? 'white' : 'black',
+                      flex: 1,
+                      wordBreak: 'break-word'
+                    }}
+                  >
+                    {logText}
+                  </Typography>
+                  
+                  {/* Copy button */}
+                  <IconButton
+                    size="small"
+                    onClick={() => copyToClipboard(`${timestamp} [${log.level || 'INFO'}] ${log.category ? `[${log.category}] ` : ''}${logText}`, index)}
+                    sx={{ 
+                      opacity: 0.6,
+                      '&:hover': { opacity: 1 },
+                      color: copiedIndex === index ? green[500] : 'inherit'
+                    }}
+                  >
+                    <CopyIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              );
+            })}
+          </Box>
         )}
       </Paper>
     </Box>
