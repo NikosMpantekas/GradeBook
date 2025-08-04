@@ -429,12 +429,6 @@ const sendPublicContactMessage = asyncHandler(async (req, res) => {
       throw new Error(errors.join(', '));
     }
     
-    // Additional security checks
-    if (req.body.csrfToken && typeof req.body.csrfToken !== 'string') {
-      res.status(400);
-      throw new Error('Invalid CSRF token');
-    }
-    
     // Create a new contact message with sanitized data
     const contactMessage = await Contact.create({
       userName: sanitized.name,

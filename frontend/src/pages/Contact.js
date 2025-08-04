@@ -161,11 +161,6 @@ const Contact = () => {
   // Rate limiting
   const { isRateLimited, recordAttempt, getRemainingTime } = useRateLimit();
   
-  // CSRF token (in a real app, this would be generated server-side)
-  const [csrfToken] = useState(() => {
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
-  });
-
   const handleDrawerToggle = () => setDrawerOpen((prev) => !prev);
   const handleToggleDarkMode = () => setDarkMode((prev) => !prev);
 
@@ -244,8 +239,8 @@ const Contact = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    // Sanitize input - allow spaces for message field
-    const allowSpaces = name === 'message';
+    // Sanitize input - allow spaces for message, name, and subject fields
+    const allowSpaces = name === 'message' || name === 'name' || name === 'subject';
     const sanitizedValue = sanitizeInput(value, SECURITY_CONFIG[`MAX_${name.toUpperCase()}_LENGTH`], allowSpaces);
     
     setFormData((prev) => ({
@@ -302,11 +297,10 @@ const Contact = () => {
     try {
       // Prepare secure payload
       const securePayload = {
-        name: sanitizeInput(formData.name, SECURITY_CONFIG.MAX_NAME_LENGTH),
+        name: sanitizeInput(formData.name, SECURITY_CONFIG.MAX_NAME_LENGTH, true), // Allow spaces for name
         email: sanitizeInput(formData.email, SECURITY_CONFIG.MAX_EMAIL_LENGTH).toLowerCase(),
-        subject: sanitizeInput(formData.subject, SECURITY_CONFIG.MAX_SUBJECT_LENGTH),
+        subject: sanitizeInput(formData.subject, SECURITY_CONFIG.MAX_SUBJECT_LENGTH, true), // Allow spaces for subject
         message: sanitizeInput(formData.message, SECURITY_CONFIG.MAX_MESSAGE_LENGTH, true), // Allow spaces for message
-        csrfToken: csrfToken,
         timestamp: Date.now(),
         userAgent: navigator.userAgent,
         referrer: document.referrer,
@@ -317,7 +311,6 @@ const Contact = () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-Token': csrfToken,
         },
         timeout: 10000, // 10 second timeout
       };
