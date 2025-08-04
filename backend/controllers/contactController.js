@@ -5,7 +5,7 @@ const { enforceSchoolFilter } = require('../middleware/schoolIdMiddleware');
 const nodemailer = require('nodemailer');
 
 // Email service function for sending contact message replies
-const sendContactReplyEmail = async ({ name, email, subject, replyBody }) => {
+const sendContactReplyEmail = async ({ name, email, subject, replyBody, originalMessage }) => {
   // Create transporter for Brevo SMTP
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
@@ -30,12 +30,13 @@ const sendContactReplyEmail = async ({ name, email, subject, replyBody }) => {
         <p style="color: #555; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
         
         <p style="color: #555; line-height: 1.6;">
-          Thank you for contacting GradeBook. We have received your message and are responding to your inquiry.
+          Thank you for contacting the GradeBook Team. We have received your message and are responding to your inquiry. Please do not reply to this email.
         </p>
         
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1976d2;">
           <h3 style="color: #1976d2; margin-top: 0;">📧 Your Original Message</h3>
           <p style="margin: 10px 0;"><strong>Subject:</strong> ${subject}</p>
+          <div style="color: #555; line-height: 1.6; white-space: pre-wrap; margin-top: 15px;">${originalMessage}</div>
         </div>
         
         <div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4caf50;">
@@ -53,18 +54,17 @@ const sendContactReplyEmail = async ({ name, email, subject, replyBody }) => {
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
         
         <p style="color: #888; font-size: 12px; text-align: center; margin: 0;">
-          This email was sent from GradeBook System. If you have any further questions, please don't hesitate to contact us again.
+          This email was sent by the GradeBook Team. If you have any further questions, please don't hesitate to contact us again by clicking the button above. Please do not reply to this email.
         </p>
       </div>
     </div>
   `;
 
   const mailOptions = {
-    from: `"${process.env.SMTP_FROM_NAME || 'GradeBook Support'}" <${process.env.SMTP_FROM_EMAIL || 'mail@gradebook.pro'}>`,
+    from: `"GradeBook Support" <${process.env.SMTP_FROM_EMAIL || 'mail@gradebook.pro'}>`,
     to: email,
     subject: `Regarding your request: ${subject}`,
-    html: emailTemplate,
-    replyTo: process.env.SMTP_FROM_EMAIL || 'mail@gradebook.pro'
+    html: emailTemplate
   };
 
   await transporter.sendMail(mailOptions);
@@ -230,7 +230,8 @@ const updateContactMessage = asyncHandler(async (req, res) => {
             name: existingMessage.userName,
             email: existingMessage.userEmail,
             subject: existingMessage.subject,
-            replyBody: adminReply
+            replyBody: adminReply,
+            originalMessage: existingMessage.message // Pass the original message body
           });
           console.log(`Email sent to ${existingMessage.userEmail} for public contact message ${id}`);
         } catch (emailError) {
