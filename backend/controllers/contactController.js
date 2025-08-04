@@ -95,7 +95,7 @@ const getContactMessages = asyncHandler(async (req, res) => {
     if (req.user.role === 'superadmin') {
       messages.forEach(message => {
         if (message.isPublicContact) {
-          message.publicFlag = 'Public';
+          message.userRole = 'Public'; // Show "Public" as the role for public messages
         }
       });
     }
