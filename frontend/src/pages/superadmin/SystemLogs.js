@@ -191,10 +191,10 @@ const SystemLogs = () => {
 
         {/* Stats */}
         {stats.totalFiles > 0 && (
-          <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Chip label={`${stats.totalFiles} Log Files`} color="info" variant="outlined" />
-            <Chip label={`${stats.totalLines} Total Lines`} color="primary" variant="outlined" />
-            <Chip label={`${stats.filteredLines} Filtered Lines`} color="secondary" variant="outlined" />
+          <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Typography variant="body2" color="text.secondary">
+              {stats.totalFiles} Log Files • {stats.totalLines} Total Lines • {stats.filteredLines} Filtered Lines
+            </Typography>
           </Box>
         )}
       </Paper>
