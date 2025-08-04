@@ -30,7 +30,7 @@ const sendContactReplyEmail = async ({ name, email, subject, replyBody, original
         <p style="color: #555; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
         
         <p style="color: #555; line-height: 1.6;">
-          Thank you for contacting the GradeBook Team. We have received your message and are responding to your inquiry. Please do not reply to this email.
+          Thank you for contacting the GradeBook Team. We have received your message and are responding to your inquiry. Please <strong>do not reply</strong> to this email.
         </p>
         
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1976d2;">
@@ -54,7 +54,7 @@ const sendContactReplyEmail = async ({ name, email, subject, replyBody, original
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
         
         <p style="color: #888; font-size: 12px; text-align: center; margin: 0;">
-          This email was sent by the GradeBook Team. If you have any further questions, please don't hesitate to contact us again by clicking the button above. Please do not reply to this email.
+          This email was sent by the GradeBook Team. If you have any further questions, please don't hesitate to contact us again by clicking the button above. <strong>Please do not reply to this email.</strong>
         </p>
       </div>
     </div>
