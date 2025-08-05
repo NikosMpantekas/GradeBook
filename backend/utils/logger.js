@@ -164,8 +164,36 @@ const rotateLogFile = (logPath) => {
   }
 };
 
+// Log buffer for batching writes
+let logBuffer = [];
+let bufferFlushTimeout = null;
+const BUFFER_SIZE = 10;
+const BUFFER_FLUSH_INTERVAL = 1000; // 1 second
+
 /**
- * Write log to file
+ * Flush log buffer to file
+ * @param {string} logPath - Path to log file
+ */
+const flushLogBuffer = async (logPath) => {
+  if (logBuffer.length === 0) return;
+  
+  try {
+    const logsToWrite = [...logBuffer];
+    logBuffer = []; // Clear buffer
+    
+    const logString = logsToWrite.join('');
+    
+    // Use async file write
+    await fs.promises.appendFile(logPath, logString);
+  } catch (err) {
+    console.error(`Failed to flush log buffer: ${err.message}`);
+    // Put logs back in buffer if write failed
+    logBuffer = [...logBuffer, ...logsToWrite];
+  }
+};
+
+/**
+ * Write log to file (optimized with buffering)
  * @param {Object} entry - Log entry
  */
 const writeToFile = (entry) => {
@@ -178,15 +206,27 @@ const writeToFile = (entry) => {
       entry.level >= LOG_LEVELS.ERROR ? config.errorLogFileName : config.logFileName
     );
     
-    // Rotate log file if needed
-    rotateLogFile(logPath);
+    // Check file rotation periodically (not on every log)
+    if (Math.random() < 0.1) { // 10% chance to check rotation
+      rotateLogFile(logPath);
+    }
     
     const logString = formatEntryForOutput(entry) + '\n';
     
-    // Append to log file
-    fs.appendFileSync(logPath, logString);
+    // Add to buffer
+    logBuffer.push(logString);
+    
+    // Flush buffer if full or set timeout for periodic flush
+    if (logBuffer.length >= BUFFER_SIZE) {
+      flushLogBuffer(logPath);
+    } else if (!bufferFlushTimeout) {
+      bufferFlushTimeout = setTimeout(() => {
+        flushLogBuffer(logPath);
+        bufferFlushTimeout = null;
+      }, BUFFER_FLUSH_INTERVAL);
+    }
   } catch (err) {
-    console.error(`Failed to write to log file: ${err.message}`);
+    console.error(`Failed to buffer log: ${err.message}`);
   }
 };
 

@@ -26,7 +26,7 @@ const SystemLogs = () => {
   const { user, token } = useSelector((state) => state.auth);
   const theme = useTheme();
   
-  // State management
+  // State management (optimized for memory)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -39,10 +39,17 @@ const SystemLogs = () => {
   const [stats, setStats] = useState({});
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    limit: 100, // Reduced from loading all logs
+    total: 0,
+    hasMore: true
+  });
+  const [displayedLogs, setDisplayedLogs] = useState([]); // Only logs currently displayed
   const logsContainerRef = useRef(null);
 
-  // Load logs
-  const loadLogs = async () => {
+  // Load logs (optimized with pagination)
+  const loadLogs = async (reset = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -52,14 +59,30 @@ const SystemLogs = () => {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        params: filters
+        params: {
+          ...filters,
+          limit: pagination.limit,
+          offset: reset ? 0 : pagination.page * pagination.limit
+        }
       };
 
       const response = await axios.get(`${API_URL}/api/superadmin/logs`, config);
 
       if (response.data && response.data.success) {
-        // Reverse the logs to show latest on top
-        setLogs(response.data.data.logs.reverse());
+        const newLogs = response.data.data.logs.reverse();
+        
+        if (reset) {
+          // Reset pagination and logs
+          setLogs(newLogs);
+          setDisplayedLogs(newLogs.slice(0, 50)); // Only show first 50 logs initially
+          setPagination(prev => ({ ...prev, page: 0, total: response.data.data.totalLines }));
+        } else {
+          // Append new logs
+          setLogs(prev => [...prev, ...newLogs]);
+          setDisplayedLogs(prev => [...prev, ...newLogs].slice(0, Math.min(100, prev.length + newLogs.length)));
+          setPagination(prev => ({ ...prev, page: prev.page + 1 }));
+        }
+        
         setAvailableLevels(response.data.data.availableLevels);
         setAvailableCategories(response.data.data.availableCategories);
         setStats({
@@ -67,6 +90,12 @@ const SystemLogs = () => {
           totalLines: response.data.data.totalLines,
           filteredLines: response.data.data.filteredLines
         });
+        
+        // Check if there are more logs
+        setPagination(prev => ({
+          ...prev,
+          hasMore: newLogs.length === pagination.limit
+        }));
       } else {
         setError('Failed to load logs');
       }
@@ -76,6 +105,13 @@ const SystemLogs = () => {
       setError(error.response?.data?.message || 'Failed to load logs');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Load more logs
+  const loadMoreLogs = () => {
+    if (!loading && pagination.hasMore) {
+      loadLogs(false);
     }
   };
 
@@ -97,9 +133,10 @@ const SystemLogs = () => {
     loadLogs();
   }, []);
 
-  // Reload when filters change
+  // Reload when filters change (reset pagination)
   useEffect(() => {
-    loadLogs();
+    setPagination(prev => ({ ...prev, page: 0, hasMore: true }));
+    loadLogs(true); // Reset logs when filters change
   }, [filters]);
 
   // Get color for log level
@@ -333,25 +370,27 @@ const SystemLogs = () => {
           <Typography variant="h6" sx={{ fontFamily: 'monospace', color: '#e6e6e6' }}>
             System Logs (Last 24 hours)
           </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {loading && <CircularProgress size={20} sx={{ color: '#e6e6e6' }} />}
-        </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {loading && <CircularProgress size={20} sx={{ color: '#e6e6e6' }} />}
+          </Box>
         </Box>
 
-        {logs.length === 0 ? (
-          <Box sx={{ p: 3 }}>
-            <Alert severity="info">
-              {filters.level !== 'all' || filters.category !== 'all' 
+      {displayedLogs.length === 0 ? (
+        <Box sx={{ p: 3 }}>
+          <Alert severity="info">
+            {loading ? 'Loading logs...' : (
+              filters.level !== 'all' || filters.category !== 'all' 
                 ? 'No logs match your current filters. Try adjusting your filters and refresh.'
                 : 'No logs found. Make sure log files exist in the backend logs directory.'
-              }
-            </Alert>
-          </Box>
-        ) : (
+            )}
+          </Alert>
+        </Box>
+      ) : (
+        <>
           <Box 
             ref={logsContainerRef}
             sx={{ 
-              maxHeight: 600, 
+              maxHeight: 500, 
               overflow: 'auto',
               bgcolor: '#23272e',
               fontFamily: 'monospace',
@@ -361,7 +400,7 @@ const SystemLogs = () => {
               p: 0
             }}
           >
-            {logs.map((log, index) => {
+            {displayedLogs.map((log, index) => {
               const logText = parseAnsiColors(log.message || log.raw || '');
               const timestamp = formatTimestamp(log.timestamp || logText);
               const levelColor = getLevelColor(log.level);
@@ -446,10 +485,37 @@ const SystemLogs = () => {
               );
             })}
           </Box>
-        )}
-      </Paper>
-    </Box>
-  );
+          
+          {/* Load More Button */}
+          {pagination.hasMore && (
+            <Box sx={{ p: 2, textAlign: 'center', borderTop: '1px solid #333' }}>
+              <Button
+                variant="outlined"
+                onClick={loadMoreLogs}
+                disabled={loading}
+                sx={{ color: '#e6e6e6', borderColor: '#555' }}
+              >
+                {loading ? (
+                  <>
+                    <CircularProgress size={16} sx={{ mr: 1, color: '#e6e6e6' }} />
+                    Loading...
+                  </>
+                ) : (
+                  `Load More (${logs.length - displayedLogs.length} remaining)`
+                )}
+              </Button>
+            </Box>
+          )}
+          
+          {/* Memory Usage Info */}
+          <Box sx={{ p: 1, fontSize: '12px', color: '#666', textAlign: 'center' }}>
+            Showing {displayedLogs.length} of {stats.filteredLines || 0} logs (Memory optimized)
+          </Box>
+        </>
+      )}
+    </Paper>
+  </Box>
+);
 };
 
 export default SystemLogs; 

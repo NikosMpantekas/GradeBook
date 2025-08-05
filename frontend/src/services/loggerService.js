@@ -13,18 +13,23 @@ export const LOG_LEVELS = {
   CRITICAL: 4
 };
 
-// Default configuration
+// Default configuration (optimized for memory)
 const config = {
   minLevel: process.env.NODE_ENV === 'production' ? LOG_LEVELS.INFO : LOG_LEVELS.DEBUG,
   enableConsole: true,
-  logToStorage: true,
+  logToStorage: process.env.NODE_ENV !== 'development', // Reduce storage in dev
   storageKey: 'app_logs',
-  maxStoredLogs: 100,
-  includeTimestamps: true
+  maxStoredLogs: 25, // Reduced from 100 to 25
+  maxInMemoryLogs: 50, // Separate limit for in-memory
+  includeTimestamps: true,
+  batchStorage: true, // Batch localStorage writes
+  storageFlushInterval: 5000 // 5 seconds
 };
 
-// In-memory log store
+// In-memory log store with size limit
 let inMemoryLogs = [];
+let storageBatch = [];
+let storageFlushTimeout = null;
 
 /**
  * Format a log entry consistently
@@ -48,34 +53,70 @@ const formatLogEntry = (level, category, message, data = null) => {
 };
 
 /**
- * Store log in memory and localStorage if configured
+ * Flush storage batch to localStorage
+ */
+const flushStorageBatch = () => {
+  if (!config.logToStorage || storageBatch.length === 0) return;
+  
+  try {
+    // Get existing logs (only once)
+    const existingLogs = JSON.parse(localStorage.getItem(config.storageKey) || '[]');
+    
+    // Add all batched logs
+    const allLogs = [...existingLogs, ...storageBatch];
+    
+    // Trim to max size
+    const trimmedLogs = allLogs.slice(-config.maxStoredLogs);
+    
+    // Save to storage (single write)
+    localStorage.setItem(config.storageKey, JSON.stringify(trimmedLogs));
+    
+    // Clear batch
+    storageBatch = [];
+  } catch (error) {
+    console.error('Failed to flush storage batch:', error);
+    // Clear batch to prevent memory buildup
+    storageBatch = [];
+  }
+};
+
+/**
+ * Store log in memory and localStorage if configured (optimized)
  */
 const storeLog = (entry) => {
-  // Add to in-memory logs
+  // Add to in-memory logs with aggressive trimming
   inMemoryLogs.push(entry);
   
-  // Trim in-memory logs if they get too large
-  if (inMemoryLogs.length > config.maxStoredLogs * 2) {
-    inMemoryLogs = inMemoryLogs.slice(-config.maxStoredLogs);
+  // Trim in-memory logs more aggressively
+  if (inMemoryLogs.length > config.maxInMemoryLogs) {
+    inMemoryLogs = inMemoryLogs.slice(-config.maxInMemoryLogs);
   }
   
-  // Store in localStorage if enabled
+  // Store in localStorage if enabled (batched)
   if (config.logToStorage) {
-    try {
-      // Get existing logs
-      const storedLogs = JSON.parse(localStorage.getItem(config.storageKey) || '[]');
+    if (config.batchStorage) {
+      // Add to batch
+      storageBatch.push(entry);
       
-      // Add new log
-      storedLogs.push(entry);
-      
-      // Trim if needed
-      const trimmedLogs = storedLogs.slice(-config.maxStoredLogs);
-      
-      // Save back to storage
-      localStorage.setItem(config.storageKey, JSON.stringify(trimmedLogs));
-    } catch (error) {
-      // If localStorage fails, just log to console
-      console.error('Failed to store log in localStorage:', error);
+      // Flush batch if it gets too large or set timeout
+      if (storageBatch.length >= 10) {
+        flushStorageBatch();
+      } else if (!storageFlushTimeout) {
+        storageFlushTimeout = setTimeout(() => {
+          flushStorageBatch();
+          storageFlushTimeout = null;
+        }, config.storageFlushInterval);
+      }
+    } else {
+      // Fallback to immediate storage (less efficient)
+      try {
+        const storedLogs = JSON.parse(localStorage.getItem(config.storageKey) || '[]');
+        storedLogs.push(entry);
+        const trimmedLogs = storedLogs.slice(-config.maxStoredLogs);
+        localStorage.setItem(config.storageKey, JSON.stringify(trimmedLogs));
+      } catch (error) {
+        console.error('Failed to store log in localStorage:', error);
+      }
     }
   }
 };
