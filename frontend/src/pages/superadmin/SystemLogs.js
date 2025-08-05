@@ -16,9 +16,7 @@ import {
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
-  ContentCopy as CopyIcon,
-  PlayArrow as PlayIcon,
-  Pause as PauseIcon
+  ContentCopy as CopyIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 import { API_URL } from '../../config/appConfig';
@@ -41,8 +39,6 @@ const SystemLogs = () => {
   const [stats, setStats] = useState({});
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [streaming, setStreaming] = useState(false);
   const logsContainerRef = useRef(null);
 
   // Load logs
@@ -83,12 +79,7 @@ const SystemLogs = () => {
     }
   };
 
-  // Auto-scroll to top when new logs are added (since latest are on top)
-  useEffect(() => {
-    if (autoScroll && logsContainerRef.current) {
-      logsContainerRef.current.scrollTop = 0;
-    }
-  }, [logs, autoScroll]);
+
 
   // Auto-refresh functionality
   useEffect(() => {
@@ -305,24 +296,7 @@ const SystemLogs = () => {
             {autoRefresh ? 'Stop Auto' : 'Auto Refresh'}
           </Button>
           
-          <Button
-            variant={autoScroll ? "contained" : "outlined"}
-            onClick={() => setAutoScroll(!autoScroll)}
-            size="small"
-            sx={{ ml: 1 }}
-          >
-            {autoScroll ? 'Stop Scroll' : 'Auto Scroll'}
-          </Button>
 
-          <Button
-            variant={streaming ? "contained" : "outlined"}
-            onClick={() => setStreaming(!streaming)}
-            size="small"
-            sx={{ ml: 1 }}
-            startIcon={streaming ? <PauseIcon /> : <PlayIcon />}
-          >
-            {streaming ? 'Stop Stream' : 'Live Stream'}
-          </Button>
         </Box>
 
         {/* Stats */}
@@ -359,24 +333,9 @@ const SystemLogs = () => {
           <Typography variant="h6" sx={{ fontFamily: 'monospace', color: '#e6e6e6' }}>
             System Logs (Last 24 hours)
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {streaming && (
-              <Chip 
-                label="LIVE" 
-                size="small" 
-                color="error" 
-                sx={{ 
-                  animation: 'pulse 2s infinite',
-                  '@keyframes pulse': {
-                    '0%': { opacity: 1 },
-                    '50%': { opacity: 0.5 },
-                    '100%': { opacity: 1 }
-                  }
-                }}
-              />
-            )}
-            {loading && <CircularProgress size={20} sx={{ color: '#e6e6e6' }} />}
-          </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {loading && <CircularProgress size={20} sx={{ color: '#e6e6e6' }} />}
+        </Box>
         </Box>
 
         {logs.length === 0 ? (
@@ -407,6 +366,14 @@ const SystemLogs = () => {
               const timestamp = formatTimestamp(log.timestamp || logText);
               const levelColor = getLevelColor(log.level);
               
+              // Determine text color based on log level
+              let textColor = '#e6e6e6'; // default
+              if (log.level && log.level.toLowerCase().includes('warn')) {
+                textColor = '#ffeb3b'; // yellow for warnings
+              } else if (log.level && log.level.toLowerCase().includes('error')) {
+                textColor = '#ff6b6b'; // red for errors
+              }
+              
               return (
                 <Box
                   key={index}
@@ -419,7 +386,7 @@ const SystemLogs = () => {
                     fontFamily: 'monospace',
                     fontSize: '13px',
                     lineHeight: 1.4,
-                    color: '#e6e6e6'
+                    color: textColor
                   }}
                 >
                   {/* Line number */}
@@ -453,7 +420,7 @@ const SystemLogs = () => {
                   <Typography
                     component="span"
                     sx={{
-                      color: '#e6e6e6',
+                      color: textColor,
                       flex: 1,
                       wordBreak: 'break-word',
                       whiteSpace: 'pre-wrap'
