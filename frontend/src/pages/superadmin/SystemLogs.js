@@ -62,7 +62,8 @@ const SystemLogs = () => {
       const response = await axios.get(`${API_URL}/api/superadmin/logs`, config);
 
       if (response.data && response.data.success) {
-        setLogs(response.data.data.logs);
+        // Reverse the logs to show latest on top
+        setLogs(response.data.data.logs.reverse());
         setAvailableLevels(response.data.data.availableLevels);
         setAvailableCategories(response.data.data.availableCategories);
         setStats({
@@ -82,10 +83,10 @@ const SystemLogs = () => {
     }
   };
 
-  // Auto-scroll to bottom when new logs are added
+  // Auto-scroll to top when new logs are added (since latest are on top)
   useEffect(() => {
     if (autoScroll && logsContainerRef.current) {
-      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
+      logsContainerRef.current.scrollTop = 0;
     }
   }, [logs, autoScroll]);
 
@@ -144,32 +145,83 @@ const SystemLogs = () => {
   // Format timestamp for console display (Netlify style)
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '';
+    
     try {
+      // If it's already a Date object or valid timestamp
       const date = new Date(timestamp);
-      return date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      });
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
+      }
     } catch (err) {
-      // Try to extract timestamp from raw log line
-      const timestampMatch = timestamp.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/);
-      if (timestampMatch) {
-        try {
-          const date = new Date(timestampMatch[1]);
+      // Continue to other parsing methods
+    }
+    
+    // Try to extract timestamp from raw log line
+    const timestampMatch = timestamp.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/);
+    if (timestampMatch) {
+      try {
+        const date = new Date(timestampMatch[1]);
+        if (!isNaN(date.getTime())) {
           return date.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
             hour12: true
           });
-        } catch (err2) {
-          return timestamp;
         }
+      } catch (err2) {
+        // Continue to fallback
       }
-      return timestamp;
     }
+    
+    // Try to extract ISO timestamp without milliseconds
+    const isoMatch = timestamp.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
+    if (isoMatch) {
+      try {
+        const date = new Date(isoMatch[1]);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          });
+        }
+      } catch (err2) {
+        // Continue to fallback
+      }
+    }
+    
+    // Try to extract date from various formats
+    const dateMatch = timestamp.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+    if (dateMatch) {
+      try {
+        const date = new Date(dateMatch[1].replace(' ', 'T'));
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          });
+        }
+      } catch (err2) {
+        // Continue to fallback
+      }
+    }
+    
+    // If all else fails, return current time
+    return new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
   };
 
 
