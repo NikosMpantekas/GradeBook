@@ -12,16 +12,13 @@ import {
   MenuItem,
   IconButton,
   useTheme,
-  Collapse,
   Chip
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
   ContentCopy as CopyIcon,
   PlayArrow as PlayIcon,
-  Pause as PauseIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon
+  Pause as PauseIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 import { API_URL } from '../../config/appConfig';
@@ -45,7 +42,6 @@ const SystemLogs = () => {
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
-  const [expandedSections, setExpandedSections] = useState(new Set());
   const [streaming, setStreaming] = useState(false);
   const logsContainerRef = useRef(null);
 
@@ -154,7 +150,7 @@ const SystemLogs = () => {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false
+        hour12: true
       });
     } catch (err) {
       // Try to extract timestamp from raw log line
@@ -166,7 +162,7 @@ const SystemLogs = () => {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
-            hour12: false
+            hour12: true
           });
         } catch (err2) {
           return timestamp;
@@ -176,29 +172,7 @@ const SystemLogs = () => {
     }
   };
 
-  // Check if log line indicates a build step
-  const isBuildStep = (text) => {
-    const buildStepPatterns = [
-      /step\s+\d+\/\d+:/i,
-      /installing\s+dependencies/i,
-      /building\s+application/i,
-      /deploying/i,
-      /compiling/i,
-      /bundling/i
-    ];
-    return buildStepPatterns.some(pattern => pattern.test(text));
-  };
 
-  // Toggle section expansion
-  const toggleSection = (sectionId) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(sectionId)) {
-      newExpanded.delete(sectionId);
-    } else {
-      newExpanded.add(sectionId);
-    }
-    setExpandedSections(newExpanded);
-  };
 
   // Copy log line to clipboard
   const copyToClipboard = async (text, index) => {
@@ -380,146 +354,76 @@ const SystemLogs = () => {
               const logText = parseAnsiColors(log.message || log.raw || '');
               const timestamp = formatTimestamp(log.timestamp || logText);
               const levelColor = getLevelColor(log.level);
-              const isBuildStepLine = isBuildStep(logText);
-              const sectionId = `section-${Math.floor(index / 10)}`; // Group every 10 lines
-              const isSectionExpanded = expandedSections.has(sectionId);
               
               return (
-                <React.Fragment key={index}>
-                  {/* Build Step Header */}
-                  {isBuildStepLine && (
-                    <Box
-                      sx={{
-                        p: '8px 12px',
-                        bgcolor: '#2c313a',
-                        borderBottom: '1px solid #3a3f4b',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        '&:hover': {
-                          bgcolor: '#343a44'
-                        }
-                      }}
-                      onClick={() => toggleSection(sectionId)}
-                    >
-                      <Typography
-                        sx={{
-                          color: '#e6e6e6',
-                          fontWeight: 'bold',
-                          fontSize: '13px',
-                          fontFamily: 'monospace'
-                        }}
-                      >
-                        {logText}
-                      </Typography>
-                      <IconButton size="small" sx={{ color: '#e6e6e6' }}>
-                        {isSectionExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                      </IconButton>
-                    </Box>
-                  )}
+                <Box
+                  key={index}
+                  sx={{
+                    p: '2px 12px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1,
+                    minHeight: '18px',
+                    fontFamily: 'monospace',
+                    fontSize: '13px',
+                    lineHeight: 1.4,
+                    color: '#e6e6e6'
+                  }}
+                >
+                  {/* Line number */}
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: '#666',
+                      fontSize: '13px',
+                      minWidth: '35px',
+                      flexShrink: 0,
+                      textAlign: 'right'
+                    }}
+                  >
+                    {index + 1}
+                  </Typography>
                   
-                  {/* Regular Log Line */}
-                  <Collapse in={!isBuildStepLine || isSectionExpanded}>
-                    <Box
-                      sx={{
-                        p: '4px 12px',
-                        borderBottom: '1px solid #3a3f4b',
-                        '&:hover': {
-                          bgcolor: '#2c313a'
-                        },
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 1,
-                        minHeight: '20px'
-                      }}
-                    >
-                      {/* Line number */}
-                      <Typography
-                        component="span"
-                        sx={{
-                          color: '#666',
-                          fontSize: '11px',
-                          minWidth: '40px',
-                          flexShrink: 0,
-                          textAlign: 'right'
-                        }}
-                      >
-                        {index + 1}
-                      </Typography>
-                      
-                      {/* Timestamp */}
-                      <Typography
-                        component="span"
-                        sx={{
-                          color: '#888',
-                          fontSize: '11px',
-                          minWidth: '80px',
-                          flexShrink: 0
-                        }}
-                      >
-                        {timestamp}:
-                      </Typography>
-                      
-                      {/* Level */}
-                      <Typography
-                        component="span"
-                        sx={{
-                          color: levelColor,
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          minWidth: '50px',
-                          flexShrink: 0,
-                          textTransform: 'uppercase'
-                        }}
-                      >
-                        [{log.level || 'INFO'}]
-                      </Typography>
-                      
-                      {/* Category */}
-                      {log.category && (
-                        <Typography
-                          component="span"
-                          sx={{
-                            color: '#aaa',
-                            fontSize: '11px',
-                            minWidth: '60px',
-                            flexShrink: 0
-                          }}
-                        >
-                          [{log.category}]
-                        </Typography>
-                      )}
-                      
-                      {/* Message */}
-                      <Typography
-                        component="span"
-                        sx={{
-                          color: '#e6e6e6',
-                          flex: 1,
-                          wordBreak: 'break-word',
-                          whiteSpace: 'pre-wrap'
-                        }}
-                      >
-                        {logText}
-                      </Typography>
-                      
-                      {/* Copy button */}
-                      <IconButton
-                        size="small"
-                        onClick={() => copyToClipboard(`${timestamp}: [${log.level || 'INFO'}] ${log.category ? `[${log.category}] ` : ''}${logText}`, index)}
-                        sx={{ 
-                          opacity: 0.4,
-                          '&:hover': { opacity: 0.8 },
-                          color: copiedIndex === index ? '#4caf50' : '#e6e6e6',
-                          p: 0.5
-                        }}
-                      >
-                        <CopyIcon sx={{ fontSize: '14px' }} />
-                      </IconButton>
-                    </Box>
-                  </Collapse>
-                </React.Fragment>
+                  {/* Timestamp */}
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: '#888',
+                      fontSize: '13px',
+                      minWidth: '90px',
+                      flexShrink: 0
+                    }}
+                  >
+                    {timestamp}:
+                  </Typography>
+                  
+                  {/* Message */}
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: '#e6e6e6',
+                      flex: 1,
+                      wordBreak: 'break-word',
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  >
+                    {logText}
+                  </Typography>
+                  
+                  {/* Copy button */}
+                  <IconButton
+                    size="small"
+                    onClick={() => copyToClipboard(`${timestamp}: ${logText}`, index)}
+                    sx={{ 
+                      opacity: 0.4,
+                      '&:hover': { opacity: 0.8 },
+                      color: copiedIndex === index ? '#4caf50' : '#e6e6e6',
+                      p: 0.5
+                    }}
+                  >
+                    <CopyIcon sx={{ fontSize: '14px' }} />
+                  </IconButton>
+                </Box>
               );
             })}
           </Box>
