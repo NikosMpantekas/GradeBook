@@ -16,7 +16,6 @@ import {
   Card,
   CardContent
 } from '@mui/material';
-import OfflineTest from '../components/OfflineTest';
 
 // This diagnostic page will help identify authentication issues
 const DiagnosticPage = () => {
@@ -279,10 +278,6 @@ const DiagnosticPage = () => {
             Refresh Page
           </Button>
         </Box>
-        
-        <Divider sx={{ mb: 3, mt: 3 }} />
-        
-        <OfflineTest />
       </Paper>
     </Container>
   );
