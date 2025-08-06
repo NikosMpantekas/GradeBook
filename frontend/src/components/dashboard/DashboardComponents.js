@@ -127,8 +127,7 @@ export const WelcomePanel = ({ user }) => {
                   display: 'flex', 
                   flexDirection: 'column',
                   alignItems: 'flex-start',
-                  gap: 1,
-                  position: 'relative'
+                  gap: 1
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
@@ -142,28 +141,26 @@ export const WelcomePanel = ({ user }) => {
                       {format(currentTime, 'HH:mm:ss')}
                     </Typography>
                   </Box>
-                  {/* Monogram positioned under date/time on mobile */}
-                  <Avatar 
-                    onClick={handleProfileClick}
-                    sx={{ 
-                      width: 40, 
-                      height: 40,
-                      bgcolor: 'rgba(255,255,255,0.2)',
-                      fontSize: '1rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease-in-out',
-                      mt: 1,
-                      '&:hover': {
-                        transform: 'scale(1.05)',
-                        bgcolor: 'rgba(255,255,255,0.3)',
-                        boxShadow: theme => `0 4px 8px ${theme.palette.primary.dark}40`
-                      }
-                    }}
-                  >
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </Avatar>
                 </Box>
               </Box>
+              <Avatar 
+                onClick={handleProfileClick}
+                sx={{ 
+                  width: { xs: 60, sm: 80 }, 
+                  height: { xs: 60, sm: 80 },
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  fontSize: { xs: '1.5rem', sm: '2rem' },
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                    bgcolor: 'rgba(255,255,255,0.3)',
+                    boxShadow: theme => `0 4px 8px ${theme.palette.primary.dark}40`
+                  }
+                }}
+              >
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </Avatar>
             </>
           ) : (
             /* Desktop Layout: Original layout */
@@ -393,18 +390,35 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
   };
 
   const handleNotificationClick = (notification) => {
-    // Navigate to the appropriate notifications route based on user role
+    // Navigate to the specific notification detail page
     const userRole = user?.role;
-    if (userRole === 'student') {
-      navigate('/app/student/notifications');
-    } else if (userRole === 'teacher') {
-      navigate('/app/teacher/notifications');
-    } else if (userRole === 'admin') {
-      navigate('/app/admin/notifications/manage');
-    } else if (userRole === 'parent') {
-      navigate('/app/parent/notifications');
+    const notificationId = notification?._id;
+    
+    if (notificationId) {
+      if (userRole === 'student') {
+        navigate(`/app/student/notifications/${notificationId}`);
+      } else if (userRole === 'teacher') {
+        navigate(`/app/teacher/notifications/${notificationId}`);
+      } else if (userRole === 'admin') {
+        navigate(`/app/admin/notifications/${notificationId}`);
+      } else if (userRole === 'parent') {
+        navigate(`/app/parent/notifications/${notificationId}`);
+      } else {
+        navigate(`/app/notifications/${notificationId}`);
+      }
     } else {
-      navigate('/app/notifications');
+      // Fallback to notifications list if no ID
+      if (userRole === 'student') {
+        navigate('/app/student/notifications');
+      } else if (userRole === 'teacher') {
+        navigate('/app/teacher/notifications');
+      } else if (userRole === 'admin') {
+        navigate('/app/admin/notifications/manage');
+      } else if (userRole === 'parent') {
+        navigate('/app/parent/notifications');
+      } else {
+        navigate('/app/notifications');
+      }
     }
   };
 
@@ -556,18 +570,35 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
   };
 
   const handleGradeClick = (grade) => {
-    // Navigate to the appropriate grades route based on user role
+    // Navigate to the specific grade detail page
     const userRole = user?.role;
-    if (userRole === 'student') {
-      navigate('/app/student/grades');
-    } else if (userRole === 'teacher') {
-      navigate('/app/teacher/grades/manage');
-    } else if (userRole === 'admin') {
-      navigate('/app/admin/grades/manage');
-    } else if (userRole === 'parent') {
-      navigate('/app/parent/grades');
+    const gradeId = grade?._id;
+    
+    if (gradeId) {
+      if (userRole === 'student') {
+        navigate(`/app/student/grades/${gradeId}`);
+      } else if (userRole === 'teacher') {
+        navigate(`/app/teacher/grades/${gradeId}`);
+      } else if (userRole === 'admin') {
+        navigate(`/app/admin/grades/${gradeId}`);
+      } else if (userRole === 'parent') {
+        navigate(`/app/parent/grades/${gradeId}`);
+      } else {
+        navigate(`/app/grades/${gradeId}`);
+      }
     } else {
-      navigate('/app/grades');
+      // Fallback to grades list if no ID
+      if (userRole === 'student') {
+        navigate('/app/student/grades');
+      } else if (userRole === 'teacher') {
+        navigate('/app/teacher/grades/manage');
+      } else if (userRole === 'admin') {
+        navigate('/app/admin/grades/manage');
+      } else if (userRole === 'parent') {
+        navigate('/app/parent/grades');
+      } else {
+        navigate('/app/grades');
+      }
     }
   };
 
@@ -724,18 +755,35 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
   };
 
   const handleClassClick = (classItem) => {
-    // Navigate to the appropriate schedule route based on user role
+    // Navigate to the specific class detail page
     const userRole = user?.role;
-    if (userRole === 'student') {
-      navigate('/app/student/schedule');
-    } else if (userRole === 'teacher') {
-      navigate('/app/teacher/schedule');
-    } else if (userRole === 'admin') {
-      navigate('/app/admin/schedule');
-    } else if (userRole === 'parent') {
-      navigate('/app/parent/schedule');
+    const classId = classItem?._id;
+    
+    if (classId) {
+      if (userRole === 'student') {
+        navigate(`/app/student/schedule/${classId}`);
+      } else if (userRole === 'teacher') {
+        navigate(`/app/teacher/schedule/${classId}`);
+      } else if (userRole === 'admin') {
+        navigate(`/app/admin/schedule/${classId}`);
+      } else if (userRole === 'parent') {
+        navigate(`/app/parent/schedule/${classId}`);
+      } else {
+        navigate(`/app/schedule/${classId}`);
+      }
     } else {
-      navigate('/app/schedule');
+      // Fallback to schedule list if no ID
+      if (userRole === 'student') {
+        navigate('/app/student/schedule');
+      } else if (userRole === 'teacher') {
+        navigate('/app/teacher/schedule');
+      } else if (userRole === 'admin') {
+        navigate('/app/admin/schedule');
+      } else if (userRole === 'parent') {
+        navigate('/app/parent/schedule');
+      } else {
+        navigate('/app/schedule');
+      }
     }
   };
 
