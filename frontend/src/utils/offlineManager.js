@@ -59,23 +59,31 @@ class OfflineManager {
     console.log('OfflineManager: Request failure detected:', {
       hasResponse: !!error.response,
       status: error.response?.status,
-      message: error.message
+      message: error.message,
+      code: error.code
     });
     
-    // Check if it's a network error (no response)
+    // Check if it's a network error (no response) - this could be backend down OR network down
     if (!error.response) {
       this.axiosFailureCount++;
       this.lastFailureTime = now;
       
       console.log(`OfflineManager: Network failure detected (count: ${this.axiosFailureCount})`);
       
-      // If we have multiple failures in a short time, go offline
+      // If we have multiple failures in a short time, check if it's backend-specific
       if (this.axiosFailureCount >= 2) {
-        console.log('OfflineManager: Setting network offline state');
-        this.setOfflineState(true);
-        // Reset backend failure count since this is a network issue
-        this.backendFailureCount = 0;
-        this.setBackendOfflineState(false);
+        // Check if the failure is to our backend endpoints specifically
+        const isBackendEndpoint = error.config?.url?.includes('/api/');
+        
+        if (isBackendEndpoint) {
+          console.log('OfflineManager: Backend-specific network failure - treating as backend offline');
+          this.setBackendOfflineState(true);
+          this.setOfflineState(false);
+        } else {
+          console.log('OfflineManager: General network failure - treating as network offline');
+          this.setOfflineState(true);
+          this.setBackendOfflineState(false);
+        }
       }
     } else {
       // Check if it's a server error (5xx) - backend maintenance
@@ -87,8 +95,6 @@ class OfflineManager {
         if (this.backendFailureCount >= 2) {
           console.log('OfflineManager: Setting backend offline state');
           this.setBackendOfflineState(true);
-          // Reset network failure count since this is a backend issue
-          this.axiosFailureCount = 0;
           this.setOfflineState(false);
         }
       } else {
