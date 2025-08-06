@@ -60,7 +60,8 @@ class OfflineManager {
       hasResponse: !!error.response,
       status: error.response?.status,
       message: error.message,
-      code: error.code
+      code: error.code,
+      url: error.config?.url
     });
     
     // Check if it's a network error (no response) - this could be backend down OR network down
@@ -79,6 +80,8 @@ class OfflineManager {
           console.log('OfflineManager: Backend-specific network failure - treating as backend offline');
           this.setBackendOfflineState(true);
           this.setOfflineState(false);
+          // Reset network failure count since we're treating this as backend issue
+          this.axiosFailureCount = 0;
         } else {
           console.log('OfflineManager: General network failure - treating as network offline');
           this.setOfflineState(true);

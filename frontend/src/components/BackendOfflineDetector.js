@@ -5,6 +5,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import offlineManager from '../utils/offlineManager';
 import axios from 'axios';
+import { useLocation } from 'react-router-dom';
 
 // Animated Cog Component (copied from Maintenance.js)
 const AnimatedCog = ({ size = 120, position = "bottom-right" }) => {
@@ -369,6 +370,7 @@ const BackendOfflineDetector = ({ children }) => {
   const [isChecking, setIsChecking] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const location = useLocation();
 
   // Listen to global offline manager for backend-specific failures
   useEffect(() => {
@@ -380,12 +382,48 @@ const BackendOfflineDetector = ({ children }) => {
     // Subscribe to backend offline manager
     offlineManager.addBackendListener(handleBackendStateChange);
 
+    // Proactively check backend health on mount and periodically
+    const checkBackendHealth = async () => {
+      try {
+        const response = await axios.get('/api/health', { timeout: 3000 });
+        if (response.status === 200) {
+          offlineManager.setBackendOfflineState(false);
+        }
+      } catch (error) {
+        console.log('BackendOfflineDetector: Initial health check failed:', error.message);
+        // Don't immediately set offline - let the axios interceptors handle it
+      }
+    };
 
+    // Check immediately
+    checkBackendHealth();
+
+    // Check periodically every 30 seconds
+    const interval = setInterval(checkBackendHealth, 30000);
 
     return () => {
       offlineManager.removeBackendListener(handleBackendStateChange);
+      clearInterval(interval);
     };
   }, []);
+
+  // Check backend health on route changes
+  useEffect(() => {
+    const checkBackendOnRouteChange = async () => {
+      try {
+        const response = await axios.get('/api/health', { timeout: 2000 });
+        if (response.status === 200) {
+          offlineManager.setBackendOfflineState(false);
+        }
+      } catch (error) {
+        console.log('BackendOfflineDetector: Route change health check failed:', error.message);
+        // Let the axios interceptors handle the offline state
+      }
+    };
+
+    // Check backend health when route changes
+    checkBackendOnRouteChange();
+  }, [location.pathname]);
 
   // Debug logging
   useEffect(() => {
