@@ -94,7 +94,7 @@ const AnimatedCog = ({ size = 120, position = "bottom-right" }) => {
               right: -30,
               width: 6,
               height: 6,
-              bgcolor: "#ff6b35",
+              bgcolor: "#FFA500",
               borderRadius: "50%",
               animation: "spark1 0.8s ease-out forwards",
               "@keyframes spark1": {
@@ -117,7 +117,7 @@ const AnimatedCog = ({ size = 120, position = "bottom-right" }) => {
               right: -40,
               width: 4,
               height: 4,
-              bgcolor: "#ffd700",
+              bgcolor: "#FFA500",
               borderRadius: "50%",
               animation: "spark2 0.6s ease-out 0.1s forwards",
               "@keyframes spark2": {
@@ -140,7 +140,7 @@ const AnimatedCog = ({ size = 120, position = "bottom-right" }) => {
               right: -20,
               width: 5,
               height: 5,
-              bgcolor: "#ff4757",
+              bgcolor: "#FFA500",
               borderRadius: "50%",
               animation: "spark3 0.7s ease-out 0.2s forwards",
               "@keyframes spark3": {
@@ -163,7 +163,7 @@ const AnimatedCog = ({ size = 120, position = "bottom-right" }) => {
               right: -50,
               width: 3,
               height: 3,
-              bgcolor: "#00d2ff",
+              bgcolor: "#FFA500",
               borderRadius: "50%",
               animation: "spark4 0.9s ease-out 0.3s forwards",
               "@keyframes spark4": {
@@ -476,7 +476,7 @@ const Maintenance = () => {
                     lineHeight: 1.2,
                   }}
                 >
-                  Επιστρέφουμε σύντομα με βελτιώσεις!
+                  Επιστρέφουμε σύντομα...
                 </Typography>
                 <Typography
                   variant="h6"
@@ -487,8 +487,8 @@ const Maintenance = () => {
                     fontSize: { xs: 16, md: 18 },
                   }}
                 >
-                  Το GradeBook βρίσκεται υπό συντήρηση για να προσθέσουμε νέες λειτουργίες 
-                  και να βελτιώσουμε την εμπειρία σας. Ευχαριστούμε για την υπομονή σας.
+                  Το GradeBook ή η συγκερκιμένη σελίδα βρίσκεται υπό συντήρηση για να προσθέσουμε νέες λειτουργίες 
+                  και να βελτιώσουμε την εμπειρία σας. Ελπίζουμε ότι θα διαρκέσει μόλις μερικά λεπτά. Ευχαριστούμε για την υπομονή σας.
                 </Typography>
                 <Button
                   variant="contained"

@@ -293,7 +293,7 @@ const PushNotificationManager = () => {
   }
 
   // Don't render on home page
-  if (window.location.pathname === '/home' || window.location.pathname === '/' || window.location.pathname === '/about' || window.location.pathname === '/contact') {
+  if (window.location.pathname === '/home' || window.location.pathname === '/' || window.location.pathname === '/about' || window.location.pathname === '/contact' || window.location.pathname === '/maintenance') {
     return null;
   }
 
