@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { store } from './store';
+import offlineManager from '../utils/offlineManager';
 
 /**
  * Configure axios with global interceptors for authentication and error handling
@@ -29,12 +30,17 @@ const setupAxios = () => {
     }
   );
 
-  // Response interceptor - handle authentication errors
+  // Response interceptor - handle authentication errors and offline detection
   axios.interceptors.response.use(
     (response) => {
+      // Mark as online on successful request
+      offlineManager.handleRequestSuccess();
       return response;
     },
     (error) => {
+      // Handle network failures for offline detection
+      offlineManager.handleRequestFailure(error);
+      
       // Handle 401 Unauthorized errors
       if (error.response && error.response.status === 401) {
         console.error('Authentication error - will redirect to login');

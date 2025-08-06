@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Container } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import offlineManager from '../utils/offlineManager';
 
 // Styled component for the offline message container with watermark
 const OfflineContainer = styled(Box)(({ theme }) => ({
@@ -38,49 +39,96 @@ const OfflineContainer = styled(Box)(({ theme }) => ({
 }));
 
 const OfflineDetector = ({ children }) => {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
+  const [isChecking, setIsChecking] = useState(false);
 
+  // Listen to global offline manager
   useEffect(() => {
-    const handleOnline = () => {
-      console.log('Connection restored');
-      setIsOnline(true);
-      setRetryCount(0);
+    const handleOfflineStateChange = (isOffline) => {
+      console.log('OfflineDetector: State changed to', isOffline ? 'offline' : 'online');
+      setIsOnline(!isOffline);
+      if (!isOffline) {
+        setRetryCount(0);
+      }
+    };
+
+    // Subscribe to offline manager
+    offlineManager.addListener(handleOfflineStateChange);
+
+    return () => {
+      offlineManager.removeListener(handleOfflineStateChange);
+    };
+  }, []);
+
+  // Simple connectivity check function
+  const checkConnectivity = async () => {
+    try {
+      // Try multiple endpoints to be more robust
+      const endpoints = ['/api/health', '/api/users/me', '/api/schools'];
+      
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            signal: AbortSignal.timeout(3000)
+          });
+          
+          if (response.ok) {
+            offlineManager.setOfflineState(false);
+            return true;
+          }
+        } catch (error) {
+          console.log(`Failed to reach ${endpoint}:`, error.message);
+          continue;
+        }
+      }
+      
+      // If we get here, all endpoints failed
+      offlineManager.setOfflineState(true);
+      return false;
+    } catch (error) {
+      console.log('All connectivity checks failed:', error.message);
+      offlineManager.setOfflineState(true);
+      return false;
+    }
+  };
+
+  // Listen for browser online/offline events as backup
+  useEffect(() => {
+    const handleOnline = async () => {
+      console.log('Browser reports online, checking connectivity...');
+      setIsChecking(true);
+      await checkConnectivity();
+      setIsChecking(false);
     };
 
     const handleOffline = () => {
-      console.log('Connection lost');
-      setIsOnline(false);
+      console.log('Browser reports offline');
+      offlineManager.setOfflineState(true);
     };
 
-    // Add event listeners
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Cleanup
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  const handleRetry = () => {
+  // Handle retry button click
+  const handleRetry = async () => {
     setRetryCount(prev => prev + 1);
+    setIsChecking(true);
     
-    // Check if we're back online
-    if (navigator.onLine) {
-      setIsOnline(true);
-      setRetryCount(0);
-    } else {
-      // If still offline, try to detect connectivity
-      // This can help in cases where the browser's online status is delayed
-      setTimeout(() => {
-        if (navigator.onLine) {
-          setIsOnline(true);
-          setRetryCount(0);
-        }
-      }, 1000);
-    }
+    // Reset the offline manager and try to connect
+    offlineManager.reset();
+    await checkConnectivity();
+    setIsChecking(false);
   };
 
   // If online, render children normally
@@ -121,6 +169,7 @@ const OfflineDetector = ({ children }) => {
           variant="contained"
           size="large"
           onClick={handleRetry}
+          disabled={isChecking}
           sx={{
             px: 4,
             py: 1.5,
@@ -133,7 +182,7 @@ const OfflineDetector = ({ children }) => {
             }
           }}
         >
-          Δοκιμάστε ξανά
+          {isChecking ? 'Ελέγχοντας...' : 'Δοκιμάστε ξανά'}
         </Button>
         
         {retryCount > 0 && (
