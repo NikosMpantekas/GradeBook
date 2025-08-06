@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Container } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import offlineManager from '../utils/offlineManager';
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 // Styled component for the offline message container with watermark
 const OfflineContainer = styled(Box)(({ theme }) => ({
@@ -170,6 +171,7 @@ const OfflineDetector = ({ children }) => {
           size="large"
           onClick={handleRetry}
           disabled={isChecking}
+          startIcon={<RefreshIcon />}
           sx={{
             px: 4,
             py: 1.5,
@@ -182,7 +184,7 @@ const OfflineDetector = ({ children }) => {
             }
           }}
         >
-          {isChecking ? 'Ελέγχοντας...' : 'Δοκιμάστε ξανά'}
+          {isChecking ? 'Περιμένετε...' : 'ΔΟΚΙΜΑΣΤΕ ΞΑΝΑ'}
         </Button>
         
         {retryCount > 0 && (
