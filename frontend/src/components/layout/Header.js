@@ -23,6 +23,7 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import { logout, reset } from '../../features/auth/authSlice';
 import { toggleDarkMode } from '../../features/ui/uiSlice';
+import LanguageSwitcher from '../common/LanguageSwitcher';
 
 const Header = ({ drawerWidth, handleDrawerToggle }) => {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -107,6 +108,8 @@ const Header = ({ drawerWidth, handleDrawerToggle }) => {
 
         {user && (
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <LanguageSwitcher variant="icon" />
+            
             <Tooltip title="Toggle dark mode">
               <IconButton 
                 size="large" 

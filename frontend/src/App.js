@@ -6,6 +6,9 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useSelector, useDispatch } from 'react-redux';
 
+// Initialize i18n
+import './i18n/i18n';
+
 // Push Notification Component
 import PushNotificationManager from './components/PushNotificationManager';
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FeatureToggleContext } from '../../context/FeatureToggleContext';
 import { 
   Box, 
@@ -49,6 +50,7 @@ import { useFeatureToggles } from '../../context/FeatureToggleContext';
 
 const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = false }) => {
   console.log('Sidebar rendering with props:', { drawerWidth, mobileOpen, permanent });
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -101,110 +103,110 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       
       // 1. Parent Dashboard
       {
-        text: 'Dashboard',
+        text: t('navigation.dashboard'),
         icon: <DashboardIcon />,
         path: '/app/parent',
         roles: ['parent'],
         section: 'parent',
-        description: 'Overview of student progress'
+        description: t('dashboard.welcome')
       },
       
       // 2. Student Grades (Parent)
       {
-        text: 'Student Grades',
+        text: t('grades.studentGrades'),
         icon: <GradesIcon />,
         path: '/app/parent/grades',
         roles: ['parent'],
         section: 'parent',
-        description: 'View student grades and performance'
+        description: t('grades.studentGrades')
       },
       
       // 3. Notifications (Parent)
       {
-        text: 'Notifications',
+        text: t('navigation.notifications'),
         icon: <NotificationsIcon />,
         path: '/app/parent/notifications',
         roles: ['parent'],
         section: 'parent',
-        description: 'School communications and updates'
+        description: t('notifications.title')
       },
       
       // 4. Contact Support (Parent)
       {
-        text: 'Contact Support',
+        text: t('navigation.contact'),
         icon: <ContactSupportIcon />,
         path: '/app/parent/contact',
         roles: ['parent'],
         section: 'parent',
-        description: 'Get help and support'
+        description: t('navigation.help')
       },
       
       // STUDENT MENU ITEMS (FOCUSED - ONLY GRADES AND NOTIFICATIONS)
       
       // 1. Student Dashboard
       {
-        text: 'Dashboard',
+        text: t('navigation.dashboard'),
         icon: <DashboardIcon />,
         path: '/app/student',
         roles: ['student'],
         section: 'student',
-        description: 'Your academic overview and daily updates'
+        description: t('dashboard.welcome')
       },
       
       // 2. View My Grades (Student)
       {
-        text: 'My Grades',
+        text: t('grades.title'),
         icon: <GradesIcon />,
         path: '/app/student/grades',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableGrades'),
-        description: 'View your academic performance and grades'
+        description: t('grades.studentGrades')
       },
       
       // 3. View My Notifications (Student)
       {
-        text: 'My Notifications',
+        text: t('navigation.notifications'),
         icon: <NotificationsIcon />,
         path: '/app/student/notifications',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
-        description: 'School announcements and messages'
+        description: t('notifications.title')
       },
       
       // 4. View My Schedule (Student)
       {
-        text: 'My Schedule',
+        text: t('navigation.calendar'),
         icon: <ScheduleIcon />,
         path: '/app/student/schedule',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableSchedule'),
-        description: 'Your daily class schedule'
+        description: t('calendar.title')
       },
       
       // 5. Contact (Student)
       {
-        text: 'Contact',
+        text: t('navigation.contact'),
         icon: <ContactSupportIcon />,
         path: '/app/student/contact',
         roles: ['student'],
         section: 'student',
         checkPermission: () => isFeatureEnabled('enableContact'),
-        description: 'Contact school administration for support'
+        description: t('navigation.contact')
       },
       
       // TEACHER MENU ITEMS
       
       // 1. Teacher Dashboard
       {
-        text: 'Dashboard',
+        text: t('navigation.dashboard'),
         icon: <DashboardIcon />,
         path: '/app/teacher',
         roles: ['teacher'],
         section: 'teacher',
-        description: 'Your teaching overview and daily activities'
+        description: t('dashboard.welcome')
       },
       
       // STEP 4: TEACHER FUNCTIONS (REFINED - REMOVED MANAGEMENT FUNCTIONS PER USER REQUEST)
@@ -213,81 +215,81 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       
       // 6. Add Grades (Teacher)
       {
-        text: 'Add Grades',
+        text: t('grades.addGrade'),
         icon: <AddIcon />,
         path: '/app/teacher/grades/create',
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableGrades'),
-        description: 'Create and assign grades to students'
+        description: t('grades.addGrade')
       },
       
       // 7. Manage Grades (Teacher)
       {
-        text: 'Manage Grades',
+        text: t('grades.manageGrades'),
         icon: <GradesIcon />,
         path: '/app/teacher/grades/manage',
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableGrades'),
-        description: 'View and edit existing student grades'
+        description: t('grades.manageGrades')
       },
       
       // 8. Grades Overview (Teacher)
       {
-        text: 'Grades Overview',
+        text: t('statistics.title'),
         icon: <AnalyticsIcon />,
         path: '/app/teacher/student-stats',
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableGrades'),
-        description: 'Statistical overview of student performance'
+        description: t('statistics.overallPerformance')
       },
       
       // 9. Add Notifications (Teacher)
       {
-        text: 'Add Notifications',
+        text: t('notifications.addNotification'),
         icon: <AddIcon />,
         path: '/app/teacher/notifications/create',
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
-        description: 'Send announcements to students and parents'
+        description: t('notifications.addNotification')
       },
       
       // 10. Received Notifications (Teacher)
       {
-        text: 'Received Notifications',
+        text: t('navigation.notifications'),
         icon: <NotificationsIcon />,
         path: '/app/teacher/notifications',
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableNotifications'),
-        description: 'View messages and announcements received from administration'
+        description: t('notifications.title')
       },
       
       // NOTE: Removed Manage School Branches per user request
       
       // 12. Schedule (Teacher)
       {
-        text: 'Schedule',
+        text: t('navigation.calendar'),
         icon: <ScheduleIcon />,
         path: '/app/teacher/schedule',
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableSchedule'),
-        description: 'View your teaching schedule and class timetable'
+        description: t('calendar.title')
       },
       
       // 13. Contact (Teacher)
       {
-        text: 'Contact',
+        text: t('navigation.contact'),
         icon: <ContactSupportIcon />,
         path: '/app/teacher/contact',
         roles: ['teacher'],
         section: 'teacher',
         checkPermission: () => isFeatureEnabled('enableContact'),
-        description: 'Contact school administration for support'
+        description: t('navigation.contact')
       },
       
       // ADMIN MENU ITEMS - REFACTORED (only working features)
@@ -796,7 +798,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
             <ListItemIcon sx={{ minWidth: 40 }}>
               <PersonIcon />
             </ListItemIcon>
-            <ListItemText primary="Profile" />
+            <ListItemText primary={t('common.profile')} />
           </ListItemButton>
         </ListItem>
         
@@ -816,7 +818,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
             <ListItemIcon sx={{ minWidth: 40, color: 'inherit' }}>
               <LogoutIcon />
             </ListItemIcon>
-            <ListItemText primary="Logout" />
+            <ListItemText primary={t('common.logout')} />
           </ListItemButton>
         </ListItem>
       </List>

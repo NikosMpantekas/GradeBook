@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Box,
@@ -20,6 +21,7 @@ import { LockOutlined as LockOutlinedIcon } from '@mui/icons-material';
 import { login, reset } from '../features/auth/authSlice';
 
 const Login = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -151,7 +153,7 @@ const Login = () => {
           <LockOutlinedIcon />
         </Avatar>
         <Typography component="h1" variant="h5">
-          GradeBook Login
+          {t('auth.loginTitle')}
         </Typography>
         <Box component="form" onSubmit={onSubmit} noValidate sx={{ mt: 1, width: '100%' }}>
           <TextField
@@ -159,7 +161,7 @@ const Login = () => {
             required
             fullWidth
             id="email"
-            label="Email Address"
+            label={t('auth.emailPlaceholder')}
             name="email"
             autoComplete="email"
             autoFocus
@@ -171,7 +173,7 @@ const Login = () => {
             required
             fullWidth
             name="password"
-            label="Password"
+            label={t('auth.passwordPlaceholder')}
             type="password"
             id="password"
             autoComplete="current-password"
@@ -200,7 +202,7 @@ const Login = () => {
             {isLoading ? (
               <CircularProgress size={24} color="inherit" />
             ) : (
-              'Sign In'
+              t('auth.loginButton')
             )}
           </Button>
           {/* Sign-up option removed as accounts are admin-created only */}

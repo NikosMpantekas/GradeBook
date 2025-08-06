@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { getUserData } from '../features/auth/authSlice';
 import logger from '../services/loggerService';
 import ErrorBoundary from '../components/common/ErrorBoundary';
@@ -31,6 +32,7 @@ import { getSubjects } from '../features/subjects/subjectSlice';
 import { useRef } from 'react';
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
@@ -457,9 +459,9 @@ const Dashboard = () => {
 
   const getWelcomeMessage = () => {
     const hours = new Date().getHours();
-    if (hours < 12) return 'Good Morning';
-    if (hours < 18) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hours < 12) return t('dashboard.welcome');
+    if (hours < 18) return t('dashboard.welcome');
+    return t('dashboard.welcome');
   };
 
   // If data is still loading, show loading state
@@ -487,14 +489,14 @@ const Dashboard = () => {
           }}
         >
           <Typography variant="body1" color="warning.dark">
-            Some data could not be loaded. The dashboard is showing partial information.
+            {t('errors.generic')}
           </Typography>
           <Button 
             size="small" 
             onClick={() => window.location.reload()} 
             sx={{ mt: 1 }}
           >
-            Refresh Page
+            {t('common.refresh')}
           </Button>
         </Paper>
       )}
@@ -515,7 +517,7 @@ const Dashboard = () => {
               {getWelcomeMessage()}, {user?.name}!
             </Typography>
             <Typography variant="body1">
-              Welcome to GradeBook - Your educational progress at a glance.
+              {t('dashboard.welcome')}
             </Typography>
           </Paper>
         </Grid>
@@ -524,7 +526,7 @@ const Dashboard = () => {
         <Grid item xs={12} md={6}>
           <Paper elevation={2} sx={{ p: { xs: 1.5, sm: 2 }, height: '100%', borderRadius: 2 }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-              My Information
+              {t('common.profile')}
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
@@ -641,7 +643,7 @@ const Dashboard = () => {
                       onClick={() => navigate('/app/admin/users')}
                       fullWidth
                     >
-                      Manage Users
+                      {t('navigation.students')}
                     </Button>
                   </Grid>
                   <Grid item xs={12}>
@@ -651,7 +653,7 @@ const Dashboard = () => {
                       onClick={() => navigate('/app/admin/schools')}
                       fullWidth
                     >
-                      Manage Schools
+                      {t('navigation.settings')}
                     </Button>
                   </Grid>
                 </>
@@ -674,7 +676,7 @@ const Dashboard = () => {
                   }}
                   fullWidth
                 >
-                  View Notifications
+                  {t('dashboard.notifications')}
                 </Button>
               </Grid>
             </Grid>
@@ -686,7 +688,7 @@ const Dashboard = () => {
         <Grid item xs={12} md={6}>
           <Paper elevation={2} sx={{ p: 2, minHeight: '120px' }}>
             <Typography variant="h6" gutterBottom>
-              Notifications
+              {t('dashboard.notifications')}
             </Typography>
             {notificationsLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
@@ -694,7 +696,7 @@ const Dashboard = () => {
               </Box>
             ) : loadingErrors.notifications ? (
               <Typography color="error">
-                Error loading notifications
+                {t('errors.generic')}
               </Typography>
             ) : (
               <>
