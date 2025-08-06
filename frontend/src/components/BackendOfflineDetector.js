@@ -426,6 +426,9 @@ const BackendOfflineDetector = ({ children }) => {
     return children;
   }
 
+  // If backend is offline, show maintenance page as full-screen overlay
+  // This should override any other offline states
+
   // Color palette for dark mode (maintenance page is always dark)
   const colors = {
     background: "#181b20",
@@ -441,12 +444,17 @@ const BackendOfflineDetector = ({ children }) => {
     warning: "#ff6b35",
   };
 
-  // If backend is offline, show maintenance page
+  // If backend is offline, show maintenance page as full-screen overlay
   return (
     <Box
       sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         bgcolor: colors.background,
-        minHeight: "100vh",
+        zIndex: 9999,
         fontFamily: "Roboto, Arial, sans-serif",
         display: "flex",
         flexDirection: "column",
