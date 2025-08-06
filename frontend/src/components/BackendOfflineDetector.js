@@ -398,18 +398,21 @@ const BackendOfflineDetector = ({ children }) => {
         }
       } catch (error) {
         console.log('BackendOfflineDetector: Initial health check failed:', error.message);
-        // Set backend offline for any error to backend health endpoint
-        console.log('BackendOfflineDetector: Backend connection failed - setting offline');
-        offlineManager.setBackendOfflineState(true);
-        setIsBackendOnline(false);
+        // Only set backend offline for specific backend errors
+        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_SSL_CERT_AUTHORITY') {
+          console.log('BackendOfflineDetector: Backend connection failed - setting offline');
+          offlineManager.setBackendOfflineState(true);
+          setIsBackendOnline(false);
+        }
+        // Don't set backend offline for general ERR_NETWORK - let the network offline detector handle it
       }
     };
 
     // Check immediately
     checkBackendHealth();
 
-    // Check periodically every 5 seconds (very frequent)
-    const interval = setInterval(checkBackendHealth, 5000);
+    // Check periodically every 15 seconds (balanced frequency)
+    const interval = setInterval(checkBackendHealth, 15000);
 
     return () => {
       offlineManager.removeBackendListener(handleBackendStateChange);
@@ -428,10 +431,13 @@ const BackendOfflineDetector = ({ children }) => {
         }
       } catch (error) {
         console.log('BackendOfflineDetector: Route change health check failed:', error.message);
-        // Set backend offline for any error to backend health endpoint
-        console.log('BackendOfflineDetector: Route change detected backend failure - setting offline');
-        offlineManager.setBackendOfflineState(true);
-        setIsBackendOnline(false);
+        // Only set backend offline for specific backend errors
+        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_SSL_CERT_AUTHORITY') {
+          console.log('BackendOfflineDetector: Route change detected backend failure - setting offline');
+          offlineManager.setBackendOfflineState(true);
+          setIsBackendOnline(false);
+        }
+        // Don't set backend offline for general ERR_NETWORK - let the network offline detector handle it
       }
     };
 

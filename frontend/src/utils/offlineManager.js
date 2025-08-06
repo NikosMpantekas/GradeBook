@@ -72,12 +72,14 @@ class OfflineManager {
       console.log(`OfflineManager: Network failure detected (count: ${this.axiosFailureCount})`);
       
       // If we have multiple failures in a short time, check if it's backend-specific
-      if (this.axiosFailureCount >= 1) {
+      if (this.axiosFailureCount >= 2) {
         // Check if the failure is to our backend endpoints specifically
         const isBackendEndpoint = error.config?.url?.includes('/api/');
         
-        // Treat as backend offline for backend endpoints with any network error
-        if (isBackendEndpoint) {
+        // Only treat as backend offline for specific backend errors, not general network issues
+        const isBackendSpecificError = error.code === 'ECONNREFUSED' || error.code === 'ERR_SSL_CERT_AUTHORITY';
+        
+        if (isBackendEndpoint && isBackendSpecificError) {
           console.log('OfflineManager: Backend-specific network failure - treating as backend offline');
           this.setBackendOfflineState(true);
           this.setOfflineState(false);
@@ -96,7 +98,7 @@ class OfflineManager {
         console.log(`OfflineManager: Backend server error detected (count: ${this.backendFailureCount})`);
         
         // If we have multiple 5xx errors, consider backend offline
-        if (this.backendFailureCount >= 1) {
+        if (this.backendFailureCount >= 2) {
           console.log('OfflineManager: Setting backend offline state');
           this.setBackendOfflineState(true);
           this.setOfflineState(false);
