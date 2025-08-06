@@ -384,6 +384,11 @@ const BackendOfflineDetector = ({ children }) => {
     };
   }, []);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('BackendOfflineDetector: Current state - isBackendOnline:', isBackendOnline);
+  }, [isBackendOnline]);
+
   // Function to check backend health
   const checkBackendHealth = async () => {
     try {

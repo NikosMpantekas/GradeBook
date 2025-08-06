@@ -56,6 +56,12 @@ class OfflineManager {
   handleRequestFailure(error) {
     const now = Date.now();
     
+    console.log('OfflineManager: Request failure detected:', {
+      hasResponse: !!error.response,
+      status: error.response?.status,
+      message: error.message
+    });
+    
     // Check if it's a network error (no response)
     if (!error.response) {
       this.axiosFailureCount++;
@@ -65,7 +71,11 @@ class OfflineManager {
       
       // If we have multiple failures in a short time, go offline
       if (this.axiosFailureCount >= 2) {
+        console.log('OfflineManager: Setting network offline state');
         this.setOfflineState(true);
+        // Reset backend failure count since this is a network issue
+        this.backendFailureCount = 0;
+        this.setBackendOfflineState(false);
       }
     } else {
       // Check if it's a server error (5xx) - backend maintenance
@@ -75,7 +85,11 @@ class OfflineManager {
         
         // If we have multiple 5xx errors, consider backend offline
         if (this.backendFailureCount >= 2) {
+          console.log('OfflineManager: Setting backend offline state');
           this.setBackendOfflineState(true);
+          // Reset network failure count since this is a backend issue
+          this.axiosFailureCount = 0;
+          this.setOfflineState(false);
         }
       } else {
         // Reset failure count for client errors (4xx)
