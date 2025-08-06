@@ -388,10 +388,15 @@ const BackendOfflineDetector = ({ children }) => {
         const response = await axios.get('/api/health', { timeout: 3000 });
         if (response.status === 200) {
           offlineManager.setBackendOfflineState(false);
+          setIsBackendOnline(true);
         }
       } catch (error) {
         console.log('BackendOfflineDetector: Initial health check failed:', error.message);
         // Don't immediately set offline - let the axios interceptors handle it
+        // Only set offline if we're sure it's a backend issue
+        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+          offlineManager.setBackendOfflineState(true);
+        }
       }
     };
 
@@ -414,10 +419,14 @@ const BackendOfflineDetector = ({ children }) => {
         const response = await axios.get('/api/health', { timeout: 2000 });
         if (response.status === 200) {
           offlineManager.setBackendOfflineState(false);
+          setIsBackendOnline(true);
         }
       } catch (error) {
         console.log('BackendOfflineDetector: Route change health check failed:', error.message);
-        // Let the axios interceptors handle the offline state
+        // Only set offline if we're sure it's a backend issue
+        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+          offlineManager.setBackendOfflineState(true);
+        }
       }
     };
 
@@ -609,7 +618,7 @@ const BackendOfflineDetector = ({ children }) => {
                     },
                   }}
                 >
-                  {isChecking ? 'Ελέγχοντας...' : 'Δοκιμάστε Ξανά'}
+                  {isChecking ? 'Περιμένετε...' : 'Δοκιμάστε Ξανά'}
                 </Button>
               </Box>
             </Grid>

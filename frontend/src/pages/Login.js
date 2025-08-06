@@ -26,6 +26,8 @@ const Login = () => {
     saveCredentials: false,
   });
 
+  const [version, setVersion] = useState('');
+
   const { email, password, saveCredentials } = formData;
 
   const navigate = useNavigate();
@@ -100,6 +102,18 @@ const Login = () => {
       }
     };
   }, [user, isError, isSuccess, message, navigate, dispatch]);
+
+  // Load version dynamically like the Footer component
+  useEffect(() => {
+    import('../config/appConfig.js')
+      .then(module => {
+        setVersion(module.appConfig.version);
+      })
+      .catch(error => {
+        console.error('Failed to load appConfig:', error);
+        setVersion('0.0.0');
+      });
+  }, []);
 
   const onChange = (e) => {
     setFormData((prevState) => ({
@@ -194,8 +208,12 @@ const Login = () => {
       </Paper>
       <Box sx={{ mt: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          &copy; {new Date().getFullYear()} GradeBook PWA 
-          Created by Nikos Mpantekas
+          {'© '}
+          {new Date().getFullYear()}
+          {' GradeBook - Progressive Web App \n Created by the GradeBook Team'}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {'Version: '}{version}
         </Typography>
       </Box>
     </Container>
