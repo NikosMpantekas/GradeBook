@@ -392,12 +392,9 @@ const BackendOfflineDetector = ({ children }) => {
         }
       } catch (error) {
         console.log('BackendOfflineDetector: Initial health check failed:', error.message);
-        // Only set backend offline for specific backend errors, not general network issues
-        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_SSL_CERT_AUTHORITY') {
-          console.log('BackendOfflineDetector: Backend connection failed - setting offline');
-          offlineManager.setBackendOfflineState(true);
-        }
-        // Don't set backend offline for general ERR_NETWORK - let the network offline detector handle it
+        // Set backend offline for any error to backend health endpoint
+        console.log('BackendOfflineDetector: Backend connection failed - setting offline');
+        offlineManager.setBackendOfflineState(true);
       }
     };
 
@@ -424,12 +421,9 @@ const BackendOfflineDetector = ({ children }) => {
         }
       } catch (error) {
         console.log('BackendOfflineDetector: Route change health check failed:', error.message);
-        // Only set backend offline for specific backend errors, not general network issues
-        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_SSL_CERT_AUTHORITY') {
-          console.log('BackendOfflineDetector: Route change detected backend failure - setting offline');
-          offlineManager.setBackendOfflineState(true);
-        }
-        // Don't set backend offline for general ERR_NETWORK - let the network offline detector handle it
+        // Set backend offline for any error to backend health endpoint
+        console.log('BackendOfflineDetector: Route change detected backend failure - setting offline');
+        offlineManager.setBackendOfflineState(true);
       }
     };
 
