@@ -99,69 +99,49 @@ export const WelcomePanel = ({ user }) => {
           flexDirection: { xs: 'column', md: 'row' }, 
           gap: { xs: 2, md: 0 } 
         }}>
-          {/* Mobile Layout: Time/Date on left, Monogram on right */}
+          {/* Mobile Layout: Time/Date only, no monogram */}
           {isMobile ? (
-            <>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'flex-start',
+              width: '100%'
+            }}>
+              <Typography variant="h4" component="h1" gutterBottom sx={{ 
+                fontWeight: 'bold', 
+                fontSize: { xs: '1.5rem', sm: '2.125rem' },
+                textAlign: 'left'
+              }}>
+                {getGreeting()}, {user?.name || 'User'}! 👋
+              </Typography>
+              <Typography variant="h6" sx={{ 
+                opacity: 0.9, 
+                mb: 1, 
+                fontSize: { xs: '1rem', sm: '1.25rem' },
+                textAlign: 'left'
+              }}>
+                Welcome to your {getRoleDisplayName(user?.role)} Dashboard
+              </Typography>
               <Box sx={{ 
                 display: 'flex', 
-                flexDirection: 'column', 
+                flexDirection: 'column',
                 alignItems: 'flex-start',
-                flex: 1
+                gap: 1
               }}>
-                <Typography variant="h4" component="h1" gutterBottom sx={{ 
-                  fontWeight: 'bold', 
-                  fontSize: { xs: '1.5rem', sm: '2.125rem' },
-                  textAlign: 'left'
-                }}>
-                  {getGreeting()}, {user?.name || 'User'}! 👋
-                </Typography>
-                <Typography variant="h6" sx={{ 
-                  opacity: 0.9, 
-                  mb: 1, 
-                  fontSize: { xs: '1rem', sm: '1.25rem' },
-                  textAlign: 'left'
-                }}>
-                  Welcome to your {getRoleDisplayName(user?.role)} Dashboard
-                </Typography>
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  gap: 1
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
-                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      {format(currentTime, 'EEEE, MMMM do, yyyy')}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
-                    <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
-                      {format(currentTime, 'HH:mm:ss')}
-                    </Typography>
-                  </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                  <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                    {format(currentTime, 'EEEE, MMMM do, yyyy')}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                  <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
+                    {format(currentTime, 'HH:mm:ss')}
+                  </Typography>
                 </Box>
               </Box>
-              <Avatar 
-                onClick={handleProfileClick}
-                sx={{ 
-                  width: { xs: 60, sm: 80 }, 
-                  height: { xs: 60, sm: 80 },
-                  bgcolor: 'rgba(255,255,255,0.2)',
-                  fontSize: { xs: '1.5rem', sm: '2rem' },
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    transform: 'scale(1.05)',
-                    bgcolor: 'rgba(255,255,255,0.3)',
-                    boxShadow: theme => `0 4px 8px ${theme.palette.primary.dark}40`
-                  }
-                }}
-              >
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </Avatar>
-            </>
+            </Box>
           ) : (
             /* Desktop Layout: Original layout */
             <>
@@ -755,35 +735,19 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
   };
 
   const handleClassClick = (classItem) => {
-    // Navigate to the specific class detail page
+    // Navigate to the schedule page
     const userRole = user?.role;
-    const classId = classItem?._id;
     
-    if (classId) {
-      if (userRole === 'student') {
-        navigate(`/app/student/schedule/${classId}`);
-      } else if (userRole === 'teacher') {
-        navigate(`/app/teacher/schedule/${classId}`);
-      } else if (userRole === 'admin') {
-        navigate(`/app/admin/schedule/${classId}`);
-      } else if (userRole === 'parent') {
-        navigate(`/app/parent/schedule/${classId}`);
-      } else {
-        navigate(`/app/schedule/${classId}`);
-      }
+    if (userRole === 'student') {
+      navigate('/app/student/schedule');
+    } else if (userRole === 'teacher') {
+      navigate('/app/teacher/schedule');
+    } else if (userRole === 'admin') {
+      navigate('/app/admin/schedule');
+    } else if (userRole === 'parent') {
+      navigate('/app/parent/schedule');
     } else {
-      // Fallback to schedule list if no ID
-      if (userRole === 'student') {
-        navigate('/app/student/schedule');
-      } else if (userRole === 'teacher') {
-        navigate('/app/teacher/schedule');
-      } else if (userRole === 'admin') {
-        navigate('/app/admin/schedule');
-      } else if (userRole === 'parent') {
-        navigate('/app/parent/schedule');
-      } else {
-        navigate('/app/schedule');
-      }
+      navigate('/app/schedule');
     }
   };
 
