@@ -382,6 +382,12 @@ const BackendOfflineDetector = ({ children }) => {
     // Subscribe to backend offline manager
     offlineManager.addBackendListener(handleBackendStateChange);
 
+    // Check if backend is already known to be offline
+    if (offlineManager.isBackendOffline) {
+      console.log('BackendOfflineDetector: Backend already known to be offline');
+      setIsBackendOnline(false);
+    }
+
     // Proactively check backend health on mount and periodically
     const checkBackendHealth = async () => {
       try {
@@ -395,6 +401,7 @@ const BackendOfflineDetector = ({ children }) => {
         // Set backend offline for any error to backend health endpoint
         console.log('BackendOfflineDetector: Backend connection failed - setting offline');
         offlineManager.setBackendOfflineState(true);
+        setIsBackendOnline(false);
       }
     };
 
@@ -424,6 +431,7 @@ const BackendOfflineDetector = ({ children }) => {
         // Set backend offline for any error to backend health endpoint
         console.log('BackendOfflineDetector: Route change detected backend failure - setting offline');
         offlineManager.setBackendOfflineState(true);
+        setIsBackendOnline(false);
       }
     };
 
@@ -476,7 +484,7 @@ const BackendOfflineDetector = ({ children }) => {
 
   // If backend is offline, show maintenance page as full-screen overlay
   // This should override any other offline states
-  console.log('BackendOfflineDetector: Showing maintenance page');
+  console.log('BackendOfflineDetector: Showing maintenance page - Backend is offline');
 
   // Color palette for dark mode (maintenance page is always dark)
   const colors = {
