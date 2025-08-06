@@ -19,7 +19,8 @@ import {
   Divider,
   Button,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  ListItemButton
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -40,6 +41,7 @@ import {
 } from '@mui/icons-material';
 import { format, isValid, parseISO } from 'date-fns';
 import { useFeatureToggles } from '../../context/FeatureToggleContext';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Welcome Panel Component
@@ -49,6 +51,7 @@ export const WelcomePanel = ({ user }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -75,6 +78,10 @@ export const WelcomePanel = ({ user }) => {
     }
   };
 
+  const handleProfileClick = () => {
+    navigate('/app/profile');
+  };
+
   return (
     <Card 
       sx={{ 
@@ -84,45 +91,127 @@ export const WelcomePanel = ({ user }) => {
       }}
     >
       <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 2, md: 0 } }}>
-          <Box sx={{ width: '100%' }}>
-            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-              {getGreeting()}, {user?.name || 'User'}! 👋
-            </Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-              Welcome to your {getRoleDisplayName(user?.role)} Dashboard
-            </Typography>
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 2,
-              flexDirection: { xs: 'column', md: 'row' },
-              textAlign: { xs: 'center', md: 'left' }
-            }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
-                <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                  {format(currentTime, 'EEEE, MMMM do, yyyy')}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          flexDirection: { xs: 'column', md: 'row' }, 
+          gap: { xs: 2, md: 0 } 
+        }}>
+          {/* Mobile Layout: Time/Date on left, Monogram on right */}
+          {isMobile ? (
+            <>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'flex-start',
+                flex: 1
+              }}>
+                <Typography variant="h4" component="h1" gutterBottom sx={{ 
+                  fontWeight: 'bold', 
+                  fontSize: { xs: '1.5rem', sm: '2.125rem' },
+                  textAlign: 'left'
+                }}>
+                  {getGreeting()}, {user?.name || 'User'}! 👋
                 </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
-                <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
-                  {format(currentTime, 'HH:mm:ss')}
+                <Typography variant="h6" sx={{ 
+                  opacity: 0.9, 
+                  mb: 1, 
+                  fontSize: { xs: '1rem', sm: '1.25rem' },
+                  textAlign: 'left'
+                }}>
+                  Welcome to your {getRoleDisplayName(user?.role)} Dashboard
                 </Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: 1
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                      {format(currentTime, 'EEEE, MMMM do, yyyy')}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                    <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
+                      {format(currentTime, 'HH:mm:ss')}
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
-            </Box>
-          </Box>
-          <Avatar 
-            sx={{ 
-              width: { xs: 60, sm: 80 }, 
-              height: { xs: 60, sm: 80 },
-              bgcolor: 'rgba(255,255,255,0.2)',
-              fontSize: { xs: '1.5rem', sm: '2rem' }
-            }}
-          >
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-          </Avatar>
+              <Avatar 
+                onClick={handleProfileClick}
+                sx={{ 
+                  width: { xs: 60, sm: 80 }, 
+                  height: { xs: 60, sm: 80 },
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  fontSize: { xs: '1.5rem', sm: '2rem' },
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                    bgcolor: 'rgba(255,255,255,0.3)',
+                    boxShadow: theme => `0 4px 8px ${theme.palette.primary.dark}40`
+                  }
+                }}
+              >
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </Avatar>
+            </>
+          ) : (
+            /* Desktop Layout: Original layout */
+            <>
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+                  {getGreeting()}, {user?.name || 'User'}! 👋
+                </Typography>
+                <Typography variant="h6" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+                  Welcome to your {getRoleDisplayName(user?.role)} Dashboard
+                </Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 2,
+                  flexDirection: { xs: 'column', md: 'row' },
+                  textAlign: { xs: 'center', md: 'left' }
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                      {format(currentTime, 'EEEE, MMMM do, yyyy')}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                    <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
+                      {format(currentTime, 'HH:mm:ss')}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+              <Avatar 
+                onClick={handleProfileClick}
+                sx={{ 
+                  width: { xs: 60, sm: 80 }, 
+                  height: { xs: 60, sm: 80 },
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  fontSize: { xs: '1.5rem', sm: '2rem' },
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                    bgcolor: 'rgba(255,255,255,0.3)',
+                    boxShadow: theme => `0 4px 8px ${theme.palette.primary.dark}40`
+                  }
+                }}
+              >
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </Avatar>
+            </>
+          )}
         </Box>
       </CardContent>
     </Card>
@@ -134,6 +223,9 @@ export const WelcomePanel = ({ user }) => {
  * Shows user profile details and school information
  */
 export const ProfileInfoPanel = ({ user, loading = false }) => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+
   if (loading) {
     return (
       <Card>
@@ -160,6 +252,10 @@ export const ProfileInfoPanel = ({ user, loading = false }) => {
     }
   };
 
+  const handleProfileClick = () => {
+    navigate('/app/profile');
+  };
+
   return (
     <Card>
       <CardHeader 
@@ -168,7 +264,23 @@ export const ProfileInfoPanel = ({ user, loading = false }) => {
       />
       <CardContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box 
+            onClick={handleProfileClick}
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 2,
+              cursor: 'pointer',
+              p: 1,
+              borderRadius: 1,
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': {
+                backgroundColor: theme => theme.palette.action.hover,
+                transform: 'translateY(-1px)',
+                boxShadow: theme => `0 2px 4px ${theme.palette.primary.main}20`
+              }
+            }}
+          >
             <Avatar sx={{ width: 60, height: 60, bgcolor: 'primary.main' }}>
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </Avatar>
@@ -236,6 +348,8 @@ export const ProfileInfoPanel = ({ user, loading = false }) => {
  */
 export const RecentNotificationsPanel = ({ notifications = [], loading = false, onViewAll }) => {
   const { isFeatureEnabled } = useFeatureToggles();
+  const theme = useTheme();
+  const navigate = useNavigate();
 
   // Check if notifications feature is enabled
   if (!isFeatureEnabled('enableNotifications')) {
@@ -273,6 +387,10 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
     }
   };
 
+  const handleNotificationClick = (notification) => {
+    navigate('/app/notifications');
+  };
+
   return (
     <Card>
       <CardHeader 
@@ -284,6 +402,12 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
               size="small" 
               onClick={onViewAll}
               startIcon={<VisibilityIcon />}
+              sx={{
+                color: theme.palette.primary.main,
+                '&:hover': {
+                  backgroundColor: theme => `${theme.palette.primary.main}10`
+                }
+              }}
             >
               View All
             </Button>
@@ -303,45 +427,54 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
               const uniqueKey = safeNotification._id || `notification-${index}-${Date.now()}`;
               
               return (
-                <ListItem 
+                <ListItemButton
                   key={uniqueKey} 
-                  sx={{ px: 0 }}
-                  divider={index < notifications.slice(0, 5).length - 1}
+                  onClick={() => handleNotificationClick(safeNotification)}
+                  sx={{ 
+                    px: 0,
+                    borderRadius: 1,
+                    mb: 0.5,
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      backgroundColor: theme => `${theme.palette.primary.main}10`,
+                      transform: 'translateX(4px)'
+                    }
+                  }}
                 >
-                <ListItemAvatar>
-                  <Avatar sx={{ 
-                    bgcolor: notification.isImportant ? 'warning.main' : 'primary.main',
-                    width: 36,
-                    height: 36
-                  }}>
-                    {notification.isImportant ? (
-                      <NotificationsActiveIcon fontSize="small" />
-                    ) : (
-                      <NotificationsIcon fontSize="small" />
-                    )}
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body2" sx={{ 
-                        fontWeight: safeNotification.isRead ? 'normal' : 'bold',
-                        flex: 1
-                      }}>
-                        {safeNotification.title || 'No title'}
-                      </Typography>
-                      {safeNotification.isImportant && (
-                        <Chip label="Important" size="small" color="warning" variant="outlined" />
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                      bgcolor: notification.isImportant ? 'warning.main' : 'primary.main',
+                      width: 36,
+                      height: 36
+                    }}>
+                      {notification.isImportant ? (
+                        <NotificationsActiveIcon fontSize="small" />
+                      ) : (
+                        <NotificationsIcon fontSize="small" />
                       )}
-                    </Box>
-                  }
-                  secondary={
-                    <Typography variant="caption" color="text.secondary">
-                      {formatDate(safeNotification.createdAt)}
-                    </Typography>
-                  }
-                />
-              </ListItem>
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" sx={{ 
+                          fontWeight: safeNotification.isRead ? 'normal' : 'bold',
+                          flex: 1
+                        }}>
+                          {safeNotification.title || 'No title'}
+                        </Typography>
+                        {safeNotification.isImportant && (
+                          <Chip label="Important" size="small" color="warning" variant="outlined" />
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      <Typography variant="caption" color="text.secondary">
+                        {formatDate(safeNotification.createdAt)}
+                      </Typography>
+                    }
+                  />
+                </ListItemButton>
               );
             })}
           </List>
@@ -357,6 +490,8 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
  */
 export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, userRole }) => {
   const { isFeatureEnabled } = useFeatureToggles();
+  const theme = useTheme();
+  const navigate = useNavigate();
 
   // Check if grades feature is enabled
   if (!isFeatureEnabled('enableGrades')) {
@@ -402,6 +537,10 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
     }
   };
 
+  const handleGradeClick = (grade) => {
+    navigate('/app/grades');
+  };
+
   return (
     <Card>
       <CardHeader 
@@ -413,6 +552,12 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
               size="small" 
               onClick={onViewAll}
               startIcon={<VisibilityIcon />}
+              sx={{
+                color: theme.palette.primary.main,
+                '&:hover': {
+                  backgroundColor: theme => `${theme.palette.primary.main}10`
+                }
+              }}
             >
               View All
             </Button>
@@ -432,46 +577,55 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
               const uniqueKey = safeGrade._id || `grade-${index}-${Date.now()}`;
               
               return (
-                <ListItem 
+                <ListItemButton
                   key={uniqueKey} 
-                  sx={{ px: 0 }}
-                  divider={index < grades.slice(0, 5).length - 1}
+                  onClick={() => handleGradeClick(safeGrade)}
+                  sx={{ 
+                    px: 0,
+                    borderRadius: 1,
+                    mb: 0.5,
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      backgroundColor: theme => `${theme.palette.primary.main}10`,
+                      transform: 'translateX(4px)'
+                    }
+                  }}
                 >
-                <ListItemAvatar>
-                  <Avatar sx={{ 
-                      bgcolor: `${getGradeColor(safeGrade.value || 0)}.main`,
-                    width: 36,
-                    height: 36
-                  }}>
-                    <GradeIcon fontSize="small" />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                        {safeGrade.subject?.name || safeGrade.subjectName || 'Unknown Subject'}
-                        {userRole !== 'student' && safeGrade.student && (
-                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                            - {safeGrade.student.name}
-                        </Typography>
-                      )}
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography variant="caption" color="text.secondary">
-                        {formatDate(safeGrade.createdAt)} • {safeGrade.description || 'No description'}
-                    </Typography>
-                  }
-                />
-                <ListItemSecondaryAction>
-                  <Chip 
-                      label={safeGrade.value || 0} 
-                      color={getGradeColor(safeGrade.value || 0)}
-                    size="small"
-                    variant="filled"
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                        bgcolor: `${getGradeColor(safeGrade.value || 0)}.main`,
+                      width: 36,
+                      height: 36
+                    }}>
+                      <GradeIcon fontSize="small" />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                          {safeGrade.subject?.name || safeGrade.subjectName || 'Unknown Subject'}
+                          {userRole !== 'student' && safeGrade.student && (
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                              - {safeGrade.student.name}
+                          </Typography>
+                        )}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="caption" color="text.secondary">
+                          {formatDate(safeGrade.createdAt)} • {safeGrade.description || 'No description'}
+                      </Typography>
+                    }
                   />
-                </ListItemSecondaryAction>
-              </ListItem>
+                  <ListItemSecondaryAction>
+                    <Chip 
+                        label={safeGrade.value || 0} 
+                        color={getGradeColor(safeGrade.value || 0)}
+                      size="small"
+                      variant="filled"
+                    />
+                  </ListItemSecondaryAction>
+                </ListItemButton>
               );
             })}
           </List>
@@ -488,6 +642,7 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
 export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll, userRole }) => {
   const { isFeatureEnabled } = useFeatureToggles();
   const theme = useTheme();
+  const navigate = useNavigate();
 
   // Check if classes/schedule feature is enabled
   if (!isFeatureEnabled('enableClasses') && !isFeatureEnabled('enableSchedule')) {
@@ -537,6 +692,10 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
     }
   };
 
+  const handleClassClick = (classItem) => {
+    navigate('/app/schedule');
+  };
+
   return (
     <Card>
       <CardHeader 
@@ -548,6 +707,12 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
               size="small" 
               onClick={onViewAll}
               startIcon={<VisibilityIcon />}
+              sx={{
+                color: theme.palette.primary.main,
+                '&:hover': {
+                  backgroundColor: theme => `${theme.palette.primary.main}10`
+                }
+              }}
             >
               View All
             </Button>
@@ -578,49 +743,58 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
               const uniqueKey = safeClassItem._id || `class-${index}-${Date.now()}`;
               
               return (
-                <ListItem 
+                <ListItemButton
                   key={uniqueKey} 
-                  sx={{ px: 0 }}
-                  divider={index < classes.slice(0, 5).length - 1}
+                  onClick={() => handleClassClick(safeClassItem)}
+                  sx={{ 
+                    px: 0,
+                    borderRadius: 1,
+                    mb: 0.5,
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      backgroundColor: theme => `${theme.palette.primary.main}10`,
+                      transform: 'translateX(4px)'
+                    }
+                  }}
                 >
-                <ListItemAvatar>
-                  <Avatar sx={{ 
-                    bgcolor: 'info.main',
-                    width: 36,
-                    height: 36
-                  }}>
-                    <ClassIcon fontSize="small" />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                        {safeClassItem.subject || safeClassItem.className || 'Unknown Subject'}
-                        {userRole === 'admin' && safeClassItem.teacher && (
-                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                            - {safeClassItem.teacher.name}
-                        </Typography>
-                      )}
-                    </Typography>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                          {safeClassItem.startTime && safeClassItem.endTime ? (
-                            `${formatTime(safeClassItem.startTime)} - ${formatTime(safeClassItem.endTime)}`
-                        ) : (
-                          'Time not specified'
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                      bgcolor: 'info.main',
+                      width: 36,
+                      height: 36
+                    }}>
+                      <ClassIcon fontSize="small" />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                          {safeClassItem.subject || safeClassItem.className || 'Unknown Subject'}
+                          {userRole === 'admin' && safeClassItem.teacher && (
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                              - {safeClassItem.teacher.name}
+                          </Typography>
                         )}
                       </Typography>
-                        {safeClassItem.room && (
-                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                            • Room {safeClassItem.room}
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                            {safeClassItem.startTime && safeClassItem.endTime ? (
+                              `${formatTime(safeClassItem.startTime)} - ${formatTime(safeClassItem.endTime)}`
+                          ) : (
+                            'Time not specified'
+                          )}
                         </Typography>
-                      )}
-                    </Box>
-                  }
-                />
-              </ListItem>
+                          {safeClassItem.room && (
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                              • Room {safeClassItem.room}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                  />
+                </ListItemButton>
               );
             })}
           </List>
