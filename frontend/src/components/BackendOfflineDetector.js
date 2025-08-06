@@ -392,9 +392,9 @@ const BackendOfflineDetector = ({ children }) => {
         }
       } catch (error) {
         console.log('BackendOfflineDetector: Initial health check failed:', error.message);
-        // Don't immediately set offline - let the axios interceptors handle it
-        // Only set offline if we're sure it's a backend issue
-        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+        // Set backend offline for any network error to backend endpoints
+        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || error.code === 'ERR_SSL_CERT_AUTHORITY') {
+          console.log('BackendOfflineDetector: Backend connection failed - setting offline');
           offlineManager.setBackendOfflineState(true);
         }
       }
@@ -403,8 +403,8 @@ const BackendOfflineDetector = ({ children }) => {
     // Check immediately
     checkBackendHealth();
 
-    // Check periodically every 30 seconds
-    const interval = setInterval(checkBackendHealth, 30000);
+    // Check periodically every 10 seconds (more frequent)
+    const interval = setInterval(checkBackendHealth, 10000);
 
     return () => {
       offlineManager.removeBackendListener(handleBackendStateChange);
@@ -423,8 +423,9 @@ const BackendOfflineDetector = ({ children }) => {
         }
       } catch (error) {
         console.log('BackendOfflineDetector: Route change health check failed:', error.message);
-        // Only set offline if we're sure it's a backend issue
-        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+        // Set backend offline for any network error to backend endpoints
+        if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || error.code === 'ERR_SSL_CERT_AUTHORITY') {
+          console.log('BackendOfflineDetector: Route change detected backend failure - setting offline');
           offlineManager.setBackendOfflineState(true);
         }
       }
