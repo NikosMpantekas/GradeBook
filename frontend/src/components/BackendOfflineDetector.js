@@ -4,6 +4,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import WarningIcon from '@mui/icons-material/Warning';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import offlineManager from '../utils/offlineManager';
+import axios from 'axios';
 
 // Animated Cog Component (copied from Maintenance.js)
 const AnimatedCog = ({ size = 120, position = "bottom-right" }) => {
@@ -379,6 +380,8 @@ const BackendOfflineDetector = ({ children }) => {
     // Subscribe to backend offline manager
     offlineManager.addBackendListener(handleBackendStateChange);
 
+
+
     return () => {
       offlineManager.removeBackendListener(handleBackendStateChange);
     };
@@ -395,15 +398,11 @@ const BackendOfflineDetector = ({ children }) => {
       setIsChecking(true);
       
       // Try to reach the backend health endpoint
-      const response = await fetch('/api/health', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(5000)
+      const response = await axios.get('/api/health', {
+        timeout: 5000
       });
       
-      if (response.ok) {
+      if (response.status === 200) {
         setIsBackendOnline(true);
         offlineManager.setOfflineState(false);
         return true;
@@ -433,6 +432,7 @@ const BackendOfflineDetector = ({ children }) => {
 
   // If backend is offline, show maintenance page as full-screen overlay
   // This should override any other offline states
+  console.log('BackendOfflineDetector: Showing maintenance page');
 
   // Color palette for dark mode (maintenance page is always dark)
   const colors = {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Container } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import offlineManager from '../utils/offlineManager';
+import axios from 'axios';
 import RefreshIcon from "@mui/icons-material/Refresh";
 
 // Styled component for the offline message container with watermark
@@ -70,15 +71,11 @@ const OfflineDetector = ({ children }) => {
       
       for (const endpoint of endpoints) {
         try {
-          const response = await fetch(endpoint, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            signal: AbortSignal.timeout(3000)
+          const response = await axios.get(endpoint, {
+            timeout: 3000
           });
           
-          if (response.ok) {
+          if (response.status === 200) {
             offlineManager.setOfflineState(false);
             return true;
           }
