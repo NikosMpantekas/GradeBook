@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
+import OfflineDetector from '../OfflineDetector';
 
 const Layout = () => {
   const location = useLocation();
@@ -105,7 +106,9 @@ const Layout = () => {
             width: '100%',
           }}
         >
-          <Outlet />
+          <OfflineDetector>
+            <Outlet />
+          </OfflineDetector>
         </Box>
         
         {/* Footer - positioned outside main content */}
