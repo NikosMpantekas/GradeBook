@@ -31,6 +31,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
 import PasswordChange from './components/PasswordChange';
+import Maintenance from './pages/Maintenance';
 
 // Common Pages
 import Dashboard from './pages/Dashboard';
@@ -359,6 +360,7 @@ function App() {
             <Route path="/change-password" element={<PasswordChange />} />
             <Route path="/register" element={<Register />} />
             <Route path="/diagnostics" element={<DiagnosticPage />} />
+            <Route path="/maintenance" element={<Maintenance />} />
           
           {/* Root redirect based on role */}
           <Route path="/" element={
