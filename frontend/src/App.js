@@ -98,6 +98,7 @@ import SystemLogs from './pages/superadmin/SystemLogs';
 // Push notification service
 import { setupPushNotifications } from './services/pushNotificationService';
 import setupAxios from './app/setupAxios';
+import useBackendHealthCheck from './hooks/useBackendHealthCheck';
 import logger from './services/loggerService';
 // Using the ErrorBoundary from ./components/ErrorBoundary
 import { appConfig, initAppConfig } from './config/appConfig';
@@ -289,6 +290,9 @@ function App() {
       });
     }
   }, [user]);
+
+  // Backend health check - redirects to maintenance if backend is down
+  useBackendHealthCheck();
 
   // Console log initial state - helps with debugging
   console.log('App rendering with auth state:', { isLoggedIn: !!user });
