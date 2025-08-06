@@ -7,7 +7,6 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import OfflineDetector from '../OfflineDetector';
-import BackendOfflineDetector from '../BackendOfflineDetector';
 
 const Layout = () => {
   const location = useLocation();
@@ -107,11 +106,9 @@ const Layout = () => {
             width: '100%',
           }}
         >
-          <BackendOfflineDetector>
-            <OfflineDetector>
-              <Outlet />
-            </OfflineDetector>
-          </BackendOfflineDetector>
+          <OfflineDetector>
+            <Outlet />
+          </OfflineDetector>
         </Box>
         
         {/* Footer - positioned outside main content */}
