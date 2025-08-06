@@ -408,8 +408,8 @@ const BackendOfflineDetector = ({ children }) => {
     // Check immediately
     checkBackendHealth();
 
-    // Check periodically every 10 seconds (more frequent)
-    const interval = setInterval(checkBackendHealth, 10000);
+    // Check periodically every 5 seconds (very frequent)
+    const interval = setInterval(checkBackendHealth, 5000);
 
     return () => {
       offlineManager.removeBackendListener(handleBackendStateChange);

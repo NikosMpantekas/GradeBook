@@ -72,7 +72,7 @@ class OfflineManager {
       console.log(`OfflineManager: Network failure detected (count: ${this.axiosFailureCount})`);
       
       // If we have multiple failures in a short time, check if it's backend-specific
-      if (this.axiosFailureCount >= 2) {
+      if (this.axiosFailureCount >= 1) {
         // Check if the failure is to our backend endpoints specifically
         const isBackendEndpoint = error.config?.url?.includes('/api/');
         
@@ -96,7 +96,7 @@ class OfflineManager {
         console.log(`OfflineManager: Backend server error detected (count: ${this.backendFailureCount})`);
         
         // If we have multiple 5xx errors, consider backend offline
-        if (this.backendFailureCount >= 2) {
+        if (this.backendFailureCount >= 1) {
           console.log('OfflineManager: Setting backend offline state');
           this.setBackendOfflineState(true);
           this.setOfflineState(false);
