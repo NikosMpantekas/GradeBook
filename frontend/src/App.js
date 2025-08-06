@@ -109,6 +109,10 @@ import { FeatureToggleProvider } from './context/FeatureToggleContext';
 import HomeScreenPrompt from './components/HomeScreenPrompt';
 import AndroidInstallPrompt from './components/AndroidInstallPrompt';
 
+// Backend health monitoring
+import { BackendHealthProvider } from './context/BackendHealthContext';
+import { useBackendHealthRedirect } from './hooks/useBackendHealthRedirect';
+
 function App() {
   const dispatch = useDispatch();
   const { user, isLoading } = useSelector((state) => state.auth);
@@ -290,6 +294,9 @@ function App() {
     }
   }, [user]);
 
+  // Backend health monitoring and automatic redirects
+  useBackendHealthRedirect();
+
   // Console log initial state - helps with debugging
   console.log('App rendering with auth state:', { isLoggedIn: !!user });
 
@@ -348,9 +355,10 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <ScrollFix /> {/* Fix for Safari elastic scroll */}
-      <FeatureToggleProvider>
-        <HomeScreenPrompt />
-        <Router>
+      <BackendHealthProvider>
+        <FeatureToggleProvider>
+          <HomeScreenPrompt />
+          <Router>
           <Routes>
             {/* Public Routes */}
             <Route path="/home" element={<Home />} />
@@ -811,6 +819,7 @@ function App() {
       {/* Android PWA Installation Prompt */}
       <AndroidInstallPrompt />
       </FeatureToggleProvider>
+      </BackendHealthProvider>
     </ThemeProvider>
     </ErrorBoundary>
   );
