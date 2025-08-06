@@ -630,7 +630,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     // Handle function paths
     const actualPath = typeof itemPath === 'function' ? itemPath(user) : itemPath;
     
-    // EXACT MATCH ONLY for most cases
+    // EXACT MATCH for most cases
     if (location.pathname === actualPath) {
       return true;
     }
@@ -651,6 +651,38 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
     
     if (actualPath === '/app/student') {
       return location.pathname === '/app/student';
+    }
+    
+    if (actualPath === '/app/parent') {
+      return location.pathname === '/app/parent';
+    }
+    
+    // Handle notifications routes for different roles
+    if (actualPath.includes('/notifications')) {
+      if (location.pathname.includes('/notifications')) {
+        return true;
+      }
+    }
+    
+    // Handle grades routes for different roles
+    if (actualPath.includes('/grades')) {
+      if (location.pathname.includes('/grades')) {
+        return true;
+      }
+    }
+    
+    // Handle schedule routes for different roles
+    if (actualPath.includes('/schedule')) {
+      if (location.pathname.includes('/schedule')) {
+        return true;
+      }
+    }
+    
+    // Handle profile routes
+    if (actualPath.includes('/profile')) {
+      if (location.pathname.includes('/profile')) {
+        return true;
+      }
     }
     
     // For School Owners item, only highlight when on dashboard
