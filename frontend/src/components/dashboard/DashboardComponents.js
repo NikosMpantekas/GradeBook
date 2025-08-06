@@ -42,6 +42,7 @@ import {
 import { format, isValid, parseISO } from 'date-fns';
 import { useFeatureToggles } from '../../context/FeatureToggleContext';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 
 /**
  * Welcome Panel Component
@@ -353,6 +354,7 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
   const { isFeatureEnabled } = useFeatureToggles();
   const theme = useTheme();
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
   // Check if notifications feature is enabled
   if (!isFeatureEnabled('enableNotifications')) {
@@ -507,6 +509,7 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
   const { isFeatureEnabled } = useFeatureToggles();
   const theme = useTheme();
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
   // Check if grades feature is enabled
   if (!isFeatureEnabled('enableGrades')) {
@@ -670,6 +673,7 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
   const { isFeatureEnabled } = useFeatureToggles();
   const theme = useTheme();
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
 
   // Check if classes/schedule feature is enabled
   if (!isFeatureEnabled('enableClasses') && !isFeatureEnabled('enableSchedule')) {
