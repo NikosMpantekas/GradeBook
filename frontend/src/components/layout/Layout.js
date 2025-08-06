@@ -107,11 +107,11 @@ const Layout = () => {
             width: '100%',
           }}
         >
-          <BackendOfflineDetector>
-            <OfflineDetector>
+          <OfflineDetector>
+            <BackendOfflineDetector>
               <Outlet />
-            </OfflineDetector>
-          </BackendOfflineDetector>
+            </BackendOfflineDetector>
+          </OfflineDetector>
         </Box>
         
         {/* Footer - positioned outside main content */}
