@@ -76,7 +76,10 @@ class OfflineManager {
         // Check if the failure is to our backend endpoints specifically
         const isBackendEndpoint = error.config?.url?.includes('/api/');
         
-        if (isBackendEndpoint) {
+        // Only treat as backend offline if it's a specific backend error, not general network issues
+        const isBackendSpecificError = error.code === 'ECONNREFUSED' || error.code === 'ERR_SSL_CERT_AUTHORITY';
+        
+        if (isBackendEndpoint && isBackendSpecificError) {
           console.log('OfflineManager: Backend-specific network failure - treating as backend offline');
           this.setBackendOfflineState(true);
           this.setOfflineState(false);
