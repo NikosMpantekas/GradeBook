@@ -17,14 +17,28 @@ const ScrollFix = () => {
         overflow-x: hidden;
       }
       
-      /* Overscroll color - this affects the viewport background */
+      /* Overscroll color - multiple approaches to ensure it works */
       html {
-        background-color: #f5f5f5; /* Light gray overscroll */
+        background-color: #f5f5f5 !important; /* Light gray overscroll */
       }
       
       /* For dark mode support */
       [data-mui-color-scheme="dark"] html {
-        background-color: #121212; /* Dark overscroll for dark mode */
+        background-color: #121212 !important; /* Dark gray for dark mode */
+      }
+      
+      /* Alternative approach for browsers that need it */
+      :root {
+        background-color: #f5f5f5 !important;
+      }
+      
+      [data-mui-color-scheme="dark"] :root {
+        background-color: #121212 !important;
+      }
+      
+      /* Override any other background colors that might interfere */
+      body {
+        background-color: transparent !important;
       }
       
       /* Fix for MUI containers that might block scrolling */
