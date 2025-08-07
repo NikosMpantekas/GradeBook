@@ -60,7 +60,6 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import StudentGrades from './pages/student/StudentGrades';
 import GradeDetail from './pages/student/GradeDetail';
 import RatingSubmission from './pages/student/RatingSubmission';
-import TestDashboard from './pages/student/TestDashboard';
 
 // Parent Pages
 import ParentDashboard from './pages/ParentDashboard';
@@ -537,11 +536,6 @@ function App() {
             <Route path="/app/student/schedule" element={
               <StudentProgressRoute>
                 <Schedule />
-              </StudentProgressRoute>
-            } />
-            <Route path="/app/student/testdash" element={
-              <StudentProgressRoute>
-                <TestDashboard />
               </StudentProgressRoute>
             } />
             
