@@ -378,9 +378,9 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
       if (userRole === 'student') {
         navigate(`/app/student/notifications/${notificationId}`);
       } else if (userRole === 'teacher') {
-        navigate(`/app/teacher/notifications/${notificationId}`);
+        navigate(`/app/notifications/${notificationId}`);
       } else if (userRole === 'admin') {
-        navigate(`/app/admin/notifications/${notificationId}`);
+        navigate(`/app/notifications/${notificationId}`);
       } else if (userRole === 'parent') {
         navigate(`/app/parent/notifications/${notificationId}`);
       } else {
@@ -557,10 +557,6 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
     if (gradeId) {
       if (userRole === 'student') {
         navigate(`/app/student/grades/${gradeId}`);
-      } else if (userRole === 'teacher') {
-        navigate(`/app/teacher/grades/${gradeId}`);
-      } else if (userRole === 'admin') {
-        navigate(`/app/admin/grades/${gradeId}`);
       } else if (userRole === 'parent') {
         navigate(`/app/parent/grades/${gradeId}`);
       } else {
@@ -570,10 +566,6 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
       // Fallback to grades list if no ID
       if (userRole === 'student') {
         navigate('/app/student/grades');
-      } else if (userRole === 'teacher') {
-        navigate('/app/teacher/grades/manage');
-      } else if (userRole === 'admin') {
-        navigate('/app/admin/grades/manage');
       } else if (userRole === 'parent') {
         navigate('/app/parent/grades');
       } else {
