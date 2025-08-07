@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FeatureToggleContext } from '../../context/FeatureToggleContext';
-import { 
+import {
   Box, 
   Drawer, 
   List, 
@@ -12,7 +12,12 @@ import {
   ListItemIcon, 
   ListItemText,
   Typography,
-  Avatar
+  Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -56,9 +61,21 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   
-  const handleLogout = () => {
+  // Logout confirmation modal state
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  
+  const handleLogoutClick = () => {
+    setLogoutDialogOpen(true);
+  };
+  
+  const handleLogoutConfirm = () => {
     dispatch(logout());
     navigate('/login');
+    setLogoutDialogOpen(false);
+  };
+  
+  const handleLogoutCancel = () => {
+    setLogoutDialogOpen(false);
   };
   
   // Enhanced sidebar state management with corrected route detection
@@ -864,7 +881,7 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         
         <ListItem disablePadding>
           <ListItemButton
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             sx={{
               mx: 1,
               borderRadius: 2,
@@ -883,6 +900,48 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
         </ListItem>
       </List>
     </Box>
+  );
+
+  // Logout confirmation modal
+  const logoutDialog = (
+    <Dialog
+      open={logoutDialogOpen}
+      onClose={handleLogoutCancel}
+      aria-labelledby="logout-dialog-title"
+      aria-describedby="logout-dialog-description"
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          minWidth: 300,
+        }
+      }}
+    >
+      <DialogTitle id="logout-dialog-title" sx={{ pb: 1 }}>
+        Confirm Logout
+      </DialogTitle>
+      <DialogContent sx={{ pb: 2 }}>
+        <Typography>
+          Are you sure you want to logout? You will need to sign in again to access your account.
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button 
+          onClick={handleLogoutCancel}
+          variant="outlined"
+          sx={{ mr: 1 }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleLogoutConfirm}
+          variant="contained" 
+          color="error"
+          autoFocus
+        >
+          Logout
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 
   return (
@@ -930,6 +989,9 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       >
         {drawer}
       </Drawer>
+      
+      {/* Logout confirmation modal */}
+      {logoutDialog}
     </Box>
   );
 };
