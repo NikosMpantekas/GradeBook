@@ -53,7 +53,7 @@ const Schedule = () => {
   
   // Filter states for admin and teacher
   const [filters, setFilters] = useState({
-    schoolBranch: user?.role === 'teacher' ? 'all' : '', // Default to 'all' for teachers
+    schoolBranch: '',
     teacher: ''
   });
   const [filterOptions, setFilterOptions] = useState({
@@ -224,17 +224,11 @@ const Schedule = () => {
       }
       
       const branches = schoolBranches || [];
-      
-      // Add "All Branches" option for teachers
-      const branchOptions = user?.role === 'teacher' 
-        ? [{ value: 'all', label: 'All Branches' }, ...branches]
-        : branches;
-      
-      console.log('Setting filter options - branches:', branchOptions);
+      console.log('Setting filter options - branches:', branches);
       console.log('Setting filter options - teachers:', teacherOptions);
       
       setFilterOptions({
-        schoolBranches: branchOptions,
+        schoolBranches: branches,
         teachers: teacherOptions
       });
       
@@ -305,7 +299,7 @@ const Schedule = () => {
       
       // Build query parameters for filters
       const queryParams = new URLSearchParams();
-      if (filters.schoolBranch && filters.schoolBranch !== 'all') queryParams.append('schoolBranch', filters.schoolBranch);
+      if (filters.schoolBranch) queryParams.append('schoolBranch', filters.schoolBranch);
       if (filters.teacher) queryParams.append('teacherId', filters.teacher);
       
       const queryString = queryParams.toString();
