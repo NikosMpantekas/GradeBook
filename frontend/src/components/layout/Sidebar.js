@@ -657,17 +657,45 @@ const Sidebar = ({ drawerWidth, mobileOpen, handleDrawerToggle, permanent = fals
       return location.pathname === '/app/parent';
     }
     
-    // Handle notifications routes for different roles
+    // Handle notifications routes for different roles - more specific matching
     if (actualPath.includes('/notifications')) {
-      if (location.pathname.includes('/notifications')) {
-        return true;
+      // For create notifications, only match exact create paths
+      if (actualPath.includes('/create')) {
+        return location.pathname === actualPath;
+      }
+      // For manage notifications, match manage paths OR specific notification detail pages
+      if (actualPath.includes('/manage')) {
+        return location.pathname === actualPath || 
+               (location.pathname.includes('/notifications/') && 
+                !location.pathname.includes('/create') && 
+                !location.pathname.includes('/manage'));
+      }
+      // For general notifications (list view), match any notifications path that's not create/manage
+      if (!actualPath.includes('/create') && !actualPath.includes('/manage')) {
+        return location.pathname.includes('/notifications') && 
+               !location.pathname.includes('/create') && 
+               !location.pathname.includes('/manage');
       }
     }
     
-    // Handle grades routes for different roles
+    // Handle grades routes for different roles - more specific matching
     if (actualPath.includes('/grades')) {
-      if (location.pathname.includes('/grades')) {
-        return true;
+      // For create grades, only match exact create paths
+      if (actualPath.includes('/create')) {
+        return location.pathname === actualPath;
+      }
+      // For manage grades, match manage paths OR specific grade detail pages
+      if (actualPath.includes('/manage')) {
+        return location.pathname === actualPath || 
+               (location.pathname.includes('/grades/') && 
+                !location.pathname.includes('/create') && 
+                !location.pathname.includes('/manage'));
+      }
+      // For general grades (list view), match any grades path that's not create/manage
+      if (!actualPath.includes('/create') && !actualPath.includes('/manage')) {
+        return location.pathname.includes('/grades') && 
+               !location.pathname.includes('/create') && 
+               !location.pathname.includes('/manage');
       }
     }
     
