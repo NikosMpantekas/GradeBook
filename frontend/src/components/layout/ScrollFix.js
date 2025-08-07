@@ -17,6 +17,17 @@ const ScrollFix = () => {
         overflow-x: hidden;
       }
       
+      /* Overscroll color customization */
+      body {
+        overscroll-behavior: contain;
+        background-color: var(--overscroll-bg, #f5f5f5);
+      }
+      
+      /* For dark mode support - you can make this dynamic */
+      [data-mui-color-scheme="dark"] body {
+        background-color: var(--overscroll-bg-dark, #121212);
+      }
+      
       /* Fix for MUI containers that might block scrolling */
       .MuiBox-root, .MuiContainer-root, .MuiPaper-root {
         max-height: none !important;
