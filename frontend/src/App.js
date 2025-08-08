@@ -277,29 +277,11 @@ function App() {
       fontFamily: 'Roboto, Arial, sans-serif',
     },
     components: {
-      MuiCssBaseline: {
-        styleOverrides: {
-          '*': {
-            transition: 'background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
-          },
-          '*::before, *::after': {
-            transition: 'background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
-          },
-          'svg, .MuiSvgIcon-root': {
-            transition: 'fill 180ms ease, stroke 180ms ease',
-          },
-          body: {
-            transition: 'background-color 180ms ease, color 180ms ease',
-          },
-          '#root, .MuiPaper-root, .MuiCard-root, .MuiAppBar-root, .MuiToolbar-root, .MuiListItem-root, .MuiListItemButton-root, .MuiButtonBase-root, .MuiTypography-root, .MuiAvatar-root, .MuiChip-root, .MuiDivider-root, .MuiIconButton-root': {
-            transition: 'background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
-          },
-        },
-      },
       MuiButton: {
         styleOverrides: {
           root: {
             borderRadius: 8,
+            transition: 'background-color 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s',
           },
         },
       },
@@ -307,6 +289,91 @@ function App() {
         styleOverrides: {
           root: {
             borderRadius: 8,
+            transition: 'background-color 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s',
+          },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, color 0.1s, border-color 0.1s, box-shadow 0.1s',
+          },
+        },
+      },
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, border-bottom-color 0.1s',
+          },
+        },
+      },
+      MuiToolbar: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s',
+          },
+        },
+      },
+      MuiListItem: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, color 0.1s',
+          },
+        },
+      },
+      MuiListItemButton: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, color 0.1s',
+          },
+        },
+      },
+      MuiButtonBase: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, color 0.1s, border-color 0.1s',
+          },
+        },
+      },
+      MuiTypography: {
+        styleOverrides: {
+          root: {
+            transition: 'color 0.1s',
+          },
+        },
+      },
+      MuiAvatar: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, color 0.1s',
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, color 0.1s, border-color 0.1s',
+          },
+        },
+      },
+      MuiDivider: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, border-color 0.1s',
+          },
+        },
+      },
+      MuiIconButton: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, color 0.1s',
+          },
+        },
+      },
+      MuiSvgIcon: {
+        styleOverrides: {
+          root: {
+            transition: 'fill 0.1s, stroke 0.1s',
           },
         },
       },

@@ -890,15 +890,23 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
 
   // Animate the line drawing from left to right on mount / data change
   useEffect(() => {
-    if (pathRef.current) {
+    if (pathRef.current && graphData.length > 0) {
       try {
         const length = pathRef.current.getTotalLength();
+        console.log('Graph animation: path length =', length);
         setDashLength(length);
         setDashOffset(length);
-        const start = () => setDashOffset(0);
-        const id = setTimeout(() => requestAnimationFrame(start), animationDelayMs);
+        
+        // Delay the animation start slightly to ensure DOM is ready
+        const start = () => {
+          console.log('Graph animation: starting draw animation');
+          setDashOffset(0);
+        };
+        
+        const id = setTimeout(() => requestAnimationFrame(start), animationDelayMs + 100);
         return () => clearTimeout(id);
       } catch (e) {
+        console.warn('Graph animation: measurement failed', e);
         // Fallback: no animation if measurement fails
         setDashLength(0);
         setDashOffset(0);
@@ -1057,7 +1065,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
             style={{
               strokeDasharray: dashLength,
               strokeDashoffset: dashOffset,
-              transition: 'stroke-dashoffset 900ms ease-out'
+              transition: 'stroke-dashoffset 1.2s ease-out'
             }}
           />
 
