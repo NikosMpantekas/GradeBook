@@ -869,7 +869,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
   if (loading) {
     return (
       <Card>
-        <CardHeader title="Grades Over Time" />
+        <CardHeader title="Grades Overview" />
         <CardContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Skeleton variant="rectangular" width="100%" height={200} />
@@ -885,42 +885,60 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
   const processGradesForGraph = () => {
     if (!grades || grades.length === 0) return [];
 
-    // Group all grades by date
-    const gradesByDate = {};
-    grades.forEach(grade => {
-      if (grade.createdAt) {
-        const date = format(parseISO(grade.createdAt), 'yyyy-MM-dd');
-        if (!gradesByDate[date]) {
-          gradesByDate[date] = [];
-        }
-        gradesByDate[date].push(grade.value || 0);
-      }
-    });
+    // Map each grade to a point and sort chronologically (no daily grouping)
+    const mapped = grades
+      .filter(g => g && g.createdAt)
+      .map(g => {
+        const dt = typeof g.createdAt === 'string' ? parseISO(g.createdAt) : new Date(g.createdAt);
+        return {
+          date: format(dt, 'MM-dd'),
+          dateTime: dt,
+          label: format(dt, 'MM-dd HH:mm'),
+          grade: typeof g.value === 'number' ? g.value : Number(g.value) || 0,
+        };
+      })
+      .sort((a, b) => a.dateTime - b.dateTime);
 
-    // Sort dates chronologically
-    const sortedDates = Object.keys(gradesByDate).sort();
-
-    // Calculate average grade for each day
-    const graphData = sortedDates.map(date => {
-      const dayGrades = gradesByDate[date] || [];
-      const averageGrade = dayGrades.length > 0 
-        ? dayGrades.reduce((sum, grade) => sum + grade, 0) / dayGrades.length 
-        : 0;
-      
-      return {
-        date: format(parseISO(date), 'MM-dd'),
-        fullDate: date,
-        grade: Math.round(averageGrade * 10) / 10, // Round to 1 decimal
-        count: dayGrades.length
-      };
-    });
-
-    return graphData;
+    return mapped;
   };
 
   const graphData = processGradesForGraph();
 
-  // Create simple SVG line graph
+  // Helper functions to create a smooth curve through points using cubic Bezier segments
+  const lineProps = (pointA, pointB) => {
+    const lengthX = pointB.x - pointA.x;
+    const lengthY = pointB.y - pointA.y;
+    return {
+      length: Math.hypot(lengthX, lengthY),
+      angle: Math.atan2(lengthY, lengthX)
+    };
+  };
+
+  const controlPoint = (current, previous, next, reverse = false, smoothing = 0.2) => {
+    const p = previous || current;
+    const n = next || current;
+    const { length, angle } = lineProps(p, n);
+    const adjustedAngle = angle + (reverse ? Math.PI : 0);
+    const adjustedLength = length * smoothing;
+    return {
+      x: current.x + Math.cos(adjustedAngle) * adjustedLength,
+      y: current.y + Math.sin(adjustedAngle) * adjustedLength
+    };
+  };
+
+  const generateSmoothPath = (pts) => {
+    if (pts.length === 0) return '';
+    return pts.reduce((path, point, i, a) => {
+      if (i === 0) {
+        return `M ${point.x} ${point.y}`;
+      }
+      const cps = controlPoint(a[i - 1], a[i - 2], point, false);
+      const cpe = controlPoint(point, a[i - 1], a[i + 1], true);
+      return `${path} C ${cps.x} ${cps.y}, ${cpe.x} ${cpe.y}, ${point.x} ${point.y}`;
+    }, '');
+  };
+
+  // Create smooth SVG line graph
   const renderLineGraph = () => {
     if (graphData.length === 0) {
       return (
@@ -937,38 +955,36 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
     }
 
     const width = 400;
-    const height = 200;
+    const height = 220;
     const padding = 40;
     const graphWidth = width - 2 * padding;
     const graphHeight = height - 2 * padding;
 
-    // Find min/max values for scaling
-    const grades = graphData.map(d => d.grade).filter(g => g > 0);
-    const maxGrade = Math.max(...grades, 20); // Default to 20 if no grades
-    const minGrade = Math.min(...grades, 0); // Default to 0 if no grades
+    // Fixed grade scale for clarity (0-20)
+    const minGrade = 0;
+    const maxGrade = 20;
+    const safeRange = Math.max(maxGrade - minGrade, 1);
 
-    // Create points for the line
+    // Create points for the curve
     const points = graphData.map((data, index) => {
-      const x = padding + (index / (graphData.length - 1)) * graphWidth;
-      const y = height - padding - ((data.grade - minGrade) / (maxGrade - minGrade)) * graphHeight;
+      const x = padding + (index / Math.max(graphData.length - 1, 1)) * graphWidth;
+      const y = height - padding - ((data.grade - minGrade) / safeRange) * graphHeight;
       return { x, y, ...data };
     });
 
-    // Create path for the line
-    const pathData = points.map((point, index) => {
-      if (index === 0) return `M ${point.x} ${point.y}`;
-      return `L ${point.x} ${point.y}`;
-    }).join(' ');
+    // Smooth curve path
+    const smoothPath = generateSmoothPath(points);
 
-    // Create path for the filled area
-    const areaPathData = points.map((point, index) => {
-      if (index === 0) return `M ${point.x} ${point.y}`;
-      return `L ${point.x} ${point.y}`;
-    }).join(' ') + ` L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`;
+    // Area fill path based on smooth curve
+    const areaPathData = `${smoothPath} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`;
+
+    // Compute label indices to avoid clutter (max ~6 labels)
+    const maxLabels = 6;
+    const step = Math.max(1, Math.ceil(points.length / maxLabels));
 
     return (
-      <Box sx={{ position: 'relative', width: '100%', height: 200 }}>
-        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+      <Box sx={{ position: 'relative', width: '100%', height: 220 }}>
+        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>          
           {/* Grid lines */}
           {Array.from({ length: 5 }, (_, i) => {
             const y = padding + (i / 4) * graphHeight;
@@ -985,7 +1001,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
               />
             );
           })}
-          
+
           {/* Y-axis labels */}
           {Array.from({ length: 5 }, (_, i) => {
             const y = padding + (i / 4) * graphHeight;
@@ -1004,30 +1020,32 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
             );
           })}
 
-          {/* X-axis labels */}
+          {/* X-axis labels (sparse) */}
           {points.map((point, index) => (
-            <text
-              key={`x-label-${index}`}
-              x={point.x}
-              y={height - padding + 20}
-              textAnchor="middle"
-              fontSize="10"
-              fill={theme.palette.text.secondary}
-            >
-              {point.date}
-            </text>
+            (index % step === 0 || index === points.length - 1) && (
+              <text
+                key={`x-label-${index}`}
+                x={point.x}
+                y={height - padding + 20}
+                textAnchor="middle"
+                fontSize="10"
+                fill={theme.palette.text.secondary}
+              >
+                {point.date}
+              </text>
+            )
           ))}
 
-          {/* Filled area */}
+          {/* Filled area under curve */}
           <path
             d={areaPathData}
             fill={theme.palette.primary.main}
             opacity={0.2}
           />
 
-          {/* Line */}
+          {/* Smooth curve */}
           <path
-            d={pathData}
+            d={smoothPath}
             stroke={theme.palette.primary.main}
             strokeWidth="3"
             fill="none"
@@ -1053,7 +1071,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
   return (
     <Card>
       <CardHeader 
-        title="Grades Over Time" 
+        title="Grades Overview" 
         avatar={<ShowChartIcon color="primary" />}
         action={
           <Button 
