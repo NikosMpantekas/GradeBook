@@ -863,26 +863,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
   const pathRef = useRef(null);
   const [dashLength, setDashLength] = useState(0);
   const [dashOffset, setDashOffset] = useState(0);
-
-  // Check if grades feature is enabled
-  if (!isFeatureEnabled('enableGrades')) {
-    return null; // Hide panel if grades are disabled
-  }
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader title="Grades Overview" />
-        <CardContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Skeleton variant="rectangular" width="100%" height={200} />
-            <Skeleton variant="text" width="60%" height={20} />
-            <Skeleton variant="text" width="40%" height={16} />
-          </Box>
-        </CardContent>
-      </Card>
-    );
-  }
+  const featureEnabled = isFeatureEnabled('enableGrades');
 
   // Process grades data for the graph
   const processGradesForGraph = () => {
@@ -1097,6 +1078,9 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
     );
   };
 
+  // Render based on feature flag and loading, but after hooks have run
+  if (!featureEnabled) return null;
+
   return (
     <Card>
       <CardHeader 
@@ -1119,7 +1103,15 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
         }
       />
       <CardContent sx={{ pt: 0 }}>
-        {renderLineGraph()}
+        {loading ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Skeleton variant="rectangular" width="100%" height={200} />
+            <Skeleton variant="text" width="60%" height={20} />
+            <Skeleton variant="text" width="40%" height={16} />
+          </Box>
+        ) : (
+          renderLineGraph()
+        )}
       </CardContent>
     </Card>
   );
