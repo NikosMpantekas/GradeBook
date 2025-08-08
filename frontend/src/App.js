@@ -277,6 +277,16 @@ function App() {
       fontFamily: 'Roboto, Arial, sans-serif',
     },
     components: {
+      MuiCssBaseline: {
+        styleOverrides: {
+          body: {
+            transition: 'background-color 180ms ease, color 180ms ease',
+          },
+          '#root, .MuiPaper-root': {
+            transition: 'background-color 180ms ease, color 180ms ease, border-color 180ms ease',
+          },
+        },
+      },
       MuiButton: {
         styleOverrides: {
           root: {

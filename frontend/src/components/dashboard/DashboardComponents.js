@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -146,40 +146,40 @@ export const WelcomePanel = ({ user }) => {
           ) : (
             /* Desktop Layout: Original layout */
             <>
-              <Box sx={{ width: '100%' }}>
-                <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                  {getGreeting()}, {user?.name || 'User'}! 👋
+          <Box sx={{ width: '100%' }}>
+            <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+              {getGreeting()}, {user?.name || 'User'}! 👋
+            </Typography>
+            <Typography variant="h6" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+              Welcome to your {getRoleDisplayName(user?.role)} Dashboard
+            </Typography>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 2,
+              flexDirection: { xs: 'column', md: 'row' },
+              textAlign: { xs: 'center', md: 'left' }
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                  {format(currentTime, 'EEEE, MMMM do, yyyy')}
                 </Typography>
-                <Typography variant="h6" sx={{ opacity: 0.9, mb: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                  Welcome to your {getRoleDisplayName(user?.role)} Dashboard
-                </Typography>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  flexDirection: { xs: 'column', md: 'row' },
-                  textAlign: { xs: 'center', md: 'left' }
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <CalendarIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
-                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      {format(currentTime, 'EEEE, MMMM do, yyyy')}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
-                    <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
-                      {format(currentTime, 'HH:mm:ss')}
-                    </Typography>
-                  </Box>
-                </Box>
               </Box>
-              <Avatar 
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <TimeIcon sx={{ fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: { xs: '0.875rem', sm: '1.1rem' } }}>
+                  {format(currentTime, 'HH:mm:ss')}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+          <Avatar 
                 onClick={handleProfileClick}
-                sx={{ 
-                  width: { xs: 60, sm: 80 }, 
-                  height: { xs: 60, sm: 80 },
-                  bgcolor: 'rgba(255,255,255,0.2)',
+            sx={{ 
+              width: { xs: 60, sm: 80 }, 
+              height: { xs: 60, sm: 80 },
+              bgcolor: 'rgba(255,255,255,0.2)',
                   fontSize: { xs: '1.5rem', sm: '2rem' },
                   cursor: 'pointer',
                   transition: 'all 0.2s ease-in-out',
@@ -188,10 +188,10 @@ export const WelcomePanel = ({ user }) => {
                     bgcolor: 'rgba(255,255,255,0.3)',
                     boxShadow: theme => `0 4px 8px ${theme.palette.primary.dark}40`
                   }
-                }}
-              >
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </Avatar>
+            }}
+          >
+            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+          </Avatar>
             </>
           )}
         </Box>
@@ -453,39 +453,39 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
                     }
                   }}
                 >
-                  <ListItemAvatar>
-                    <Avatar sx={{ 
-                      bgcolor: notification.isImportant ? 'warning.main' : 'primary.main',
-                      width: 36,
-                      height: 36
-                    }}>
-                      {notification.isImportant ? (
-                        <NotificationsActiveIcon fontSize="small" />
-                      ) : (
-                        <NotificationsIcon fontSize="small" />
-                      )}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" sx={{ 
-                          fontWeight: safeNotification.isRead ? 'normal' : 'bold',
-                          flex: 1
-                        }}>
-                          {safeNotification.title || 'No title'}
-                        </Typography>
-                        {safeNotification.isImportant && (
-                          <Chip label="Important" size="small" color="warning" variant="outlined" />
-                        )}
-                      </Box>
-                    }
-                    secondary={
-                      <Typography variant="caption" color="text.secondary">
-                        {formatDate(safeNotification.createdAt)}
+                <ListItemAvatar>
+                  <Avatar sx={{ 
+                    bgcolor: notification.isImportant ? 'warning.main' : 'primary.main',
+                    width: 36,
+                    height: 36
+                  }}>
+                    {notification.isImportant ? (
+                      <NotificationsActiveIcon fontSize="small" />
+                    ) : (
+                      <NotificationsIcon fontSize="small" />
+                    )}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2" sx={{ 
+                        fontWeight: safeNotification.isRead ? 'normal' : 'bold',
+                        flex: 1
+                      }}>
+                        {safeNotification.title || 'No title'}
                       </Typography>
-                    }
-                  />
+                      {safeNotification.isImportant && (
+                        <Chip label="Important" size="small" color="warning" variant="outlined" />
+                      )}
+                    </Box>
+                  }
+                  secondary={
+                    <Typography variant="caption" color="text.secondary">
+                      {formatDate(safeNotification.createdAt)}
+                    </Typography>
+                  }
+                />
                 </ListItemButton>
               );
             })}
@@ -625,40 +625,40 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
                     }
                   }}
                 >
-                  <ListItemAvatar>
-                    <Avatar sx={{ 
-                        bgcolor: `${getGradeColor(safeGrade.value || 0)}.main`,
-                      width: 36,
-                      height: 36
-                    }}>
-                      <GradeIcon fontSize="small" />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                          {safeGrade.subject?.name || safeGrade.subjectName || 'Unknown Subject'}
-                          {userRole !== 'student' && safeGrade.student && (
-                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                              - {safeGrade.student.name}
-                          </Typography>
-                        )}
-                      </Typography>
-                    }
-                    secondary={
-                      <Typography variant="caption" color="text.secondary">
-                          {formatDate(safeGrade.createdAt)} • {safeGrade.description || 'No description'}
-                      </Typography>
-                    }
+                <ListItemAvatar>
+                  <Avatar sx={{ 
+                      bgcolor: `${getGradeColor(safeGrade.value || 0)}.main`,
+                    width: 36,
+                    height: 36
+                  }}>
+                    <GradeIcon fontSize="small" />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                        {safeGrade.subject?.name || safeGrade.subjectName || 'Unknown Subject'}
+                        {userRole !== 'student' && safeGrade.student && (
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            - {safeGrade.student.name}
+                        </Typography>
+                      )}
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography variant="caption" color="text.secondary">
+                        {formatDate(safeGrade.createdAt)} • {safeGrade.description || 'No description'}
+                    </Typography>
+                  }
+                />
+                <ListItemSecondaryAction>
+                  <Chip 
+                      label={safeGrade.value || 0} 
+                      color={getGradeColor(safeGrade.value || 0)}
+                    size="small"
+                    variant="filled"
                   />
-                  <ListItemSecondaryAction>
-                    <Chip 
-                        label={safeGrade.value || 0} 
-                        color={getGradeColor(safeGrade.value || 0)}
-                      size="small"
-                      variant="filled"
-                    />
-                  </ListItemSecondaryAction>
+                </ListItemSecondaryAction>
                 </ListItemButton>
               );
             })}
@@ -805,43 +805,43 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
                     }
                   }}
                 >
-                  <ListItemAvatar>
-                    <Avatar sx={{ 
-                      bgcolor: 'info.main',
-                      width: 36,
-                      height: 36
-                    }}>
-                      <ClassIcon fontSize="small" />
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                          {safeClassItem.subject || safeClassItem.className || 'Unknown Subject'}
-                          {userRole === 'admin' && safeClassItem.teacher && (
-                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                              - {safeClassItem.teacher.name}
-                          </Typography>
+                <ListItemAvatar>
+                  <Avatar sx={{ 
+                    bgcolor: 'info.main',
+                    width: 36,
+                    height: 36
+                  }}>
+                    <ClassIcon fontSize="small" />
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                        {safeClassItem.subject || safeClassItem.className || 'Unknown Subject'}
+                        {userRole === 'admin' && safeClassItem.teacher && (
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            - {safeClassItem.teacher.name}
+                        </Typography>
+                      )}
+                    </Typography>
+                  }
+                  secondary={
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                          {safeClassItem.startTime && safeClassItem.endTime ? (
+                            `${formatTime(safeClassItem.startTime)} - ${formatTime(safeClassItem.endTime)}`
+                        ) : (
+                          'Time not specified'
                         )}
                       </Typography>
-                    }
-                    secondary={
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
-                            {safeClassItem.startTime && safeClassItem.endTime ? (
-                              `${formatTime(safeClassItem.startTime)} - ${formatTime(safeClassItem.endTime)}`
-                          ) : (
-                            'Time not specified'
-                          )}
+                        {safeClassItem.room && (
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            • Room {safeClassItem.room}
                         </Typography>
-                          {safeClassItem.room && (
-                          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                              • Room {safeClassItem.room}
-                          </Typography>
-                        )}
-                      </Box>
-                    }
-                  />
+                      )}
+                    </Box>
+                  }
+                />
                 </ListItemButton>
               );
             })}
@@ -860,6 +860,9 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
   const { isFeatureEnabled } = useFeatureToggles();
   const theme = useTheme();
   const navigate = useNavigate();
+  const pathRef = useRef(null);
+  const [dashLength, setDashLength] = useState(0);
+  const [dashOffset, setDashOffset] = useState(0);
 
   // Check if grades feature is enabled
   if (!isFeatureEnabled('enableGrades')) {
@@ -903,6 +906,24 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
   };
 
   const graphData = processGradesForGraph();
+
+  // Animate the line drawing from left to right on mount / data change
+  useEffect(() => {
+    if (pathRef.current) {
+      try {
+        const length = pathRef.current.getTotalLength();
+        setDashLength(length);
+        setDashOffset(length);
+        requestAnimationFrame(() => {
+          setDashOffset(0);
+        });
+      } catch (e) {
+        // Fallback: no animation if measurement fails
+        setDashLength(0);
+        setDashOffset(0);
+      }
+    }
+  }, [graphData.length]);
 
   // Helper functions to create a smooth curve through points using cubic Bezier segments
   const lineProps = (pointA, pointB) => {
@@ -1047,10 +1068,16 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
 
           {/* Smooth curve */}
           <path
+            ref={pathRef}
             d={smoothPath}
             stroke={theme.palette.primary.main}
             strokeWidth="3"
             fill="none"
+            style={{
+              strokeDasharray: dashLength,
+              strokeDashoffset: dashOffset,
+              transition: 'stroke-dashoffset 900ms ease-out'
+            }}
           />
 
           {/* Data points */}
@@ -1093,17 +1120,6 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
       />
       <CardContent sx={{ pt: 0 }}>
         {renderLineGraph()}
-        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ 
-            width: 12, 
-            height: 12, 
-            backgroundColor: theme.palette.primary.main,
-            borderRadius: '2px'
-          }} />
-          <Typography variant="caption" color="text.secondary">
-            Average Grades (All Time)
-          </Typography>
-        </Box>
       </CardContent>
     </Card>
   );

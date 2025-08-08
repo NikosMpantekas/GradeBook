@@ -10,6 +10,7 @@ import {
   CircularProgress,
   Fade
 } from '@mui/material';
+import { keyframes } from '@mui/system';
 import {
   WelcomePanel,
   GradesOverTimePanel,
@@ -227,6 +228,12 @@ const StudentDashboard = () => {
     navigate('/app/student/schedule');
   };
 
+  // Simple fade-in-up animation for dashboard cards
+  const fadeInUp = keyframes`
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+  `;
+
   // Show loading state
   if (featuresLoading || loading) {
     return (
@@ -265,35 +272,45 @@ const StudentDashboard = () => {
       <Fade in={true} timeout={800}>
         <Box>
           {/* Welcome Panel - Always shown */}
-          <WelcomePanel user={user} />
+          <Box sx={{ animation: `${fadeInUp} 500ms ease-out both` }}>
+            <WelcomePanel user={user} />
+          </Box>
           
           <Grid container spacing={3}>
-            {/* Grades Over Time Graph - Top left on desktop, full width on mobile */}
+            {/* Grades Overview Graph - Left half on desktop, full width on mobile */}
             <Grid item xs={12} md={6}>
-              <GradesOverTimePanel 
-                grades={dashboardData.grades}
-                loading={panelLoading.grades}
-                onViewAll={handleViewAllGrades}
-              />
+              <Box sx={{ animation: `${fadeInUp} 600ms ease-out both`, animationDelay: '80ms' }}>
+                <GradesOverTimePanel 
+                  grades={dashboardData.grades}
+                  loading={panelLoading.grades}
+                  onViewAll={handleViewAllGrades}
+                />
+              </Box>
             </Grid>
-            
-            {/* Recent Notifications - Top right on desktop, full width on mobile */}
+
+            {/* Right column: Notifications on top, Upcoming Classes below (desktop) */}
             <Grid item xs={12} md={6}>
-              <RecentNotificationsPanel 
-                notifications={dashboardData.notifications}
-                loading={panelLoading.notifications}
-                onViewAll={handleViewAllNotifications}
-              />
-            </Grid>
-            
-            {/* Upcoming Classes - Full width below */}
-            <Grid item xs={12}>
-              <UpcomingClassesPanel 
-                classes={dashboardData.classes}
-                loading={panelLoading.classes}
-                onViewAll={handleViewAllClasses}
-                userRole="student"
-              />
+              <Grid container spacing={3} direction="column">
+                <Grid item xs={12}>
+                  <Box sx={{ animation: `${fadeInUp} 650ms ease-out both`, animationDelay: '120ms' }}>
+                    <RecentNotificationsPanel 
+                      notifications={dashboardData.notifications}
+                      loading={panelLoading.notifications}
+                      onViewAll={handleViewAllNotifications}
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ animation: `${fadeInUp} 700ms ease-out both`, animationDelay: '160ms' }}>
+                    <UpcomingClassesPanel 
+                      classes={dashboardData.classes}
+                      loading={panelLoading.classes}
+                      onViewAll={handleViewAllClasses}
+                      userRole="student"
+                    />
+                  </Box>
+                </Grid>
+              </Grid>
             </Grid>
           </Grid>
           
