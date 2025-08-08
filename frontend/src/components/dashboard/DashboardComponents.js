@@ -863,7 +863,10 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
   const pathRef = useRef(null);
   const [dashLength, setDashLength] = useState(0);
   const [dashOffset, setDashOffset] = useState(0);
+  const [clipPathId] = useState(`clip-${Math.random().toString(36).substr(2, 9)}`);
   const featureEnabled = isFeatureEnabled('enableGrades');
+
+  // No early returns before hooks to satisfy rules-of-hooks
 
   // Process grades data for the graph
   const processGradesForGraph = () => {
@@ -903,7 +906,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
           setDashOffset(0);
         };
         
-        const id = setTimeout(() => requestAnimationFrame(start), animationDelayMs + 100);
+        const id = setTimeout(() => requestAnimationFrame(start), animationDelayMs + 300);
         return () => clearTimeout(id);
       } catch (e) {
         console.warn('Graph animation: measurement failed', e);
@@ -996,7 +999,22 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
 
     return (
       <Box sx={{ position: 'relative', width: '100%', height: 220 }}>
-        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>          
+        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+          {/* Define clip path that follows the line drawing */}
+          <defs>
+            <clipPath id={clipPathId}>
+              <rect
+                x={padding}
+                y={padding}
+                width={dashLength > 0 ? (dashLength - dashOffset) / dashLength * graphWidth : 0}
+                height={graphHeight}
+                style={{
+                  transition: 'width 2.5s ease-out'
+                }}
+              />
+            </clipPath>
+          </defs>
+          
           {/* Grid lines */}
           {Array.from({ length: 5 }, (_, i) => {
             const y = padding + (i / 4) * graphHeight;
@@ -1013,8 +1031,8 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
               />
             );
           })}
-
-          {/* Y-axis labels (0–100) */}
+          
+          {/* Y-axis labels */}
           {Array.from({ length: 5 }, (_, i) => {
             const y = padding + (i / 4) * graphHeight;
             const value = yMax - (i / 4) * (yMax - yMin);
@@ -1032,7 +1050,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
             );
           })}
 
-          {/* X-axis labels (sparse) */}
+          {/* X-axis labels */}
           {points.map((point, index) => (
             (index % step === 0 || index === points.length - 1) && (
               <text
@@ -1048,14 +1066,15 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
             )
           ))}
 
-          {/* Filled area under curve */}
+          {/* Filled area with clip path */}
           <path
             d={areaPathData}
             fill={theme.palette.primary.main}
             opacity={0.2}
+            clipPath={`url(#${clipPathId})`}
           />
 
-          {/* Smooth curve */}
+          {/* Line */}
           <path
             ref={pathRef}
             d={smoothPath}
@@ -1065,7 +1084,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
             style={{
               strokeDasharray: dashLength,
               strokeDashoffset: dashOffset,
-              transition: 'stroke-dashoffset 1.2s ease-out'
+              transition: 'stroke-dashoffset 2.5s ease-out'
             }}
           />
 
