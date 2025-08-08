@@ -885,13 +885,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
   const processGradesForGraph = () => {
     if (!grades || grades.length === 0) return [];
 
-    // Get the last 7 days
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = subDays(new Date(), i);
-      return format(date, 'yyyy-MM-dd');
-    }).reverse();
-
-    // Group grades by date
+    // Group all grades by date
     const gradesByDate = {};
     grades.forEach(grade => {
       if (grade.createdAt) {
@@ -903,8 +897,11 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
       }
     });
 
+    // Sort dates chronologically
+    const sortedDates = Object.keys(gradesByDate).sort();
+
     // Calculate average grade for each day
-    const graphData = last7Days.map(date => {
+    const graphData = sortedDates.map(date => {
       const dayGrades = gradesByDate[date] || [];
       const averageGrade = dayGrades.length > 0 
         ? dayGrades.reduce((sum, grade) => sum + grade, 0) / dayGrades.length 
@@ -912,6 +909,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
       
       return {
         date: format(parseISO(date), 'MM-dd'),
+        fullDate: date,
         grade: Math.round(averageGrade * 10) / 10, // Round to 1 decimal
         count: dayGrades.length
       };
@@ -1083,7 +1081,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
             borderRadius: '2px'
           }} />
           <Typography variant="caption" color="text.secondary">
-            Average Grades (Last 7 Days)
+            Average Grades (All Time)
           </Typography>
         </Box>
       </CardContent>

@@ -102,7 +102,7 @@ const StudentDashboard = () => {
       
       if (isFeatureEnabled('enableGrades')) {
         setPanelLoading(prev => ({ ...prev, grades: true }));
-        promises.push(fetchRecentGrades());
+        promises.push(fetchAllGrades());
         dataKeys.push('grades');
       }
       
@@ -150,20 +150,21 @@ const StudentDashboard = () => {
     }
   };
 
-  const fetchRecentGrades = async () => {
+  const fetchAllGrades = async () => {
     try {
-      // For student, get their grades using the student-specific endpoint
+      // For student, get all their grades using the student-specific endpoint
       const response = await axios.get(`${API_URL}/api/grades/student`, getAuthConfig());
       
       console.log('StudentDashboard: Grades response:', response.data);
       
       const grades = response.data?.grades || response.data || [];
-      const recentGrades = Array.isArray(grades) ? grades.slice(0, 10) : [];
+      // Return all grades for the graph (no limit needed)
+      const allGrades = Array.isArray(grades) ? grades : [];
       
-      console.log('StudentDashboard: Recent grades:', recentGrades);
-      return recentGrades;
+      console.log('StudentDashboard: All grades for graph:', allGrades.length);
+      return allGrades;
     } catch (error) {
-      console.error('StudentDashboard: Error fetching recent grades:', error);
+      console.error('StudentDashboard: Error fetching grades:', error);
       return [];
     }
   };
