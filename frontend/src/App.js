@@ -321,20 +321,6 @@ function App() {
           },
         },
       },
-      MuiListItemButton: {
-        styleOverrides: {
-          root: {
-            transition: 'background-color 0.1s, color 0.1s',
-          },
-        },
-      },
-      MuiButtonBase: {
-        styleOverrides: {
-          root: {
-            transition: 'background-color 0.1s, color 0.1s, border-color 0.1s',
-          },
-        },
-      },
       MuiTypography: {
         styleOverrides: {
           root: {
@@ -374,6 +360,20 @@ function App() {
         styleOverrides: {
           root: {
             transition: 'fill 0.1s, stroke 0.1s',
+          },
+        },
+      },
+      MuiListItemButton: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, color 0.1s',
+          },
+        },
+      },
+      MuiButtonBase: {
+        styleOverrides: {
+          root: {
+            transition: 'background-color 0.1s, color 0.1s, border-color 0.1s',
           },
         },
       },

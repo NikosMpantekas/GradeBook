@@ -182,7 +182,7 @@ export const WelcomePanel = ({ user }) => {
               bgcolor: 'rgba(255,255,255,0.2)',
                   fontSize: { xs: '1.5rem', sm: '2rem' },
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease-in-out',
+                  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
                   '&:hover': {
                     transform: 'scale(1.05)',
                     bgcolor: 'rgba(255,255,255,0.3)',
@@ -255,7 +255,7 @@ export const ProfileInfoPanel = ({ user, loading = false }) => {
               cursor: 'pointer',
               p: 1,
               borderRadius: 1,
-              transition: 'all 0.2s ease-in-out',
+              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
               '&:hover': {
                 backgroundColor: theme => theme.palette.action.hover,
                 transform: 'translateY(-1px)',
@@ -446,7 +446,7 @@ export const RecentNotificationsPanel = ({ notifications = [], loading = false, 
                     px: 0,
                     borderRadius: 1,
                     mb: 0.5,
-                    transition: 'all 0.2s ease-in-out',
+                    transition: 'transform 0.2s ease-in-out, background-color 0.2s ease-in-out',
                     '&:hover': {
                       backgroundColor: theme => `${theme.palette.primary.main}10`,
                       transform: 'translateX(4px)'
@@ -618,7 +618,7 @@ export const RecentGradesPanel = ({ grades = [], loading = false, onViewAll, use
                     px: 0,
                     borderRadius: 1,
                     mb: 0.5,
-                    transition: 'all 0.2s ease-in-out',
+                    transition: 'transform 0.2s ease-in-out, background-color 0.2s ease-in-out',
                     '&:hover': {
                       backgroundColor: theme => `${theme.palette.primary.main}10`,
                       transform: 'translateX(4px)'
@@ -798,7 +798,7 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
                     px: 0,
                     borderRadius: 1,
                     mb: 0.5,
-                    transition: 'all 0.2s ease-in-out',
+                    transition: 'transform 0.2s ease-in-out, background-color 0.2s ease-in-out',
                     '&:hover': {
                       backgroundColor: theme => `${theme.palette.primary.main}10`,
                       transform: 'translateX(4px)'
@@ -1009,7 +1009,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
                 width={dashLength > 0 ? (dashLength - dashOffset) / dashLength * graphWidth : 0}
                 height={graphHeight}
                 style={{
-                  transition: 'width 2.5s ease-out'
+                  transition: 'width 1.8s ease-out'
                 }}
               />
             </clipPath>
@@ -1074,7 +1074,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
             clipPath={`url(#${clipPathId})`}
           />
 
-          {/* Line */}
+          {/* Line - not clipped so it draws independently */}
           <path
             ref={pathRef}
             d={smoothPath}
@@ -1084,7 +1084,7 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
             style={{
               strokeDasharray: dashLength,
               strokeDashoffset: dashOffset,
-              transition: 'stroke-dashoffset 2.5s ease-out'
+              transition: 'stroke-dashoffset 1.8s ease-out'
             }}
           />
 
