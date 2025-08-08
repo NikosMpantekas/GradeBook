@@ -863,7 +863,8 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
   const pathRef = useRef(null);
   const [dashLength, setDashLength] = useState(0);
   const [dashOffset, setDashOffset] = useState(0);
-  const [clipPathId] = useState(`clip-${Math.random().toString(36).substr(2, 9)}`);
+  const [areaClipPathId] = useState(`area-clip-${Math.random().toString(36).substr(2, 9)}`);
+  const [lineClipPathId] = useState(`line-clip-${Math.random().toString(36).substr(2, 9)}`);
   const featureEnabled = isFeatureEnabled('enableGrades');
 
   // No early returns before hooks to satisfy rules-of-hooks
@@ -1000,16 +1001,27 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
     return (
       <Box sx={{ position: 'relative', width: '100%', height: 220 }}>
         <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
-          {/* Define clip path that follows the line drawing */}
+          {/* Define clip paths that follow the line drawing */}
           <defs>
-            <clipPath id={clipPathId}>
+            <clipPath id={areaClipPathId}>
               <rect
                 x={padding}
                 y={padding}
                 width={dashLength > 0 ? (dashLength - dashOffset) / dashLength * graphWidth : 0}
                 height={graphHeight}
                 style={{
-                  transition: 'width 1.8s ease-out'
+                  transition: 'width 1.5s ease-out'
+                }}
+              />
+            </clipPath>
+            <clipPath id={lineClipPathId}>
+              <rect
+                x={padding}
+                y={padding}
+                width={dashLength > 0 ? (dashLength - dashOffset) / dashLength * graphWidth : 0}
+                height={graphHeight}
+                style={{
+                  transition: 'width 1.5s ease-out'
                 }}
               />
             </clipPath>
@@ -1071,10 +1083,10 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
             d={areaPathData}
             fill={theme.palette.primary.main}
             opacity={0.2}
-            clipPath={`url(#${clipPathId})`}
+            clipPath={`url(#${areaClipPathId})`}
           />
 
-          {/* Line - not clipped so it draws independently */}
+          {/* Line - clipped by the lineClipPath */}
           <path
             ref={pathRef}
             d={smoothPath}
@@ -1084,8 +1096,10 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, a
             style={{
               strokeDasharray: dashLength,
               strokeDashoffset: dashOffset,
-              transition: 'stroke-dashoffset 1.8s ease-out'
+              transition: 'stroke-dashoffset 1.5s ease-out',
+              zIndex: 1
             }}
+            clipPath={`url(#${lineClipPathId})`}
           />
 
           {/* Data points */}
