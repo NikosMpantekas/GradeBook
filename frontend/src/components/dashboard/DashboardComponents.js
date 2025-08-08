@@ -37,9 +37,10 @@ import {
   TrendingUp as TrendingUpIcon,
   Visibility as VisibilityIcon,
   NotificationsActive as NotificationsActiveIcon,
-  Class as ClassIcon
+  Class as ClassIcon,
+  ShowChart as ShowChartIcon
 } from '@mui/icons-material';
-import { format, isValid, parseISO } from 'date-fns';
+import { format, isValid, parseISO, subDays } from 'date-fns';
 import { useFeatureToggles } from '../../context/FeatureToggleContext';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -850,3 +851,244 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
     </Card>
   );
 };
+
+/**
+ * Grades Over Time Panel Component
+ * Shows a line graph of grades over the last 7 days
+ */
+export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll }) => {
+  const { isFeatureEnabled } = useFeatureToggles();
+  const theme = useTheme();
+  const navigate = useNavigate();
+
+  // Check if grades feature is enabled
+  if (!isFeatureEnabled('enableGrades')) {
+    return null; // Hide panel if grades are disabled
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader title="Grades Over Time" />
+        <CardContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Skeleton variant="rectangular" width="100%" height={200} />
+            <Skeleton variant="text" width="60%" height={20} />
+            <Skeleton variant="text" width="40%" height={16} />
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Process grades data for the graph
+  const processGradesForGraph = () => {
+    if (!grades || grades.length === 0) return [];
+
+    // Get the last 7 days
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = subDays(new Date(), i);
+      return format(date, 'yyyy-MM-dd');
+    }).reverse();
+
+    // Group grades by date
+    const gradesByDate = {};
+    grades.forEach(grade => {
+      if (grade.createdAt) {
+        const date = format(parseISO(grade.createdAt), 'yyyy-MM-dd');
+        if (!gradesByDate[date]) {
+          gradesByDate[date] = [];
+        }
+        gradesByDate[date].push(grade.value || 0);
+      }
+    });
+
+    // Calculate average grade for each day
+    const graphData = last7Days.map(date => {
+      const dayGrades = gradesByDate[date] || [];
+      const averageGrade = dayGrades.length > 0 
+        ? dayGrades.reduce((sum, grade) => sum + grade, 0) / dayGrades.length 
+        : 0;
+      
+      return {
+        date: format(parseISO(date), 'MM-dd'),
+        grade: Math.round(averageGrade * 10) / 10, // Round to 1 decimal
+        count: dayGrades.length
+      };
+    });
+
+    return graphData;
+  };
+
+  const graphData = processGradesForGraph();
+
+  // Create simple SVG line graph
+  const renderLineGraph = () => {
+    if (graphData.length === 0) {
+      return (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: 200,
+          color: 'text.secondary'
+        }}>
+          <Typography variant="body2">No grade data available</Typography>
+        </Box>
+      );
+    }
+
+    const width = 400;
+    const height = 200;
+    const padding = 40;
+    const graphWidth = width - 2 * padding;
+    const graphHeight = height - 2 * padding;
+
+    // Find min/max values for scaling
+    const grades = graphData.map(d => d.grade).filter(g => g > 0);
+    const maxGrade = Math.max(...grades, 20); // Default to 20 if no grades
+    const minGrade = Math.min(...grades, 0); // Default to 0 if no grades
+
+    // Create points for the line
+    const points = graphData.map((data, index) => {
+      const x = padding + (index / (graphData.length - 1)) * graphWidth;
+      const y = height - padding - ((data.grade - minGrade) / (maxGrade - minGrade)) * graphHeight;
+      return { x, y, ...data };
+    });
+
+    // Create path for the line
+    const pathData = points.map((point, index) => {
+      if (index === 0) return `M ${point.x} ${point.y}`;
+      return `L ${point.x} ${point.y}`;
+    }).join(' ');
+
+    // Create path for the filled area
+    const areaPathData = points.map((point, index) => {
+      if (index === 0) return `M ${point.x} ${point.y}`;
+      return `L ${point.x} ${point.y}`;
+    }).join(' ') + ` L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`;
+
+    return (
+      <Box sx={{ position: 'relative', width: '100%', height: 200 }}>
+        <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+          {/* Grid lines */}
+          {Array.from({ length: 5 }, (_, i) => {
+            const y = padding + (i / 4) * graphHeight;
+            return (
+              <line
+                key={`grid-${i}`}
+                x1={padding}
+                y1={y}
+                x2={width - padding}
+                y2={y}
+                stroke={theme.palette.divider}
+                strokeWidth="1"
+                opacity={0.3}
+              />
+            );
+          })}
+          
+          {/* Y-axis labels */}
+          {Array.from({ length: 5 }, (_, i) => {
+            const y = padding + (i / 4) * graphHeight;
+            const value = maxGrade - (i / 4) * (maxGrade - minGrade);
+            return (
+              <text
+                key={`y-label-${i}`}
+                x={padding - 10}
+                y={y + 4}
+                textAnchor="end"
+                fontSize="12"
+                fill={theme.palette.text.secondary}
+              >
+                {Math.round(value)}
+              </text>
+            );
+          })}
+
+          {/* X-axis labels */}
+          {points.map((point, index) => (
+            <text
+              key={`x-label-${index}`}
+              x={point.x}
+              y={height - padding + 20}
+              textAnchor="middle"
+              fontSize="10"
+              fill={theme.palette.text.secondary}
+            >
+              {point.date}
+            </text>
+          ))}
+
+          {/* Filled area */}
+          <path
+            d={areaPathData}
+            fill={theme.palette.primary.main}
+            opacity={0.2}
+          />
+
+          {/* Line */}
+          <path
+            d={pathData}
+            stroke={theme.palette.primary.main}
+            strokeWidth="3"
+            fill="none"
+          />
+
+          {/* Data points */}
+          {points.map((point, index) => (
+            <circle
+              key={`point-${index}`}
+              cx={point.x}
+              cy={point.y}
+              r="4"
+              fill={theme.palette.primary.main}
+              stroke={theme.palette.background.paper}
+              strokeWidth="2"
+            />
+          ))}
+        </svg>
+      </Box>
+    );
+  };
+
+  return (
+    <Card>
+      <CardHeader 
+        title="Grades Over Time" 
+        avatar={<ShowChartIcon color="primary" />}
+        action={
+          <Button 
+            size="small" 
+            onClick={onViewAll}
+            startIcon={<VisibilityIcon />}
+            sx={{
+              color: theme.palette.primary.main,
+              '&:hover': {
+                backgroundColor: theme => `${theme.palette.primary.main}10`
+              }
+            }}
+          >
+            View All
+          </Button>
+        }
+      />
+      <CardContent sx={{ pt: 0 }}>
+        {renderLineGraph()}
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ 
+            width: 12, 
+            height: 12, 
+            backgroundColor: theme.palette.primary.main,
+            borderRadius: '2px'
+          }} />
+          <Typography variant="caption" color="text.secondary">
+            Average Grades (Last 7 Days)
+          </Typography>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
+

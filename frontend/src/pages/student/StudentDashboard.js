@@ -12,9 +12,8 @@ import {
 } from '@mui/material';
 import {
   WelcomePanel,
-  ProfileInfoPanel,
+  GradesOverTimePanel,
   RecentNotificationsPanel,
-  RecentGradesPanel,
   UpcomingClassesPanel
 } from '../../components/dashboard/DashboardComponents';
 import { useFeatureToggles } from '../../context/FeatureToggleContext';
@@ -268,13 +267,17 @@ const StudentDashboard = () => {
           <WelcomePanel user={user} />
           
           <Grid container spacing={3}>
-            {/* Profile Information - Always shown */}
-            <Grid item xs={12} md={4}>
-              <ProfileInfoPanel user={user} loading={false} />
+            {/* Grades Over Time Graph - Top left on desktop, full width on mobile */}
+            <Grid item xs={12} md={6}>
+              <GradesOverTimePanel 
+                grades={dashboardData.grades}
+                loading={panelLoading.grades}
+                onViewAll={handleViewAllGrades}
+              />
             </Grid>
             
-            {/* Recent Notifications - Only if feature enabled */}
-            <Grid item xs={12} md={8}>
+            {/* Recent Notifications - Top right on desktop, full width on mobile */}
+            <Grid item xs={12} md={6}>
               <RecentNotificationsPanel 
                 notifications={dashboardData.notifications}
                 loading={panelLoading.notifications}
@@ -282,18 +285,8 @@ const StudentDashboard = () => {
               />
             </Grid>
             
-            {/* Recent Grades - Only if feature enabled */}
-            <Grid item xs={12} md={6}>
-              <RecentGradesPanel 
-                grades={dashboardData.grades}
-                loading={panelLoading.grades}
-                onViewAll={handleViewAllGrades}
-                userRole="student"
-              />
-            </Grid>
-            
-            {/* Upcoming Classes - Only if feature enabled */}
-            <Grid item xs={12} md={6}>
+            {/* Upcoming Classes - Full width below */}
+            <Grid item xs={12}>
               <UpcomingClassesPanel 
                 classes={dashboardData.classes}
                 loading={panelLoading.classes}
