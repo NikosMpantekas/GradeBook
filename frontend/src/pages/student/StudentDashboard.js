@@ -234,6 +234,13 @@ const StudentDashboard = () => {
     100% { opacity: 1; transform: translateY(0); }
   `;
 
+  // Trigger for coordinating animations
+  const [animationReady, setAnimationReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setAnimationReady(true), 150); // wait briefly so cards start animating
+    return () => clearTimeout(t);
+  }, []);
+
   // Show loading state
   if (featuresLoading || loading) {
     return (
@@ -284,6 +291,7 @@ const StudentDashboard = () => {
                   grades={dashboardData.grades}
                   loading={panelLoading.grades}
                   onViewAll={handleViewAllGrades}
+                  animationDelayMs={animationReady ? 120 : 300}
                 />
               </Box>
             </Grid>

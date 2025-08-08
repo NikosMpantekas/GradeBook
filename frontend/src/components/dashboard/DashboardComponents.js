@@ -856,7 +856,7 @@ export const UpcomingClassesPanel = ({ classes = [], loading = false, onViewAll,
  * Grades Over Time Panel Component
  * Shows a line graph of grades over the last 7 days
  */
-export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll }) => {
+export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll, animationDelayMs = 0 }) => {
   const { isFeatureEnabled } = useFeatureToggles();
   const theme = useTheme();
   const navigate = useNavigate();
@@ -895,16 +895,16 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
         const length = pathRef.current.getTotalLength();
         setDashLength(length);
         setDashOffset(length);
-        requestAnimationFrame(() => {
-          setDashOffset(0);
-        });
+        const start = () => setDashOffset(0);
+        const id = setTimeout(() => requestAnimationFrame(start), animationDelayMs);
+        return () => clearTimeout(id);
       } catch (e) {
         // Fallback: no animation if measurement fails
         setDashLength(0);
         setDashOffset(0);
       }
     }
-  }, [graphData.length]);
+  }, [graphData.length, animationDelayMs]);
 
   // Helper functions to create a smooth curve through points using cubic Bezier segments
   const lineProps = (pointA, pointB) => {

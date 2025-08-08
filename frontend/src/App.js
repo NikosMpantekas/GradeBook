@@ -279,11 +279,20 @@ function App() {
     components: {
       MuiCssBaseline: {
         styleOverrides: {
+          '*': {
+            transition: 'background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
+          },
+          '*::before, *::after': {
+            transition: 'background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
+          },
+          'svg, .MuiSvgIcon-root': {
+            transition: 'fill 180ms ease, stroke 180ms ease',
+          },
           body: {
             transition: 'background-color 180ms ease, color 180ms ease',
           },
-          '#root, .MuiPaper-root': {
-            transition: 'background-color 180ms ease, color 180ms ease, border-color 180ms ease',
+          '#root, .MuiPaper-root, .MuiCard-root, .MuiAppBar-root, .MuiToolbar-root, .MuiListItem-root, .MuiListItemButton-root, .MuiButtonBase-root, .MuiTypography-root, .MuiAvatar-root, .MuiChip-root, .MuiDivider-root, .MuiIconButton-root': {
+            transition: 'background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
           },
         },
       },
