@@ -960,16 +960,18 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
     const graphWidth = width - 2 * padding;
     const graphHeight = height - 2 * padding;
 
-    // Fixed grade scale for clarity (0-20)
-    const minGrade = 0;
-    const maxGrade = 20;
-    const safeRange = Math.max(maxGrade - minGrade, 1);
+    // Fixed grade scale to 0–100
+    const yMin = 0;
+    const yMax = 100;
+    const safeRange = Math.max(yMax - yMin, 1);
 
-    // Create points for the curve
+    // Create points for the curve using raw grade values (0–100)
     const points = graphData.map((data, index) => {
       const x = padding + (index / Math.max(graphData.length - 1, 1)) * graphWidth;
-      const y = height - padding - ((data.grade - minGrade) / safeRange) * graphHeight;
-      return { x, y, ...data };
+      const value = typeof data.grade === 'number' ? data.grade : Number(data.grade) || 0;
+      const clamped = Math.min(yMax, Math.max(yMin, value));
+      const y = height - padding - ((clamped - yMin) / safeRange) * graphHeight;
+      return { x, y, value, ...data };
     });
 
     // Smooth curve path
@@ -1002,10 +1004,10 @@ export const GradesOverTimePanel = ({ grades = [], loading = false, onViewAll })
             );
           })}
 
-          {/* Y-axis labels */}
+          {/* Y-axis labels (0–100) */}
           {Array.from({ length: 5 }, (_, i) => {
             const y = padding + (i / 4) * graphHeight;
-            const value = maxGrade - (i / 4) * (maxGrade - minGrade);
+            const value = yMax - (i / 4) * (yMax - yMin);
             return (
               <text
                 key={`y-label-${i}`}
