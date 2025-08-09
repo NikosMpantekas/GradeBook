@@ -231,6 +231,27 @@ const writeToFile = (entry) => {
 };
 
 /**
+ * Format data object with IP addresses highlighted in blue
+ * @param {Object} data - Data object to format
+ * @returns {Object} Formatted data with colored IP addresses
+ */
+const formatDataWithColors = (data) => {
+  if (!data || typeof data !== 'object') return data;
+  
+  const BLUE = '\x1b[34m';  // ANSI blue color
+  const RESET = '\x1b[0m';  // ANSI reset color
+  
+  const formatted = { ...data };
+  
+  // Color IP addresses blue
+  if (formatted.ip) {
+    formatted.ip = `${BLUE}${formatted.ip}${RESET}`;
+  }
+  
+  return formatted;
+};
+
+/**
  * Log to console with appropriate formatting and colors
  * @param {Object} entry - Log entry
  */
@@ -242,19 +263,22 @@ const logToConsole = (entry) => {
   // Format the prefix with colors
   const prefix = `[${levelName}]${timestamp ? ` ${timestamp}` : ''}${category ? ` [${category}]` : ''}:`;
   
+  // Format data with colored IP addresses
+  const coloredData = data ? formatDataWithColors(data) : null;
+  
   // Use appropriate console method based on level
   switch (level) {
     case LOG_LEVELS.DEBUG:
       console.debug(prefix, message);
-      if (error || data) console.debug(error || data);
+      if (error || coloredData) console.debug(error || coloredData);
       break;
     case LOG_LEVELS.INFO:
       console.info(prefix, message);
-      if (error || data) console.info(error || data);
+      if (error || coloredData) console.info(error || coloredData);
       break;
     case LOG_LEVELS.WARN:
       console.warn(prefix, message);
-      if (error || data) console.warn(error || data);
+      if (error || coloredData) console.warn(error || coloredData);
       break;
     case LOG_LEVELS.ERROR:
     case LOG_LEVELS.CRITICAL:
@@ -262,13 +286,13 @@ const logToConsole = (entry) => {
       if (error) {
         console.error('Error:', error.name, error.message);
         if (error.stack) console.error('Stack:', error.stack);
-      } else if (data) {
-        console.error('Data:', data);
+      } else if (coloredData) {
+        console.error('Data:', coloredData);
       }
       break;
     default:
       console.log(prefix, message);
-      if (error || data) console.log(error || data);
+      if (error || coloredData) console.log(error || coloredData);
   }
 };
 
