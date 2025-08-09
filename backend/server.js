@@ -209,12 +209,119 @@ app.use((req, res, next) => {
   next();
 });
 
+// Import logger for consistent detailed logging
+const logger = require("./utils/logger");
+
 // Health check endpoint for Render deployment
 app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "ok", message: "Server is running" });
 });
 
-// SECURITY: Emergency diagnostic endpoint REMOVED for production security
+// CRITICAL SECURITY: Block ALL external requests (curl, postman, direct HTTP)
+// This blocks requests that bypass browser CORS protection
+app.use('/api', (req, res, next) => {
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
+  const userAgent = req.headers['user-agent'] || '';
+  const host = req.headers.host;
+  
+  logger.info('SECURITY', 'Request validation', {
+    ip: req.ip,
+    origin: origin || 'NO_ORIGIN',
+    referer: referer || 'NO_REFERER', 
+    userAgent: userAgent,
+    host: host,
+    path: req.path,
+    method: req.method
+  });
+  
+  // Allow health check to pass through
+  if (req.path === '/health') {
+    return next();
+  }
+  
+  // PRODUCTION: Strict validation - BLOCK ALL external requests
+  if (process.env.NODE_ENV === 'production') {
+    // Must have origin from authorized frontend
+    if (!origin || origin !== process.env.FRONTEND_URL) {
+      logger.warn('SECURITY', 'BLOCKED: Unauthorized origin in production', {
+        ip: req.ip,
+        origin: origin || 'MISSING',
+        userAgent: userAgent,
+        path: req.path
+      });
+      return res.status(403).json({ 
+        error: 'Access denied', 
+        code: 'UNAUTHORIZED_ORIGIN',
+        message: 'This API only accepts requests from authorized frontend applications'
+      });
+    }
+    
+    // Must have referer from authorized frontend 
+    if (!referer || !referer.startsWith(process.env.FRONTEND_URL)) {
+      logger.warn('SECURITY', 'BLOCKED: Invalid referer in production', {
+        ip: req.ip,
+        referer: referer || 'MISSING',
+        userAgent: userAgent,
+        path: req.path
+      });
+      return res.status(403).json({ 
+        error: 'Access denied',
+        code: 'INVALID_REFERER',
+        message: 'Invalid request source' 
+      });
+    }
+    
+    // Block suspicious user agents (curl, postman, wget, etc)
+    const suspiciousAgents = ['curl', 'postman', 'wget', 'httpie', 'insomnia', 'rest-client', 'python-requests'];
+    const isSuspicious = suspiciousAgents.some(agent => 
+      userAgent.toLowerCase().includes(agent.toLowerCase())
+    );
+    
+    if (isSuspicious || !userAgent || userAgent.length < 10) {
+      logger.warn('SECURITY', 'BLOCKED: Suspicious user agent', {
+        ip: req.ip,
+        userAgent: userAgent || 'MISSING',
+        path: req.path,
+        isSuspicious: isSuspicious
+      });
+      return res.status(403).json({ 
+        error: 'Access denied',
+        code: 'SUSPICIOUS_CLIENT',
+        message: 'Direct API access not allowed'
+      });
+    }
+  }
+  
+  // Development mode: Still block obvious external tools
+  if (process.env.NODE_ENV !== 'production') {
+    const suspiciousAgents = ['curl', 'postman', 'wget', 'httpie'];
+    const isSuspicious = suspiciousAgents.some(agent => 
+      userAgent.toLowerCase().includes(agent.toLowerCase())
+    );
+    
+    if (isSuspicious) {
+      logger.warn('SECURITY', 'BLOCKED: External tool in dev mode', {
+        ip: req.ip,
+        userAgent: userAgent,
+        path: req.path
+      });
+      return res.status(403).json({ 
+        error: 'Access denied',
+        code: 'EXTERNAL_TOOL_BLOCKED',
+        message: 'External API tools are blocked. Use the frontend application.'
+      });
+    }
+  }
+  
+  logger.info('SECURITY', 'Request authorized', {
+    ip: req.ip,
+    path: req.path,
+    userAgent: userAgent.substring(0, 50) + '...'
+  });
+  
+  next();
+});
 
 // Import logger for consistent detailed logging
 const logger = require("./utils/logger");
