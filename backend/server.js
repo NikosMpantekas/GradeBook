@@ -323,9 +323,6 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Import logger for consistent detailed logging
-const logger = require("./utils/logger");
-
 // Import migrations
 const { updateAllAdminPermissions } = require("./utils/migrations");
 
