@@ -68,8 +68,6 @@ if (process.env.NODE_ENV === 'production') {
   console.log('[PROXY] Trust proxy enabled for development environment'.cyan);
 }
 
-// Set environment variable for use in other parts of the app
-process.env.FRONTEND_URL = "https://gradebook.pro";
 // Middleware
 // Enhanced CORS configuration for production deployment
 const allowedOrigins = [
