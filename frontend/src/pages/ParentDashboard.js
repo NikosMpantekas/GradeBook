@@ -94,7 +94,7 @@ const ParentDashboard = () => {
       const promises = [];
       const dataKeys = [];
       
-      // Only fetch data for enabled features
+      // Only fetch data for enabled features (PARENT: Classes removed per user request)
       if (isFeatureEnabled('enableNotifications')) {
         setPanelLoading(prev => ({ ...prev, notifications: true }));
         promises.push(fetchNotifications());
@@ -107,11 +107,12 @@ const ParentDashboard = () => {
         dataKeys.push('grades');
       }
       
-      if (isFeatureEnabled('enableSchedule')) {
-        setPanelLoading(prev => ({ ...prev, classes: true }));
-        promises.push(fetchUpcomingClasses());
-        dataKeys.push('classes');
-      }
+      // PARENT FIX: Parents should not see classes/schedule
+      // if (isFeatureEnabled('enableSchedule')) {
+      //   setPanelLoading(prev => ({ ...prev, classes: true }));
+      //   promises.push(fetchUpcomingClasses());
+      //   dataKeys.push('classes');
+      // }
       
       // Execute all enabled data fetches
       const results = await Promise.allSettled(promises);
@@ -258,8 +259,9 @@ const ParentDashboard = () => {
           </Grid>
         )}
 
-        {/* Upcoming Classes Panel - if schedule is enabled */}
-        {isFeatureEnabled('enableSchedule') && (
+        {/* PARENT FIX: Upcoming Classes Panel removed for parents */}
+        {/* Parents should not see classes/schedule per user request */}
+        {/* {isFeatureEnabled('enableSchedule') && (
           <Grid item xs={12} md={6}>
             <UpcomingClassesPanel 
               classes={dashboardData.classes}
@@ -268,7 +270,7 @@ const ParentDashboard = () => {
               onViewAll={() => navigate('/app/schedule')}
             />
           </Grid>
-        )}
+        )} */}
         </Grid>
       </Container>
     </DashboardErrorBoundary>

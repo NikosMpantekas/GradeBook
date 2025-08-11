@@ -59,7 +59,7 @@ const NotificationRecipients = ({
     schoolBranch: '',
     direction: '',
     subject: '',
-    userRole: 'student' // 'student', 'teacher', 'all'
+    userRole: 'student' // 'student', 'teacher', 'parent', 'all'
   });
   
   // User data and search
@@ -278,6 +278,16 @@ const NotificationRecipients = ({
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <SupervisorAccountIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
                         Teachers
+                      </Box>
+                    }
+                  />
+                  <FormControlLabel 
+                    value="parent" 
+                    control={<Radio />} 
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <PersonIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+                        Parents
                       </Box>
                     }
                   />

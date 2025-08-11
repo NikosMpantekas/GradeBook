@@ -886,6 +886,7 @@ const EditUser = () => {
                   <MenuItem value="secretary">Secretary</MenuItem>
                   <MenuItem value="teacher">Teacher</MenuItem>
                   <MenuItem value="student">Student</MenuItem>
+                  <MenuItem value="parent">Parent</MenuItem>
                 </Select>
                 <FormHelperText>{formErrors.role}</FormHelperText>
               </FormControl>

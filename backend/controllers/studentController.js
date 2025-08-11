@@ -579,13 +579,40 @@ const getFilteredUsersForNotifications = asyncHandler(async (req, res) => {
       users = users.concat(teachers);
     }
     
+    if (!userRole || userRole === 'all' || userRole === 'parent') {
+      // Fetch parents linked to students from these classes
+      const parents = await User.find({
+        linkedStudentIds: { $in: Array.from(studentIds) },
+        role: 'parent',
+        schoolId: req.user.schoolId
+      })
+      .select('_id name email role linkedStudentIds')
+      .lean();
+      
+      console.log(`[FILTERED USERS] Found ${parents.length} parents linked to students in these classes`);
+      users = users.concat(parents);
+    }
+    
+    // GHOST USER FIX: Filter out users with missing names or emails to prevent ghost users
+    const validUsers = users.filter(user => {
+      const hasValidName = user.name && user.name.trim().length > 0;
+      const hasValidEmail = user.email && user.email.trim().length > 0;
+      
+      if (!hasValidName || !hasValidEmail) {
+        console.warn(`[FILTERED USERS] Filtering out invalid user: ID=${user._id}, name="${user.name}", email="${user.email}"`);
+        return false;
+      }
+      return true;
+    });
+    
     // Sort users by name for better UX
-    users.sort((a, b) => a.name.localeCompare(b.name));
+    validUsers.sort((a, b) => a.name.localeCompare(b.name));
     
-    console.log(`[FILTERED USERS] Returning ${users.length} total users for notifications`);
-    console.log(`[FILTERED USERS] User breakdown: ${users.filter(u => u.role === 'student').length} students, ${users.filter(u => u.role === 'teacher').length} teachers`);
+    console.log(`[FILTERED USERS] Filtered out ${users.length - validUsers.length} invalid users (ghost users)`);
+    console.log(`[FILTERED USERS] Returning ${validUsers.length} valid users for notifications`);
+    console.log(`[FILTERED USERS] User breakdown: ${validUsers.filter(u => u.role === 'student').length} students, ${validUsers.filter(u => u.role === 'teacher').length} teachers, ${validUsers.filter(u => u.role === 'parent').length} parents`);
     
-    res.json(users);
+    res.json(validUsers);
   } catch (error) {
     console.error('[FILTERED USERS] Error in getFilteredUsersForNotifications:', error);
     res.status(500);
